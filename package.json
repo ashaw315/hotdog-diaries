@@ -2,7 +2,43 @@
   "name": "hotdog-diaries",
   "version": "1.0.0",
   "description": "A website that scans social media for hotdog content",
-  "scripts": {},
-  "dependencies": {},
-  "devDependencies": {}
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "db:migrate": "tsx lib/migrations/migrator.ts migrate",
+    "db:rollback": "tsx lib/migrations/migrator.ts rollback",
+    "db:status": "tsx lib/migrations/migrator.ts status"
+  },
+  "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^24.0.14",
+    "@types/pg": "^8.15.4",
+    "@types/react": "^19.1.8",
+    "@vercel/postgres": "^0.10.0",
+    "bcryptjs": "^3.0.2",
+    "date-fns": "^4.1.0",
+    "next": "^15.4.1",
+    "pg": "^8.16.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^30.0.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.31.0",
+    "eslint-config-next": "^15.4.1",
+    "jest": "^30.0.4",
+    "jest-environment-jsdom": "^30.0.4",
+    "tsx": "^4.20.3"
+  }
 }
