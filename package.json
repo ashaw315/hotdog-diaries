@@ -1,0 +1,8 @@
+{
+  "name": "hotdog-diaries",
+  "version": "1.0.0",
+  "description": "A website that scans social media for hotdog content",
+  "scripts": {},
+  "dependencies": {},
+  "devDependencies": {}
+}
