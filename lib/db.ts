@@ -95,7 +95,7 @@ class DatabaseConnection {
     }
 
     if (!this.pool) {
-      throw new Error('Database not connected')
+      await this.connect()
     }
 
     const start = Date.now()

@@ -4,11 +4,14 @@ import {
   withErrorHandling, 
   validateRequestMethod, 
   createSuccessResponse,
-  createApiError 
+  createApiError,
+  validateJsonBody
 } from '@/lib/api-middleware'
 import { PostedContent } from '@/types'
+import { ContentService } from '@/lib/services/content'
+import { validateContent, CreateContentRequest } from '@/lib/validation/content'
 
-async function contentHandler(request: NextRequest): Promise<NextResponse> {
+async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   validateRequestMethod(request, ['GET'])
 
   const url = new URL(request.url)
@@ -111,4 +114,28 @@ async function contentHandler(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-export const GET = withErrorHandling(contentHandler, '/api/content')
+async function postContentHandler(request: NextRequest): Promise<NextResponse> {
+  validateRequestMethod(request, ['POST'])
+
+  const body = await validateJsonBody<CreateContentRequest>(request)
+  
+  // Validate the content data
+  const validation = validateContent(body)
+  if (!validation.isValid) {
+    const errorMessages = validation.errors.map(e => `${e.field}: ${e.message}`).join(', ')
+    throw createApiError(`Validation failed: ${errorMessages}`, 400, 'VALIDATION_ERROR')
+  }
+
+  try {
+    const newContent = await ContentService.createContent(body)
+    return createSuccessResponse(newContent, 'Content created successfully', 201)
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Duplicate content')) {
+      throw createApiError(error.message, 409, 'DUPLICATE_CONTENT')
+    }
+    throw error
+  }
+}
+
+export const GET = withErrorHandling(getContentHandler, '/api/content')
+export const POST = withErrorHandling(postContentHandler, '/api/content')
