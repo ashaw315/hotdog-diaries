@@ -21,7 +21,7 @@ interface HistoryContent {
 
 interface FilterOptions {
   status: 'all' | 'posted' | 'failed' | 'draft'
-  platform: 'all' | 'twitter' | 'instagram' | 'facebook' | 'tiktok'
+  platform: 'all' | 'instagram' | 'facebook' | 'reddit' | 'tiktok'
   dateRange: 'all' | 'today' | 'week' | 'month' | 'custom'
   startDate?: string
   endDate?: string
@@ -214,7 +214,6 @@ export default function ContentHistory() {
               className="w-full border-gray-300 rounded-md text-sm"
             >
               <option value="all">All Platforms</option>
-              <option value="twitter">Twitter</option>
               <option value="instagram">Instagram</option>
               <option value="facebook">Facebook</option>
               <option value="tiktok">TikTok</option>

@@ -91,8 +91,6 @@ export function PostingHistory({ onManualTrigger }: PostingHistoryProps) {
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
-      case 'twitter':
-        return '🐦'
       case 'instagram':
         return '📸'
       case 'facebook':

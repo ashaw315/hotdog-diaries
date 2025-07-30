@@ -36,12 +36,6 @@ const navigationItems: NavItem[] = [
     description: 'View content history'
   },
   {
-    name: 'Twitter Integration',
-    href: '/admin/twitter',
-    icon: '🐦',
-    description: 'Twitter content scanning'
-  },
-  {
     name: 'Content Filtering',
     href: '/admin/filtering',
     icon: '🔍',

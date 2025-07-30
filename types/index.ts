@@ -17,7 +17,7 @@ export interface HotdogPost {
   id: string
   content: string
   imageUrl?: string
-  source: 'twitter' | 'instagram' | 'facebook' | 'reddit'
+  source: 'reddit' | 'instagram' | 'facebook'
   sourceUrl: string
   timestamp: string
   engagement: {
@@ -97,10 +97,9 @@ export enum ContentType {
 }
 
 export enum SourcePlatform {
-  TWITTER = 'twitter',
+  REDDIT = 'reddit',
   INSTAGRAM = 'instagram',
   FACEBOOK = 'facebook',
-  REDDIT = 'reddit',
   TIKTOK = 'tiktok'
 }
 
