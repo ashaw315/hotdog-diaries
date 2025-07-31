@@ -2,6 +2,9 @@ import { db, logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 import { filteringService, ContentAnalysis } from './filtering'
 import { duplicateDetectionService } from './duplicate-detection'
+import { loggingService } from './logging'
+import { metricsService } from './metrics'
+import { errorHandler } from '@/lib/middleware/error-handler'
 import crypto from 'crypto'
 
 export interface ContentProcessingResult {
@@ -58,13 +61,21 @@ export class ContentProcessor {
 
   async processContent(contentId: number, config?: Partial<ProcessingConfig>): Promise<ContentProcessingResult> {
     const processingConfig = { ...ContentProcessor.DEFAULT_CONFIG, ...config }
+    const startTime = Date.now()
     
     try {
-      await logToDatabase(
-        LogLevel.INFO,
-        'Starting content processing',
-        'ContentProcessor',
-        { contentId, config: processingConfig }
+      // Log with new monitoring system
+      await loggingService.logInfo('ContentProcessor', 'Starting content processing', {
+        contentId,
+        config: processingConfig
+      })
+
+      // Record processing start metric
+      await metricsService.recordCustomMetric(
+        'content_processing_started',
+        1,
+        'count',
+        { contentId: contentId.toString() }
       )
 
       // Get content from database
@@ -143,17 +154,27 @@ export class ContentProcessor {
       // Save analysis to database
       await this.saveContentAnalysis(contentId, analysis)
 
-      await logToDatabase(
-        LogLevel.INFO,
-        'Content processing completed',
-        'ContentProcessor',
-        { 
-          contentId, 
-          action, 
+      // Record successful processing metrics
+      const duration = Date.now() - startTime
+      await metricsService.recordContentProcessingMetric(
+        'content_processing',
+        duration,
+        true,
+        1,
+        {
+          action,
           confidence: analysis.confidence_score,
-          isValidHotdog: analysis.is_valid_hotdog 
+          isValidHotdog: analysis.is_valid_hotdog
         }
       )
+
+      await loggingService.logInfo('ContentProcessor', 'Content processing completed', {
+        contentId,
+        action,
+        confidence: analysis.confidence_score,
+        isValidHotdog: analysis.is_valid_hotdog,
+        duration
+      })
 
       return {
         success: true,
@@ -164,15 +185,23 @@ export class ContentProcessor {
       }
 
     } catch (error) {
-      await logToDatabase(
-        LogLevel.ERROR,
-        'Content processing failed',
-        'ContentProcessor',
-        { 
-          contentId, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
+      // Record failed processing metrics
+      const duration = Date.now() - startTime
+      await metricsService.recordContentProcessingMetric(
+        'content_processing',
+        duration,
+        false,
+        0,
+        {
+          error: error instanceof Error ? error.message : 'Unknown error'
         }
       )
+
+      await loggingService.logError('ContentProcessor', 'Content processing failed', {
+        contentId,
+        duration,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, error as Error)
 
       return {
         success: false,
@@ -187,12 +216,18 @@ export class ContentProcessor {
   async processBatch(contentIds: number[], config?: Partial<ProcessingConfig>): Promise<ContentProcessingResult[]> {
     const results: ContentProcessingResult[] = []
     const batchSize = Math.min(contentIds.length, ContentProcessor.BATCH_SIZE)
+    const startTime = Date.now()
     
-    await logToDatabase(
-      LogLevel.INFO,
-      'Starting batch processing',
-      'ContentProcessor',
-      { totalItems: contentIds.length, batchSize }
+    await loggingService.logInfo('ContentProcessor', 'Starting batch processing', {
+      totalItems: contentIds.length,
+      batchSize
+    })
+
+    // Record batch processing start
+    await metricsService.recordCustomMetric(
+      'batch_processing_started',
+      contentIds.length,
+      'count'
     )
 
     for (let i = 0; i < contentIds.length; i += batchSize) {
@@ -229,16 +264,29 @@ export class ContentProcessor {
       }
     }
 
-    await logToDatabase(
-      LogLevel.INFO,
-      'Batch processing completed',
-      'ContentProcessor',
-      { 
-        totalProcessed: results.length,
-        successful: results.filter(r => r.success).length,
-        failed: results.filter(r => !r.success).length
+    // Record batch processing completion metrics
+    const duration = Date.now() - startTime
+    const successful = results.filter(r => r.success).length
+    const failed = results.filter(r => !r.success).length
+
+    await metricsService.recordContentProcessingMetric(
+      'batch_processing',
+      duration,
+      failed === 0,
+      results.length,
+      {
+        successful,
+        failed,
+        batchSize
       }
     )
+
+    await loggingService.logInfo('ContentProcessor', 'Batch processing completed', {
+      totalProcessed: results.length,
+      successful,
+      failed,
+      duration
+    })
 
     return results
   }

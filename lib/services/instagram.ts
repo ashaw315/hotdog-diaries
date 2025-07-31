@@ -1,6 +1,9 @@
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 import { instagramMonitoringService } from './instagram-monitoring'
+import { InstagramScraper } from './web-scraping/instagram-scraper'
+import { loggingService } from './logging'
+import { metricsService } from './metrics'
 
 export interface InstagramSearchOptions {
   hashtag: string
@@ -75,6 +78,8 @@ export class InstagramService {
 
   private accessToken: string | null = null
   private tokenExpiresAt: Date | null = null
+  private scraper: InstagramScraper
+  private useWebScraping: boolean
 
   constructor() {
     // Load existing token from environment or database
@@ -82,6 +87,15 @@ export class InstagramService {
     if (process.env.INSTAGRAM_TOKEN_EXPIRES_AT) {
       this.tokenExpiresAt = new Date(process.env.INSTAGRAM_TOKEN_EXPIRES_AT)
     }
+
+    // Initialize web scraper
+    this.scraper = new InstagramScraper({
+      headless: process.env.NODE_ENV === 'production',
+      rateLimitMs: 90000 // 1.5 minutes between requests
+    })
+
+    // Use web scraping by default, fall back to API if available
+    this.useWebScraping = process.env.INSTAGRAM_USE_API !== 'true'
   }
 
   /**
@@ -90,42 +104,76 @@ export class InstagramService {
   async searchHashtags(options: InstagramSearchOptions): Promise<ProcessedInstagramMedia[]> {
     const startTime = Date.now()
     try {
-      if (!this.accessToken) {
-        throw new Error('Instagram access token not available. Please authenticate first.')
-      }
-
-      await this.checkRateLimit()
-      await this.checkTokenExpiration()
-
       const hashtag = options.hashtag.replace('#', '') // Remove # if present
-      const limit = Math.min(options.limit || 25, 50) // Instagram API limits
+      const limit = Math.min(options.limit || 25, 50)
 
-      // Instagram Basic Display API doesn't support hashtag search directly
-      // We'll need to use Instagram Graph API (requires business account)
-      // For now, we'll implement a fallback using user media search
+      let mediaList: ProcessedInstagramMedia[] = []
 
-      const mediaList: ProcessedInstagramMedia[] = []
+      if (this.useWebScraping) {
+        // Use web scraping approach
+        await loggingService.logInfo('InstagramService', 'Using web scraping for hashtag search', {
+          hashtag,
+          limit
+        })
 
-      // Search user's own media first (Basic Display API limitation)
-      const userMedia = await this.getUserMedia(limit)
-      
-      // Filter media that contains the hashtag in caption
-      for (const media of userMedia) {
-        if (this.containsHashtag(media.caption, hashtag) || 
-            this.isHotdogRelated(media.caption)) {
-          
-          const processedMedia = await this.processInstagramMedia(media)
+        const scrapingResult = await this.scraper.scrapeContent(hashtag, limit)
+        
+        if (!scrapingResult.success) {
+          throw new Error(`Web scraping failed: ${scrapingResult.error}`)
+        }
+
+        // Convert scraped content to ProcessedInstagramMedia format
+        for (const scrapedContent of scrapingResult.data || []) {
+          const processedMedia = await this.convertScrapedToProcessed(scrapedContent)
           
           // Apply minimum likes filter
           if (options.minLikes && processedMedia.likesCount < options.minLikes) {
             continue
           }
 
-          mediaList.push(processedMedia)
+          // Additional validation for hotdog relevance
+          if (await this.validateInstagramContent(processedMedia)) {
+            mediaList.push(processedMedia)
+          }
         }
-      }
 
-      this.updateRateLimit()
+        await loggingService.logInfo('InstagramService', 'Web scraping search completed', {
+          hashtag,
+          scraped: scrapingResult.data?.length || 0,
+          processed: mediaList.length,
+          responseTime: scrapingResult.responseTime
+        })
+
+      } else {
+        // Fallback to API approach (existing implementation)
+        if (!this.accessToken) {
+          throw new Error('Instagram access token not available. Please authenticate first.')
+        }
+
+        await this.checkRateLimit()
+        await this.checkTokenExpiration()
+
+        // Search user's own media first (Basic Display API limitation)
+        const userMedia = await this.getUserMedia(limit)
+        
+        // Filter media that contains the hashtag in caption
+        for (const media of userMedia) {
+          if (this.containsHashtag(media.caption, hashtag) || 
+              this.isHotdogRelated(media.caption)) {
+            
+            const processedMedia = await this.processInstagramMedia(media)
+            
+            // Apply minimum likes filter
+            if (options.minLikes && processedMedia.likesCount < options.minLikes) {
+              continue
+            }
+
+            mediaList.push(processedMedia)
+          }
+        }
+
+        this.updateRateLimit()
+      }
 
       await logToDatabase(
         LogLevel.INFO,
@@ -134,22 +182,26 @@ export class InstagramService {
         { 
           hashtag, 
           mediaFound: mediaList.length,
-          limit 
+          limit,
+          method: this.useWebScraping ? 'scraping' : 'api'
         }
       )
 
-      // Record successful API request for monitoring
+      // Record successful request for monitoring
       const requestTime = Date.now() - startTime
       await instagramMonitoringService.recordApiRequest(true, requestTime)
+      await metricsService.recordAPIMetric('instagram', 'search_hashtags', requestTime, 200)
 
       return mediaList
 
     } catch (error) {
-      // Record failed API request for monitoring
+      // Record failed request for monitoring
       const requestTime = Date.now() - startTime
       const errorType = error.message.includes('rate limit') ? 'rate_limit' : 
-                       error.message.includes('token') ? 'auth_error' : 'api_error'
+                       error.message.includes('token') ? 'auth_error' : 
+                       error.message.includes('scraping') ? 'scraping_error' : 'api_error'
       await instagramMonitoringService.recordApiRequest(false, requestTime, errorType)
+      await metricsService.recordAPIMetric('instagram', 'search_hashtags', requestTime, 500)
 
       if (error.message.includes('rate limit')) {
         await instagramMonitoringService.recordRateLimitHit(this.rateLimitTracker.resetTime)
@@ -161,7 +213,8 @@ export class InstagramService {
         `Instagram hashtag search failed: ${error.message}`,
         { 
           hashtag: options.hashtag,
-          error: error.message 
+          error: error.message,
+          method: this.useWebScraping ? 'scraping' : 'api'
         }
       )
       
@@ -399,21 +452,40 @@ export class InstagramService {
     try {
       let isAuthenticated = false
 
-      if (this.accessToken && this.tokenExpiresAt) {
-        // Test the token by making a simple API call
-        const response = await fetch(
-          `${InstagramService.API_BASE_URL}/me?fields=id,username&access_token=${this.accessToken}`,
-          { method: 'GET' }
-        )
-        isAuthenticated = response.ok
-        this.updateRateLimit()
-      }
+      if (this.useWebScraping) {
+        // Test web scraping access
+        const accessTest = await this.scraper.testAccess()
+        isAuthenticated = accessTest.accessible
 
-      return {
-        isAuthenticated,
-        rateLimits: this.rateLimitTracker,
-        tokenExpiresAt: this.tokenExpiresAt || undefined,
-        lastRequest: new Date()
+        return {
+          isAuthenticated,
+          rateLimits: {
+            used: 0, // Web scraping doesn't use API rate limits
+            remaining: 999,
+            resetTime: new Date(Date.now() + 60 * 60 * 1000)
+          },
+          lastRequest: new Date(),
+          lastError: accessTest.error
+        }
+
+      } else {
+        // API mode
+        if (this.accessToken && this.tokenExpiresAt) {
+          // Test the token by making a simple API call
+          const response = await fetch(
+            `${InstagramService.API_BASE_URL}/me?fields=id,username&access_token=${this.accessToken}`,
+            { method: 'GET' }
+          )
+          isAuthenticated = response.ok
+          this.updateRateLimit()
+        }
+
+        return {
+          isAuthenticated,
+          rateLimits: this.rateLimitTracker,
+          tokenExpiresAt: this.tokenExpiresAt || undefined,
+          lastRequest: new Date()
+        }
       }
 
     } catch (error) {
@@ -497,6 +569,45 @@ export class InstagramService {
         { mediaId: media.id, error: error.message }
       )
       return false
+    }
+  }
+
+  /**
+   * Convert scraped content to ProcessedInstagramMedia format
+   */
+  private async convertScrapedToProcessed(scrapedContent: any): Promise<ProcessedInstagramMedia> {
+    try {
+      // Extract hashtags and mentions from the scraped content
+      const hashtags = scrapedContent.metadata?.hashtags || this.extractHashtags(scrapedContent.content_text)
+      const mentions = this.extractMentions(scrapedContent.content_text)
+
+      const processedMedia: ProcessedInstagramMedia = {
+        id: scrapedContent.id,
+        caption: scrapedContent.content_text || '',
+        mediaType: scrapedContent.type === 'video' ? 'VIDEO' : 'IMAGE',
+        mediaUrl: scrapedContent.content_image_url || scrapedContent.content_video_url || '',
+        thumbnailUrl: scrapedContent.metadata?.thumbnail_url,
+        permalink: scrapedContent.original_url,
+        username: scrapedContent.original_author,
+        userId: scrapedContent.original_author, // Use username as ID for scraped content
+        timestamp: scrapedContent.scraped_at,
+        likesCount: scrapedContent.metadata?.likes || 0,
+        commentsCount: scrapedContent.metadata?.comments || 0,
+        hashtags,
+        mentions,
+        location: undefined, // Not available from scraping
+        isStory: false, // Stories not scraped
+        carouselMedia: undefined // Not available from basic scraping
+      }
+
+      return processedMedia
+
+    } catch (error) {
+      await loggingService.logError('InstagramService', 'Failed to convert scraped content', {
+        scrapedId: scrapedContent.id,
+        error: error.message
+      }, error as Error)
+      throw error
     }
   }
 
@@ -609,6 +720,34 @@ export class InstagramService {
   private updateRateLimit(): void {
     this.rateLimitTracker.used++
     this.rateLimitTracker.remaining = Math.max(0, InstagramService.RATE_LIMIT_PER_HOUR - this.rateLimitTracker.used)
+  }
+
+  /**
+   * Clean up resources
+   */
+  async cleanup(): Promise<void> {
+    if (this.useWebScraping && this.scraper) {
+      await this.scraper.cleanup()
+    }
+  }
+
+  /**
+   * Get service statistics
+   */
+  getServiceStats() {
+    if (this.useWebScraping) {
+      return {
+        mode: 'web_scraping',
+        scraper_stats: this.scraper.getInstagramStats(),
+        rate_limits: this.rateLimitTracker
+      }
+    } else {
+      return {
+        mode: 'api',
+        rate_limits: this.rateLimitTracker,
+        token_expires_at: this.tokenExpiresAt
+      }
+    }
   }
 }
 
