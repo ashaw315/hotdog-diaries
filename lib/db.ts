@@ -186,10 +186,32 @@ export async function logToDatabase(
   metadata?: Record<string, any>
 ): Promise<void> {
   try {
+    // Convert LogLevel enum to database-compatible string
+    let dbLevel: string
+    switch (level) {
+      case LogLevel.DEBUG:
+        dbLevel = 'debug'
+        break
+      case LogLevel.INFO:
+        dbLevel = 'info'
+        break
+      case LogLevel.WARN:
+        dbLevel = 'warning'
+        break
+      case LogLevel.ERROR:
+        dbLevel = 'error'
+        break
+      case LogLevel.FATAL:
+        dbLevel = 'error' // Map FATAL to error since it's not in constraint
+        break
+      default:
+        dbLevel = 'info'
+    }
+
     await db.query(
       `INSERT INTO system_logs (log_level, message, component, metadata, created_at)
        VALUES ($1, $2, $3, $4, NOW())`,
-      [level, message, component, metadata ? JSON.stringify(metadata) : null]
+      [dbLevel, message, component, metadata ? JSON.stringify(metadata) : null]
     )
   } catch (error) {
     console.error('Failed to log to database:', error)

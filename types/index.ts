@@ -17,7 +17,7 @@ export interface HotdogPost {
   id: string
   content: string
   imageUrl?: string
-  source: 'reddit' | 'instagram' | 'facebook'
+  source: 'reddit' | 'youtube' | 'flickr' | 'unsplash' | 'news' | 'mastodon'
   sourceUrl: string
   timestamp: string
   engagement: {
@@ -98,9 +98,11 @@ export enum ContentType {
 
 export enum SourcePlatform {
   REDDIT = 'reddit',
-  INSTAGRAM = 'instagram',
-  FACEBOOK = 'facebook',
-  TIKTOK = 'tiktok'
+  YOUTUBE = 'youtube',
+  FLICKR = 'flickr',
+  UNSPLASH = 'unsplash',
+  NEWS = 'news',
+  MASTODON = 'mastodon'
 }
 
 export enum LogLevel {

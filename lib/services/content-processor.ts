@@ -511,12 +511,26 @@ export class ContentProcessor {
   }
 
   private async getContentById(id: number): Promise<any> {
-    const result = await db.query(
-      'SELECT * FROM content_queue WHERE id = $1',
-      [id]
-    )
-    
-    return result.rows.length > 0 ? result.rows[0] : null
+    try {
+      console.log(`ContentProcessor: Getting content by ID ${id}`)
+      const result = await db.query(
+        'SELECT * FROM content_queue WHERE id = $1',
+        [id]
+      )
+      
+      console.log(`ContentProcessor: Query result - found ${result.rows.length} rows`)
+      if (result.rows.length > 0) {
+        console.log(`ContentProcessor: Found content:`, {
+          id: result.rows[0].id,
+          content_text: result.rows[0].content_text?.substring(0, 50)
+        })
+      }
+      
+      return result.rows.length > 0 ? result.rows[0] : null
+    } catch (error) {
+      console.error(`ContentProcessor: Error getting content by ID ${id}:`, error)
+      throw error
+    }
   }
 
   private determineAction(analysis: ContentAnalysis, config: ProcessingConfig): 'approved' | 'rejected' | 'flagged' {

@@ -102,9 +102,9 @@ export class FilteringService {
   private static readonly DEFAULT_INAPPROPRIATE_PATTERNS = [
     'fuck',
     'shit',
-    'damn',
-    'hell',
-    'ass',
+    '\\bdamn\\b',
+    '\\bhell\\b', 
+    '\\bass\\b',
     'bitch',
     'bastard',
     'crap',
@@ -484,7 +484,16 @@ export class FilteringService {
         {
           analysis,
           textLength: text.length,
-          hasHotdogReference
+          hasHotdogReference,
+          extractedText: text.substring(0, 200),
+          baseConfidence,
+          spamPenalty,
+          inappropriatePenalty, 
+          unrelatedPenalty,
+          finalConfidence: confidence,
+          spamPatterns: spamCheck.patterns,
+          inappropriatePatterns: inappropriateCheck.patterns,
+          unrelatedPatterns: unrelatedCheck.patterns
         }
       )
       

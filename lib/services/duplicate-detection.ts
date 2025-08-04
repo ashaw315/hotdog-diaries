@@ -1,5 +1,6 @@
 import { db, logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { generateContentHash as utilGenerateContentHash, HashableContent } from '@/lib/utils/content-hash'
 import crypto from 'crypto'
 
 export interface DuplicateCheckResult {
@@ -469,6 +470,13 @@ export class DuplicateDetectionService {
 
     const distance = this.levenshteinDistance(str1, str2)
     return (maxLength - distance) / maxLength
+  }
+
+  /**
+   * Generate content hash using the utility function
+   */
+  generateContentHash(content: HashableContent): string {
+    return utilGenerateContentHash(content)
   }
 }
 

@@ -191,11 +191,30 @@ export class QueryBuilder {
     
     return parseInt(result.rows[0]?.count || '0')
   }
+
+  /**
+   * Perform an upsert operation (insert or update if exists)
+   */
+  async upsert(data: Record<string, any>, conflictTarget?: string): Promise<any> {
+    // Use the InsertBuilder with conflict handling
+    const insertBuilder = InsertBuilder.into(this.fromTable)
+      .values(data)
+    
+    if (conflictTarget) {
+      // For now, do an update on conflict
+      insertBuilder.onConflictDoUpdate(conflictTarget, data)
+    } else {
+      // Try to determine primary key or use 'id' as default
+      insertBuilder.onConflictDoUpdate('id', data)
+    }
+    
+    return await insertBuilder.execute()
+  }
 }
 
 export class InsertBuilder {
   private tableName: string = ''
-  private insertData: Record<string, any> = {}
+  private insertData: Record<string, any>[] = []
   private returnFields: string[] = ['*']
   private conflictAction?: 'DO NOTHING' | 'DO UPDATE'
   private conflictTarget?: string
@@ -207,8 +226,12 @@ export class InsertBuilder {
     return builder
   }
 
-  values(data: Record<string, any>): InsertBuilder {
-    this.insertData = { ...this.insertData, ...data }
+  values(data: Record<string, any> | Record<string, any>[]): InsertBuilder {
+    if (Array.isArray(data)) {
+      this.insertData = data
+    } else {
+      this.insertData = [data]
+    }
     return this
   }
 
@@ -237,11 +260,29 @@ export class InsertBuilder {
   }
 
   build(): { query: string; params: any[] } {
-    const fields = Object.keys(this.insertData)
-    const values = Object.values(this.insertData)
-    const placeholders = fields.map((_, index) => `$${index + 1}`).join(', ')
+    if (this.insertData.length === 0) {
+      throw new Error('No data provided for INSERT operation')
+    }
 
-    let query = `INSERT INTO ${this.tableName} (${fields.join(', ')}) VALUES (${placeholders})`
+    // Get field names from the first record
+    const fields = Object.keys(this.insertData[0])
+    const allValues: any[] = []
+    
+    // Build placeholders and collect all values
+    const valueRows: string[] = []
+    let paramIndex = 1
+    
+    for (const record of this.insertData) {
+      const rowPlaceholders: string[] = []
+      for (const field of fields) {
+        rowPlaceholders.push(`$${paramIndex}`)
+        allValues.push(record[field])
+        paramIndex++
+      }
+      valueRows.push(`(${rowPlaceholders.join(', ')})`)
+    }
+
+    let query = `INSERT INTO ${this.tableName} (${fields.join(', ')}) VALUES ${valueRows.join(', ')}`
 
     // Add conflict handling
     if (this.conflictTarget && this.conflictAction) {
@@ -259,7 +300,7 @@ export class InsertBuilder {
       query += ` RETURNING ${this.returnFields.join(', ')}`
     }
 
-    return { query, params: values }
+    return { query, params: allValues }
   }
 
   async execute<T extends QueryResultRow = any>(): Promise<QueryResult<T>> {

@@ -24,6 +24,36 @@ const navigationItems: NavItem[] = [
     description: 'Overview and statistics'
   },
   {
+    name: 'Social Platforms',
+    href: '/admin/social',
+    icon: '🌐',
+    description: 'Platform management'
+  },
+  {
+    name: 'Reddit',
+    href: '/admin/reddit',
+    icon: '🔴',
+    description: 'Reddit content scanning'
+  },
+  {
+    name: 'YouTube',
+    href: '/admin/youtube',
+    icon: '📺',
+    description: 'YouTube video content'
+  },
+  {
+    name: 'Flickr',
+    href: '/admin/flickr',
+    icon: '📸',
+    description: 'Flickr photo content'
+  },
+  {
+    name: 'Unsplash',
+    href: '/admin/unsplash',
+    icon: '🖼️',
+    description: 'Professional photography'
+  },
+  {
     name: 'Content Queue',
     href: '/admin/queue',
     icon: '📝',

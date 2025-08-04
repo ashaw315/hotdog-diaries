@@ -1,6 +1,7 @@
-import { chromium, Browser, BrowserContext, Page } from 'playwright'
+import { BrowserContext, Page } from 'playwright'
 import { loggingService } from '../logging'
 import { metricsService } from '../metrics'
+import { browserManager } from '../browser-manager'
 import UserAgent from 'user-agents'
 
 export interface ScrapingConfig {
@@ -52,8 +53,8 @@ export interface ScrapedContent {
 }
 
 export abstract class WebScrapingBase {
-  protected browser?: Browser
   protected context?: BrowserContext
+  protected contextId?: string
   protected config: ScrapingConfig
   protected userAgents: UserAgent
   protected lastRequestTime = 0
@@ -75,75 +76,22 @@ export abstract class WebScrapingBase {
   }
 
   /**
-   * Initialize browser with stealth configuration
+   * Initialize browser context using browser manager
    */
   async initialize(): Promise<void> {
     try {
-      await loggingService.logInfo('WebScrapingBase', 'Initializing browser for web scraping')
+      await loggingService.logInfo('WebScrapingBase', 'Getting browser context from manager')
 
-      this.browser = await chromium.launch({
-        headless: this.config.headless,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor'
-        ]
+      const { context, contextId } = await browserManager.getContext()
+      this.context = context
+      this.contextId = contextId
+
+      await loggingService.logInfo('WebScrapingBase', 'Browser context initialized successfully', {
+        contextId
       })
-
-      this.context = await this.browser.newContext({
-        userAgent: this.config.userAgent || this.userAgents.toString(),
-        viewport: this.config.viewport,
-        proxy: this.config.proxy,
-        // Stealth settings
-        permissions: [],
-        geolocation: { latitude: 37.7749, longitude: -122.4194 }, // San Francisco
-        locale: 'en-US',
-        timezoneId: 'America/Los_Angeles',
-        extraHTTPHeaders: {
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'none',
-          'Cache-Control': 'max-age=0'
-        }
-      })
-
-      // Add stealth scripts
-      await this.context.addInitScript(() => {
-        // Override webdriver detection
-        Object.defineProperty(navigator, 'webdriver', {
-          get: () => false,
-        })
-
-        // Override plugins
-        Object.defineProperty(navigator, 'plugins', {
-          get: () => [1, 2, 3, 4, 5],
-        })
-
-        // Override languages
-        Object.defineProperty(navigator, 'languages', {
-          get: () => ['en-US', 'en'],
-        })
-
-        // Remove automation indicators
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol
-      })
-
-      await loggingService.logInfo('WebScrapingBase', 'Browser initialized successfully')
 
     } catch (error) {
-      await loggingService.logError('WebScrapingBase', 'Failed to initialize browser', {
+      await loggingService.logError('WebScrapingBase', 'Failed to initialize browser context', {
         error: error.message
       }, error as Error)
       throw error
@@ -322,18 +270,17 @@ export abstract class WebScrapingBase {
   }
 
   /**
-   * Clean up resources
+   * Clean up resources - release context back to manager
    */
   async cleanup(): Promise<void> {
     try {
-      if (this.context) {
-        await this.context.close()
-      }
-      if (this.browser) {
-        await this.browser.close()
+      if (this.contextId) {
+        await browserManager.releaseContext(this.contextId)
+        this.context = undefined
+        this.contextId = undefined
       }
       
-      await loggingService.logInfo('WebScrapingBase', 'Browser cleanup completed', {
+      await loggingService.logInfo('WebScrapingBase', 'Browser context released', {
         requestCount: this.requestCount
       })
       

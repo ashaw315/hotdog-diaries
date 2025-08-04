@@ -11,6 +11,18 @@ interface DashboardStats {
   nextPostTime?: Date
   avgEngagement: number
   systemStatus: 'online' | 'offline' | 'maintenance'
+  platformStats: {
+    reddit: { enabled: boolean; contentFound: number; lastScan?: string }
+    youtube: { enabled: boolean; contentFound: number; lastScan?: string }
+    flickr: { enabled: boolean; contentFound: number; lastScan?: string }
+    unsplash: { enabled: boolean; contentFound: number; lastScan?: string }
+  }
+  contentPipeline: {
+    queuedForReview: number
+    autoApproved: number
+    flaggedForManualReview: number
+    rejected: number
+  }
 }
 
 interface RecentActivity {
@@ -27,7 +39,19 @@ export default function AdminDashboard() {
     postedToday: 0,
     totalViews: 0,
     avgEngagement: 0,
-    systemStatus: 'online'
+    systemStatus: 'online',
+    platformStats: {
+      reddit: { enabled: false, contentFound: 0 },
+      youtube: { enabled: false, contentFound: 0 },
+      flickr: { enabled: false, contentFound: 0 },
+      unsplash: { enabled: false, contentFound: 0 }
+    },
+    contentPipeline: {
+      queuedForReview: 0,
+      autoApproved: 0,
+      flaggedForManualReview: 0,
+      rejected: 0
+    }
   })
   
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
@@ -210,38 +234,139 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Platform Status Overview */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Platform Status</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Reddit */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <span className="text-xl mr-2">🔴</span>
+                <span className="font-medium">Reddit</span>
+              </div>
+              <span className={`w-2 h-2 rounded-full ${stats.platformStats.reddit.enabled ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            </div>
+            <p className="text-sm text-gray-600">{stats.platformStats.reddit.contentFound} posts found</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {stats.platformStats.reddit.lastScan ? 
+                `Last scan: ${new Date(stats.platformStats.reddit.lastScan).toLocaleDateString()}` : 
+                'Never scanned'
+              }
+            </p>
+          </div>
+
+          {/* YouTube */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <span className="text-xl mr-2">📺</span>
+                <span className="font-medium">YouTube</span>
+              </div>
+              <span className={`w-2 h-2 rounded-full ${stats.platformStats.youtube.enabled ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            </div>
+            <p className="text-sm text-gray-600">{stats.platformStats.youtube.contentFound} videos found</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {stats.platformStats.youtube.lastScan ? 
+                `Last scan: ${new Date(stats.platformStats.youtube.lastScan).toLocaleDateString()}` : 
+                'Never scanned'
+              }
+            </p>
+          </div>
+
+          {/* Flickr */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <span className="text-xl mr-2">📸</span>
+                <span className="font-medium">Flickr</span>
+              </div>
+              <span className={`w-2 h-2 rounded-full ${stats.platformStats.flickr.enabled ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            </div>
+            <p className="text-sm text-gray-600">{stats.platformStats.flickr.contentFound} photos found</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {stats.platformStats.flickr.lastScan ? 
+                `Last scan: ${new Date(stats.platformStats.flickr.lastScan).toLocaleDateString()}` : 
+                'Never scanned'
+              }
+            </p>
+          </div>
+
+          {/* Unsplash */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <span className="text-xl mr-2">🖼️</span>
+                <span className="font-medium">Unsplash</span>
+              </div>
+              <span className={`w-2 h-2 rounded-full ${stats.platformStats.unsplash.enabled ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            </div>
+            <p className="text-sm text-gray-600">{stats.platformStats.unsplash.contentFound} photos found</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {stats.platformStats.unsplash.lastScan ? 
+                `Last scan: ${new Date(stats.platformStats.unsplash.lastScan).toLocaleDateString()}` : 
+                'Never scanned'
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Pipeline Status */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Content Pipeline</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{stats.contentPipeline.queuedForReview}</div>
+            <div className="text-sm text-gray-600">Queued for Review</div>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{stats.contentPipeline.autoApproved}</div>
+            <div className="text-sm text-gray-600">Auto Approved</div>
+          </div>
+          <div className="text-center p-4 bg-yellow-50 rounded-lg">
+            <div className="text-2xl font-bold text-yellow-600">{stats.contentPipeline.flaggedForManualReview}</div>
+            <div className="text-sm text-gray-600">Manual Review</div>
+          </div>
+          <div className="text-center p-4 bg-red-50 rounded-lg">
+            <div className="text-2xl font-bold text-red-600">{stats.contentPipeline.rejected}</div>
+            <div className="text-sm text-gray-600">Rejected</div>
+          </div>
+        </div>
+      </div>
+
       {/* Quick Actions */}
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
-            type="button"
+          <a
+            href="/admin/social"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <span className="text-lg mr-2">➕</span>
-            Add Content
-          </button>
-          <button
-            type="button"
+            <span className="text-lg mr-2">🌐</span>
+            Manage Platforms
+          </a>
+          <a
+            href="/admin/queue"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <span className="text-lg mr-2">🔄</span>
-            Refresh Queue
-          </button>
-          <button
-            type="button"
+            <span className="text-lg mr-2">📝</span>
+            Review Queue
+          </a>
+          <a
+            href="/admin/analytics"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <span className="text-lg mr-2">📊</span>
             View Analytics
-          </button>
-          <button
-            type="button"
+          </a>
+          <a
+            href="/admin/settings"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <span className="text-lg mr-2">⚙️</span>
             Settings
-          </button>
+          </a>
         </div>
       </div>
     </div>

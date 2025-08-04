@@ -214,22 +214,17 @@ export class LoggingService {
       let queryBuilder = query('system_logs')
         .select([
           'id',
-          'level',
+          'log_level as level',
           'component',
           'message',
           'metadata',
-          'timestamp',
-          'stack_trace',
-          'user_id',
-          'session_id',
-          'request_id',
-          'environment'
+          'created_at as timestamp'
         ])
-        .orderBy('timestamp', 'DESC')
+        .orderBy('created_at', 'DESC')
 
       // Apply filters
       if (level && level.length > 0) {
-        queryBuilder = queryBuilder.whereIn('level', level)
+        queryBuilder = queryBuilder.whereIn('log_level', level)
       }
 
       if (component && component.length > 0) {
@@ -238,8 +233,8 @@ export class LoggingService {
 
       if (dateRange) {
         queryBuilder = queryBuilder
-          .where('timestamp', '>=', dateRange.start)
-          .where('timestamp', '<=', dateRange.end)
+          .where('created_at', '>=', dateRange.start)
+          .where('created_at', '<=', dateRange.end)
       }
 
       if (search) {
@@ -247,11 +242,11 @@ export class LoggingService {
       }
 
       if (userId) {
-        queryBuilder = queryBuilder.where('user_id', userId)
+        queryBuilder = queryBuilder.where('metadata', 'LIKE', `%"userId":"${userId}"%`)
       }
 
       if (requestId) {
-        queryBuilder = queryBuilder.where('request_id', requestId)
+        queryBuilder = queryBuilder.where('metadata', 'LIKE', `%"requestId":"${requestId}"%`)
       }
 
       // Get total count
@@ -265,19 +260,22 @@ export class LoggingService {
         .offset(offset)
         .execute()
 
-      const logs: LogEntry[] = results.map((row: any) => ({
-        id: row.id,
-        level: row.level,
-        component: row.component,
-        message: row.message,
-        metadata: row.metadata,
-        timestamp: new Date(row.timestamp),
-        stackTrace: row.stack_trace,
-        userId: row.user_id,
-        sessionId: row.session_id,
-        requestId: row.request_id,
-        environment: row.environment
-      }))
+      const logs: LogEntry[] = results.map((row: any) => {
+        const metadata = row.metadata || {}
+        return {
+          id: row.id,
+          level: row.level, // Already aliased to log_level in SELECT
+          component: row.component,
+          message: row.message,
+          metadata,
+          timestamp: new Date(row.timestamp), // Already aliased to created_at in SELECT
+          stackTrace: metadata.stackTrace,
+          userId: metadata.userId,
+          sessionId: metadata.sessionId,
+          requestId: metadata.requestId,
+          environment: metadata.environment || 'development'
+        }
+      })
 
       return {
         logs,
@@ -308,15 +306,15 @@ export class LoggingService {
 
       if (dateRange) {
         baseQuery = baseQuery
-          .where('timestamp', '>=', dateRange.start)
-          .where('timestamp', '<=', dateRange.end)
+          .where('created_at', '>=', dateRange.start)
+          .where('created_at', '<=', dateRange.end)
       }
 
       // Get counts by level
       const levelCounts = await baseQuery.clone()
-        .select(['level'])
+        .select(['log_level'])
         .count('* as count')
-        .groupBy('level')
+        .groupBy('log_level')
         .execute()
 
       const stats = {
@@ -331,7 +329,7 @@ export class LoggingService {
         const count = parseInt(row.count)
         stats.totalLogs += count
         
-        switch (row.level) {
+        switch (row.log_level) {
           case LogLevel.ERROR:
             stats.errorCount = count
             break
@@ -387,7 +385,7 @@ export class LoggingService {
       cutoffDate.setDate(cutoffDate.getDate() - retentionDays)
 
       const result = await query('system_logs')
-        .where('timestamp', '<', cutoffDate)
+        .where('created_at', '<', cutoffDate)
         .delete()
 
       await this.logInfo('LoggingService', `Cleaned up ${result} old log entries`, {
@@ -448,22 +446,25 @@ export class LoggingService {
     this.logBuffer = []
 
     try {
-      // Ensure logs table exists
+      // Ensure logs table exists (using legacy schema)
       await this.ensureLogsTable()
 
-      // Insert logs in batch
+      // Insert logs in batch using actual schema columns only
       await insert('system_logs')
         .values(logsToFlush.map(log => ({
-          level: log.level,
-          component: log.component,
+          log_level: log.level,
+          component: log.component.substring(0, 100), // Truncate to fit VARCHAR(100)
           message: log.message,
-          metadata: JSON.stringify(log.metadata || {}),
-          timestamp: log.timestamp,
-          stack_trace: log.stackTrace,
-          user_id: log.userId,
-          session_id: log.sessionId,
-          request_id: log.requestId,
-          environment: log.environment
+          metadata: JSON.stringify({
+            ...(log.metadata || {}),
+            // Include additional fields in metadata since they don't have columns
+            ...(log.stackTrace && { stackTrace: log.stackTrace }),
+            ...(log.userId && { userId: log.userId }),
+            ...(log.sessionId && { sessionId: log.sessionId }),
+            ...(log.requestId && { requestId: log.requestId }),
+            ...(log.environment && { environment: log.environment })
+          })
+          // created_at will be set by DEFAULT NOW()
         })))
         .execute()
 
@@ -488,39 +489,15 @@ export class LoggingService {
   }
 
   /**
-   * Ensure logs table exists
+   * Ensure logs table exists (do nothing - table created by migration)
    */
   private async ensureLogsTable(): Promise<void> {
+    // Table is created by database migration, no need to create here
+    // Just verify it exists and is accessible
     try {
-      await db.query(`
-        CREATE TABLE IF NOT EXISTS system_logs (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          level VARCHAR(20) NOT NULL,
-          component VARCHAR(100) NOT NULL,
-          message TEXT NOT NULL,
-          metadata JSONB DEFAULT '{}',
-          timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-          stack_trace TEXT,
-          user_id VARCHAR(255),
-          session_id VARCHAR(255),
-          request_id VARCHAR(255),
-          environment VARCHAR(50) NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-      `)
-
-      // Create indexes for performance
-      await db.query(`
-        CREATE INDEX IF NOT EXISTS idx_system_logs_timestamp ON system_logs(timestamp DESC);
-        CREATE INDEX IF NOT EXISTS idx_system_logs_level ON system_logs(level);
-        CREATE INDEX IF NOT EXISTS idx_system_logs_component ON system_logs(component);
-        CREATE INDEX IF NOT EXISTS idx_system_logs_user_id ON system_logs(user_id);
-        CREATE INDEX IF NOT EXISTS idx_system_logs_request_id ON system_logs(request_id);
-        CREATE INDEX IF NOT EXISTS idx_system_logs_environment ON system_logs(environment);
-      `)
-
+      await db.query(`SELECT 1 FROM system_logs LIMIT 1`)
     } catch (error) {
-      console.error('Failed to ensure logs table exists:', error)
+      console.error('system_logs table not accessible:', error)
     }
   }
 
