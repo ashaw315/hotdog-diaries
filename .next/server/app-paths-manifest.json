@@ -1,9 +1,16 @@
 {
   "/api/admin/me/route": "app/api/admin/me/route.js",
+  "/api/admin/reddit/stats/route": "app/api/admin/reddit/stats/route.js",
+  "/api/admin/social/stats/route": "app/api/admin/social/stats/route.js",
+  "/api/admin/youtube/status/route": "app/api/admin/youtube/status/route.js",
+  "/api/admin/unsplash/status/route": "app/api/admin/unsplash/status/route.js",
+  "/api/admin/flickr/status/route": "app/api/admin/flickr/status/route.js",
   "/api/admin/dashboard/stats/route": "app/api/admin/dashboard/stats/route.js",
-  "/api/admin/refresh/route": "app/api/admin/refresh/route.js",
   "/api/admin/dashboard/activity/route": "app/api/admin/dashboard/activity/route.js",
-  "/page": "app/page.js",
+  "/api/admin/refresh/route": "app/api/admin/refresh/route.js",
+  "/admin/schedule/page": "app/admin/schedule/page.js",
   "/admin/page": "app/admin/page.js",
-  "/admin/login/page": "app/admin/login/page.js"
+  "/admin/social/page": "app/admin/social/page.js",
+  "/admin/settings/page": "app/admin/settings/page.js",
+  "/admin/reddit/page": "app/admin/reddit/page.js"
 }

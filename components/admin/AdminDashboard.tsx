@@ -112,12 +112,13 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid gap-md">
+        <div className="grid grid-4 gap-md">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white p-6 rounded-lg shadow animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+            <div key={i} className="card">
+              <div className="card-body">
+                <div className="loading">Loading...</div>
+              </div>
             </div>
           ))}
         </div>
@@ -126,247 +127,255 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page header */}
+    <div className="grid gap-md">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1>Dashboard</h1>
+        <p className="text-muted">
           Welcome back! Here&apos;s what&apos;s happening with your hotdog content.
         </p>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Content */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="text-3xl mr-4">📊</div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Content</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalContent}</p>
+      <div className="grid grid-4 gap-md">
+        <div className="card">
+          <div className="card-body">
+            <div className="flex align-center gap-sm">
+              <div>📊</div>
+              <div>
+                <p className="text-muted">Total Content</p>
+                <h2>{stats.totalContent}</h2>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Pending Content */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="text-3xl mr-4">⏳</div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending Content</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingContent}</p>
+        <div className="card">
+          <div className="card-body">
+            <div className="flex align-center gap-sm">
+              <div>⏳</div>
+              <div>
+                <p className="text-muted">Pending Content</p>
+                <h2>{stats.pendingContent}</h2>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Posted Today */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="text-3xl mr-4">📤</div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Posted Today</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.postedToday}</p>
+        <div className="card">
+          <div className="card-body">
+            <div className="flex align-center gap-sm">
+              <div>📤</div>
+              <div>
+                <p className="text-muted">Posted Today</p>
+                <h2>{stats.postedToday}</h2>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Total Views */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="text-3xl mr-4">👀</div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Views</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalViews.toLocaleString()}</p>
+        <div className="card">
+          <div className="card-body">
+            <div className="flex align-center gap-sm">
+              <div>👀</div>
+              <div>
+                <p className="text-muted">Total Views</p>
+                <h2>{stats.totalViews.toLocaleString()}</h2>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Status and Schedule */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* System Status */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Overall Status</span>
-              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(stats.systemStatus)}`}>
-                {stats.systemStatus.charAt(0).toUpperCase() + stats.systemStatus.slice(1)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Avg. Engagement</span>
-              <span className="text-sm font-medium text-gray-900">{stats.avgEngagement}%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Last Post</span>
-              <span className="text-sm font-medium text-gray-900">{formatTime(stats.lastPostTime)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Next Post</span>
-              <span className="text-sm font-medium text-gray-900">{formatTime(stats.nextPostTime)}</span>
+      <div className="grid grid-2 gap-md">
+        <div className="card">
+          <div className="card-header">
+            <h2>System Status</h2>
+          </div>
+          <div className="card-body">
+            <div className="grid gap-sm">
+              <div className="flex justify-between">
+                <span className="text-muted">Overall Status</span>
+                <span className={getStatusColor(stats.systemStatus).includes('green') ? 'text-success' : getStatusColor(stats.systemStatus).includes('red') ? 'text-danger' : 'text-muted'}>
+                  {stats.systemStatus.charAt(0).toUpperCase() + stats.systemStatus.slice(1)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Avg. Engagement</span>
+                <span>{stats.avgEngagement}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Last Post</span>
+                <span>{formatTime(stats.lastPostTime)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Next Post</span>
+                <span>{formatTime(stats.nextPostTime)}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
-          <div className="space-y-3">
-            {recentActivity.length > 0 ? (
-              recentActivity.slice(0, 5).map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
-                  <span className="text-lg" role="img" aria-label={activity.type}>
-                    {getActivityIcon(activity.type)}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">{activity.description}</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(activity.timestamp).toLocaleString()}
-                    </p>
+        <div className="card">
+          <div className="card-header">
+            <h2>Recent Activity</h2>
+          </div>
+          <div className="card-body">
+            <div className="grid gap-sm">
+              {recentActivity.length > 0 ? (
+                recentActivity.slice(0, 5).map((activity) => (
+                  <div key={activity.id} className="flex gap-sm">
+                    <span role="img" aria-label={activity.type}>
+                      {getActivityIcon(activity.type)}
+                    </span>
+                    <div>
+                      <p>{activity.description}</p>
+                      <p className="text-muted">
+                        {new Date(activity.timestamp).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <p className="text-muted">No recent activity</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <h2>Platform Status</h2>
+        </div>
+        <div className="card-body">
+          <div className="grid grid-4 gap-md">
+            <div className="card">
+              <div className="card-body">
+                <div className="flex justify-between align-center mb-xs">
+                  <div className="flex align-center gap-sm">
+                    <span>🔴</span>
+                    <strong>Reddit</strong>
+                  </div>
+                  <span className={stats.platformStats.reddit.enabled ? 'text-success' : 'text-muted'}>●</span>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-500">No recent activity</p>
-            )}
+                <p className="text-muted">{stats.platformStats.reddit.contentFound} posts found</p>
+                <p className="text-muted">
+                  {stats.platformStats.reddit.lastScan ? 
+                    `Last scan: ${new Date(stats.platformStats.reddit.lastScan).toLocaleDateString()}` : 
+                    'Never scanned'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-body">
+                <div className="flex justify-between align-center mb-xs">
+                  <div className="flex align-center gap-sm">
+                    <span>📺</span>
+                    <strong>YouTube</strong>
+                  </div>
+                  <span className={stats.platformStats.youtube.enabled ? 'text-success' : 'text-muted'}>●</span>
+                </div>
+                <p className="text-muted">{stats.platformStats.youtube.contentFound} videos found</p>
+                <p className="text-muted">
+                  {stats.platformStats.youtube.lastScan ? 
+                    `Last scan: ${new Date(stats.platformStats.youtube.lastScan).toLocaleDateString()}` : 
+                    'Never scanned'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-body">
+                <div className="flex justify-between align-center mb-xs">
+                  <div className="flex align-center gap-sm">
+                    <span>📸</span>
+                    <strong>Flickr</strong>
+                  </div>
+                  <span className={stats.platformStats.flickr.enabled ? 'text-success' : 'text-muted'}>●</span>
+                </div>
+                <p className="text-muted">{stats.platformStats.flickr.contentFound} photos found</p>
+                <p className="text-muted">
+                  {stats.platformStats.flickr.lastScan ? 
+                    `Last scan: ${new Date(stats.platformStats.flickr.lastScan).toLocaleDateString()}` : 
+                    'Never scanned'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-body">
+                <div className="flex justify-between align-center mb-xs">
+                  <div className="flex align-center gap-sm">
+                    <span>🖼️</span>
+                    <strong>Unsplash</strong>
+                  </div>
+                  <span className={stats.platformStats.unsplash.enabled ? 'text-success' : 'text-muted'}>●</span>
+                </div>
+                <p className="text-muted">{stats.platformStats.unsplash.contentFound} photos found</p>
+                <p className="text-muted">
+                  {stats.platformStats.unsplash.lastScan ? 
+                    `Last scan: ${new Date(stats.platformStats.unsplash.lastScan).toLocaleDateString()}` : 
+                    'Never scanned'
+                  }
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Platform Status Overview */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Platform Status</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Reddit */}
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <span className="text-xl mr-2">🔴</span>
-                <span className="font-medium">Reddit</span>
-              </div>
-              <span className={`w-2 h-2 rounded-full ${stats.platformStats.reddit.enabled ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+      <div className="card">
+        <div className="card-header">
+          <h2>Content Pipeline</h2>
+        </div>
+        <div className="card-body">
+          <div className="grid grid-4 gap-md">
+            <div className="text-center p-sm card">
+              <div><h2>{stats.contentPipeline.queuedForReview}</h2></div>
+              <div className="text-muted">Queued for Review</div>
             </div>
-            <p className="text-sm text-gray-600">{stats.platformStats.reddit.contentFound} posts found</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.platformStats.reddit.lastScan ? 
-                `Last scan: ${new Date(stats.platformStats.reddit.lastScan).toLocaleDateString()}` : 
-                'Never scanned'
-              }
-            </p>
-          </div>
-
-          {/* YouTube */}
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <span className="text-xl mr-2">📺</span>
-                <span className="font-medium">YouTube</span>
-              </div>
-              <span className={`w-2 h-2 rounded-full ${stats.platformStats.youtube.enabled ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            <div className="text-center p-sm card">
+              <div><h2 className="text-success">{stats.contentPipeline.autoApproved}</h2></div>
+              <div className="text-muted">Auto Approved</div>
             </div>
-            <p className="text-sm text-gray-600">{stats.platformStats.youtube.contentFound} videos found</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.platformStats.youtube.lastScan ? 
-                `Last scan: ${new Date(stats.platformStats.youtube.lastScan).toLocaleDateString()}` : 
-                'Never scanned'
-              }
-            </p>
-          </div>
-
-          {/* Flickr */}
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <span className="text-xl mr-2">📸</span>
-                <span className="font-medium">Flickr</span>
-              </div>
-              <span className={`w-2 h-2 rounded-full ${stats.platformStats.flickr.enabled ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            <div className="text-center p-sm card">
+              <div><h2>{stats.contentPipeline.flaggedForManualReview}</h2></div>
+              <div className="text-muted">Manual Review</div>
             </div>
-            <p className="text-sm text-gray-600">{stats.platformStats.flickr.contentFound} photos found</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.platformStats.flickr.lastScan ? 
-                `Last scan: ${new Date(stats.platformStats.flickr.lastScan).toLocaleDateString()}` : 
-                'Never scanned'
-              }
-            </p>
-          </div>
-
-          {/* Unsplash */}
-          <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <span className="text-xl mr-2">🖼️</span>
-                <span className="font-medium">Unsplash</span>
-              </div>
-              <span className={`w-2 h-2 rounded-full ${stats.platformStats.unsplash.enabled ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+            <div className="text-center p-sm card">
+              <div><h2 className="text-danger">{stats.contentPipeline.rejected}</h2></div>
+              <div className="text-muted">Rejected</div>
             </div>
-            <p className="text-sm text-gray-600">{stats.platformStats.unsplash.contentFound} photos found</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.platformStats.unsplash.lastScan ? 
-                `Last scan: ${new Date(stats.platformStats.unsplash.lastScan).toLocaleDateString()}` : 
-                'Never scanned'
-              }
-            </p>
           </div>
         </div>
       </div>
 
-      {/* Content Pipeline Status */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Content Pipeline</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{stats.contentPipeline.queuedForReview}</div>
-            <div className="text-sm text-gray-600">Queued for Review</div>
-          </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">{stats.contentPipeline.autoApproved}</div>
-            <div className="text-sm text-gray-600">Auto Approved</div>
-          </div>
-          <div className="text-center p-4 bg-yellow-50 rounded-lg">
-            <div className="text-2xl font-bold text-yellow-600">{stats.contentPipeline.flaggedForManualReview}</div>
-            <div className="text-sm text-gray-600">Manual Review</div>
-          </div>
-          <div className="text-center p-4 bg-red-50 rounded-lg">
-            <div className="text-2xl font-bold text-red-600">{stats.contentPipeline.rejected}</div>
-            <div className="text-sm text-gray-600">Rejected</div>
-          </div>
+      <div className="card">
+        <div className="card-header">
+          <h2>Quick Actions</h2>
         </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a
-            href="/admin/social"
-            className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <span className="text-lg mr-2">🌐</span>
-            Manage Platforms
-          </a>
-          <a
-            href="/admin/queue"
-            className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <span className="text-lg mr-2">📝</span>
-            Review Queue
-          </a>
-          <a
-            href="/admin/analytics"
-            className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <span className="text-lg mr-2">📊</span>
-            View Analytics
-          </a>
-          <a
-            href="/admin/settings"
-            className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <span className="text-lg mr-2">⚙️</span>
-            Settings
-          </a>
+        <div className="card-body">
+          <div className="grid grid-4 gap-md">
+            <a href="/admin/social" className="btn nav-link text-center">
+              <span>🌐</span>
+              Manage Platforms
+            </a>
+            <a href="/admin/queue" className="btn nav-link text-center">
+              <span>📝</span>
+              Review Queue
+            </a>
+            <a href="/admin/analytics" className="btn nav-link text-center">
+              <span>📊</span>
+              View Analytics
+            </a>
+            <a href="/admin/settings" className="btn nav-link text-center">
+              <span>⚙️</span>
+              Settings
+            </a>
+          </div>
         </div>
       </div>
     </div>

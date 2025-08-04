@@ -102,124 +102,101 @@ export default function AdminSidebar({ isMobileMenuOpen, onMobileMenuClose }: Ad
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      {/* Logo/Brand section for mobile */}
-      <div className="md:hidden flex items-center px-4 py-4 border-b border-gray-200">
-        <span className="text-2xl mr-3">🌭</span>
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Admin Panel</h2>
-          <p className="text-xs text-gray-500">Content Management</p>
+    <div className="flex flex-col" style={{ height: '100vh' }}>
+      <div className="flex align-center justify-between p-sm" style={{ borderBottom: '1px solid var(--color-gray-light)' }}>
+        <div className="flex align-center gap-sm">
+          <span>🌭</span>
+          <div>
+            <h3>Admin Panel</h3>
+            <p className="text-muted">Content Management</p>
+          </div>
         </div>
         <button
           onClick={onMobileMenuClose}
-          className="ml-auto p-2 text-gray-400 hover:text-gray-500"
+          className="btn mobile-menu-toggle"
           aria-label="Close menu"
         >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          ✕
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-        <div className="space-y-1">
+      <nav className="p-sm flex-1" style={{ overflowY: 'auto' }}>
+        <ul className="nav nav-vertical">
           {navigationItems.map((item) => {
             const isActive = isActiveRoute(item.href)
             
             return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={onMobileMenuClose}
-                className={`
-                  group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ease-in-out
-                  ${isActive
-                    ? 'bg-indigo-100 text-indigo-900 border-r-2 border-indigo-500'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                  }
-                `}
-              >
-                <span className="text-lg mr-3" role="img" aria-label={item.name}>
-                  {item.icon}
-                </span>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className={isActive ? 'font-semibold' : ''}>{item.name}</span>
-                    {item.count && (
-                      <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        {item.count}
-                      </span>
+              <li key={item.name}>
+                <Link
+                  href={item.href}
+                  onClick={onMobileMenuClose}
+                  className={`nav-link flex align-center gap-sm ${isActive ? 'active' : ''}`}
+                >
+                  <span role="img" aria-label={item.name}>
+                    {item.icon}
+                  </span>
+                  <div className="flex-1">
+                    <div className="flex justify-between align-center">
+                      <span className={isActive ? 'font-bold' : ''}>{item.name}</span>
+                      {item.count && (
+                        <span className="text-muted">
+                          {item.count}
+                        </span>
+                      )}
+                    </div>
+                    {item.description && (
+                      <p className="text-muted">{item.description}</p>
                     )}
                   </div>
-                  {item.description && (
-                    <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
-                  )}
-                </div>
-              </Link>
+                </Link>
+              </li>
             )
           })}
-        </div>
+        </ul>
 
-        {/* Quick Actions Section */}
-        <div className="pt-6 border-t border-gray-200 mt-6">
-          <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Quick Actions
-          </h3>
-          <div className="mt-2 space-y-1">
-            <button
-              type="button"
-              className="group flex items-center w-full px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
-            >
-              <span className="text-lg mr-3">➕</span>
+        <div className="mt-md" style={{ borderTop: '1px solid var(--color-gray-light)', paddingTop: 'var(--spacing-md)' }}>
+          <h3 className="text-muted mb-sm">Quick Actions</h3>
+          <div className="grid gap-xs">
+            <button type="button" className="btn flex align-center gap-sm" style={{ width: '100%', textAlign: 'left' }}>
+              <span>➕</span>
               <span>Add Content</span>
             </button>
-            <button
-              type="button"
-              className="group flex items-center w-full px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
-            >
-              <span className="text-lg mr-3">🔄</span>
+            <button type="button" className="btn flex align-center gap-sm" style={{ width: '100%', textAlign: 'left' }}>
+              <span>🔄</span>
               <span>Refresh Data</span>
             </button>
-            <button
-              type="button"
-              className="group flex items-center w-full px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
-            >
-              <span className="text-lg mr-3">📤</span>
+            <button type="button" className="btn flex align-center gap-sm" style={{ width: '100%', textAlign: 'left' }}>
+              <span>📤</span>
               <span>Export Data</span>
             </button>
           </div>
         </div>
 
-        {/* System Status */}
-        <div className="pt-6 border-t border-gray-200 mt-6">
-          <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            System Status
-          </h3>
-          <div className="mt-2 px-3">
-            <div className="flex items-center text-sm">
-              <div className="flex items-center">
-                <div className="h-2 w-2 bg-green-400 rounded-full mr-2"></div>
-                <span className="text-gray-600">Database</span>
+        <div className="mt-md" style={{ borderTop: '1px solid var(--color-gray-light)', paddingTop: 'var(--spacing-md)' }}>
+          <h3 className="text-muted mb-sm">System Status</h3>
+          <div className="grid gap-xs">
+            <div className="flex justify-between align-center">
+              <div className="flex align-center gap-xs">
+                <span className="text-success">●</span>
+                <span className="text-muted">Database</span>
               </div>
-              <span className="ml-auto text-green-600 font-medium">Online</span>
+              <span className="text-success">Online</span>
             </div>
-            <div className="flex items-center text-sm mt-1">
-              <div className="flex items-center">
-                <div className="h-2 w-2 bg-yellow-400 rounded-full mr-2"></div>
-                <span className="text-gray-600">Bot Service</span>
+            <div className="flex justify-between align-center">
+              <div className="flex align-center gap-xs">
+                <span>●</span>
+                <span className="text-muted">Bot Service</span>
               </div>
-              <span className="ml-auto text-yellow-600 font-medium">Idle</span>
+              <span>Idle</span>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Footer info */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="text-xs text-gray-500 text-center">
+      <div className="p-sm text-center" style={{ borderTop: '1px solid var(--color-gray-light)' }}>
+        <div className="text-muted">
           <p>Hotdog Diaries v1.0</p>
-          <p className="mt-1">Last updated: {new Date().toLocaleDateString()}</p>
+          <p>Last updated: {new Date().toLocaleDateString()}</p>
         </div>
       </div>
     </div>
@@ -227,34 +204,47 @@ export default function AdminSidebar({ isMobileMenuOpen, onMobileMenuClose }: Ad
 
   return (
     <>
-      {/* Mobile sidebar overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 md:hidden"
-          aria-hidden="true"
-        >
-          <div
-            className="fixed inset-0 bg-gray-600 bg-opacity-75"
-            onClick={onMobileMenuClose}
-          ></div>
-        </div>
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 40
+          }}
+          onClick={onMobileMenuClose}
+          className="mobile-menu-hidden"
+        ></div>
       )}
 
-      {/* Mobile sidebar */}
       <div
-        className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out md:hidden
-          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+        className={`mobile-menu-hidden ${isMobileMenuOpen ? '' : 'hidden'}`}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: '250px',
+          backgroundColor: 'var(--color-white)',
+          borderRight: '1px solid var(--color-gray-light)',
+          zIndex: 50
+        }}
       >
         {sidebarContent}
       </div>
 
-      {/* Desktop sidebar */}
-      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-        <div className="flex flex-col flex-grow pt-5 bg-white overflow-y-auto border-r border-gray-200">
-          {sidebarContent}
-        </div>
+      <div
+        className="mobile-menu-hidden"
+        style={{
+          width: '250px',
+          backgroundColor: 'var(--color-white)',
+          borderRight: '1px solid var(--color-gray-light)'
+        }}
+      >
+        {sidebarContent}
       </div>
     </>
   )

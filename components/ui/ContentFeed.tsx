@@ -163,65 +163,49 @@ export default function ContentFeed({
 
   if (loading && content.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading content...</p>
-        </div>
+      <div className="text-center p-lg">
+        <div className="spinner mb-sm"></div>
+        <p className="loading">Loading content...</p>
       </div>
     )
   }
 
   if (error && content.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="text-center py-8">
-          <div className="text-red-500 mb-4">⚠</div>
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={() => loadContent(1)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Retry
-          </button>
-        </div>
+      <div className="text-center p-lg">
+        <div className="text-danger mb-sm">⚠</div>
+        <p className="text-danger mb-sm">{error}</p>
+        <button onClick={() => loadContent(1)} className="btn btn-primary">
+          Retry
+        </button>
       </div>
     )
   }
 
   if (content.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="text-center py-8">
-          <div className="text-gray-400 mb-4">📄</div>
-          <p className="text-gray-600">No content found</p>
-          <p className="text-gray-500 text-sm mt-2">
-            {type === 'pending' ? 'No content pending approval' :
-             type === 'posted' ? 'No content has been posted yet' :
-             type === 'approved' ? 'No content has been approved yet' :
-             'No content available'}
-          </p>
-        </div>
+      <div className="text-center p-lg">
+        <div className="mb-sm">📄</div>
+        <p>No content found</p>
+        <p className="text-muted">
+          {type === 'pending' ? 'No content pending approval' :
+           type === 'posted' ? 'No content has been posted yet' :
+           type === 'approved' ? 'No content has been approved yet' :
+           'No content available'}
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="grid gap-md">
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <span className="text-red-400">⚠</span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          </div>
+        <div className="alert alert-danger">
+          <span>⚠ {error}</span>
         </div>
       )}
 
-      <div className="grid gap-4">
+      <div className="grid grid-3 gap-md">
         {content.map((item) => (
           <ContentCard
             key={item.id}
@@ -237,11 +221,11 @@ export default function ContentFeed({
       </div>
 
       {hasMore && (
-        <div className="text-center py-4">
+        <div className="text-center">
           <button
             onClick={loadMore}
             disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-primary"
           >
             {loading ? 'Loading...' : 'Load More'}
           </button>
@@ -249,8 +233,8 @@ export default function ContentFeed({
       )}
 
       {!hasMore && content.length > 0 && (
-        <div className="text-center py-4">
-          <p className="text-gray-500 text-sm">All content loaded ({content.length} items)</p>
+        <div className="text-center">
+          <p className="text-muted">All content loaded ({content.length} items)</p>
         </div>
       )}
     </div>

@@ -32,10 +32,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="container content-area">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="mt-2 text-sm text-gray-600">Loading admin panel...</p>
+          <div className="spinner"></div>
+          <p className="loading">Loading admin panel...</p>
         </div>
       </div>
     )
@@ -46,28 +46,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar */}
+    <div className="grid" style={{ gridTemplateColumns: '250px 1fr', minHeight: '100vh' }}>
       <AdminSidebar 
         isMobileMenuOpen={isMobileMenuOpen}
         onMobileMenuClose={handleMobileMenuClose}
       />
 
-      {/* Main content area */}
-      <div className="md:pl-64 flex flex-col flex-1">
-        {/* Header */}
+      <div className="flex flex-col">
         <AdminHeader 
           onMenuToggle={handleMobileMenuToggle}
           isMobileMenuOpen={isMobileMenuOpen}
         />
 
-        {/* Page content */}
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-              {children}
-            </div>
-          </div>
+        <main className="container content-area">
+          {children}
         </main>
       </div>
     </div>

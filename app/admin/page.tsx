@@ -29,11 +29,10 @@ export default function AdminPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Debug info */}
-      <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4 m-4">
-        <strong className="font-bold">Debug Info: </strong>
-        <span className="block sm:inline">{debugInfo}</span>
+    <div className="container content-area">
+      <div className="alert alert-info">
+        <strong>Debug Info: </strong>
+        {debugInfo}
       </div>
 
       <AdminLayout>

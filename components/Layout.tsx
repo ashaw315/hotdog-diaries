@@ -7,7 +7,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col" style={{ minHeight: '100vh' }}>
       <Header />
       <main className="flex-1">
         {children}

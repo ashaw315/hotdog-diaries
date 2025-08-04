@@ -94,58 +94,53 @@ export default function ContentCard({
   }
 
   return (
-    <div className="bg-white border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <span className="text-lg">{getPlatformIcon(source_platform)}</span>
-          <span className="text-sm font-medium text-primary capitalize">
-            {source_platform.replace('_', ' ')}
-          </span>
-          <span className="text-lg">{getContentTypeIcon(content_type)}</span>
-          <span className="text-sm text-text opacity-60 capitalize">
-            {content_type}
-          </span>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          {is_posted && (
-            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-              Posted
-            </span>
-          )}
-          {is_approved && !is_posted && (
-            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-              Approved
-            </span>
-          )}
-          {!is_approved && !is_posted && (
-            <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
-              Pending
-            </span>
-          )}
+    <div className="card">
+      <div className="card-header">
+        <div className="flex justify-between align-center">
+          <div className="flex align-center gap-sm">
+            <span>{getPlatformIcon(source_platform)}</span>
+            <span><strong>{source_platform.replace('_', ' ')}</strong></span>
+            <span>{getContentTypeIcon(content_type)}</span>
+            <span className="text-muted">{content_type}</span>
+          </div>
+          
+          <div className="flex align-center gap-xs">
+            {is_posted && (
+              <span className="text-success">Posted</span>
+            )}
+            {is_approved && !is_posted && (
+              <span>Approved</span>
+            )}
+            {!is_approved && !is_posted && (
+              <span className="text-muted">Pending</span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="mb-4">
+      <div className="card-body">
         {content_text && (
-          <p className="text-text mb-3 line-clamp-3">
+          <p className="mb-sm">
             {content_text}
           </p>
         )}
 
         {content_image_url && !imageError && (
-          <div className="relative mb-3">
+          <div className="mb-sm">
             {imageLoading && (
-              <div className="w-full h-48 bg-gray-200 rounded flex items-center justify-center">
-                <span className="text-gray-500">Loading image...</span>
+              <div className="text-center p-md text-muted">
+                Loading image...
               </div>
             )}
             <img
               src={content_image_url}
               alt="Content image"
-              className={`w-full max-h-48 object-cover rounded ${imageLoading ? 'hidden' : 'block'}`}
+              style={{ 
+                width: '100%', 
+                maxHeight: '200px', 
+                objectFit: 'cover',
+                display: imageLoading ? 'none' : 'block'
+              }}
               onLoad={handleImageLoad}
               onError={handleImageError}
             />
@@ -153,12 +148,12 @@ export default function ContentCard({
         )}
 
         {content_video_url && (
-          <div className="mb-3">
+          <div className="mb-sm">
             <a
               href={content_video_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline flex items-center space-x-2"
+              className="nav-link flex align-center gap-xs"
             >
               <span>🎥</span>
               <span>View Video</span>
@@ -167,75 +162,65 @@ export default function ContentCard({
         )}
       </div>
 
-      {/* Metadata */}
-      <div className="text-sm text-text opacity-60 space-y-1">
-        {original_author && (
+      <div className="card-body">
+        <div className="text-muted grid gap-xs">
+          {original_author && (
+            <div>
+              <strong>Author:</strong> {original_author}
+            </div>
+          )}
           <div>
-            <span className="font-medium">Author:</span> {original_author}
+            <strong>Scraped:</strong> {formatDate(scraped_at)}
           </div>
-        )}
-        <div>
-          <span className="font-medium">Scraped:</span> {formatDate(scraped_at)}
+          {posted_at && (
+            <div>
+              <strong>Posted:</strong> {formatDate(posted_at)}
+              {post_order && (
+                <span className="text-muted"> #{post_order}</span>
+              )}
+            </div>
+          )}
+          {admin_notes && (
+            <div>
+              <strong>Notes:</strong> {admin_notes}
+            </div>
+          )}
         </div>
-        {posted_at && (
-          <div>
-            <span className="font-medium">Posted:</span> {formatDate(posted_at)}
-            {post_order && (
-              <span className="ml-2 bg-gray-100 text-gray-800 text-xs px-1 py-0.5 rounded">
-                #{post_order}
-              </span>
-            )}
-          </div>
-        )}
-        {admin_notes && (
-          <div>
-            <span className="font-medium">Notes:</span> {admin_notes}
-          </div>
-        )}
       </div>
 
-      {/* Original Link */}
-      <div className="mt-3 pt-3 border-t border-border">
+      <div className="card-footer">
         <a
           href={original_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline text-sm flex items-center space-x-1"
+          className="nav-link flex align-center gap-xs"
         >
           <span>🔗</span>
           <span>View Original</span>
         </a>
       </div>
 
-      {/* Actions */}
       {showActions && (onEdit || onDelete || onPost) && (
-        <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
-          {onEdit && (
-            <button
-              onClick={() => onEdit(id)}
-              className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
-            >
-              Edit
-            </button>
-          )}
-          
-          {onPost && !is_posted && is_approved && (
-            <button
-              onClick={() => onPost(id)}
-              className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
-            >
-              Mark as Posted
-            </button>
-          )}
-          
-          {onDelete && !is_posted && (
-            <button
-              onClick={() => onDelete(id)}
-              className="px-3 py-1 text-sm bg-red-100 text-red-800 rounded hover:bg-red-200 transition-colors"
-            >
-              Delete
-            </button>
-          )}
+        <div className="card-footer">
+          <div className="flex gap-sm">
+            {onEdit && (
+              <button onClick={() => onEdit(id)} className="btn">
+                Edit
+              </button>
+            )}
+            
+            {onPost && !is_posted && is_approved && (
+              <button onClick={() => onPost(id)} className="btn btn-success">
+                Mark as Posted
+              </button>
+            )}
+            
+            {onDelete && !is_posted && (
+              <button onClick={() => onDelete(id)} className="btn btn-danger">
+                Delete
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
