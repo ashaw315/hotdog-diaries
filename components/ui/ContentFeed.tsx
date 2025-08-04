@@ -1,290 +1,206 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import ContentCard, { ContentCardProps } from './ContentCard'
+import ContentCard from './ContentCard'
 import { ContentType, SourcePlatform } from '@/types'
 
-export interface ContentFeedProps {
-  apiEndpoint: string
+interface ContentItem {
+  id: number
+  content_text: string
+  content_type: ContentType
+  source_platform: SourcePlatform
+  original_url: string
+  original_author: string
+  content_image_url?: string
+  content_video_url?: string
+  scraped_at: Date
+  is_posted: boolean
+  is_approved: boolean
+  posted_at?: Date
+  post_order?: number
+}
+
+interface ContentFeedProps {
+  type?: 'all' | 'pending' | 'posted' | 'approved'
+  limit?: number
   showActions?: boolean
-  enableFilters?: boolean
-  pageSize?: number
-  emptyMessage?: string
-  errorMessage?: string
-  onContentAction?: (action: 'edit' | 'delete' | 'post', contentId: number) => void
+  onEdit?: (id: number) => void
+  onDelete?: (id: number) => void
+  onPost?: (id: number) => void
+  onApprove?: (id: number) => void
+  onReject?: (id: number) => void
 }
 
-interface ContentFeedData {
-  items: ContentCardProps[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPreviousPage: boolean
-  }
-}
-
-interface Filters {
-  content_type?: ContentType
-  source_platform?: SourcePlatform
-  is_approved?: boolean
-  author?: string
-}
-
-export default function ContentFeed({
-  apiEndpoint,
+export default function ContentFeed({ 
+  type = 'all', 
+  limit = 50, 
   showActions = false,
-  enableFilters = false,
-  pageSize = 10,
-  emptyMessage = 'No content found',
-  errorMessage = 'Failed to load content',
-  onContentAction
+  onEdit,
+  onDelete,
+  onPost,
+  onApprove,
+  onReject
 }: ContentFeedProps) {
-  const [data, setData] = useState<ContentFeedData | null>(null)
+  const [content, setContent] = useState<ContentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [filters, setFilters] = useState<Filters>({})
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
 
-  const fetchContent = async (page: number = 1, newFilters: Filters = {}) => {
-    setLoading(true)
-    setError(null)
+  useEffect(() => {
+    loadContent()
+  }, [type, limit])
 
+  const loadContent = async (pageNum = 1) => {
     try {
-      const searchParams = new URLSearchParams({
-        page: page.toString(),
-        limit: pageSize.toString(),
-        ...Object.fromEntries(
-          Object.entries({ ...filters, ...newFilters })
-            .filter(([, value]) => value !== undefined && value !== '')
-            .map(([key, value]) => [key, value.toString()])
-        )
+      setLoading(true)
+      setError(null)
+
+      let endpoint = '/api/admin/content'
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: limit.toString()
       })
 
-      const response = await fetch(`${apiEndpoint}?${searchParams}`)
+      if (type !== 'all') {
+        params.append('type', type)
+      }
+
+      const response = await fetch(`${endpoint}?${params}`)
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        throw new Error('Failed to load content')
       }
 
-      const result = await response.json()
+      const data = await response.json()
       
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch content')
+      if (data.success) {
+        const newContent = data.data?.content || []
+        
+        if (pageNum === 1) {
+          setContent(newContent)
+        } else {
+          setContent(prev => [...prev, ...newContent])
+        }
+        
+        setHasMore(newContent.length === limit)
+        setPage(pageNum)
+      } else {
+        throw new Error(data.error || 'Failed to load content')
       }
 
-      setData(result.data)
-      setCurrentPage(page)
     } catch (err) {
-      setError(err instanceof Error ? err.message : errorMessage)
-      setData(null)
+      setError(err instanceof Error ? err.message : 'Failed to load content')
+      if (pageNum === 1) {
+        setContent([])
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchContent(1, filters)
-  }, [apiEndpoint, pageSize, filters])
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && (!data || newPage <= data.pagination.totalPages)) {
-      fetchContent(newPage, filters)
+  const loadMore = () => {
+    if (!loading && hasMore) {
+      loadContent(page + 1)
     }
   }
 
-  const handleFilterChange = (newFilters: Filters) => {
-    setFilters(newFilters)
-    fetchContent(1, newFilters)
-  }
+  const handleAction = async (action: string, id: number) => {
+    try {
+      let endpoint = ''
+      let method = 'POST'
+      
+      switch (action) {
+        case 'edit':
+          onEdit?.(id)
+          return
+        case 'delete':
+          endpoint = `/api/admin/content/${id}`
+          method = 'DELETE'
+          break
+        case 'post':
+          endpoint = `/api/admin/content/${id}/post`
+          break
+        case 'approve':
+          endpoint = `/api/admin/content/${id}/approve`
+          break
+        case 'reject':
+          endpoint = `/api/admin/content/${id}/reject`
+          break
+        default:
+          return
+      }
 
-  const handleContentAction = (action: 'edit' | 'delete' | 'post', contentId: number) => {
-    if (onContentAction) {
-      onContentAction(action, contentId)
-      // Refresh the content after action
-      setTimeout(() => {
-        fetchContent(currentPage, filters)
-      }, 1000)
+      const response = await fetch(endpoint, { method })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} content`)
+      }
+
+      // Reload content after action
+      await loadContent(1)
+      
+      // Call the callback if provided
+      switch (action) {
+        case 'delete':
+          onDelete?.(id)
+          break
+        case 'post':
+          onPost?.(id)
+          break
+        case 'approve':
+          onApprove?.(id)
+          break
+        case 'reject':
+          onReject?.(id)
+          break
+      }
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to ${action} content`)
     }
   }
 
-  const renderFilters = () => {
-    if (!enableFilters) return null
-
-    return (
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h3 className="text-lg font-semibold mb-3">Filters</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Content Type</label>
-            <select
-              value={filters.content_type || ''}
-              onChange={(e) => handleFilterChange({
-                ...filters,
-                content_type: e.target.value as ContentType || undefined
-              })}
-              className="w-full px-3 py-2 border border-border rounded text-sm"
-            >
-              <option value="">All Types</option>
-              {Object.values(ContentType).map(type => (
-                <option key={type} value={type} className="capitalize">
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Platform</label>
-            <select
-              value={filters.source_platform || ''}
-              onChange={(e) => handleFilterChange({
-                ...filters,
-                source_platform: e.target.value as SourcePlatform || undefined
-              })}
-              className="w-full px-3 py-2 border border-border rounded text-sm"
-            >
-              <option value="">All Platforms</option>
-              {Object.values(SourcePlatform).map(platform => (
-                <option key={platform} value={platform} className="capitalize">
-                  {platform.replace('_', ' ')}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
-            <select
-              value={filters.is_approved === undefined ? '' : filters.is_approved.toString()}
-              onChange={(e) => handleFilterChange({
-                ...filters,
-                is_approved: e.target.value === '' ? undefined : e.target.value === 'true'
-              })}
-              className="w-full px-3 py-2 border border-border rounded text-sm"
-            >
-              <option value="">All Status</option>
-              <option value="true">Approved</option>
-              <option value="false">Pending</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Author</label>
-            <input
-              type="text"
-              value={filters.author || ''}
-              onChange={(e) => handleFilterChange({
-                ...filters,
-                author: e.target.value || undefined
-              })}
-              placeholder="Search by author..."
-              className="w-full px-3 py-2 border border-border rounded text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="mt-3">
-          <button
-            onClick={() => handleFilterChange({})}
-            className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  const renderPagination = () => {
-    if (!data || data.pagination.totalPages <= 1) return null
-
-    const { pagination } = data
-    const maxVisiblePages = 5
-    const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(pagination.totalPages, startPage + maxVisiblePages - 1)
-
-    return (
-      <div className="mt-6 flex items-center justify-between">
-        <div className="text-sm text-text opacity-60">
-          Showing {((currentPage - 1) * pagination.limit) + 1} to {Math.min(currentPage * pagination.limit, pagination.total)} of {pagination.total} results
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={!pagination.hasPreviousPage}
-            className="px-3 py-1 text-sm border border-border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Previous
-          </button>
-
-          {Array.from({ length: endPage - startPage + 1 }, (_, i) => {
-            const page = startPage + i
-            return (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`px-3 py-1 text-sm border rounded ${
-                  currentPage === page
-                    ? 'bg-primary text-white border-primary'
-                    : 'border-border hover:bg-gray-50'
-                }`}
-              >
-                {page}
-              </button>
-            )
-          })}
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={!pagination.hasNextPage}
-            className="px-3 py-1 text-sm border border-border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (loading) {
+  if (loading && content.length === 0) {
     return (
       <div className="space-y-4">
-        {renderFilters()}
         <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="mt-2 text-text opacity-60">Loading content...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading content...</p>
         </div>
       </div>
     )
   }
 
-  if (error) {
+  if (error && content.length === 0) {
     return (
       <div className="space-y-4">
-        {renderFilters()}
         <div className="text-center py-8">
+          <div className="text-red-500 mb-4">⚠</div>
           <p className="text-red-600 mb-4">{error}</p>
           <button
-            onClick={() => fetchContent(currentPage, filters)}
-            className="px-4 py-2 bg-primary text-white rounded hover:opacity-80 transition-opacity"
+            onClick={() => loadContent(1)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            Try Again
+            Retry
           </button>
         </div>
       </div>
     )
   }
 
-  if (!data || data.items.length === 0) {
+  if (content.length === 0) {
     return (
       <div className="space-y-4">
-        {renderFilters()}
         <div className="text-center py-8">
-          <p className="text-text opacity-60">{emptyMessage}</p>
+          <div className="text-gray-400 mb-4">📄</div>
+          <p className="text-gray-600">No content found</p>
+          <p className="text-gray-500 text-sm mt-2">
+            {type === 'pending' ? 'No content pending approval' :
+             type === 'posted' ? 'No content has been posted yet' :
+             type === 'approved' ? 'No content has been approved yet' :
+             'No content available'}
+          </p>
         </div>
       </div>
     )
@@ -292,22 +208,51 @@ export default function ContentFeed({
 
   return (
     <div className="space-y-4">
-      {renderFilters()}
-      
-      <div className="grid gap-6">
-        {data.items.map((item) => (
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <span className="text-red-400">⚠</span>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-4">
+        {content.map((item) => (
           <ContentCard
             key={item.id}
             {...item}
             showActions={showActions}
-            onEdit={showActions ? (id) => handleContentAction('edit', id) : undefined}
-            onDelete={showActions ? (id) => handleContentAction('delete', id) : undefined}
-            onPost={showActions ? (id) => handleContentAction('post', id) : undefined}
+            onEdit={showActions ? () => handleAction('edit', item.id) : undefined}
+            onDelete={showActions ? () => handleAction('delete', item.id) : undefined}
+            onPost={showActions && !item.is_posted ? () => handleAction('post', item.id) : undefined}
+            onApprove={showActions && !item.is_approved ? () => handleAction('approve', item.id) : undefined}
+            onReject={showActions && !item.is_approved ? () => handleAction('reject', item.id) : undefined}
           />
         ))}
       </div>
 
-      {renderPagination()}
+      {hasMore && (
+        <div className="text-center py-4">
+          <button
+            onClick={loadMore}
+            disabled={loading}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
+      )}
+
+      {!hasMore && content.length > 0 && (
+        <div className="text-center py-4">
+          <p className="text-gray-500 text-sm">All content loaded ({content.length} items)</p>
+        </div>
+      )}
     </div>
   )
 }
