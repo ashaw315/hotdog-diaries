@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 
 export interface User {
   id: number
@@ -30,41 +30,110 @@ export interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  console.log('🏗️ [AuthContext] AuthProvider component mounting/re-mounting at:', new Date().toISOString())
+  
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true) // Always start with loading true
+  const [initialized, setInitialized] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  
+  console.log('🏗️ [AuthContext] Initial state set - user:', user, 'isLoading:', isLoading)
 
   // Simple fetch current user
   const fetchCurrentUser = async (): Promise<User | null> => {
+    console.log('🌐 [AuthContext] fetchCurrentUser called - making API request to /api/admin/me')
     try {
-      const response = await fetch('/api/admin/me', {
+      // Use absolute URL for fetch to work in all contexts
+      const baseUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : 'http://localhost:3000'
+      const fullUrl = `${baseUrl}/api/admin/me`
+      
+      console.log('🌐 [AuthContext] Fetching from URL:', fullUrl)
+      
+      const response = await fetch(fullUrl, {
         method: 'GET',
         credentials: 'include'
       })
 
+      console.log('🌐 [AuthContext] /api/admin/me response status:', response.status)
+
       if (response.ok) {
         const result = await response.json()
+        console.log('✅ [AuthContext] User data received:', result.data?.username || 'Unknown')
         return result.data || null
       }
       
+      console.log('❌ [AuthContext] /api/admin/me failed with status:', response.status)
       return null
     } catch (error) {
-      console.error('Failed to fetch user:', error)
+      console.error('❌ [AuthContext] Failed to fetch user:', error)
       return null
     }
   }
 
-  // Initialize auth on mount - just call API once
+  // Handle client-side mounting to prevent hydration mismatch
   useEffect(() => {
+    console.log('🔄 [AuthContext] Client mount useEffect triggered')
+    setIsMounted(true)
+  }, [])
+
+  // Initialize auth on client-side only, and re-run on route changes to admin paths
+  useEffect(() => {
+    console.log('🔄 [AuthContext] Auth initialization useEffect triggered')
+    console.log('🔄 [AuthContext] Current state:', { 
+      isMounted, 
+      initialized, 
+      isLoading, 
+      hasUser: !!user,
+      pathname 
+    })
+    
+    // Only run on client-side after mounting
+    if (!isMounted) {
+      console.log('🔄 [AuthContext] Not mounted yet, skipping initialization')
+      return
+    }
+
+    // Skip initialization for non-admin paths
+    if (!pathname.startsWith('/admin')) {
+      console.log('🔄 [AuthContext] Not on admin path, skipping initialization')
+      return
+    }
+
+    // If already initialized, skip
+    if (initialized) {
+      console.log('🔄 [AuthContext] Already initialized, skipping')
+      return
+    }
+
+    // For login page, still check auth but don't force redirect
+    const isLoginPage = pathname === '/admin/login'
+    
+    console.log('🔄 [AuthContext] Starting auth initialization for', isLoginPage ? 'login page' : 'admin page')
+    setInitialized(true)
+    setIsLoading(true)
+    
     fetchCurrentUser().then(userData => {
+      console.log('🔄 [AuthContext] fetchCurrentUser completed, setting user:', userData ? `User found: ${userData.username}` : 'No user')
       setUser(userData)
       setIsLoading(false)
+      console.log('🔄 [AuthContext] State updated - isLoading set to false, isAuthenticated:', !!userData)
+    }).catch(error => {
+      console.error('🔄 [AuthContext] fetchCurrentUser error:', error)
+      setUser(null)
+      setIsLoading(false)
+      console.log('🔄 [AuthContext] Error - State updated - isLoading set to false, isAuthenticated: false')
     })
-  }, [])
+    
+  }, [isMounted, pathname, initialized]) // Re-run when client mounts, route changes, or initialization state changes
 
   // Login function
   const login = async (username: string, password: string): Promise<void> => {
+    console.log('🔐 [AuthContext] Login function called')
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
@@ -76,20 +145,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
 
       const result = await response.json()
+      console.log('🔐 [AuthContext] Login API response status:', response.status)
 
       if (!response.ok) {
         throw new Error(result.error || 'Login failed')
       }
 
+      console.log('✅ [AuthContext] Login successful, user:', result.data.user.username)
+      
       // Update local state
       setUser(result.data.user)
       
+      // Reset initialization state to ensure auth check runs after redirect
+      setInitialized(false)
+      
       // Redirect
       const redirectTo = searchParams.get('from') || '/admin'
+      console.log('🔀 [AuthContext] About to redirect to:', redirectTo)
       router.push(redirectTo)
       
     } catch (error) {
-      console.error('Login failed:', error)
+      console.error('❌ [AuthContext] Login failed:', error)
       throw error
     }
   }
@@ -116,9 +192,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   const contextValue: AuthContextType = {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
+    user: isMounted ? user : null, // Prevent hydration mismatch by ensuring server/client consistency
+    isLoading: isMounted ? isLoading : true, // Always loading on server-side
+    isAuthenticated: isMounted ? !!user : false, // Not authenticated on server-side
     login,
     logout,
     refreshUser
@@ -150,10 +226,24 @@ export function useAuth(): AuthContextType {
 export function useRequireAuth(): AuthContextType {
   const auth = useAuth()
   const router = useRouter()
+  
+  console.log('🛡️ [useRequireAuth] Hook called, auth state:', { 
+    isLoading: auth.isLoading, 
+    isAuthenticated: auth.isAuthenticated,
+    hasUser: !!auth.user 
+  })
 
   useEffect(() => {
+    console.log('🛡️ [useRequireAuth] useEffect triggered:', { 
+      isLoading: auth.isLoading, 
+      isAuthenticated: auth.isAuthenticated,
+      hasUser: !!auth.user 
+    })
+    
     if (!auth.isLoading && !auth.isAuthenticated) {
-      router.push('/admin/login')
+      console.log('🛡️ [useRequireAuth] Not authenticated, redirecting to login')
+      const currentPath = window.location.pathname
+      router.push(`/admin/login?from=${encodeURIComponent(currentPath)}`)
     }
   }, [auth.isLoading, auth.isAuthenticated, router])
 
