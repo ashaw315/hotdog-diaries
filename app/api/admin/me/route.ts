@@ -11,15 +11,21 @@ async function getCurrentUserHandler(request: NextRequest): Promise<NextResponse
   validateRequestMethod(request, ['GET'])
 
   try {
-    // Verify authentication - this should already be handled by middleware
-    // but we double-check for security
-    const authResult = await NextAuthUtils.verifyRequestAuth(request)
+    // Get user info from middleware headers (middleware already verified auth)
+    const userId = request.headers.get('x-user-id')
+    const username = request.headers.get('x-username')
     
-    if (!authResult.isValid || !authResult.user) {
+    if (!userId || !username) {
       throw createApiError('Unauthorized', 401, 'UNAUTHORIZED')
     }
 
-    const user = authResult.user
+    // Get full user profile from database
+    const { AdminService } = await import('@/lib/services/admin')
+    const user = await AdminService.getAdminById(parseInt(userId))
+    
+    if (!user) {
+      throw createApiError('User not found', 404, 'USER_NOT_FOUND')
+    }
 
     // Return user profile without sensitive information
     const userProfile = {

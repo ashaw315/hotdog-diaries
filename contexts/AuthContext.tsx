@@ -30,67 +30,40 @@ export interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    isLoading: true,
-    isAuthenticated: false
-  })
-  
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  /**
-   * Fetch current user from API
-   */
+  // Simple fetch current user
   const fetchCurrentUser = async (): Promise<User | null> => {
     try {
       const response = await fetch('/api/admin/me', {
         method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        credentials: 'include'
       })
 
       if (response.ok) {
         const result = await response.json()
-        return result.data
+        return result.data || null
       }
       
       return null
     } catch (error) {
-      console.error('Failed to fetch current user:', error)
+      console.error('Failed to fetch user:', error)
       return null
     }
   }
 
-  /**
-   * Initialize auth state
-   */
-  const initializeAuth = async () => {
-    setState(prev => ({ ...prev, isLoading: true }))
-    
-    try {
-      const user = await fetchCurrentUser()
-      
-      setState({
-        user,
-        isLoading: false,
-        isAuthenticated: !!user
-      })
-    } catch (error) {
-      console.error('Auth initialization failed:', error)
-      setState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false
-      })
-    }
-  }
+  // Initialize auth on mount - just call API once
+  useEffect(() => {
+    fetchCurrentUser().then(userData => {
+      setUser(userData)
+      setIsLoading(false)
+    })
+  }, [])
 
-  /**
-   * Login function
-   */
+  // Login function
   const login = async (username: string, password: string): Promise<void> => {
     try {
       const response = await fetch('/api/admin/login', {
@@ -108,14 +81,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(result.error || 'Login failed')
       }
 
-      // Update auth state
-      setState({
-        user: result.data.user,
-        isLoading: false,
-        isAuthenticated: true
-      })
-
-      // Redirect after successful login
+      // Update local state
+      setUser(result.data.user)
+      
+      // Redirect
       const redirectTo = searchParams.get('from') || '/admin'
       router.push(redirectTo)
       
@@ -125,141 +94,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  /**
-   * Logout function
-   */
+  // Logout function
   const logout = async (): Promise<void> => {
     try {
       await fetch('/api/admin/logout', {
         method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        credentials: 'include'
       })
     } catch (error) {
-      console.error('Logout request failed:', error)
+      console.error('Logout failed:', error)
     } finally {
-      // Always clear local state regardless of API call success
-      setState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false
-      })
-      
-      // Redirect to login page
+      setUser(null)
       router.push('/admin/login')
     }
   }
 
-  /**
-   * Refresh user data
-   */
+  // Refresh user data
   const refreshUser = async (): Promise<void> => {
-    const user = await fetchCurrentUser()
-    
-    setState(prev => ({
-      ...prev,
-      user,
-      isAuthenticated: !!user
-    }))
+    const userData = await fetchCurrentUser()
+    setUser(userData)
   }
-
-  /**
-   * Handle token refresh
-   */
-  const handleTokenRefresh = async (): Promise<boolean> => {
-    try {
-      const response = await fetch('/api/admin/refresh', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        // Token refreshed successfully, fetch updated user info
-        await refreshUser()
-        return true
-      }
-      
-      return false
-    } catch (error) {
-      console.error('Token refresh failed:', error)
-      return false
-    }
-  }
-
-  /**
-   * Setup automatic token refresh
-   */
-  useEffect(() => {
-    let refreshInterval: NodeJS.Timeout
-
-    if (state.isAuthenticated) {
-      // Refresh token every 23 hours (1 hour before expiry)
-      refreshInterval = setInterval(() => {
-        handleTokenRefresh()
-      }, 23 * 60 * 60 * 1000)
-    }
-
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval)
-      }
-    }
-  }, [state.isAuthenticated])
-
-  /**
-   * Handle API responses with 401 status
-   */
-  useEffect(() => {
-    const handleUnauthorized = async () => {
-      // Try to refresh token first
-      const refreshSuccess = await handleTokenRefresh()
-      
-      if (!refreshSuccess) {
-        // Refresh failed, log out user
-        setState({
-          user: null,
-          isLoading: false,
-          isAuthenticated: false
-        })
-        
-        // Only redirect if we're not already on the login page
-        if (window.location.pathname !== '/admin/login') {
-          router.push('/admin/login')
-        }
-      }
-    }
-
-    // Listen for 401 responses from fetch requests
-    const originalFetch = window.fetch
-    window.fetch = async (...args) => {
-      const response = await originalFetch(...args)
-      
-      if (response.status === 401 && state.isAuthenticated) {
-        await handleUnauthorized()
-      }
-      
-      return response
-    }
-
-    return () => {
-      window.fetch = originalFetch
-    }
-  }, [state.isAuthenticated, router])
-
-  /**
-   * Initialize auth on mount
-   */
-  useEffect(() => {
-    initializeAuth()
-  }, [])
 
   const contextValue: AuthContextType = {
-    ...state,
+    user,
+    isLoading,
+    isAuthenticated: !!user,
     login,
     logout,
     refreshUser

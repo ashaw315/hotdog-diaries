@@ -61,7 +61,9 @@ export default function ContentHistory() {
         params.append('endDate', filters.endDate)
       }
       
-      const response = await fetch(`/api/admin/content/history?${params}`)
+      const response = await fetch(`/api/admin/content/history?${params}`, {
+        credentials: 'include'
+      })
       if (response.ok) {
         const data = await response.json()
         setHistoryContent(data.content)
@@ -96,7 +98,9 @@ export default function ContentHistory() {
         params.append('endDate', filters.endDate)
       }
 
-      const response = await fetch(`/api/admin/content/export?${params}`)
+      const response = await fetch(`/api/admin/content/export?${params}`, {
+      credentials: 'include'
+    })
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)

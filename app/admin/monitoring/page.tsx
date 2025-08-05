@@ -121,9 +121,9 @@ export default function MonitoringDashboard() {
       setError(null)
 
       const [healthRes, metricsRes, alertsRes] = await Promise.allSettled([
-        fetch('/api/admin/health'),
-        fetch('/api/admin/metrics/summary'),
-        fetch('/api/admin/alerts/history?limit=50')
+        fetch('/api/admin/health', { credentials: 'include' }),
+        fetch('/api/admin/metrics/summary', { credentials: 'include' }),
+        fetch('/api/admin/alerts/history?limit=50', { credentials: 'include' })
       ])
 
       if (healthRes.status === 'fulfilled' && healthRes.value.ok) {

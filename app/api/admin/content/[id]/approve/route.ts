@@ -50,10 +50,12 @@ async function approveContentHandler(request: NextRequest, { params }: { params:
   }
 }
 
-export async function POST(request: NextRequest, context: { params: { id: string } }): Promise<NextResponse> {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   try {
-    return await approveContentHandler(request, context)
+    const resolvedParams = await params
+    return await approveContentHandler(request, { params: resolvedParams })
   } catch (error) {
-    return await handleApiError(error, request, `/api/admin/content/${context.params.id}/approve`)
+    const resolvedParams = await params
+    return await handleApiError(error, request, `/api/admin/content/${resolvedParams.id}/approve`)
   }
 }

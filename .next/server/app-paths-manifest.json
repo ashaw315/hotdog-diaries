@@ -1,7 +1,0 @@
-{
-  "/admin/analytics/page": "app/admin/analytics/page.js",
-  "/admin/unsplash/page": "app/admin/unsplash/page.js",
-  "/admin/reddit/page": "app/admin/reddit/page.js",
-  "/admin/content/page": "app/admin/content/page.js",
-  "/admin/settings/page": "app/admin/settings/page.js"
-}

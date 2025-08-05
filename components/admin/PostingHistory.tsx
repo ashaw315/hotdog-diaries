@@ -27,7 +27,9 @@ export function PostingHistory({ onManualTrigger }: PostingHistoryProps) {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch('/api/admin/content/posted?limit=20')
+      const response = await fetch('/api/admin/content/posted?limit=20', {
+        credentials: 'include'
+      })
       if (!response.ok) {
         throw new Error('Failed to fetch posting history')
       }

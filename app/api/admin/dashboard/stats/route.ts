@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { NextAuthUtils } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await NextAuthUtils.verifyRequestAuth(request)
-    if (!authResult.success || !authResult.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Authentication is handled by middleware
+    // User info is available in headers if needed: x-user-id, x-username
 
     // Get today's date for filtering
     const today = new Date()

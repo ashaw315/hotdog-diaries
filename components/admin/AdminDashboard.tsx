@@ -61,17 +61,33 @@ export default function AdminDashboard() {
     const fetchDashboardData = async () => {
       try {
         // Fetch dashboard statistics
-        const statsResponse = await fetch('/api/admin/dashboard/stats')
+        const statsResponse = await fetch('/api/admin/dashboard/stats', {
+          credentials: 'include'
+        })
         if (statsResponse.ok) {
           const statsData = await statsResponse.json()
-          setStats(statsData)
+          // Merge with default stats to ensure all required fields are present
+          setStats(prevStats => ({
+            ...prevStats,
+            ...statsData,
+            // Ensure platformStats exists
+            platformStats: statsData.platformStats || prevStats.platformStats,
+            // Ensure contentPipeline exists  
+            contentPipeline: statsData.contentPipeline || prevStats.contentPipeline
+          }))
+        } else if (statsResponse.status === 401) {
+          console.warn('Unauthorized access to dashboard stats')
         }
 
         // Fetch recent activity
-        const activityResponse = await fetch('/api/admin/dashboard/activity')
+        const activityResponse = await fetch('/api/admin/dashboard/activity', {
+          credentials: 'include'
+        })
         if (activityResponse.ok) {
           const activityData = await activityResponse.json()
           setRecentActivity(activityData)
+        } else if (activityResponse.status === 401) {
+          console.warn('Unauthorized access to dashboard activity')
         }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error)
@@ -117,7 +133,7 @@ export default function AdminDashboard() {
           {[...Array(4)].map((_, i) => (
             <div key={i} className="card">
               <div className="card-body">
-                <div className="loading">Loading...</div>
+                <div className="loading">Loading dashboard data...</div>
               </div>
             </div>
           ))}
@@ -255,11 +271,11 @@ export default function AdminDashboard() {
                     <span>🔴</span>
                     <strong>Reddit</strong>
                   </div>
-                  <span className={stats.platformStats.reddit.enabled ? 'text-success' : 'text-muted'}>●</span>
+                  <span className={stats.platformStats?.reddit?.enabled ? 'text-success' : 'text-muted'}>●</span>
                 </div>
-                <p className="text-muted">{stats.platformStats.reddit.contentFound} posts found</p>
+                <p className="text-muted">{stats.platformStats?.reddit?.contentFound || 0} posts found</p>
                 <p className="text-muted">
-                  {stats.platformStats.reddit.lastScan ? 
+                  {stats.platformStats?.reddit?.lastScan ? 
                     `Last scan: ${new Date(stats.platformStats.reddit.lastScan).toLocaleDateString()}` : 
                     'Never scanned'
                   }
@@ -274,11 +290,11 @@ export default function AdminDashboard() {
                     <span>📺</span>
                     <strong>YouTube</strong>
                   </div>
-                  <span className={stats.platformStats.youtube.enabled ? 'text-success' : 'text-muted'}>●</span>
+                  <span className={stats.platformStats?.youtube?.enabled ? 'text-success' : 'text-muted'}>●</span>
                 </div>
-                <p className="text-muted">{stats.platformStats.youtube.contentFound} videos found</p>
+                <p className="text-muted">{stats.platformStats?.youtube?.contentFound || 0} videos found</p>
                 <p className="text-muted">
-                  {stats.platformStats.youtube.lastScan ? 
+                  {stats.platformStats?.youtube?.lastScan ? 
                     `Last scan: ${new Date(stats.platformStats.youtube.lastScan).toLocaleDateString()}` : 
                     'Never scanned'
                   }
@@ -293,11 +309,11 @@ export default function AdminDashboard() {
                     <span>📸</span>
                     <strong>Flickr</strong>
                   </div>
-                  <span className={stats.platformStats.flickr.enabled ? 'text-success' : 'text-muted'}>●</span>
+                  <span className={stats.platformStats?.flickr?.enabled ? 'text-success' : 'text-muted'}>●</span>
                 </div>
-                <p className="text-muted">{stats.platformStats.flickr.contentFound} photos found</p>
+                <p className="text-muted">{stats.platformStats?.flickr?.contentFound || 0} photos found</p>
                 <p className="text-muted">
-                  {stats.platformStats.flickr.lastScan ? 
+                  {stats.platformStats?.flickr?.lastScan ? 
                     `Last scan: ${new Date(stats.platformStats.flickr.lastScan).toLocaleDateString()}` : 
                     'Never scanned'
                   }
@@ -312,11 +328,11 @@ export default function AdminDashboard() {
                     <span>🖼️</span>
                     <strong>Unsplash</strong>
                   </div>
-                  <span className={stats.platformStats.unsplash.enabled ? 'text-success' : 'text-muted'}>●</span>
+                  <span className={stats.platformStats?.unsplash?.enabled ? 'text-success' : 'text-muted'}>●</span>
                 </div>
-                <p className="text-muted">{stats.platformStats.unsplash.contentFound} photos found</p>
+                <p className="text-muted">{stats.platformStats?.unsplash?.contentFound || 0} photos found</p>
                 <p className="text-muted">
-                  {stats.platformStats.unsplash.lastScan ? 
+                  {stats.platformStats?.unsplash?.lastScan ? 
                     `Last scan: ${new Date(stats.platformStats.unsplash.lastScan).toLocaleDateString()}` : 
                     'Never scanned'
                   }
@@ -334,19 +350,19 @@ export default function AdminDashboard() {
         <div className="card-body">
           <div className="grid grid-4 gap-md">
             <div className="text-center p-sm card">
-              <div><h2>{stats.contentPipeline.queuedForReview}</h2></div>
+              <div><h2>{stats.contentPipeline?.queuedForReview || 0}</h2></div>
               <div className="text-muted">Queued for Review</div>
             </div>
             <div className="text-center p-sm card">
-              <div><h2 className="text-success">{stats.contentPipeline.autoApproved}</h2></div>
+              <div><h2 className="text-success">{stats.contentPipeline?.autoApproved || 0}</h2></div>
               <div className="text-muted">Auto Approved</div>
             </div>
             <div className="text-center p-sm card">
-              <div><h2>{stats.contentPipeline.flaggedForManualReview}</h2></div>
+              <div><h2>{stats.contentPipeline?.flaggedForManualReview || 0}</h2></div>
               <div className="text-muted">Manual Review</div>
             </div>
             <div className="text-center p-sm card">
-              <div><h2 className="text-danger">{stats.contentPipeline.rejected}</h2></div>
+              <div><h2 className="text-danger">{stats.contentPipeline?.rejected || 0}</h2></div>
               <div className="text-muted">Rejected</div>
             </div>
           </div>

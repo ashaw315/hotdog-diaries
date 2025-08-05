@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import AdminLayout from '@/components/admin/AdminLayout'
 
 interface AnalyticsData {
   filteringStats: {
@@ -61,8 +60,8 @@ export default function AnalyticsPage() {
       setLoading(true)
       
       const [filteringResponse, processingResponse] = await Promise.all([
-        fetch('/api/admin/filtering/stats'),
-        fetch('/api/admin/content/process')
+        fetch('/api/admin/filtering/stats', { credentials: 'include' }),
+        fetch('/api/admin/content/process', { credentials: 'include' })
       ])
 
       if (!filteringResponse.ok || !processingResponse.ok) {
@@ -118,55 +117,48 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded"></div>
-              ))}
-            </div>
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
           </div>
         </div>
-      </AdminLayout>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
-            <p className="text-red-600">{error}</p>
-            <button
-              onClick={fetchAnalytics}
-              className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-            >
-              Retry
-            </button>
-          </div>
+      <div className="space-y-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={fetchAnalytics}
+            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
         </div>
-      </AdminLayout>
+      </div>
     )
   }
 
   if (!data) {
     return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <div className="text-center">
-            <p className="text-gray-500">No analytics data available</p>
-          </div>
+      <div className="space-y-6">
+        <div className="text-center">
+          <p className="text-gray-500">No analytics data available</p>
         </div>
-      </AdminLayout>
+      </div>
     )
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
@@ -377,7 +369,6 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
-      </div>
-    </AdminLayout>
+    </div>
   )
 }

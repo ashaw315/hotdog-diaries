@@ -213,8 +213,6 @@ export default function ContentFeed({
             onEdit={showActions ? () => handleAction('edit', item.id) : undefined}
             onDelete={showActions ? () => handleAction('delete', item.id) : undefined}
             onPost={showActions && !item.is_posted ? () => handleAction('post', item.id) : undefined}
-            onApprove={showActions && !item.is_approved ? () => handleAction('approve', item.id) : undefined}
-            onReject={showActions && !item.is_approved ? () => handleAction('reject', item.id) : undefined}
           />
         ))}
       </div>

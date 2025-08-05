@@ -91,24 +91,61 @@ class DatabaseConnection {
 
   async query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     if (this.isVercel) {
-      return await sql.query(text, params || []) as QueryResult<T>
+      try {
+        return await sql.query(text, params || []) as QueryResult<T>
+      } catch (error) {
+        console.error('Vercel SQL query error:', error)
+        throw error
+      }
     }
 
+    // Ensure connection before query
     if (!this.pool) {
-      await this.connect()
+      try {
+        await this.connect()
+      } catch (error) {
+        console.error('Failed to establish database connection:', error)
+        throw new Error('Database connection unavailable')
+      }
     }
 
     const start = Date.now()
-    try {
-      const result = await this.pool.query<T>(text, params)
-      const duration = Date.now() - start
-      console.log('Query executed', { text, duration, rows: result.rowCount })
-      return result
-    } catch (error) {
-      const duration = Date.now() - start
-      console.error('Query error', { text, duration, error })
-      throw error
+    let retries = 3
+    
+    while (retries > 0) {
+      try {
+        const result = await this.pool!.query<T>(text, params)
+        const duration = Date.now() - start
+        
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Query executed', { text: text.substring(0, 100), duration, rows: result.rowCount })
+        }
+        
+        return result
+      } catch (error: any) {
+        const duration = Date.now() - start
+        retries--
+        
+        // If it's a connection error and we have retries left, try to reconnect
+        if ((error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') && retries > 0) {
+          console.warn(`Database connection error, retrying... (${retries} attempts left)`)
+          this.pool = null
+          await this.connect()
+          continue
+        }
+        
+        console.error('Query error', { 
+          text: text.substring(0, 100), 
+          duration, 
+          error: error.message,
+          code: error.code
+        })
+        throw error
+      }
     }
+    
+    throw new Error('Database query failed after all retries')
   }
 
   async getClient(): Promise<PoolClient> {
@@ -117,10 +154,22 @@ class DatabaseConnection {
     }
 
     if (!this.pool) {
-      throw new Error('Database not connected')
+      await this.connect()
     }
 
-    return await this.pool.connect()
+    return await this.pool!.connect()
+  }
+
+  getPoolStats(): { total: number; idle: number; active: number } {
+    if (this.isVercel || !this.pool) {
+      return { total: 0, idle: 0, active: 0 }
+    }
+
+    return {
+      total: this.pool.totalCount,
+      idle: this.pool.idleCount,
+      active: this.pool.totalCount - this.pool.idleCount
+    }
   }
 
   async healthCheck(): Promise<{ connected: boolean; latency?: number; error?: string }> {
@@ -219,3 +268,12 @@ export async function logToDatabase(
 }
 
 export { sql } from '@vercel/postgres'
+
+// Export query function for direct imports
+export const query = db.query.bind(db)
+
+// Export additional utility functions
+export const getClient = db.getClient.bind(db)
+export const transaction = db.transaction.bind(db)
+export const healthCheck = db.healthCheck.bind(db)
+export const getPoolStats = db.getPoolStats.bind(db)

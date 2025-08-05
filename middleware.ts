@@ -14,8 +14,7 @@ const PUBLIC_ROUTES = [
 
 // Define API routes that need authentication
 const PROTECTED_API_ROUTES = [
-  '/api/admin/me',
-  '/api/admin/logout',
+  '/api/admin', // Protect all admin API routes
   '/api/content/queue',
   '/api/content/[id]'
 ]

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { NextAuthUtils } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 interface ActivityRow {
@@ -11,10 +10,7 @@ interface ActivityRow {
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await NextAuthUtils.verifyRequestAuth(request)
-    if (!authResult.success || !authResult.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Authentication is handled by middleware
 
     // Get recent content activity from posted_content and content_queue
     const recentPostsQuery = `

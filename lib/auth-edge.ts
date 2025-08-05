@@ -173,7 +173,7 @@ export class EdgeAuthUtils {
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict' as const,
+      sameSite: 'lax' as const,
       path: '/',
       maxAge: 24 * 60 * 60 // 24 hours
     }
@@ -235,6 +235,7 @@ export class EdgeAuthUtils {
   }> {
     try {
       const token = this.getAuthTokenFromRequest(request)
+      
       if (!token) {
         return { isValid: false }
       }

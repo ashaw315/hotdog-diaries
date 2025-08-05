@@ -62,12 +62,20 @@ async function loginHandler(request: NextRequest): Promise<NextResponse> {
     // Create success response
     const response = createSuccessResponse(responseData, 'Login successful')
 
-    // Set authentication cookies
-    await NextAuthUtils.setAuthCookies(
+    // Set authentication cookies using Edge-compatible utils
+    const { EdgeAuthUtils } = await import('@/lib/auth-edge')
+    
+    console.log('🍪 [Login] Setting authentication cookies for user:', authResult.user.username)
+    console.log('🍪 [Login] Access token length:', authResult.tokens.accessToken.length)
+    console.log('🍪 [Login] Refresh token length:', authResult.tokens.refreshToken.length)
+    
+    EdgeAuthUtils.setAuthCookies(
       response,
       authResult.tokens.accessToken,
       authResult.tokens.refreshToken
     )
+    
+    console.log('🍪 [Login] Cookies set in response, returning to client')
 
     return response
 

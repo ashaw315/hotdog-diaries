@@ -53,6 +53,8 @@ export default function ContentCard({
   }
 
   const getPlatformIcon = (platform: SourcePlatform) => {
+    if (!platform) return '🌐'
+    
     switch (platform) {
       case SourcePlatform.TWITTER:
         return '🐦'
@@ -64,12 +66,22 @@ export default function ContentCard({
         return '🤖'
       case SourcePlatform.TIKTOK:
         return '🎵'
+      case SourcePlatform.YOUTUBE:
+        return '📺'
+      case SourcePlatform.FLICKR:
+        return '📸'
+      case SourcePlatform.UNSPLASH:
+        return '🎨'
+      case SourcePlatform.MASTODON:
+        return '🐘'
       default:
         return '🌐'
     }
   }
 
   const getContentTypeIcon = (type: ContentType) => {
+    if (!type) return '📄'
+    
     switch (type) {
       case ContentType.TEXT:
         return '📝'
@@ -99,7 +111,7 @@ export default function ContentCard({
         <div className="flex justify-between align-center">
           <div className="flex align-center gap-sm">
             <span>{getPlatformIcon(source_platform)}</span>
-            <span><strong>{source_platform.replace('_', ' ')}</strong></span>
+            <span><strong>{source_platform?.replace('_', ' ') || 'Unknown'}</strong></span>
             <span>{getContentTypeIcon(content_type)}</span>
             <span className="text-muted">{content_type}</span>
           </div>

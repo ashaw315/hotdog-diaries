@@ -24,28 +24,32 @@ function AdminContent({ children }: AdminLayoutProps) {
 function AuthenticatedContent({ children }: AdminLayoutProps) {
   const auth = useRequireAuth()
 
-  if (auth.isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin panel...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!auth.isAuthenticated) {
-    // This will be handled by the useRequireAuth hook redirect
-    return null
-  }
-
+  // Always use the same container to prevent hydration mismatch
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdminHeader user={auth.user} onLogout={auth.logout} />
-      <main className="py-6">
-        {children}
-      </main>
+      {auth.isLoading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading admin panel...</p>
+          </div>
+        </div>
+      ) : !auth.isAuthenticated ? (
+        // This will be handled by the useRequireAuth hook redirect
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Redirecting to login...</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <AdminHeader user={auth.user} onLogout={auth.logout} />
+          <main className="py-6">
+            {children}
+          </main>
+        </>
+      )}
     </div>
   )
 }

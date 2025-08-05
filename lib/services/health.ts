@@ -1,12 +1,7 @@
 import { db, DatabaseConnection } from '@/lib/db'
 import { query } from '@/lib/db-query-builder'
 import { loggingService } from './logging'
-import { redditService } from './reddit'
-import { instagramService } from './instagram'
-import { tiktokService } from './tiktok'
-import { redditScanningService } from './reddit-scanning'
-import { instagramScanningService } from './instagram-scanning'
-import { tiktokScanningService } from './tiktok-scanning'
+// Social media services will be imported dynamically to avoid circular dependencies
 
 export enum HealthStatus {
   HEALTHY = 'healthy',
@@ -57,8 +52,6 @@ export interface SystemHealthReport {
     database: DatabaseHealthCheck
     apis: {
       reddit: APIHealthCheck
-      instagram: APIHealthCheck
-      tiktok: APIHealthCheck
     }
     services: {
       contentQueue: HealthCheck
@@ -195,19 +188,13 @@ export class HealthService {
    */
   async checkSocialMediaAPIs(): Promise<{
     reddit: APIHealthCheck
-    instagram: APIHealthCheck
-    tiktok: APIHealthCheck
   }> {
-    const [reddit, instagram, tiktok] = await Promise.allSettled([
-      this.checkRedditAPI(),
-      this.checkInstagramAPI(),
-      this.checkTikTokAPI()
+    const [reddit] = await Promise.allSettled([
+      this.checkRedditAPI()
     ])
 
     return {
-      reddit: reddit.status === 'fulfilled' ? reddit.value : this.createFailedAPICheck('Reddit', reddit.reason),
-      instagram: instagram.status === 'fulfilled' ? instagram.value : this.createFailedAPICheck('Instagram', instagram.reason),
-      tiktok: tiktok.status === 'fulfilled' ? tiktok.value : this.createFailedAPICheck('TikTok', tiktok.reason)
+      reddit: reddit.status === 'fulfilled' ? reddit.value : this.createFailedAPICheck('Reddit', reddit.reason)
     }
   }
 
@@ -218,6 +205,8 @@ export class HealthService {
     const startTime = Date.now()
     
     try {
+      // Dynamically import reddit service to avoid circular dependencies
+      const { redditService } = await import('./reddit')
       const status = await redditService.getApiStatus()
       
       let healthStatus = HealthStatus.HEALTHY
@@ -260,125 +249,7 @@ export class HealthService {
     }
   }
 
-  /**
-   * Check Instagram API health
-   */
-  private async checkInstagramAPI(): Promise<APIHealthCheck> {
-    const startTime = Date.now()
-    
-    try {
-      const status = await instagramService.getApiStatus()
-      
-      let healthStatus = HealthStatus.HEALTHY
-      let message = 'Instagram API is healthy'
 
-      if (!status.isAuthenticated) {
-        healthStatus = HealthStatus.CRITICAL
-        message = 'Instagram API is not authenticated'
-      } else if (status.rateLimits.remaining < 10) {
-        healthStatus = HealthStatus.WARNING
-        message = 'Instagram API rate limit is low'
-      }
-
-      // Check token expiration
-      if (status.tokenExpiresAt) {
-        const timeUntilExpiry = new Date(status.tokenExpiresAt).getTime() - Date.now()
-        const hoursUntilExpiry = timeUntilExpiry / (1000 * 60 * 60)
-        
-        if (hoursUntilExpiry < 24) {
-          healthStatus = HealthStatus.WARNING
-          message = 'Instagram API token expires soon'
-        }
-      }
-
-      return {
-        name: 'Instagram API',
-        status: healthStatus,
-        message,
-        responseTime: Date.now() - startTime,
-        lastChecked: new Date(),
-        endpoint: 'Instagram Basic Display API',
-        rateLimits: {
-          remaining: status.rateLimits.remaining,
-          resetTime: status.rateLimits.resetTime
-        },
-        metadata: {
-          tokenExpiresAt: status.tokenExpiresAt,
-          lastRequest: status.lastRequest
-        }
-      }
-
-    } catch (error) {
-      return {
-        name: 'Instagram API',
-        status: HealthStatus.CRITICAL,
-        message: `Instagram API check failed: ${error.message}`,
-        responseTime: Date.now() - startTime,
-        lastChecked: new Date(),
-        metadata: { error: error.message }
-      }
-    }
-  }
-
-  /**
-   * Check TikTok API health
-   */
-  private async checkTikTokAPI(): Promise<APIHealthCheck> {
-    const startTime = Date.now()
-    
-    try {
-      const status = await tiktokService.getApiStatus()
-      
-      let healthStatus = HealthStatus.HEALTHY
-      let message = 'TikTok API is healthy'
-
-      if (!status.isAuthenticated) {
-        healthStatus = HealthStatus.CRITICAL
-        message = 'TikTok API is not authenticated'
-      } else {
-        // Check hourly quota
-        const hourlyUsage = (status.quota.hourly.used / status.quota.hourly.limit) * 100
-        const dailyUsage = (status.quota.daily.used / status.quota.daily.limit) * 100
-
-        if (hourlyUsage > 90 || dailyUsage > 90) {
-          healthStatus = HealthStatus.CRITICAL
-          message = 'TikTok API quota is nearly exhausted'
-        } else if (hourlyUsage > 80 || dailyUsage > 80) {
-          healthStatus = HealthStatus.WARNING
-          message = 'TikTok API quota usage is high'
-        }
-      }
-
-      return {
-        name: 'TikTok API',
-        status: healthStatus,
-        message,
-        responseTime: Date.now() - startTime,
-        lastChecked: new Date(),
-        endpoint: 'TikTok Research API',
-        quotaUsage: {
-          used: status.quota.daily.used,
-          limit: status.quota.daily.limit,
-          percentage: Math.round((status.quota.daily.used / status.quota.daily.limit) * 100)
-        },
-        metadata: {
-          hourlyQuota: status.quota.hourly,
-          dailyQuota: status.quota.daily,
-          tokenExpiresAt: status.tokenExpiresAt
-        }
-      }
-
-    } catch (error) {
-      return {
-        name: 'TikTok API',
-        status: HealthStatus.CRITICAL,
-        message: `TikTok API check failed: ${error.message}`,
-        responseTime: Date.now() - startTime,
-        lastChecked: new Date(),
-        metadata: { error: error.message }
-      }
-    }
-  }
 
   /**
    * Check content queue health
@@ -492,9 +363,7 @@ export class HealthService {
 
       // Check if scanning services are running
       const scanningChecks = await Promise.allSettled([
-        redditScanningService.getScanStats(),
-        instagramScanningService.getScanStats(),
-        tiktokScanningService.getScanStats()
+        import('./reddit-scanning').then(m => m.redditScanningService.getScanStats())
       ])
 
       const activeScanners = scanningChecks.filter(result => result.status === 'fulfilled').length
@@ -509,7 +378,7 @@ export class HealthService {
           postsLast24h,
           expectedPosts,
           activeScanners,
-          totalScanners: 3
+          totalScanners: 1
         }
       }
 
@@ -644,9 +513,7 @@ export class HealthService {
       // Process results
       const databaseCheck = database.status === 'fulfilled' ? database.value : this.createFailedCheck('Database', database.reason)
       const apiChecks = apis.status === 'fulfilled' ? apis.value : {
-        reddit: this.createFailedAPICheck('Reddit', apis.reason),
-        instagram: this.createFailedAPICheck('Instagram', apis.reason),
-        tiktok: this.createFailedAPICheck('TikTok', apis.reason)
+        reddit: this.createFailedAPICheck('Reddit', apis.reason)
       }
       const queueCheck = contentQueue.status === 'fulfilled' ? contentQueue.value : this.createFailedCheck('Content Queue', contentQueue.reason)
       const schedulerCheck = scheduler.status === 'fulfilled' ? scheduler.value : this.createFailedCheck('Scheduler', scheduler.reason)
@@ -669,8 +536,6 @@ export class HealthService {
       const allChecks = [
         databaseCheck,
         apiChecks.reddit,
-        apiChecks.instagram,
-        apiChecks.tiktok,
         queueCheck,
         schedulerCheck,
         loggingCheck,

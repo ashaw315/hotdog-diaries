@@ -126,11 +126,17 @@ export class AdminService {
       // Update last login and increment login count
       await this.updateLastLogin(user.id)
 
-      // Generate tokens
-      const tokens = AuthService.generateTokens({
+      // Generate tokens using Edge-compatible auth utils
+      const { EdgeAuthUtils } = await import('../auth-edge')
+      const accessToken = await EdgeAuthUtils.generateJWT({
         id: user.id,
         username: user.username
       })
+      const refreshToken = await EdgeAuthUtils.generateRefreshToken({
+        id: user.id,
+        username: user.username
+      })
+      const tokens = { accessToken, refreshToken }
 
       // Prepare user profile (without password_hash)
       const userProfile: AdminProfile = {
@@ -170,16 +176,16 @@ export class AdminService {
    */
   static async updateLastLogin(userId: number): Promise<void> {
     try {
-      await update('admin_users')
-        .set({
-          last_login_at: new Date(),
-          login_count: query('admin_users')
-            .select(['COALESCE(login_count, 0) + 1 as new_count'])
-            .where('id', '=', userId),
-          updated_at: new Date()
-        })
-        .where('id', '=', userId)
-        .first()
+      // Use raw SQL to increment login count atomically
+      const { db } = await import('@/lib/db')
+      await db.query(
+        `UPDATE admin_users 
+         SET last_login_at = NOW(), 
+             login_count = COALESCE(login_count, 0) + 1,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [userId]
+      )
     } catch (error) {
       // Don't throw error for login tracking failures
       await logToDatabase(
