@@ -62,7 +62,7 @@ export default function AnalyticsPage() {
       
       const [filteringResponse, processingResponse] = await Promise.all([
         fetch('/api/admin/filtering/stats'),
-        fetch('/api/content/process')
+        fetch('/api/admin/content/process')
       ])
 
       if (!filteringResponse.ok || !processingResponse.ok) {

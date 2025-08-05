@@ -116,19 +116,19 @@ export default function ContentQueue() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'low': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'high': return 'text-danger'
+      case 'medium': return 'text-warning'
+      case 'low': return 'text-success'
+      default: return 'text-muted'
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-blue-100 text-blue-800'
-      case 'scheduled': return 'bg-purple-100 text-purple-800'
-      case 'processing': return 'bg-orange-100 text-orange-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'pending': return 'text-info'
+      case 'scheduled': return 'text-primary'
+      case 'processing': return 'text-warning'
+      default: return 'text-muted'
     }
   }
 
@@ -143,233 +143,237 @@ export default function ContentQueue() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-24 bg-gray-200 rounded animate-pulse"></div>
-        ))}
+      <div className="container content-area">
+        <div className="text-center">
+          <div className="spinner mb-sm"></div>
+          <p className="loading">Loading content queue...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Content Queue</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Manage pending and scheduled content for posting
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0">
-          <button
-            type="button"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            onClick={fetchQueuedContent}
-          >
-            <span className="text-lg mr-2">🔄</span>
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Filters and Bulk Actions */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          {/* Filters */}
-          <div className="flex items-center space-x-4">
-            <div>
-              <label htmlFor="filter" className="text-sm font-medium text-gray-700 mr-2">
-                Filter:
-              </label>
-              <select
-                id="filter"
-                value={filterBy}
-                onChange={(e) => setFilterBy(e.target.value as any)}
-                className="border-gray-300 rounded-md text-sm"
+    <div className="container content-area">
+      <div className="grid gap-lg">
+        {/* Header */}
+        <div className="card">
+          <div className="card-header">
+            <div className="flex justify-between align-center">
+              <div>
+                <h1 className="flex align-center gap-sm">
+                  <span>📋</span>
+                  Content Queue
+                </h1>
+                <p className="text-muted">
+                  Manage pending and scheduled content for posting
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={fetchQueuedContent}
               >
-                <option value="all">All</option>
-                <option value="pending">Pending</option>
-                <option value="scheduled">Scheduled</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="sort" className="text-sm font-medium text-gray-700 mr-2">
-                Sort by:
-              </label>
-              <select
-                id="sort"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="border-gray-300 rounded-md text-sm"
-              >
-                <option value="created_at">Created Date</option>
-                <option value="priority">Priority</option>
-                <option value="scheduled_for">Scheduled Time</option>
-              </select>
+                🔄 Refresh
+              </button>
             </div>
           </div>
+        </div>
 
-          {/* Bulk Actions */}
-          {selectedItems.size > 0 && (
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">
-                {selectedItems.size} selected
-              </span>
-              <button
-                onClick={() => handleBulkAction('approve')}
-                className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => handleBulkAction('schedule')}
-                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Schedule
-              </button>
-              <button
-                onClick={() => handleBulkAction('delete')}
-                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Delete
-              </button>
+        {/* Filters and Bulk Actions */}
+        <div className="card">
+          <div className="card-body">
+            <div className="flex justify-between align-center flex-wrap gap-md">
+              {/* Filters */}
+              <div className="flex align-center gap-md flex-wrap">
+                <div className="flex align-center gap-xs">
+                  <label htmlFor="filter" className="text-muted">Filter:</label>
+                  <select
+                    id="filter"
+                    value={filterBy}
+                    onChange={(e) => setFilterBy(e.target.value as any)}
+                    className="form-select"
+                  >
+                    <option value="all">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="scheduled">Scheduled</option>
+                  </select>
+                </div>
+                <div className="flex align-center gap-xs">
+                  <label htmlFor="sort" className="text-muted">Sort by:</label>
+                  <select
+                    id="sort"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="form-select"
+                  >
+                    <option value="created_at">Created Date</option>
+                    <option value="priority">Priority</option>
+                    <option value="scheduled_for">Scheduled Time</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Bulk Actions */}
+              {selectedItems.size > 0 && (
+                <div className="flex align-center gap-sm">
+                  <span className="text-muted">
+                    {selectedItems.size} selected
+                  </span>
+                  <button
+                    onClick={() => handleBulkAction('approve')}
+                    className="btn btn-success btn-sm"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('schedule')}
+                    className="btn btn-primary btn-sm"
+                  >
+                    Schedule
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('delete')}
+                    className="btn btn-danger btn-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Content List */}
+        <div className="card">
+          {queuedContent.length > 0 ? (
+            <>
+              {/* Header */}
+              <div className="card-header">
+                <div className="flex align-center gap-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.size === queuedContent.length && queuedContent.length > 0}
+                    onChange={handleSelectAll}
+                    className="form-checkbox"
+                  />
+                  <span>
+                    Select All ({queuedContent.length} items)
+                  </span>
+                </div>
+              </div>
+
+              {/* Content Items */}
+              <div className="card-body">
+                <div className="grid gap-md">
+                  {queuedContent.map((item) => (
+                    <div key={item.id} className="card">
+                      <div className="card-body">
+                        <div className="flex align-start gap-md">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(item.id)}
+                            onChange={() => handleSelectItem(item.id)}
+                            className="form-checkbox"
+                          />
+                          
+                          {/* Media preview */}
+                          {item.media_url && (
+                            <div>
+                              <img
+                                src={item.media_url}
+                                alt="Content preview"
+                                className="content-image"
+                                style={{ width: '64px', height: '64px', objectFit: 'cover' }}
+                              />
+                            </div>
+                          )}
+
+                          {/* Content details */}
+                          <div className="flex-1">
+                            <div className="flex justify-between align-start">
+                              <div className="flex-1">
+                                <h3 className="mb-xs">
+                                  {item.title || 'Untitled'}
+                                </h3>
+                                {item.content_text && (
+                                  <p className="text-muted mb-sm line-clamp-2">
+                                    {item.content_text}
+                                  </p>
+                                )}
+                                
+                                {/* Tags */}
+                                {item.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-xs mb-sm">
+                                    {item.tags.slice(0, 3).map((tag, index) => (
+                                      <span key={index} className="tag">
+                                        #{tag}
+                                      </span>
+                                    ))}
+                                    {item.tags.length > 3 && (
+                                      <span className="text-muted">
+                                        +{item.tags.length - 3} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Status and Priority badges */}
+                              <div className="text-right">
+                                <div className="flex gap-sm mb-xs">
+                                  <span className={`tag ${getPriorityColor(item.priority)}`}>
+                                    {item.priority}
+                                  </span>
+                                  <span className={`tag ${getStatusColor(item.status)}`}>
+                                    {item.status}
+                                  </span>
+                                </div>
+                                
+                                <div className="text-muted text-sm">
+                                  <div>Created: {formatDate(item.created_at)}</div>
+                                  {item.scheduled_for && (
+                                    <div>Scheduled: {formatDate(item.scheduled_for)}</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex gap-sm mt-sm">
+                              <button
+                                onClick={() => {
+                                  const scheduledFor = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
+                                  handleScheduleContent(item.id, scheduledFor)
+                                }}
+                                className="btn btn-sm"
+                              >
+                                📅 Schedule
+                              </button>
+                              <button className="btn btn-sm btn-success">
+                                ✅ Approve
+                              </button>
+                              <button className="btn btn-sm btn-danger">
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="card-body text-center">
+              <div className="mb-md" style={{ fontSize: '3rem' }}>📭</div>
+              <h3 className="mb-sm">No content in queue</h3>
+              <p className="text-muted">
+                Content will appear here when it's added to the posting queue.
+              </p>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Content List */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        {queuedContent.length > 0 ? (
-          <>
-            {/* Header */}
-            <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={selectedItems.size === queuedContent.length && queuedContent.length > 0}
-                  onChange={handleSelectAll}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                />
-                <span className="ml-3 text-sm font-medium text-gray-900">
-                  Select All ({queuedContent.length} items)
-                </span>
-              </div>
-            </div>
-
-            {/* Content Items */}
-            <div className="divide-y divide-gray-200">
-              {queuedContent.map((item) => (
-                <div key={item.id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-start space-x-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.has(item.id)}
-                      onChange={() => handleSelectItem(item.id)}
-                      className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                    />
-                    
-                    {/* Media preview */}
-                    {item.media_url && (
-                      <div className="flex-shrink-0">
-                        <img
-                          src={item.media_url}
-                          alt="Content preview"
-                          className="h-16 w-16 object-cover rounded-lg"
-                        />
-                      </div>
-                    )}
-
-                    {/* Content details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="text-sm font-medium text-gray-900 truncate">
-                            {item.title || 'Untitled'}
-                          </h3>
-                          {item.content_text && (
-                            <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-                              {item.content_text}
-                            </p>
-                          )}
-                          
-                          {/* Tags */}
-                          {item.tags.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {item.tags.slice(0, 3).map((tag, index) => (
-                                <span
-                                  key={index}
-                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                                >
-                                  #{tag}
-                                </span>
-                              ))}
-                              {item.tags.length > 3 && (
-                                <span className="text-xs text-gray-500">
-                                  +{item.tags.length - 3} more
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Status and Priority badges */}
-                        <div className="ml-4 flex flex-col items-end space-y-2">
-                          <div className="flex space-x-2">
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(item.priority)}`}>
-                              {item.priority}
-                            </span>
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
-                              {item.status}
-                            </span>
-                          </div>
-                          
-                          <div className="text-xs text-gray-500 text-right">
-                            <div>Created: {formatDate(item.created_at)}</div>
-                            {item.scheduled_for && (
-                              <div>Scheduled: {formatDate(item.scheduled_for)}</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="mt-3 flex items-center space-x-2">
-                        <button
-                          onClick={() => {
-                            const scheduledFor = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
-                            handleScheduleContent(item.id, scheduledFor)
-                          }}
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          Schedule
-                        </button>
-                        <span className="text-gray-300">|</span>
-                        <button className="text-sm text-green-600 hover:text-green-800">
-                          Approve
-                        </button>
-                        <span className="text-gray-300">|</span>
-                        <button className="text-sm text-red-600 hover:text-red-800">
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="px-6 py-12 text-center">
-            <div className="text-4xl mb-4">📭</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No content in queue</h3>
-            <p className="text-gray-600">
-              Content will appear here when it&apos;s added to the posting queue.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )

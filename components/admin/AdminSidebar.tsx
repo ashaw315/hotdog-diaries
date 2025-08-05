@@ -54,6 +54,12 @@ const navigationItems: NavItem[] = [
     description: 'Professional photography'
   },
   {
+    name: 'Mastodon',
+    href: '/admin/mastodon',
+    icon: '🐘',
+    description: 'Mastodon content scanning'
+  },
+  {
     name: 'Content Queue',
     href: '/admin/queue',
     icon: '📝',

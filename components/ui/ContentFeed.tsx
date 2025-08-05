@@ -17,7 +17,6 @@ interface ContentItem {
   is_posted: boolean
   is_approved: boolean
   posted_at?: Date
-  post_order?: number
 }
 
 interface ContentFeedProps {

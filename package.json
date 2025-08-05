@@ -10,6 +10,13 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:regression": "jest __tests__/regression/runner.test.ts",
+    "test:regression:api": "node -e \"const runner = require('./__tests__/regression/runner.test.ts').runner; runner.runCategory('api')\"",
+    "test:regression:integration": "node -e \"const runner = require('./__tests__/regression/runner.test.ts').runner; runner.runCategory('integration')\"",
+    "test:regression:components": "node -e \"const runner = require('./__tests__/regression/runner.test.ts').runner; runner.runCategory('component')\"",
+    "test:regression:performance": "node -e \"const runner = require('./__tests__/regression/runner.test.ts').runner; runner.runCategory('performance')\"",
+    "test:regression:critical": "node -e \"const runner = require('./__tests__/regression/runner.test.ts').runner; runner.runPriority('critical')\"",
+    "test:regression:high": "node -e \"const runner = require('./__tests__/regression/runner.test.ts').runner; runner.runPriority('high')\"",
     "db:migrate": "tsx lib/migrations/migrator.ts migrate",
     "db:rollback": "tsx lib/migrations/migrator.ts rollback",
     "db:status": "tsx lib/migrations/migrator.ts status"

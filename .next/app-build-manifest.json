@@ -1,5 +1,15 @@
 {
   "pages": {
+    "/api/admin/content/stats/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/content/stats/route.js"
+    ],
+    "/api/admin/content/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/content/route.js"
+    ],
     "/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -16,16 +26,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/loading.js"
     ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
-    ],
-    "/api/content/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/content/route.js"
-    ],
     "/admin/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -40,21 +40,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/admin/loading.js"
-    ],
-    "/admin/login/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/login/layout.js"
-    ],
-    "/admin/login/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/login/page.js"
-    ],
-    "/api/admin/login/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/login/route.js"
     ],
     "/admin/page": [
       "static/chunks/webpack.js",
@@ -81,6 +66,61 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/admin/refresh/route.js"
     ],
+    "/admin/flickr/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/flickr/page.js"
+    ],
+    "/api/admin/flickr/status/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/flickr/status/route.js"
+    ],
+    "/api/admin/flickr/config/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/flickr/config/route.js"
+    ],
+    "/api/admin/flickr/scans/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/flickr/scans/route.js"
+    ],
+    "/admin/posted/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/posted/page.js"
+    ],
+    "/api/admin/content/posted/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/content/posted/route.js"
+    ],
+    "/admin/content/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/content/page.js"
+    ],
+    "/api/admin/content/[id]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/content/[id]/route.js"
+    ],
+    "/api/admin/content/[id]/approve/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/content/[id]/approve/route.js"
+    ],
+    "/api/admin/content/[id]/post/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/content/[id]/post/route.js"
+    ],
+    "/api/admin/content/[id]/reject/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/content/[id]/reject/route.js"
+    ],
     "/admin/schedule/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -91,40 +131,70 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/admin/schedule/route.js"
     ],
-    "/admin/social/page": [
+    "/admin/youtube/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/social/page.js"
+      "static/chunks/app/admin/youtube/page.js"
     ],
-    "/api/admin/social/stats/route": [
+    "/api/admin/youtube/config/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/social/stats/route.js"
+      "static/chunks/app/api/admin/youtube/config/route.js"
     ],
-    "/api/admin/unsplash/status/route": [
+    "/api/admin/youtube/scans/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/unsplash/status/route.js"
-    ],
-    "/api/admin/flickr/status/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/flickr/status/route.js"
+      "static/chunks/app/api/admin/youtube/scans/route.js"
     ],
     "/api/admin/youtube/status/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/admin/youtube/status/route.js"
     ],
-    "/api/admin/reddit/stats/route": [
+    "/api/admin/youtube/test/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/reddit/stats/route.js"
+      "static/chunks/app/api/admin/youtube/test/route.js"
     ],
-    "/admin/settings/page": [
+    "/api/admin/flickr/test/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/settings/page.js"
+      "static/chunks/app/api/admin/flickr/test/route.js"
+    ],
+    "/admin/mastodon/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/mastodon/page.js"
+    ],
+    "/api/admin/mastodon/settings/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/mastodon/settings/route.js"
+    ],
+    "/api/admin/mastodon/status/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/mastodon/status/route.js"
+    ],
+    "/api/admin/mastodon/stats/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/mastodon/stats/route.js"
+    ],
+    "/api/admin/mastodon/scan/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/mastodon/scan/route.js"
+    ],
+    "/admin/analytics/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/analytics/page.js"
+    ],
+    "/api/admin/filtering/stats/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/filtering/stats/route.js"
     ],
     "/admin/reddit/page": [
       "static/chunks/webpack.js",
@@ -146,10 +216,55 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/admin/reddit/status/route.js"
     ],
-    "/api/admin/reddit/test-connection/route": [
+    "/api/admin/reddit/stats/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/reddit/test-connection/route.js"
+      "static/chunks/app/api/admin/reddit/stats/route.js"
+    ],
+    "/api/admin/content/process/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/content/process/route.js"
+    ],
+    "/admin/social/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/social/page.js"
+    ],
+    "/api/admin/social/stats/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/social/stats/route.js"
+    ],
+    "/api/admin/unsplash/status/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/unsplash/status/route.js"
+    ],
+    "/admin/settings/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/settings/page.js"
+    ],
+    "/admin/unsplash/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/unsplash/page.js"
+    ],
+    "/api/admin/unsplash/config/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/unsplash/config/route.js"
+    ],
+    "/api/admin/unsplash/scans/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/unsplash/scans/route.js"
+    ],
+    "/api/admin/unsplash/scan/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/unsplash/scan/route.js"
     ]
   }
 }

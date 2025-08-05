@@ -1,6 +1,8 @@
 import { redditScanningService } from './reddit-scanning'
 import { youtubeScanningService } from './youtube-scanning'
 import { flickrScanningService } from './flickr-scanning'
+import { mastodonScanningService } from './mastodon-scanning'
+import { mastodonMonitoringService } from './mastodon-monitoring'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
@@ -28,7 +30,8 @@ export class SocialMediaService {
   private scanningServices = {
     reddit: redditScanningService,
     youtube: youtubeScanningService,
-    flickr: flickrScanningService
+    flickr: flickrScanningService,
+    mastodon: mastodonScanningService
   }
 
   async getAllPlatformStatus(): Promise<SocialMediaStats> {
@@ -117,13 +120,41 @@ export class SocialMediaService {
         })
       }
 
+      // Get Mastodon status
+      try {
+        const mastodonStats = await this.scanningServices.mastodon.getScanningStats()
+        const mastodonHealth = await mastodonMonitoringService.getHealthSummary()
+        
+        platformStats.push({
+          platform: 'mastodon',
+          isEnabled: mastodonHealth.onlineInstances > 0,
+          isAuthenticated: true, // Mastodon doesn't require auth for public posts
+          lastScanTime: mastodonStats.lastScanTime,
+          totalContent: mastodonStats.totalPostsFound,
+          errorRate: 1 - mastodonStats.successRate,
+          healthStatus: mastodonHealth.scanningStatus === 'active' ? 'healthy' : 
+                       mastodonHealth.scanningStatus === 'error' ? 'error' : 'warning'
+        })
+
+        if (mastodonHealth.onlineInstances > 0) activePlatforms++
+      } catch (error) {
+        platformStats.push({
+          platform: 'mastodon',
+          isEnabled: false,
+          isAuthenticated: false,
+          totalContent: 0,
+          errorRate: 1,
+          healthStatus: 'error'
+        })
+      }
+
       const healthyPlatforms = platformStats.filter(p => p.healthStatus === 'healthy').length
       const overallHealthScore = platformStats.length > 0 ? (healthyPlatforms / platformStats.length) * 100 : 0
 
       return {
         totalPlatforms: platformStats.length,
         activePlatforms,
-        totalContentScanned: 0,
+        totalContentScanned: platformStats.reduce((sum, p) => sum + p.totalContent, 0),
         totalContentApproved: 0,
         overallHealthScore,
         platformStats
@@ -160,6 +191,14 @@ export class SocialMediaService {
         results.push({ platform: 'flickr', success: true, message: 'Started successfully' })
       } catch (error) {
         results.push({ platform: 'flickr', success: false, message: error.message })
+      }
+
+      // Start Mastodon scanning
+      try {
+        await this.scanningServices.mastodon.startAutomaticScanning()
+        results.push({ platform: 'mastodon', success: true, message: 'Started successfully' })
+      } catch (error) {
+        results.push({ platform: 'mastodon', success: false, message: error.message })
       }
 
       const successCount = results.filter(r => r.success).length
