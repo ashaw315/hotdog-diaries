@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ContentStatusDashboard } from './ContentStatusDashboard'
 
 interface DashboardStats {
   totalContent: number
@@ -343,31 +344,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <h2>Content Pipeline</h2>
-        </div>
-        <div className="card-body">
-          <div className="grid grid-4 gap-md">
-            <div className="text-center p-sm card">
-              <div><h2>{stats.contentPipeline?.queuedForReview || 0}</h2></div>
-              <div className="text-muted">Queued for Review</div>
-            </div>
-            <div className="text-center p-sm card">
-              <div><h2 className="text-success">{stats.contentPipeline?.autoApproved || 0}</h2></div>
-              <div className="text-muted">Auto Approved</div>
-            </div>
-            <div className="text-center p-sm card">
-              <div><h2>{stats.contentPipeline?.flaggedForManualReview || 0}</h2></div>
-              <div className="text-muted">Manual Review</div>
-            </div>
-            <div className="text-center p-sm card">
-              <div><h2 className="text-danger">{stats.contentPipeline?.rejected || 0}</h2></div>
-              <div className="text-muted">Rejected</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Content Status Dashboard */}
+      <ContentStatusDashboard />
 
       <div className="card">
         <div className="card-header">

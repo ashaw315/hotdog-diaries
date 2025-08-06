@@ -381,7 +381,8 @@ export class RedditScanningService {
         original_url: post.permalink,
         original_author: `u/${post.author} (via r/${post.subreddit})`,
         scraped_at: new Date(),
-        content_hash: shortHash  // Modified hash to allow multiple test runs
+        content_hash: shortHash,  // Modified hash to allow multiple test runs
+        content_status: 'discovered'
       }
 
       // Debug: Log content data before insertion

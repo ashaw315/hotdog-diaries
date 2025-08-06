@@ -149,9 +149,16 @@ export class EdgeAuthUtils {
   }
 
   /**
-   * Get authentication token from request cookies
+   * Get authentication token from request cookies or Authorization header
    */
   static getAuthTokenFromRequest(request: NextRequest): string | null {
+    // First try Bearer token from Authorization header
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      return authHeader.substring(7)
+    }
+    
+    // Fallback to cookie
     return request.cookies.get(AUTH_COOKIE_NAME)?.value || null
   }
 

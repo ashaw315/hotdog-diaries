@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   try {
     const authResult = await NextAuthUtils.verifyRequestAuth(request)
-    if (!authResult.success || !authResult.user) {
+    if (!authResult.isValid || !authResult.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

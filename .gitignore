@@ -3,3 +3,23 @@ node_modules/
 .env.local
 dist/
 build/
+
+# Next.js
+.next/
+.vercel/
+
+# Cache
+.cache/
+.cache/.next/
+
+# Testing files (temporary)
+test-*.js
+debug-*.js
+comprehensive-test-*.js
+
+# Logs
+*.log
+server.log
+
+# Build info
+tsconfig.tsbuildinfo

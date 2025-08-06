@@ -104,6 +104,13 @@ export class NextAuthUtils {
    * Get authentication token from request cookies
    */
   static getAuthTokenFromRequest(request: NextRequest): string | null {
+    // First try Bearer token from Authorization header
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      return authHeader.substring(7)
+    }
+    
+    // Fallback to cookie
     return request.cookies.get(AUTH_COOKIE_NAME)?.value || null
   }
 

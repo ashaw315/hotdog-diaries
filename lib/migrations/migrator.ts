@@ -34,7 +34,7 @@ class DatabaseMigrator {
 
   private getMigrationFiles(): Migration[] {
     const files = fs.readdirSync(this.migrationsPath)
-      .filter(file => file.endsWith('.sql'))
+      .filter(file => file.endsWith('.sql') && !file.includes('_rollback'))
       .sort()
 
     return files.map(filename => {

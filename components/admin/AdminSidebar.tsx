@@ -84,6 +84,12 @@ const navigationItems: NavItem[] = [
     description: 'Review flagged content'
   },
   {
+    name: 'Automated Posting',
+    href: '/admin/posting',
+    icon: '🚀',
+    description: 'Manage automated posts'
+  },
+  {
     name: 'Content Analytics',
     href: '/admin/analytics',
     icon: '📈',

@@ -565,27 +565,32 @@ export class ContentProcessor {
   private async updateContentStatus(contentId: number, action: 'approved' | 'rejected' | 'flagged' | 'duplicate', analysis: ContentAnalysis): Promise<void> {
     let isApproved = false
     let isFlagged = false
+    let contentStatus = 'pending_review'
 
     switch (action) {
       case 'approved':
         isApproved = true
+        contentStatus = 'approved'
         break
       case 'rejected':
         isApproved = false
+        contentStatus = 'rejected'
         break
       case 'flagged':
         isFlagged = true
+        contentStatus = 'pending_review'
         break
       case 'duplicate':
         isApproved = false
+        contentStatus = 'rejected'
         break
     }
 
     await db.query(
       `UPDATE content_queue 
-       SET is_approved = $1, updated_at = NOW() 
-       WHERE id = $2`,
-      [isApproved, contentId]
+       SET is_approved = $1, content_status = $2, updated_at = NOW() 
+       WHERE id = $3`,
+      [isApproved, contentStatus, contentId]
     )
 
     // Update analysis with flagged status
