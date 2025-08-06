@@ -1,8 +1,10 @@
 import { db, logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 import { redditScanningService } from './reddit-scanning'
-import { instagramScanningService } from './instagram-scanning'
-import { tiktokScanningService } from './tiktok-scanning'
+import { mastodonScanningService } from './mastodon-scanning'
+import { flickrScanningService } from './flickr-scanning'
+import { youtubeScanningService } from './youtube-scanning'
+import { unsplashScanningService } from './unsplash'
 
 export interface ScanConfig {
   id: number
@@ -54,14 +56,16 @@ export interface ScanningStatus {
 }
 
 export class ContentScanningService {
-  private static readonly DEFAULT_PLATFORMS = ['reddit', 'instagram', 'tiktok']
+  private static readonly DEFAULT_PLATFORMS = ['reddit', 'mastodon', 'flickr', 'youtube', 'unsplash']
   private static readonly DEFAULT_FREQUENCY_HOURS = 4
   private static readonly DEFAULT_MAX_POSTS = 50
 
   private readonly platformServices = {
     reddit: redditScanningService,
-    instagram: instagramScanningService,
-    tiktok: tiktokScanningService
+    mastodon: mastodonScanningService,
+    flickr: flickrScanningService,
+    youtube: youtubeScanningService,
+    unsplash: unsplashScanningService
   }
 
   async getScanConfig(): Promise<ScanConfig> {

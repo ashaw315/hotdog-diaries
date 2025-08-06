@@ -6,7 +6,7 @@
 
 -- Create ENUM types
 CREATE TYPE content_type_enum AS ENUM ('text', 'image', 'video', 'mixed');
-CREATE TYPE source_platform_enum AS ENUM ('twitter', 'instagram', 'facebook', 'reddit', 'tiktok');
+CREATE TYPE source_platform_enum AS ENUM ('reddit', 'youtube', 'flickr', 'unsplash', 'news', 'mastodon');
 CREATE TYPE log_level_enum AS ENUM ('debug', 'info', 'warn', 'error', 'fatal');
 
 -- Content Queue Table

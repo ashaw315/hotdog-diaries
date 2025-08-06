@@ -1,7 +1,9 @@
 import { SocialMediaService, PlatformScanResult, UnifiedScanResult } from '@/lib/services/social-media'
 import { redditScanningService } from '@/lib/services/reddit-scanning'
-import { instagramScanningService } from '@/lib/services/instagram-scanning'
-import { tikTokScanningService } from '@/lib/services/tiktok-scanning'
+import { mastodonScanningService } from '@/lib/services/mastodon-scanning'
+import { flickrScanningService } from '@/lib/services/flickr-scanning'
+import { youtubeScanningService } from '@/lib/services/youtube-scanning'
+import { unsplashScanningService } from '@/lib/services/unsplash'
 
 // Mock environment variables before importing services
 const originalEnv = process.env
@@ -26,15 +28,20 @@ afterAll(() => {
 
 // Mock dependencies
 jest.mock('@/lib/services/reddit-scanning')
-jest.mock('@/lib/services/instagram-scanning')
-jest.mock('@/lib/services/tiktok-scanning')
+jest.mock('@/lib/services/mastodon-scanning')
+jest.mock('@/lib/services/flickr-scanning')
+jest.mock('@/lib/services/youtube-scanning')
+jest.mock('@/lib/services/unsplash')
 jest.mock('@/lib/db-query-builder')
 jest.mock('@/lib/db', () => ({
   logToDatabase: jest.fn().mockResolvedValue(undefined)
 }))
 
 const mockRedditScanningService = redditScanningService as jest.Mocked<typeof redditScanningService>
-const mockInstagramScanningService = instagramScanningService as jest.Mocked<typeof instagramScanningService>
+const mockMastodonScanningService = mastodonScanningService as jest.Mocked<typeof mastodonScanningService>
+const mockFlickrScanningService = flickrScanningService as jest.Mocked<typeof flickrScanningService>
+const mockYoutubeScanningService = youtubeScanningService as jest.Mocked<typeof youtubeScanningService>
+const mockUnsplashScanningService = unsplashScanningService as jest.Mocked<typeof unsplashScanningService>
 const mockTikTokScanningService = tikTokScanningService as jest.Mocked<typeof tikTokScanningService>
 
 describe('SocialMediaService', () => {

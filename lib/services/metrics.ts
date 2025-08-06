@@ -20,7 +20,7 @@ export interface PerformanceMetric extends MetricEntry {
 }
 
 export interface APIMetric extends MetricEntry {
-  platform: 'reddit' | 'instagram' | 'tiktok'
+  platform: 'reddit' | 'mastodon' | 'flickr' | 'youtube' | 'unsplash'
   endpoint: string
   responseTime: number
   statusCode: number
@@ -65,8 +65,10 @@ export interface MetricSummary {
   totalMetrics: number
   recentAPIResponseTimes: {
     reddit: number
-    instagram: number
-    tiktok: number
+    mastodon: number
+    flickr: number
+    youtube: number
+    unsplash: number
   }
   systemResources: {
     memoryUsagePercent: number
@@ -103,7 +105,7 @@ export class MetricsService {
    * Record API response time and status
    */
   async recordAPIMetric(
-    platform: 'reddit' | 'instagram' | 'tiktok',
+    platform: 'reddit' | 'mastodon' | 'flickr' | 'youtube' | 'unsplash',
     endpoint: string,
     responseTime: number,
     statusCode: number,
@@ -471,11 +473,13 @@ export class MetricsService {
 
       const apiResponseTimes = {
         reddit: 0,
-        instagram: 0,
-        tiktok: 0
+        mastodon: 0,
+        flickr: 0,
+        youtube: 0,
+        unsplash: 0
       }
 
-      const apiCounts = { reddit: 0, instagram: 0, tiktok: 0 }
+      const apiCounts = { reddit: 0, mastodon: 0, flickr: 0, youtube: 0, unsplash: 0 }
       
       apiMetrics.metrics.forEach(metric => {
         const platform = metric.tags?.platform as keyof typeof apiResponseTimes

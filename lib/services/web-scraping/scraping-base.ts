@@ -33,7 +33,7 @@ export interface ScrapingResult<T = any> {
 
 export interface ScrapedContent {
   id: string
-  platform: 'instagram' | 'tiktok'
+  platform: 'flickr' | 'youtube' | 'unsplash'
   type: 'image' | 'video'
   content_image_url?: string
   content_video_url?: string
@@ -330,7 +330,7 @@ export abstract class WebScrapingBase {
            !url.includes('analytics') && 
            !url.includes('tracking') &&
            !url.includes('1x1') &&
-           (url.includes('cdninstagram') || url.includes('tiktokcdn') || url.includes('scontent'))
+           (url.includes('flickr.com') || url.includes('ytimg.com') || url.includes('unsplash.com'))
   }
 
   /**

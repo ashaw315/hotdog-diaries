@@ -4,7 +4,7 @@
 -- Create scan_config table
 CREATE TABLE IF NOT EXISTS scan_config (
     id SERIAL PRIMARY KEY,
-    enabled_platforms TEXT[] NOT NULL DEFAULT ARRAY['reddit', 'instagram', 'tiktok'],
+    enabled_platforms TEXT[] NOT NULL DEFAULT ARRAY['reddit', 'mastodon', 'flickr', 'youtube', 'unsplash'],
     scan_frequency_hours INTEGER NOT NULL DEFAULT 4,
     max_posts_per_scan INTEGER NOT NULL DEFAULT 50,
     is_enabled BOOLEAN NOT NULL DEFAULT true,
@@ -26,7 +26,7 @@ CREATE TRIGGER update_scan_config_updated_at
 -- Insert default configuration
 INSERT INTO scan_config (enabled_platforms, scan_frequency_hours, max_posts_per_scan, is_enabled, created_at, updated_at)
 VALUES (
-    ARRAY['reddit', 'instagram', 'tiktok'], 
+    ARRAY['reddit', 'mastodon', 'flickr', 'youtube', 'unsplash'], 
     4, 
     50, 
     true, 

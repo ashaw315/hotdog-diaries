@@ -160,8 +160,8 @@ export function PostingManagement({ onRefresh }: PostingManagementProps) {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'reddit': return '🤖'
-      case 'instagram': return '📸'
-      case 'tiktok': return '🎵'
+      case 'unsplash': return '🖼️'
+      case 'flickr': return '📷'
       case 'mastodon': return '🐘'
       case 'flickr': return '📷'
       case 'youtube': return '📺'

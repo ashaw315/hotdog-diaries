@@ -132,16 +132,28 @@ function AdminHeader({ user, onLogout }: AdminHeaderProps) {
               Reddit
             </a>
             <a
-              href="/admin/instagram"
+              href="/admin/mastodon"
               className="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
             >
-              Instagram
+              Mastodon
             </a>
             <a
-              href="/admin/tiktok"
+              href="/admin/flickr"
               className="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
             >
-              TikTok
+              Flickr
+            </a>
+            <a
+              href="/admin/youtube"
+              className="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+            >
+              YouTube
+            </a>
+            <a
+              href="/admin/unsplash"
+              className="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+            >
+              Unsplash
             </a>
             <a
               href="/admin/social"
