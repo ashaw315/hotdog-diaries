@@ -30,8 +30,8 @@ describe('/api/content', () => {
           post_order: 1,
           content_text: 'Amazing hotdog!',
           content_type: 'text',
-          source_platform: 'twitter',
-          original_url: 'https://twitter.com/test/1'
+          source_platform: 'reddit',
+          original_url: 'https://reddit.com/r/hotdogs/test/1'
         },
         {
           id: 2,
@@ -40,8 +40,8 @@ describe('/api/content', () => {
           post_order: 2,
           content_text: 'Another hotdog!',
           content_type: 'image',
-          source_platform: 'instagram',
-          original_url: 'https://instagram.com/test/2'
+          source_platform: 'flickr',
+          original_url: 'https://flickr.com/photos/test/2'
         }
       ]
 

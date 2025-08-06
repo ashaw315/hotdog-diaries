@@ -56,22 +56,16 @@ export default function ContentCard({
     if (!platform) return '🌐'
     
     switch (platform) {
-      case SourcePlatform.TWITTER:
-        return '🐦'
-      case SourcePlatform.INSTAGRAM:
-        return '📷'
-      case SourcePlatform.FACEBOOK:
-        return '👥'
       case SourcePlatform.REDDIT:
         return '🤖'
-      case SourcePlatform.TIKTOK:
-        return '🎵'
       case SourcePlatform.YOUTUBE:
         return '📺'
       case SourcePlatform.FLICKR:
         return '📸'
       case SourcePlatform.UNSPLASH:
         return '🎨'
+      case SourcePlatform.NEWS:
+        return '📰'
       case SourcePlatform.MASTODON:
         return '🐘'
       default:

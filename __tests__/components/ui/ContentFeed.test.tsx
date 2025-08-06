@@ -30,8 +30,8 @@ describe('ContentFeed', () => {
       id: 1,
       content_text: 'First hotdog post',
       content_type: ContentType.TEXT,
-      source_platform: SourcePlatform.TWITTER,
-      original_url: 'https://twitter.com/test/1',
+      source_platform: SourcePlatform.REDDIT,
+      original_url: 'https://reddit.com/r/hotdogs/comments/1',
       original_author: 'user1',
       scraped_at: new Date('2024-01-01T10:00:00Z'),
       is_posted: true,
@@ -43,8 +43,8 @@ describe('ContentFeed', () => {
       id: 2,
       content_text: 'Second hotdog post',
       content_type: ContentType.IMAGE,
-      source_platform: SourcePlatform.INSTAGRAM,
-      original_url: 'https://instagram.com/p/test',
+      source_platform: SourcePlatform.FLICKR,
+      original_url: 'https://flickr.com/photos/user/test',
       original_author: 'user2',
       content_image_url: 'https://example.com/image.jpg',
       scraped_at: new Date('2024-01-01T11:00:00Z'),
@@ -126,7 +126,7 @@ describe('ContentFeed', () => {
   it('should apply filters correctly', async () => {
     const filters = {
       content_type: ContentType.IMAGE,
-      source_platform: SourcePlatform.INSTAGRAM,
+      source_platform: SourcePlatform.FLICKR,
       is_approved: true,
       author: 'testuser'
     }
@@ -141,7 +141,7 @@ describe('ContentFeed', () => {
     const url = new URL(fetchCall[0] as string, 'http://localhost')
     
     expect(url.searchParams.get('content_type')).toBe(ContentType.IMAGE)
-    expect(url.searchParams.get('source_platform')).toBe(SourcePlatform.INSTAGRAM)
+    expect(url.searchParams.get('source_platform')).toBe(SourcePlatform.FLICKR)
     expect(url.searchParams.get('is_approved')).toBe('true')
     expect(url.searchParams.get('author')).toBe('testuser')
   })

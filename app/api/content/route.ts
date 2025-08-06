@@ -35,21 +35,18 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   const offset = (page - 1) * limit
 
   try {
-    // Get total count for pagination
+    // Get total count for pagination - query content_queue directly for posted items
     const countResult = await db.query(`
       SELECT COUNT(*) as total 
-      FROM posted_content_with_details
+      FROM content_queue
+      WHERE content_status = 'posted' AND is_posted = true
     `)
     const total = parseInt(countResult.rows[0]?.total || '0')
 
-    // Get paginated content
-    const contentResult = await db.query<PostedContent>(`
+    // Get paginated content - query content_queue directly for posted items
+    const contentResult = await db.query(`
       SELECT 
         id,
-        content_queue_id,
-        posted_at,
-        scheduled_time,
-        post_order,
         content_text,
         content_image_url,
         content_video_url,
@@ -57,8 +54,12 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
         source_platform,
         original_url,
         original_author,
-        scraped_at
-      FROM posted_content_with_details
+        posted_at,
+        scraped_at,
+        is_posted,
+        is_approved
+      FROM content_queue
+      WHERE content_status = 'posted' AND is_posted = true
       ORDER BY posted_at ${order.toUpperCase()}
       LIMIT $1 OFFSET $2
     `, [limit, offset])

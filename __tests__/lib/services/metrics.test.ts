@@ -89,7 +89,7 @@ describe('MetricsService', () => {
 
     it('should tag failed API calls correctly', async () => {
       await metricsService.recordAPIMetric(
-        'instagram',
+        'flickr',
         '/api/media',
         1000,
         500, // Server error
@@ -101,7 +101,7 @@ describe('MetricsService', () => {
 
     it('should normalize endpoint paths', async () => {
       await metricsService.recordAPIMetric(
-        'tiktok',
+        'youtube',
         '/api/videos/123456',
         300,
         200
@@ -366,7 +366,7 @@ describe('MetricsService', () => {
         .mockResolvedValueOnce({ // API metrics
           metrics: [
             { name: 'api_response_time', value: 200, tags: { platform: 'reddit' } },
-            { name: 'api_response_time', value: 150, tags: { platform: 'instagram' } }
+            { name: 'api_response_time', value: 150, tags: { platform: 'flickr' } }
           ],
           total: 2,
           hasMore: false
@@ -404,8 +404,10 @@ describe('MetricsService', () => {
         totalMetrics: 1000,
         recentAPIResponseTimes: expect.objectContaining({
           reddit: expect.any(Number),
-          instagram: expect.any(Number),
-          tiktok: expect.any(Number)
+          flickr: expect.any(Number),
+          youtube: expect.any(Number),
+          mastodon: expect.any(Number),
+          unsplash: expect.any(Number)
         }),
         systemResources: expect.objectContaining({
           memoryUsagePercent: expect.any(Number),

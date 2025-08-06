@@ -213,7 +213,7 @@ describe('PostingService', () => {
           posted_at: new Date(),
           post_order: 1,
           content_type: 'text',
-          source_platform: 'twitter'
+          source_platform: 'reddit'
         },
         {
           id: 2,
@@ -221,7 +221,7 @@ describe('PostingService', () => {
           posted_at: new Date(),
           post_order: 2,
           content_type: 'image',
-          source_platform: 'instagram'
+          source_platform: 'flickr'
         }
       ]
 

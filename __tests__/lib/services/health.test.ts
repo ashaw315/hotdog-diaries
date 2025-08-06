@@ -38,8 +38,8 @@ jest.mock('@/lib/services/reddit', () => ({
   }
 }))
 
-jest.mock('@/lib/services/instagram', () => ({
-  instagramService: {
+jest.mock('@/lib/services/flickr', () => ({
+  flickrService: {
     getApiStatus: jest.fn().mockResolvedValue({
       isAuthenticated: true,
       rateLimits: { remaining: 50, resetTime: new Date() },
@@ -49,8 +49,8 @@ jest.mock('@/lib/services/instagram', () => ({
   }
 }))
 
-jest.mock('@/lib/services/tiktok', () => ({
-  tiktokService: {
+jest.mock('@/lib/services/youtube', () => ({
+  youtubeService: {
     getApiStatus: jest.fn().mockResolvedValue({
       isAuthenticated: true,
       quota: {
@@ -68,14 +68,14 @@ jest.mock('@/lib/services/reddit-scanning', () => ({
   }
 }))
 
-jest.mock('@/lib/services/instagram-scanning', () => ({
-  instagramScanningService: {
+jest.mock('@/lib/services/flickr-scanning', () => ({
+  flickrScanningService: {
     getScanStats: jest.fn().mockResolvedValue({ active: true })
   }
 }))
 
-jest.mock('@/lib/services/tiktok-scanning', () => ({
-  tiktokScanningService: {
+jest.mock('@/lib/services/youtube-scanning', () => ({
+  youtubeScanningService: {
     getScanStats: jest.fn().mockResolvedValue({ active: true })
   }
 }))
@@ -155,12 +155,12 @@ describe('HealthService', () => {
       const result = await healthService.checkSocialMediaAPIs()
 
       expect(result).toHaveProperty('reddit')
-      expect(result).toHaveProperty('instagram')
-      expect(result).toHaveProperty('tiktok')
+      expect(result).toHaveProperty('flickr')
+      expect(result).toHaveProperty('youtube')
       
       expect(result.reddit.status).toBe(HealthStatus.HEALTHY)
-      expect(result.instagram.status).toBe(HealthStatus.HEALTHY)
-      expect(result.tiktok.status).toBe(HealthStatus.HEALTHY)
+      expect(result.flickr.status).toBe(HealthStatus.HEALTHY)
+      expect(result.youtube.status).toBe(HealthStatus.HEALTHY)
     })
 
     it('should handle API failures gracefully', async () => {
@@ -382,8 +382,8 @@ describe('HealthService', () => {
       const report = await healthService.generateHealthReport()
 
       expect(report.checks.apis.reddit.status).toBe(HealthStatus.CRITICAL)
-      expect(report.checks.apis.instagram.status).toBe(HealthStatus.HEALTHY)
-      expect(report.checks.apis.tiktok.status).toBe(HealthStatus.HEALTHY)
+      expect(report.checks.apis.flickr.status).toBe(HealthStatus.HEALTHY)
+      expect(report.checks.apis.youtube.status).toBe(HealthStatus.HEALTHY)
     })
   })
 

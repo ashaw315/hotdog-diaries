@@ -55,13 +55,15 @@ export default function ContentFeed({
       setLoading(true)
       setError(null)
 
-      let endpoint = '/api/admin/content'
+      // Use public API for posted content, admin API for others
+      let endpoint = type === 'posted' ? '/api/content' : '/api/admin/content'
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: limit.toString()
       })
 
-      if (type !== 'all') {
+      // Only add type param for admin API
+      if (type !== 'all' && type !== 'posted') {
         params.append('type', type)
       }
 

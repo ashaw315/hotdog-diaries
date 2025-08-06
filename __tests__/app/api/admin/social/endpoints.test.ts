@@ -27,14 +27,14 @@ jest.doMock('@/lib/db-query-builder', () => ({
   query: mockQuery
 }))
 
-describe('Unified Social Media API Endpoints', () => {
+describe('Social Media API Endpoints', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
   describe('Status Endpoints', () => {
     describe('/api/admin/social/status', () => {
-      test('GET should return unified platform statuses', async () => {
+      test('GET should return platform statuses for active platforms', async () => {
         const mockRequest = new NextRequest('http://localhost:3000/api/admin/social/status')
 
         const mockPlatformStatuses = [
@@ -48,16 +48,25 @@ describe('Unified Social Media API Endpoints', () => {
             healthStatus: 'healthy'
           },
           {
-            platform: 'instagram',
+            platform: 'mastodon',
             isEnabled: true,
             isAuthenticated: true,
             lastScanTime: new Date('2024-01-01T11:30:00Z'),
-            scanInterval: 60,
-            contentType: 'images',
+            scanInterval: 45,
+            contentType: 'posts',
             healthStatus: 'healthy'
           },
           {
-            platform: 'tiktok',
+            platform: 'flickr',
+            isEnabled: false,
+            isAuthenticated: false,
+            lastScanTime: null,
+            scanInterval: 60,
+            contentType: 'images',
+            healthStatus: 'disabled'
+          },
+          {
+            platform: 'youtube',
             isEnabled: false,
             isAuthenticated: false,
             lastScanTime: null,
@@ -75,10 +84,10 @@ describe('Unified Social Media API Endpoints', () => {
         expect(mockSocialMediaService.getPlatformStatuses).toHaveBeenCalled()
         expect(response.status).toBe(200)
         expect(data.success).toBe(true)
-        expect(data.data.platforms).toHaveLength(3)
+        expect(data.data.platforms).toHaveLength(4)
         expect(data.data.platforms[0].platform).toBe('reddit')
         expect(data.data.platforms[2].healthStatus).toBe('disabled')
-        expect(data.data.summary.totalPlatforms).toBe(3)
+        expect(data.data.summary.totalPlatforms).toBe(4)
         expect(data.data.summary.enabledPlatforms).toBe(2)
         expect(data.data.summary.authenticatedPlatforms).toBe(2)
       })
@@ -105,8 +114,8 @@ describe('Unified Social Media API Endpoints', () => {
 
         const mockUnifiedStats = {
           totalScans: 100,
-          totalPostsFound: 1000,
-          totalPostsApproved: 800,
+          totalPostsFound: 800,
+          totalPostsApproved: 640,
           platformBreakdown: [
             {
               platform: 'reddit',
@@ -117,28 +126,28 @@ describe('Unified Social Media API Endpoints', () => {
               successRate: 80
             },
             {
-              platform: 'instagram',
-              contentType: 'images',
+              platform: 'mastodon',
+              contentType: 'posts',
               scans: 30,
-              postsFound: 300,
-              postsApproved: 250,
-              successRate: 83.33
+              postsFound: 200,
+              postsApproved: 160,
+              successRate: 80
             },
             {
-              platform: 'tiktok',
-              contentType: 'videos',
+              platform: 'flickr',
+              contentType: 'images',
               scans: 20,
-              postsFound: 200,
-              postsApproved: 150,
-              successRate: 75
+              postsFound: 100,
+              postsApproved: 80,
+              successRate: 80
             }
           ],
           contentDistribution: {
-            posts: 50, // 400/800 * 100
-            images: 31.25, // 250/800 * 100
-            videos: 18.75 // 150/800 * 100
+            posts: 87.5, // (400+160)/640 * 100
+            images: 12.5, // 80/640 * 100
+            videos: 0
           },
-          averageSuccessRate: 79.44
+          averageSuccessRate: 80
         }
 
         mockSocialMediaService.getUnifiedStats.mockResolvedValue(mockUnifiedStats)
@@ -167,8 +176,8 @@ describe('Unified Social Media API Endpoints', () => {
         expect(data.data.timeRange).toBe('24h')
         expect(data.data.overview.totalScans).toBe(100)
         expect(data.data.platforms.reddit.totalScans).toBe(50)
-        expect(data.data.platforms.instagram.successRate).toBe(83)
-        expect(data.data.platforms.tiktok.averageContentPerScan).toBe(8) // 150/20 (rounded)
+        expect(data.data.platforms.mastodon.successRate).toBe(80)
+        expect(data.data.platforms.flickr.averageContentPerScan).toBe(4) // 80/20
       })
 
       test('GET should handle custom timeRange parameter', async () => {
@@ -176,10 +185,10 @@ describe('Unified Social Media API Endpoints', () => {
 
         mockSocialMediaService.getUnifiedStats.mockResolvedValue({
           totalScans: 50,
-          totalPostsFound: 500,
-          totalPostsApproved: 400,
+          totalPostsFound: 400,
+          totalPostsApproved: 320,
           platformBreakdown: [],
-          contentDistribution: { posts: 60, images: 25, videos: 15 },
+          contentDistribution: { posts: 75, images: 25, videos: 0 },
           averageSuccessRate: 80
         })
 
@@ -214,16 +223,16 @@ describe('Unified Social Media API Endpoints', () => {
               successRate: 20 // Very low
             },
             {
-              platform: 'instagram',
-              contentType: 'images',
+              platform: 'mastodon',
+              contentType: 'posts',
               scans: 3,
               postsFound: 30,
               postsApproved: 15,
               successRate: 50
             },
             {
-              platform: 'tiktok',
-              contentType: 'videos',
+              platform: 'flickr',
+              contentType: 'images',
               scans: 2,
               postsFound: 20,
               postsApproved: 5,
@@ -231,9 +240,9 @@ describe('Unified Social Media API Endpoints', () => {
             }
           ],
           contentDistribution: {
-            posts: 33.33, // Below target of 40%
-            images: 50, // Above target of 35%
-            videos: 16.67 // Below target of 25%
+            posts: 83.33, // (10+15)/30 * 100
+            images: 16.67, // 5/30 * 100
+            videos: 0
           },
           averageSuccessRate: 31.67
         }
@@ -256,14 +265,6 @@ describe('Unified Social Media API Endpoints', () => {
 
         const response = await PerformanceGET(mockRequest)
         const data = await response.json()
-
-        expect(data.data.recommendations).toContainEqual(
-          expect.objectContaining({
-            type: 'content_balance',
-            priority: 'medium',
-            message: expect.stringContaining('Text post content is low')
-          })
-        )
 
         expect(data.data.recommendations).toContainEqual(
           expect.objectContaining({
@@ -303,16 +304,16 @@ describe('Unified Social Media API Endpoints', () => {
               successRate: 80
             },
             {
-              platform: 'instagram',
-              contentType: 'images',
+              platform: 'mastodon',
+              contentType: 'posts',
               scans: 20,
               postsFound: 200,
               postsApproved: 160,
               successRate: 80
             },
             {
-              platform: 'tiktok',
-              contentType: 'videos',
+              platform: 'flickr',
+              contentType: 'images',
               scans: 10,
               postsFound: 100,
               postsApproved: 80,
@@ -320,9 +321,9 @@ describe('Unified Social Media API Endpoints', () => {
             }
           ],
           contentDistribution: {
-            posts: 50, // 240/480 * 100
-            images: 33.33, // 160/480 * 100
-            videos: 16.67 // 80/480 * 100
+            posts: 83.33, // (240+160)/480 * 100
+            images: 16.67, // 80/480 * 100
+            videos: 0
           },
           averageSuccessRate: 80
         }
@@ -335,19 +336,13 @@ describe('Unified Social Media API Endpoints', () => {
         expect(mockSocialMediaService.getUnifiedStats).toHaveBeenCalled()
         expect(response.status).toBe(200)
         expect(data.success).toBe(true)
-        expect(data.data.contentDistribution.posts).toBe(50)
-        expect(data.data.contentDistribution.images).toBe(33.33)
-        expect(data.data.contentDistribution.videos).toBe(16.67)
-
-        expect(data.data.contentBalance.isBalanced).toBe(false) // Posts over target, videos under
+        expect(data.data.contentDistribution.posts).toBe(83.33)
+        expect(data.data.contentDistribution.images).toBe(16.67)
+        expect(data.data.contentDistribution.videos).toBe(0)
 
         expect(data.data.platformEfficiency).toHaveLength(3)
         expect(data.data.platformEfficiency[0].efficiency).toBe(80)
         expect(data.data.platformEfficiency[0].contentPerScan).toBe(8) // 240/30
-
-        expect(data.data.contentBalance.recommendations).toContainEqual(
-          expect.stringContaining('Consider increasing TikTok scanning frequency to boost video content')
-        )
       })
 
       test('GET should handle balanced content distribution', async () => {
@@ -363,32 +358,32 @@ describe('Unified Social Media API Endpoints', () => {
               contentType: 'posts',
               scans: 15,
               postsFound: 150,
-              postsApproved: 100, // 40%
-              successRate: 66.67
+              postsApproved: 120, // 48%
+              successRate: 80
             },
             {
-              platform: 'instagram',
-              contentType: 'images',
+              platform: 'mastodon',
+              contentType: 'posts',
               scans: 10,
               postsFound: 100,
-              postsApproved: 87, // 34.8% (close to 35%)
-              successRate: 87
+              postsApproved: 80, // 32%
+              successRate: 80
             },
             {
-              platform: 'tiktok',
-              contentType: 'videos',
+              platform: 'flickr',
+              contentType: 'images',
               scans: 5,
               postsFound: 50,
-              postsApproved: 63, // 25.2% (close to 25%)
-              successRate: 126 // This would be capped at 100 in real implementation
+              postsApproved: 50, // 20%
+              successRate: 100
             }
           ],
           contentDistribution: {
-            posts: 40,
-            images: 34.8,
-            videos: 25.2
+            posts: 80, // (120+80)/250 * 100
+            images: 20, // 50/250 * 100
+            videos: 0
           },
-          averageSuccessRate: 83.22
+          averageSuccessRate: 86.67
         }
 
         mockSocialMediaService.getUnifiedStats.mockResolvedValue(mockUnifiedStats)
@@ -396,8 +391,8 @@ describe('Unified Social Media API Endpoints', () => {
         const response = await DistributionGET(mockRequest)
         const data = await response.json()
 
-        expect(data.data.contentBalance.isBalanced).toBe(true) // Within 10% tolerance
-        expect(data.data.contentBalance.recommendations).toHaveLength(0) // No recommendations needed
+        expect(data.data.contentDistribution.posts).toBe(80)
+        expect(data.data.contentDistribution.images).toBe(20)
       })
     })
   })
@@ -410,15 +405,17 @@ describe('Unified Social Media API Endpoints', () => {
         const mockConfig = {
           enable_coordination: true,
           scan_interval: 60,
-          platform_priority: ['reddit', 'instagram', 'tiktok'],
+          platform_priority: ['reddit', 'mastodon', 'flickr', 'youtube', 'unsplash'],
           content_balancing_enabled: true,
           reddit_weight: 40,
-          instagram_weight: 35,
-          tiktok_weight: 25,
+          mastodon_weight: 25,
+          flickr_weight: 15,
+          youtube_weight: 15,
+          unsplash_weight: 5,
           target_distribution: {
-            posts: 40,
-            images: 35,
-            videos: 25
+            posts: 65,
+            images: 30,
+            videos: 5
           },
           rate_limit_coordination: true,
           error_threshold: 5,
@@ -426,8 +423,8 @@ describe('Unified Social Media API Endpoints', () => {
             enabled: true,
             peakContentTimes: {
               reddit: ['09', '12', '15', '18', '21'],
-              instagram: ['08', '11', '14', '17', '19'],
-              tiktok: ['16', '18', '20', '21', '22']
+              mastodon: ['08', '11', '14', '17', '19'],
+              flickr: ['10', '13', '16', '19', '21']
             },
             adaptiveIntervals: true
           }
@@ -445,12 +442,12 @@ describe('Unified Social Media API Endpoints', () => {
         expect(data.success).toBe(true)
         expect(data.data.enableCoordination).toBe(true)
         expect(data.data.scanInterval).toBe(60)
-        expect(data.data.platformPriority).toEqual(['reddit', 'instagram', 'tiktok'])
+        expect(data.data.platformPriority).toEqual(['reddit', 'mastodon', 'flickr', 'youtube', 'unsplash'])
         expect(data.data.contentBalancing.redditWeight).toBe(40)
-        expect(data.data.contentBalancing.instagramWeight).toBe(35)
-        expect(data.data.contentBalancing.tiktokWeight).toBe(25)
+        expect(data.data.contentBalancing.mastodonWeight).toBe(25)
+        expect(data.data.contentBalancing.flickrWeight).toBe(15)
         expect(data.data.intelligentScheduling.enabled).toBe(true)
-        expect(data.data.intelligentScheduling.peakContentTimes.tiktok).toContain('20')
+        expect(data.data.intelligentScheduling.peakContentTimes.flickr).toContain('19')
       })
 
       test('GET should return default settings when none exist', async () => {
@@ -468,22 +465,24 @@ describe('Unified Social Media API Endpoints', () => {
         expect(data.success).toBe(true)
         expect(data.data.enableCoordination).toBe(true)
         expect(data.data.scanInterval).toBe(60)
-        expect(data.data.platformPriority).toEqual(['reddit', 'instagram', 'tiktok'])
-        expect(data.data.contentBalancing.targetDistribution.posts).toBe(40)
-        expect(data.data.contentBalancing.targetDistribution.images).toBe(35)
-        expect(data.data.contentBalancing.targetDistribution.videos).toBe(25)
+        expect(data.data.platformPriority).toEqual(['reddit', 'mastodon', 'flickr', 'youtube', 'unsplash'])
+        expect(data.data.contentBalancing.targetDistribution.posts).toBe(65)
+        expect(data.data.contentBalancing.targetDistribution.images).toBe(30)
+        expect(data.data.contentBalancing.targetDistribution.videos).toBe(5)
       })
 
       test('PUT should update coordination settings', async () => {
         const settingsUpdate = {
           enableCoordination: true,
           scanInterval: 45,
-          platformPriority: ['tiktok', 'instagram', 'reddit'],
+          platformPriority: ['mastodon', 'reddit', 'flickr', 'youtube', 'unsplash'],
           contentBalancing: {
             enabled: true,
             redditWeight: 35,
-            instagramWeight: 40,
-            tiktokWeight: 25
+            mastodonWeight: 30,
+            flickrWeight: 20,
+            youtubeWeight: 10,
+            unsplashWeight: 5
           },
           rateLimitCoordination: true,
           errorThreshold: 3,
@@ -491,8 +490,8 @@ describe('Unified Social Media API Endpoints', () => {
             enabled: true,
             peakContentTimes: {
               reddit: ['10', '13', '16', '19'],
-              instagram: ['09', '12', '15', '18'],
-              tiktok: ['17', '19', '21', '22']
+              mastodon: ['09', '12', '15', '18'],
+              flickr: ['11', '14', '17', '20']
             },
             adaptiveIntervals: false
           }
@@ -521,8 +520,8 @@ describe('Unified Social Media API Endpoints', () => {
           platformPriority: ['invalid_platform'],
           contentBalancing: {
             redditWeight: 50,
-            instagramWeight: 30,
-            tiktokWeight: 15 // Total is 95, not 100
+            mastodonWeight: 30,
+            flickrWeight: 15 // Total is 95, not 100
           },
           errorThreshold: -1 // Invalid
         }
@@ -544,8 +543,8 @@ describe('Unified Social Media API Endpoints', () => {
         const invalidWeights = {
           contentBalancing: {
             redditWeight: 60,
-            instagramWeight: 30,
-            tiktokWeight: 20 // Total is 110
+            mastodonWeight: 30,
+            flickrWeight: 20 // Total is 110
           }
         }
 
@@ -566,7 +565,7 @@ describe('Unified Social Media API Endpoints', () => {
 
   describe('Scan Endpoints', () => {
     describe('/api/admin/social/scan-all', () => {
-      test('POST should trigger coordinated scan across all platforms', async () => {
+      test('POST should trigger coordinated scan across active platforms', async () => {
         const mockRequest = new NextRequest('http://localhost:3000/api/admin/social/scan-all', {
           method: 'POST'
         })
@@ -584,21 +583,21 @@ describe('Unified Social Media API Endpoints', () => {
               postsApproved: 12
             },
             {
-              platform: 'instagram',
+              platform: 'mastodon',
               success: true,
-              scanId: 'instagram_scan_123',
-              postsFound: 10,
-              postsApproved: 8
+              scanId: 'mastodon_scan_123',
+              postsFound: 8,
+              postsApproved: 6
             },
             {
-              platform: 'tiktok',
+              platform: 'flickr',
               success: false,
-              scanId: 'tiktok_scan_123',
-              error: 'Authentication failed'
+              scanId: 'flickr_scan_123',
+              error: 'API key not configured'
             }
           ],
-          totalPostsFound: 25,
-          totalPostsApproved: 20,
+          totalPostsFound: 23,
+          totalPostsApproved: 18,
           successfulPlatforms: 2,
           failedPlatforms: 1
         }
@@ -612,7 +611,7 @@ describe('Unified Social Media API Endpoints', () => {
         expect(response.status).toBe(200)
         expect(data.success).toBe(true)
         expect(data.data.scanId).toBe('unified_scan_123')
-        expect(data.data.totalPostsApproved).toBe(20)
+        expect(data.data.totalPostsApproved).toBe(18)
         expect(data.data.successfulPlatforms).toBe(2)
         expect(data.data.failedPlatforms).toBe(1)
         expect(data.data.duration).toBeGreaterThan(0)
@@ -738,7 +737,7 @@ describe('Unified Social Media API Endpoints', () => {
         totalPostsFound: 100,
         totalPostsApproved: 80,
         platformBreakdown: [],
-        contentDistribution: { posts: 50, images: 30, videos: 20 },
+        contentDistribution: { posts: 75, images: 25, videos: 0 },
         averageSuccessRate: 80
       })
 

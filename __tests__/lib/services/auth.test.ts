@@ -221,16 +221,21 @@ describe('AuthService', () => {
     it('should reject invalid JWT format', () => {
       const invalidTokens = [
         'invalid-token',
-        'only.two.parts',
+        'only.two',  // Actually only 2 parts
         'too.many.parts.here.extra',
         'header..signature',
         '.payload.signature',
         'header.payload.',
-        ''
+        '',
+        'invalid-chars!@#.test.token'  // Invalid characters
       ]
 
       invalidTokens.forEach(token => {
-        expect(AuthService.isValidTokenFormat(token)).toBe(false)
+        const result = AuthService.isValidTokenFormat(token)
+        if (result === true) {
+          console.log(`Token "${token}" unexpectedly passed validation`)
+        }
+        expect(result).toBe(false)
       })
     })
   })

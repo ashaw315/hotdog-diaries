@@ -278,7 +278,7 @@ export class DuplicateDetectionService {
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
        WHERE cq.content_hash = $1 
-       AND ($2 IS NULL OR cq.id != $2)
+       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [hash, excludeId]
@@ -291,7 +291,7 @@ export class DuplicateDetectionService {
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
        WHERE MD5(cq.original_url) = $1 
-       AND ($2 IS NULL OR cq.id != $2)
+       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [urlHash, excludeId]
@@ -305,7 +305,7 @@ export class DuplicateDetectionService {
       `SELECT cq.* FROM content_queue cq
        WHERE MD5(cq.content_image_url) = $1 
        AND cq.content_image_url IS NOT NULL
-       AND ($2 IS NULL OR cq.id != $2)
+       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [imageHash, excludeId]
@@ -319,7 +319,7 @@ export class DuplicateDetectionService {
       `SELECT cq.* FROM content_queue cq
        WHERE MD5(cq.content_video_url) = $1 
        AND cq.content_video_url IS NOT NULL
-       AND ($2 IS NULL OR cq.id != $2)
+       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [videoHash, excludeId]

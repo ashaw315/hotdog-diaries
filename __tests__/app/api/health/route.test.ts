@@ -1,8 +1,16 @@
 import { GET, HEAD } from '@/app/api/health/route'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+// Mock dependencies
+jest.mock('@/lib/db', () => ({
+  db: {
+    healthCheck: jest.fn().mockResolvedValue({ connected: true, latency: 10 })
+  }
+}))
 
 // Mock NextResponse
 jest.mock('next/server', () => ({
+  NextRequest: jest.requireActual('next/server').NextRequest,
   NextResponse: {
     json: jest.fn(),
   },
@@ -32,7 +40,8 @@ describe('/api/health Route', () => {
       const mockJson = jest.fn()
       ;(NextResponse.json as jest.Mock).mockImplementation(mockJson)
 
-      await GET()
+      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
+      await GET(mockRequest)
 
       expect(mockJson).toHaveBeenCalledWith(
         {
@@ -61,7 +70,8 @@ describe('/api/health Route', () => {
         throw new Error('Uptime error')
       })
 
-      await GET()
+      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
+      await GET(mockRequest)
 
       expect(mockJson).toHaveBeenCalledWith(
         {
@@ -83,7 +93,8 @@ describe('/api/health Route', () => {
         throw 'String error'
       })
 
-      await GET()
+      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
+      await GET(mockRequest)
 
       expect(mockJson).toHaveBeenCalledWith(
         {
@@ -103,7 +114,8 @@ describe('/api/health Route', () => {
       const mockJson = jest.fn()
       ;(NextResponse.json as jest.Mock).mockImplementation(mockJson)
 
-      await GET()
+      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
+      await GET(mockRequest)
 
       expect(mockJson).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -118,7 +130,8 @@ describe('/api/health Route', () => {
 
   describe('HEAD /api/health', () => {
     it('returns empty response with 200 status', async () => {
-      const response = await HEAD()
+      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'HEAD' })
+      const response = await HEAD(mockRequest)
 
       expect(response).toBeInstanceOf(Response)
       expect(response.status).toBe(200)

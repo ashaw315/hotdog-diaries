@@ -5,7 +5,7 @@ describe('ContentHasher', () => {
     it('should generate consistent hash for same content', () => {
       const content = {
         content_text: 'Amazing hotdog content!',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const hash1 = ContentHasher.generateHash(content)
@@ -19,12 +19,12 @@ describe('ContentHasher', () => {
     it('should generate different hash for different content', () => {
       const content1 = {
         content_text: 'First hotdog content',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const content2 = {
         content_text: 'Second hotdog content',
-        original_url: 'https://twitter.com/user/status/456'
+        original_url: 'https://reddit.com/r/food/comments/456'
       }
 
       const hash1 = ContentHasher.generateHash(content1)
@@ -38,7 +38,7 @@ describe('ContentHasher', () => {
         content_text: 'Text content',
         content_image_url: 'https://example.com/image.jpg',
         content_video_url: 'https://youtube.com/watch?v=abc123',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const hash = ContentHasher.generateHash(content)
@@ -49,12 +49,12 @@ describe('ContentHasher', () => {
     it('should normalize text content', () => {
       const content1 = {
         content_text: 'Amazing   HOTDOG  content!!!',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const content2 = {
         content_text: 'amazing hotdog content',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const hash1 = ContentHasher.generateHash(content1)
@@ -66,12 +66,12 @@ describe('ContentHasher', () => {
     it('should normalize URLs', () => {
       const content1 = {
         content_text: 'Test content',
-        original_url: 'https://Twitter.com/User/Status/123?utm_source=test&ref=abc'
+        original_url: 'https://Reddit.com/r/Hotdogs/Comments/123?utm_source=test&ref=abc'
       }
 
       const content2 = {
         content_text: 'Test content',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const hash1 = ContentHasher.generateHash(content1)
@@ -83,7 +83,7 @@ describe('ContentHasher', () => {
 
   describe('generateUrlHash', () => {
     it('should generate hash from URL only', () => {
-      const url = 'https://twitter.com/user/status/123'
+      const url = 'https://reddit.com/r/hotdogs/comments/123'
       const hash = ContentHasher.generateUrlHash(url)
 
       expect(typeof hash).toBe('string')
@@ -91,8 +91,8 @@ describe('ContentHasher', () => {
     })
 
     it('should normalize URLs for URL hash', () => {
-      const url1 = 'https://Twitter.com/User/Status/123?utm_source=test'
-      const url2 = 'https://twitter.com/user/status/123'
+      const url1 = 'https://Reddit.com/r/Hotdogs/Comments/123?utm_source=test'
+      const url2 = 'https://reddit.com/r/hotdogs/comments/123'
 
       const hash1 = ContentHasher.generateUrlHash(url1)
       const hash2 = ContentHasher.generateUrlHash(url2)
@@ -105,12 +105,12 @@ describe('ContentHasher', () => {
     it('should detect identical URLs', () => {
       const content1 = {
         content_text: 'Different text 1',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const content2 = {
         content_text: 'Different text 2',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const similar = ContentHasher.areSimilar(content1, content2)
@@ -121,13 +121,13 @@ describe('ContentHasher', () => {
       const content1 = {
         content_text: 'First post',
         content_image_url: 'https://imgur.com/abc123.jpg',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const content2 = {
         content_text: 'Second post',
         content_image_url: 'https://imgur.com/abc123.jpg',
-        original_url: 'https://twitter.com/user/status/456'
+        original_url: 'https://reddit.com/r/food/comments/456'
       }
 
       const similar = ContentHasher.areSimilar(content1, content2)
@@ -138,13 +138,13 @@ describe('ContentHasher', () => {
       const content1 = {
         content_text: 'First video',
         content_video_url: 'https://youtube.com/watch?v=abc123',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const content2 = {
         content_text: 'Second video',
         content_video_url: 'https://youtube.com/watch?v=abc123',
-        original_url: 'https://twitter.com/user/status/456'
+        original_url: 'https://reddit.com/r/food/comments/456'
       }
 
       const similar = ContentHasher.areSimilar(content1, content2)
@@ -154,12 +154,12 @@ describe('ContentHasher', () => {
     it('should detect identical text content', () => {
       const content1 = {
         content_text: 'Amazing hotdog content!',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const content2 = {
         content_text: 'Amazing   HOTDOG  content!!!',
-        original_url: 'https://twitter.com/user/status/456'
+        original_url: 'https://reddit.com/r/food/comments/456'
       }
 
       const similar = ContentHasher.areSimilar(content1, content2)
@@ -169,12 +169,12 @@ describe('ContentHasher', () => {
     it('should detect similar text content', () => {
       const content1 = {
         content_text: 'amazing delicious hotdog content from restaurant',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const content2 = {
         content_text: 'amazing delicious hotdog content from restaurant today',
-        original_url: 'https://twitter.com/user/status/456'
+        original_url: 'https://reddit.com/r/food/comments/456'
       }
 
       const similar = ContentHasher.areSimilar(content1, content2)
@@ -184,12 +184,12 @@ describe('ContentHasher', () => {
     it('should not detect dissimilar content', () => {
       const content1 = {
         content_text: 'Amazing hotdog content',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const content2 = {
         content_text: 'Completely different pizza content',
-        original_url: 'https://instagram.com/p/different'
+        original_url: 'https://flickr.com/photos/user/different'
       }
 
       const similar = ContentHasher.areSimilar(content1, content2)
@@ -202,7 +202,7 @@ describe('ContentHasher', () => {
       const content = {
         content_text: 'Test content',
         content_image_url: 'https://imgur.com/abc123.jpg',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const hashes = ContentHasher.generateMultipleHashes(content)
@@ -221,7 +221,7 @@ describe('ContentHasher', () => {
     it('should not generate text hash when no text', () => {
       const content = {
         content_image_url: 'https://imgur.com/abc123.jpg',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const hashes = ContentHasher.generateMultipleHashes(content)
@@ -235,7 +235,7 @@ describe('ContentHasher', () => {
     it('should not generate media hash when no media', () => {
       const content = {
         content_text: 'Text only content',
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/comments/123'
       }
 
       const hashes = ContentHasher.generateMultipleHashes(content)

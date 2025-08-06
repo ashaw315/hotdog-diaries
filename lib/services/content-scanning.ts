@@ -4,7 +4,7 @@ import { redditScanningService } from './reddit-scanning'
 import { mastodonScanningService } from './mastodon-scanning'
 import { flickrScanningService } from './flickr-scanning'
 import { youtubeScanningService } from './youtube-scanning'
-import { unsplashScanningService } from './unsplash'
+import { unsplashScanningService } from './unsplash-scanning'
 
 export interface ScanConfig {
   id: number

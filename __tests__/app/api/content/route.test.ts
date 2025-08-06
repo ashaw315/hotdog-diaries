@@ -30,8 +30,8 @@ describe('/api/content', () => {
           id: 1,
           content_text: 'Test hotdog content',
           content_type: ContentType.TEXT,
-          source_platform: SourcePlatform.TWITTER,
-          original_url: 'https://twitter.com/test/1',
+          source_platform: SourcePlatform.REDDIT,
+          original_url: 'https://reddit.com/r/hotdogs/comments/1',
           is_posted: true,
           is_approved: true,
           posted_at: new Date()
@@ -100,7 +100,7 @@ describe('/api/content', () => {
       mockContentService.getPostedContent.mockResolvedValue(mockResult)
 
       const request = createMockRequest(
-        'http://localhost:3000/api/content?content_type=image&source_platform=instagram&author=testuser'
+        'http://localhost:3000/api/content?content_type=image&source_platform=flickr&author=testuser'
       )
       const response = await GET(request)
 
@@ -109,7 +109,7 @@ describe('/api/content', () => {
         { page: 1, limit: 10 },
         {
           content_type: 'image',
-          source_platform: 'instagram',
+          source_platform: 'flickr',
           author: 'testuser'
         }
       )
@@ -156,8 +156,8 @@ describe('/api/content', () => {
       const contentData = {
         content_text: 'New hotdog content',
         content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/test/new',
+        source_platform: SourcePlatform.REDDIT,
+        original_url: 'https://reddit.com/r/hotdogs/comments/new',
         original_author: 'testuser'
       }
 
@@ -192,7 +192,7 @@ describe('/api/content', () => {
     it('should handle validation errors', async () => {
       const invalidData = {
         content_type: 'invalid',
-        source_platform: SourcePlatform.TWITTER,
+        source_platform: SourcePlatform.REDDIT,
         original_url: 'invalid-url'
       }
 
@@ -216,8 +216,8 @@ describe('/api/content', () => {
       const contentData = {
         content_text: 'Duplicate content',
         content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/test/duplicate'
+        source_platform: SourcePlatform.REDDIT,
+        original_url: 'https://reddit.com/r/hotdogs/comments/duplicate'
       }
 
       mockContentService.createContent.mockRejectedValue(

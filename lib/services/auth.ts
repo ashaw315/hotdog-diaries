@@ -23,6 +23,9 @@ export class AuthService {
    * Hash a password using bcrypt
    */
   static async hashPassword(password: string): Promise<string> {
+    if (!password || password.length === 0) {
+      throw new Error('Password cannot be empty')
+    }
     try {
       const salt = await bcrypt.genSalt(this.SALT_ROUNDS)
       return await bcrypt.hash(password, salt)
@@ -35,6 +38,9 @@ export class AuthService {
    * Validate a password against its hash
    */
   static async validatePassword(password: string, hash: string): Promise<boolean> {
+    if (!hash || hash.length < 10 || !hash.startsWith('$2b$') && !hash.startsWith('$2a$')) {
+      throw new Error('Invalid hash format')
+    }
     try {
       return await bcrypt.compare(password, hash)
     } catch (error) {
@@ -174,9 +180,18 @@ export class AuthService {
    * Validate token format
    */
   static isValidTokenFormat(token: string): boolean {
+    if (!token || typeof token !== 'string') return false
+    
     // Basic JWT format validation (3 parts separated by dots)
     const parts = token.split('.')
-    return parts.length === 3 && parts.every(part => part.length > 0)
+    if (parts.length !== 3) return false
+    
+    // Each part must be non-empty and base64-like
+    return parts.every(part => {
+      if (part.length === 0) return false
+      // Check if it's valid base64url (basic check) - must have content and valid chars
+      return part.length > 0 && /^[A-Za-z0-9_-]+$/.test(part)
+    })
   }
 
   /**

@@ -56,7 +56,7 @@ describe('ContentValidator', () => {
       const errors = ContentValidator.validate(invalidData)
       expect(errors).toContainEqual({
         field: 'source_platform',
-        message: 'Invalid source platform. Must be one of: twitter, instagram, facebook, reddit, tiktok'
+        message: 'Invalid source platform. Must be one of: reddit, mastodon, flickr, youtube, unsplash, news'
       })
     })
 
@@ -99,7 +99,7 @@ describe('ContentValidator', () => {
         content_text: 'Test content',
         content_type: ContentType.IMAGE,
         source_platform: SourcePlatform.INSTAGRAM,
-        original_url: 'https://instagram.com/p/123'
+        original_url: 'https://flickr.com/photos/user/123'
       }
 
       const errors = ContentValidator.validate(invalidData)
@@ -114,7 +114,7 @@ describe('ContentValidator', () => {
         content_text: 'Test content',
         content_type: ContentType.VIDEO,
         source_platform: SourcePlatform.TIKTOK,
-        original_url: 'https://tiktok.com/@user/video/123'
+        original_url: 'https://youtube.com/watch?v=123'
       }
 
       const errors = ContentValidator.validate(invalidData)
@@ -129,7 +129,7 @@ describe('ContentValidator', () => {
         content_image_url: 'not-an-image-url',
         content_type: ContentType.IMAGE,
         source_platform: SourcePlatform.INSTAGRAM,
-        original_url: 'https://instagram.com/p/123'
+        original_url: 'https://flickr.com/photos/user/123'
       }
 
       const errors = ContentValidator.validate(invalidData)
@@ -144,7 +144,7 @@ describe('ContentValidator', () => {
         content_video_url: 'not-a-video-url',
         content_type: ContentType.VIDEO,
         source_platform: SourcePlatform.TIKTOK,
-        original_url: 'https://tiktok.com/@user/video/123'
+        original_url: 'https://youtube.com/watch?v=123'
       }
 
       const errors = ContentValidator.validate(invalidData)
@@ -241,7 +241,7 @@ describe('ContentValidator', () => {
       expect(ContentValidator.isValidVideoUrl('https://youtube.com/watch?v=abc123')).toBe(true)
       expect(ContentValidator.isValidVideoUrl('https://youtu.be/abc123')).toBe(true)
       expect(ContentValidator.isValidVideoUrl('https://vimeo.com/123456')).toBe(true)
-      expect(ContentValidator.isValidVideoUrl('https://tiktok.com/@user/video/123')).toBe(true)
+      expect(ContentValidator.isValidVideoUrl('https://youtube.com/watch?v=123')).toBe(true)
       expect(ContentValidator.isValidVideoUrl('https://v.redd.it/abc123')).toBe(true)
     })
 

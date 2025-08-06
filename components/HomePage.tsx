@@ -50,10 +50,9 @@ export default function HomePage() {
         <h2 className="text-center mb-md">Latest Hotdog Posts</h2>
         
         <ContentFeed
-          apiEndpoint="/api/content"
-          pageSize={6}
-          emptyMessage="No hotdog content posted yet. Check back soon for the latest posts!"
-          errorMessage="Failed to load hotdog content. Please try again later."
+          type="posted"
+          limit={6}
+          showActions={false}
         />
       </div>
     </div>

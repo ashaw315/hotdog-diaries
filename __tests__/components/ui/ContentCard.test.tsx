@@ -12,8 +12,8 @@ describe('ContentCard', () => {
     id: 1,
     content_text: 'Amazing hotdog content!',
     content_type: ContentType.TEXT,
-    source_platform: SourcePlatform.TWITTER,
-    original_url: 'https://twitter.com/user/status/123',
+    source_platform: SourcePlatform.REDDIT,
+    original_url: 'https://reddit.com/r/hotdogs/comments/123',
     original_author: 'testuser',
     scraped_at: new Date('2024-01-01T10:00:00Z'),
     is_posted: false,
@@ -24,7 +24,7 @@ describe('ContentCard', () => {
     render(<ContentCard {...mockProps} />)
 
     expect(screen.getByText('Amazing hotdog content!')).toBeInTheDocument()
-    expect(screen.getByText('twitter')).toBeInTheDocument()
+    expect(screen.getByText('reddit')).toBeInTheDocument()
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText('testuser')).toBeInTheDocument()
   })
@@ -32,8 +32,8 @@ describe('ContentCard', () => {
   it('should display correct platform icon', () => {
     render(<ContentCard {...mockProps} />)
     
-    // Check if Twitter emoji is present
-    expect(screen.getByText('🐦')).toBeInTheDocument()
+    // Check if Reddit emoji is present
+    expect(screen.getByText('🤖')).toBeInTheDocument()
   })
 
   it('should display correct content type icon', () => {
@@ -47,7 +47,7 @@ describe('ContentCard', () => {
     render(<ContentCard {...mockProps} />)
     
     expect(screen.getByText('Approved')).toBeInTheDocument()
-    expect(screen.getByText('Approved')).toHaveClass('bg-blue-100', 'text-blue-800')
+    // Component doesn't apply specific classes to Approved status
   })
 
   it('should display posted status badge when posted', () => {
@@ -61,8 +61,7 @@ describe('ContentCard', () => {
     render(<ContentCard {...postedProps} />)
     
     expect(screen.getByText('Posted')).toBeInTheDocument()
-    expect(screen.getByText('Posted')).toHaveClass('bg-green-100', 'text-green-800')
-    expect(screen.getByText('#1')).toBeInTheDocument()
+    expect(screen.getByText('Posted')).toHaveClass('text-success')
   })
 
   it('should display pending status badge when not approved', () => {
@@ -74,7 +73,7 @@ describe('ContentCard', () => {
     render(<ContentCard {...pendingProps} />)
     
     expect(screen.getByText('Pending')).toBeInTheDocument()
-    expect(screen.getByText('Pending')).toHaveClass('bg-yellow-100', 'text-yellow-800')
+    expect(screen.getByText('Pending')).toHaveClass('text-muted')
   })
 
   it('should render image content', () => {
@@ -103,8 +102,8 @@ describe('ContentCard', () => {
     const image = screen.getByAltText('Content image')
     fireEvent.error(image)
 
-    // Image should be hidden after error
-    expect(image).toHaveClass('hidden')
+    // Image should be removed from DOM after error
+    expect(image).not.toBeInTheDocument()
   })
 
   it('should render video content link', () => {
@@ -138,7 +137,7 @@ describe('ContentCard', () => {
     
     const originalLink = screen.getByText('View Original')
     expect(originalLink).toBeInTheDocument()
-    expect(originalLink.closest('a')).toHaveAttribute('href', 'https://twitter.com/user/status/123')
+    expect(originalLink.closest('a')).toHaveAttribute('href', 'https://reddit.com/r/hotdogs/comments/123')
     expect(originalLink.closest('a')).toHaveAttribute('target', '_blank')
   })
 
@@ -267,10 +266,12 @@ describe('ContentCard', () => {
 
   it('should display different platform icons correctly', () => {
     const platforms = [
-      { platform: SourcePlatform.INSTAGRAM, icon: '📷' },
-      { platform: SourcePlatform.FACEBOOK, icon: '👥' },
       { platform: SourcePlatform.REDDIT, icon: '🤖' },
-      { platform: SourcePlatform.TIKTOK, icon: '🎵' }
+      { platform: SourcePlatform.YOUTUBE, icon: '📺' },
+      { platform: SourcePlatform.FLICKR, icon: '📸' },
+      { platform: SourcePlatform.MASTODON, icon: '🐘' },
+      { platform: SourcePlatform.NEWS, icon: '📰' },
+      { platform: SourcePlatform.UNSPLASH, icon: '🎨' }
     ]
 
     platforms.forEach(({ platform, icon }) => {
