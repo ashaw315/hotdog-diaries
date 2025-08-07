@@ -46,8 +46,8 @@ export interface ProcessingQueue {
 
 export class ContentProcessor {
   private static readonly DEFAULT_CONFIG: ProcessingConfig = {
-    autoApprovalThreshold: 0.65,
-    autoRejectionThreshold: 0.3,
+    autoApprovalThreshold: 0.55,  // Lowered from 0.65 to approve more visual content
+    autoRejectionThreshold: 0.25, // Lowered from 0.3 to be less strict
     requireManualReview: false,
     enableDuplicateDetection: true,
     enableSpamFilter: true,

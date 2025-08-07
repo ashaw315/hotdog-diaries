@@ -262,13 +262,38 @@ export class AutomatedPostingService {
       // Get balanced selection across platforms
       return await this.getBalancedPlatformContent(maxItems, whereClause, queryParams)
     } else {
-      // Simple selection by quality score
+      // Visual-content-priority selection with platform variety
       const query = `
-        SELECT cq.*
-        FROM content_queue cq
-        LEFT JOIN content_analysis ca ON cq.id = ca.content_queue_id
-        WHERE ${whereClause}
-        ORDER BY RANDOM(), ca.confidence_score DESC NULLS LAST
+        WITH ranked_content AS (
+          SELECT 
+            cq.*,
+            ca.confidence_score,
+            -- Priority scoring: Visual content first, then variety, then quality
+            CASE 
+              WHEN cq.content_type = 'video' THEN 4
+              WHEN cq.content_type = 'image' THEN 3
+              WHEN cq.content_type = 'mixed' THEN 2
+              ELSE 1
+            END as type_priority,
+            -- Platform variety scoring - deprioritize recently posted platforms
+            (
+              SELECT COUNT(*) 
+              FROM content_queue recent 
+              WHERE recent.source_platform = cq.source_platform 
+              AND recent.is_posted = true
+              AND recent.posted_at > NOW() - INTERVAL '24 hours'
+            ) as recent_platform_posts
+          FROM content_queue cq
+          LEFT JOIN content_analysis ca ON cq.id = ca.content_queue_id
+          WHERE ${whereClause}
+        )
+        SELECT *
+        FROM ranked_content
+        ORDER BY 
+          type_priority DESC,                    -- Visual content first
+          recent_platform_posts ASC,            -- Platform variety
+          confidence_score DESC NULLS LAST,     -- Quality
+          RANDOM()                              -- Final randomization
         LIMIT $${queryParams.length + 1}
       `
       
@@ -300,7 +325,15 @@ export class AutomatedPostingService {
         WHERE ${whereClause}
           AND cq.source_platform = $${baseParams.length + 1}
           AND cq.id NOT IN (${selectedContent.map(c => c.id).join(',') || '0'})
-        ORDER BY RANDOM(), ca.confidence_score DESC NULLS LAST
+        ORDER BY 
+          CASE 
+            WHEN cq.content_type = 'video' THEN 4
+            WHEN cq.content_type = 'image' THEN 3
+            WHEN cq.content_type = 'mixed' THEN 2
+            ELSE 1
+          END DESC,                           -- Visual content first
+          ca.confidence_score DESC NULLS LAST,  -- Quality
+          RANDOM()                            -- Randomization
         LIMIT $${baseParams.length + 2}
       `
 

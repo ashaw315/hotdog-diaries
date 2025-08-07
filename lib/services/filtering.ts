@@ -420,40 +420,100 @@ export class FilteringService {
       const text = this.extractTextFromContent(content)
       const processingNotes: string[] = []
       
-      // *** TEMPORARY BYPASS: Simplified hotdog detection ***
-      // Simple keyword check instead of complex pattern matching
-      const simpleHotdogTerms = [
+      // *** ENHANCED: Platform-aware hotdog detection ***
+      // Expanded terms including slang, memes, and food-related terms
+      const hotdogTerms = [
         'hotdog', 'hot dog', 'hot-dog', 
         'sausage', 'frankfurter', 'wiener', 'bratwurst',
-        'corn dog', 'chili dog', 'mustard', 'ketchup', 'relish'
+        'corn dog', 'chili dog', 'mustard', 'ketchup', 'relish',
+        // Food-related terms that often appear with hotdog content
+        'grill', 'bbq', 'barbecue', 'bun', 'condiment', 'ballpark',
+        'stadium', 'fair food', 'street food', 'americana',
+        // Meme terms (especially for Imgur/Reddit)
+        'glizzy', 'weiner', 'tube meat', 'mystery meat',
+        'processed meat', 'link', 'dog'
       ]
       
       const lowerText = text.toLowerCase()
       let hasHotdogReference = false
+      let foundTerms: string[] = []
       
-      for (const term of simpleHotdogTerms) {
+      for (const term of hotdogTerms) {
         if (lowerText.includes(term)) {
           hasHotdogReference = true
+          foundTerms.push(term)
           processingNotes.push(`Found hotdog term: ${term}`)
-          break
         }
       }
       
-      if (!hasHotdogReference) {
-        processingNotes.push('No simple hotdog terms found')
+      // Platform-specific analysis boosts
+      const isVisualContent = content.content_type === 'image' || content.content_type === 'video'
+      const isFromVisualPlatform = ['imgur', 'tumblr', 'pixabay', 'youtube'].includes(content.source_platform)
+      
+      // For visual platforms, be more permissive even without explicit hotdog terms
+      let visualContentBoost = false
+      if (isVisualContent && isFromVisualPlatform && !hasHotdogReference) {
+        // Look for food/cooking related context that might indicate hotdog content
+        const foodContext = [
+          'food', 'eat', 'cooking', 'kitchen', 'recipe', 'meal',
+          'lunch', 'dinner', 'snack', 'yummy', 'tasty', 'delicious'
+        ]
+        
+        const hasFoodContext = foodContext.some(term => lowerText.includes(term))
+        if (hasFoodContext || text.length < 50) { // Short descriptions often on image posts
+          visualContentBoost = true
+          hasHotdogReference = true // Treat as potential hotdog content
+          processingNotes.push('Visual content boost applied - potential hotdog imagery')
+        }
+      }
+      
+      if (!hasHotdogReference && !visualContentBoost) {
+        processingNotes.push('No hotdog terms or visual content indicators found')
       }
       
       // *** BYPASS COMPLEX FILTERING - Only check for obvious spam/inappropriate ***
       const isObviousSpam = lowerText.includes('buy now') || lowerText.includes('click here') || lowerText.includes('limited time')
       const isObviousInappropriate = lowerText.includes('fuck') || lowerText.includes('shit') || lowerText.includes('porn')
       
-      // *** MUCH MORE PERMISSIVE CONFIDENCE SCORING ***
-      let confidence = 0.8  // Default high confidence
+      // *** PLATFORM-AWARE CONFIDENCE SCORING ***
+      let confidence = 0.8  // Default high confidence for hotdog terms
       
-      if (!hasHotdogReference) {
-        confidence = 0.2  // Low if no hotdog terms
+      // Apply platform-specific scoring adjustments
+      const platformBoosts = {
+        'imgur': 0.15,     // Boost for meme/image content
+        'tumblr': 0.12,    // Boost for creative visual content  
+        'lemmy': 0.08,     // Slight boost for community content
+        'youtube': 0.10,   // Boost for video content
+        'pixabay': 0.05,   // Already performs well, small boost
+        'reddit': 0.02     // Already performs well, tiny boost
       }
       
+      const platformBoost = platformBoosts[content.source_platform as keyof typeof platformBoosts] || 0
+      
+      // Base confidence calculation
+      if (!hasHotdogReference) {
+        if (visualContentBoost) {
+          confidence = 0.55 + platformBoost  // Medium confidence for visual content boost
+          processingNotes.push('Applied visual content confidence boost')
+        } else {
+          confidence = 0.2  // Low if no hotdog terms and no visual boost
+        }
+      } else {
+        // Has hotdog reference - apply platform boost
+        confidence = Math.min(0.95, confidence + platformBoost)
+        if (foundTerms.length > 1) {
+          confidence = Math.min(0.98, confidence + 0.1) // Multiple term bonus
+          processingNotes.push(`Multiple hotdog terms found: ${foundTerms.join(', ')}`)
+        }
+      }
+      
+      // Visual content gets additional boost
+      if (isVisualContent) {
+        confidence = Math.min(0.99, confidence + 0.08)
+        processingNotes.push('Visual content confidence boost applied')
+      }
+      
+      // Penalty for obvious spam/inappropriate
       if (isObviousSpam) {
         confidence = Math.max(0, confidence - 0.5)
         processingNotes.push('Obvious spam detected')

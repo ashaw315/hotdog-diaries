@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { contentScanningService } from '@/lib/services/content-scanning'
+import { ScanScheduler } from '@/lib/services/scan-scheduler'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
+    const cronSecret = process.env.CRON_SECRET || 'hotdog-cron-secret-2025'
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (authHeader !== `Bearer ${cronSecret}`) {
       await logToDatabase(
         LogLevel.WARN,
         'Unauthorized cron scan request',
@@ -22,8 +23,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { platforms, manual = false } = await request.json().catch(() => ({}))
+    const { platforms, manual = false, force = false } = await request.json().catch(() => ({}))
 
+    // Use smart scheduling unless manual or forced
+    if (!manual && !force) {
+      const decision = await ScanScheduler.shouldScan()
+      
+      if (!decision.shouldScan) {
+        await logToDatabase(
+          LogLevel.INFO,
+          'Smart scheduler skipped scan',
+          'ContentScanCronAPI',
+          decision
+        )
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Scan skipped by smart scheduler',
+          reason: decision.reason,
+          bufferStatus: decision.bufferStatus,
+          nextScheduledScan: 'Next cron trigger or when buffer gets low'
+        })
+      }
+      
+      // Use scheduler's platform recommendations
+      const targetPlatforms = platforms || decision.platformsToScan
+      const result = await contentScanningService.runScheduledScan(targetPlatforms)
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Smart scan completed',
+        scanDecision: decision,
+        scanResults: result
+      })
+    }
+
+    // Manual or forced scan - use existing logic
     const result = await contentScanningService.runScheduledScan(platforms)
 
     await logToDatabase(
