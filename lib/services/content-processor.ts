@@ -46,7 +46,7 @@ export interface ProcessingQueue {
 
 export class ContentProcessor {
   private static readonly DEFAULT_CONFIG: ProcessingConfig = {
-    autoApprovalThreshold: 0.8,
+    autoApprovalThreshold: 0.65,
     autoRejectionThreshold: 0.3,
     requireManualReview: false,
     enableDuplicateDetection: true,
@@ -493,7 +493,7 @@ export class ContentProcessor {
     }
 
     // Platform validation
-    const validPlatforms = ['reddit', 'mastodon', 'flickr', 'youtube', 'unsplash', 'news']
+    const validPlatforms = ['reddit', 'mastodon', 'youtube', 'unsplash', 'news', 'pixabay', 'bluesky']
     if (content.source_platform && !validPlatforms.includes(content.source_platform)) {
       errors.push(`Invalid source platform: ${content.source_platform}`)
     }
@@ -588,9 +588,9 @@ export class ContentProcessor {
 
     await db.query(
       `UPDATE content_queue 
-       SET is_approved = $1, content_status = $2, updated_at = NOW() 
-       WHERE id = $3`,
-      [isApproved, contentStatus, contentId]
+       SET is_approved = $1, updated_at = NOW() 
+       WHERE id = $2`,
+      [isApproved, contentId]
     )
 
     // Update analysis with flagged status

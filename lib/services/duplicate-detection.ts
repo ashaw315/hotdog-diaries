@@ -227,9 +227,9 @@ export class DuplicateDetectionService {
       for (const cluster of clusters) {
         try {
           if (!dryRun) {
-            // Keep the original and remove duplicates
+            // Mark duplicates as rejected instead of deleting them
             await db.query(
-              'DELETE FROM content_queue WHERE id = ANY($1)',
+              'UPDATE content_queue SET is_approved = false WHERE id = ANY($1)',
               [cluster.duplicateIds]
             )
             duplicatesRemoved += cluster.duplicateIds.length

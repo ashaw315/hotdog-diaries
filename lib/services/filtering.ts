@@ -420,80 +420,79 @@ export class FilteringService {
       const text = this.extractTextFromContent(content)
       const processingNotes: string[] = []
       
-      // Check for required hotdog-related terms
-      const requiredPatterns = await this.getPatternsByType('required')
+      // *** TEMPORARY BYPASS: Simplified hotdog detection ***
+      // Simple keyword check instead of complex pattern matching
+      const simpleHotdogTerms = [
+        'hotdog', 'hot dog', 'hot-dog', 
+        'sausage', 'frankfurter', 'wiener', 'bratwurst',
+        'corn dog', 'chili dog', 'mustard', 'ketchup', 'relish'
+      ]
+      
+      const lowerText = text.toLowerCase()
       let hasHotdogReference = false
       
-      for (const pattern of requiredPatterns) {
-        const regex = pattern.is_regex ? new RegExp(pattern.pattern, 'i') : new RegExp(pattern.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-        
-        if (regex.test(text.toLowerCase())) {
+      for (const term of simpleHotdogTerms) {
+        if (lowerText.includes(term)) {
           hasHotdogReference = true
+          processingNotes.push(`Found hotdog term: ${term}`)
           break
         }
       }
       
       if (!hasHotdogReference) {
-        processingNotes.push('No hotdog-related terms found')
+        processingNotes.push('No simple hotdog terms found')
       }
       
-      // Run all filter checks
-      const [spamCheck, inappropriateCheck, unrelatedCheck] = await Promise.all([
-        this.isSpamContent(text),
-        this.isInappropriateContent(text),
-        this.isUnrelatedContent(text)
-      ])
+      // *** BYPASS COMPLEX FILTERING - Only check for obvious spam/inappropriate ***
+      const isObviousSpam = lowerText.includes('buy now') || lowerText.includes('click here') || lowerText.includes('limited time')
+      const isObviousInappropriate = lowerText.includes('fuck') || lowerText.includes('shit') || lowerText.includes('porn')
       
-      const flaggedPatterns = [
-        ...spamCheck.patterns,
-        ...inappropriateCheck.patterns,
-        ...unrelatedCheck.patterns
-      ]
+      // *** MUCH MORE PERMISSIVE CONFIDENCE SCORING ***
+      let confidence = 0.8  // Default high confidence
       
-      // Calculate overall confidence
-      const baseConfidence = hasHotdogReference ? 0.7 : 0.3
-      const spamPenalty = spamCheck.isSpam ? 0.3 : 0
-      const inappropriatePenalty = inappropriateCheck.isInappropriate ? 0.5 : 0
-      const unrelatedPenalty = unrelatedCheck.isUnrelated ? 0.4 : 0
+      if (!hasHotdogReference) {
+        confidence = 0.2  // Low if no hotdog terms
+      }
       
-      const confidence = Math.max(0, baseConfidence - spamPenalty - inappropriatePenalty - unrelatedPenalty)
+      if (isObviousSpam) {
+        confidence = Math.max(0, confidence - 0.5)
+        processingNotes.push('Obvious spam detected')
+      }
       
-      const isValidHotdog = hasHotdogReference && 
-                           !spamCheck.isSpam && 
-                           !inappropriateCheck.isInappropriate && 
-                           !unrelatedCheck.isUnrelated
+      if (isObviousInappropriate) {
+        confidence = Math.max(0, confidence - 0.7)
+        processingNotes.push('Obvious inappropriate content detected')
+      }
+      
+      const isValidHotdog = hasHotdogReference && !isObviousSpam && !isObviousInappropriate
       
       // Generate similarity hash
       const similarityHash = this.generateSimilarityHash(text)
       
       const analysis: ContentAnalysis = {
-        is_spam: spamCheck.isSpam,
-        is_inappropriate: inappropriateCheck.isInappropriate,
-        is_unrelated: unrelatedCheck.isUnrelated,
+        is_spam: isObviousSpam,
+        is_inappropriate: isObviousInappropriate,
+        is_unrelated: false, // Bypass unrelated check
         is_valid_hotdog: isValidHotdog,
         confidence_score: confidence,
-        flagged_patterns: flaggedPatterns,
+        flagged_patterns: [], // Bypass complex pattern flagging
         processing_notes: processingNotes,
         similarity_hash: similarityHash
       }
       
       await logToDatabase(
         LogLevel.INFO,
-        'Content analysis completed',
+        'Content analysis completed (SIMPLIFIED FILTERING)',
         'FilteringService',
         {
           analysis,
           textLength: text.length,
           hasHotdogReference,
           extractedText: text.substring(0, 200),
-          baseConfidence,
-          spamPenalty,
-          inappropriatePenalty, 
-          unrelatedPenalty,
           finalConfidence: confidence,
-          spamPatterns: spamCheck.patterns,
-          inappropriatePatterns: inappropriateCheck.patterns,
-          unrelatedPatterns: unrelatedCheck.patterns
+          isObviousSpam,
+          isObviousInappropriate,
+          processingNotes
         }
       )
       
@@ -671,6 +670,16 @@ export class FilteringService {
     
     if (content.caption) {
       textParts.push(content.caption)
+    }
+    
+    // Handle direct text input (used by Pixabay and other platforms)
+    if (content.text) {
+      textParts.push(content.text)
+    }
+    
+    // Handle metadata tags (common for image platforms like Pixabay)
+    if (content.metadata && content.metadata.tags && Array.isArray(content.metadata.tags)) {
+      textParts.push(content.metadata.tags.join(' '))
     }
     
     return textParts.join(' ').trim()

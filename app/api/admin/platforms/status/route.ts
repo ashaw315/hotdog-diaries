@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { flickrScanningService } from '@/lib/services/flickr-scanning'
+import { blueskyService } from '@/lib/services/bluesky-scanning'
 import { youtubeScanningService } from '@/lib/services/youtube-scanning'
 import { unsplashScanningService } from '@/lib/services/unsplash-scanning'
 import { mastodonScanningService } from '@/lib/services/mastodon-scanning'
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Test all platform connections
     const platformTests = await Promise.allSettled([
-      testPlatformStatus('Flickr', flickrScanningService, !!process.env.FLICKR_API_KEY),
+      testPlatformStatus('Bluesky', blueskyService, false), // No API key needed
       testPlatformStatus('YouTube', youtubeScanningService, !!process.env.YOUTUBE_API_KEY),
       testPlatformStatus('Unsplash', unsplashScanningService, !!process.env.UNSPLASH_ACCESS_KEY),
       testPlatformStatus('Mastodon', mastodonScanningService, false) // No API key needed
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const platforms: PlatformStatus[] = []
     
     platformTests.forEach((result, index) => {
-      const platformNames = ['Flickr', 'YouTube', 'Unsplash', 'Mastodon']
+      const platformNames = ['Bluesky', 'YouTube', 'Unsplash', 'Mastodon']
       
       if (result.status === 'fulfilled') {
         platforms.push(result.value)
@@ -126,6 +126,9 @@ async function testPlatformStatus(
             status = 'mock'
             usingMockData = true
           }
+        } else if (name === 'Bluesky' && connectionResult.success) {
+          status = 'available'
+          usingMockData = false
         } else {
           status = connectionResult.success ? 'available' : 'mock'
         }
@@ -134,7 +137,7 @@ async function testPlatformStatus(
 
     // Add API key warnings to message
     let message = connectionResult.message
-    if (!hasApiKey && name !== 'Mastodon') {
+    if (!hasApiKey && name !== 'Mastodon' && name !== 'Bluesky') {
       message += ` (API key not configured)`
     }
 

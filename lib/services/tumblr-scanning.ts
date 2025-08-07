@@ -1,0 +1,491 @@
+import { FilteringService } from './filtering'
+import { ContentProcessor } from './content-processor'
+import { db, logToDatabase } from '@/lib/db'
+import { LogLevel } from '@/types'
+
+export interface TumblrPhoto {
+  caption: string
+  original_size: {
+    url: string
+    width: number
+    height: number
+  }
+  alt_sizes: Array<{
+    url: string
+    width: number
+    height: number
+  }>
+}
+
+export interface TumblrPost {
+  type: 'text' | 'photo' | 'quote' | 'link' | 'chat' | 'video' | 'audio'
+  blog_name: string
+  id: number
+  post_url: string
+  slug: string
+  date: string
+  timestamp: number
+  state: string
+  format: string
+  reblog_key: string
+  tags: string[]
+  short_url: string
+  summary: string
+  recommended_source?: string
+  recommended_color?: string
+  note_count: number
+  title?: string
+  body?: string
+  photos?: TumblrPhoto[]
+  caption?: string
+  trail?: any[]
+}
+
+export interface TumblrTaggedResponse {
+  meta: {
+    status: number
+    msg: string
+  }
+  response: TumblrPost[]
+}
+
+export interface ProcessedTumblrPost {
+  id: string
+  title: string
+  description: string
+  imageUrl?: string
+  author: string
+  postUrl: string
+  tags: string[]
+  noteCount: number
+  published: Date
+}
+
+export interface TumblrScanConfig {
+  isEnabled: boolean
+  scanInterval: number // minutes
+  maxPostsPerScan: number
+  searchTags: string[]
+  minNotes: number
+  lastScanTime?: Date
+}
+
+export interface TumblrPerformScanOptions {
+  maxPosts: number
+}
+
+export interface TumblrPerformScanResult {
+  totalFound: number
+  processed: number
+  approved: number
+  rejected: number
+  duplicates: number
+  errors: string[]
+}
+
+export class TumblrScanningService {
+  private filteringService: FilteringService
+  private contentProcessor: ContentProcessor
+  private isScanning = false
+
+  constructor() {
+    this.filteringService = new FilteringService()
+    this.contentProcessor = new ContentProcessor()
+  }
+
+  /**
+   * Perform a single scan with options
+   */
+  async performScan(options: TumblrPerformScanOptions): Promise<TumblrPerformScanResult> {
+    try {
+      // Get scan configuration
+      const config = await this.getScanConfig()
+
+      // Check if Tumblr API is available
+      const apiKey = process.env.TUMBLR_API_KEY
+
+      if (!apiKey) {
+        console.warn('⚠️  TUMBLR: API key not configured, using mock data')
+        return this.performMockScan(options)
+      }
+
+      const maxPosts = Math.min(options.maxPosts, config?.maxPostsPerScan || 30)
+      const result: TumblrPerformScanResult = {
+        totalFound: 0,
+        processed: 0,
+        approved: 0,
+        rejected: 0,
+        duplicates: 0,
+        errors: []
+      }
+
+      // Search for hotdog content using different tags
+      const allPosts: ProcessedTumblrPost[] = []
+      
+      for (const tag of config.searchTags.slice(0, 3)) { // Limit tags
+        try {
+          const posts = await this.searchTagged(tag, Math.ceil(maxPosts / config.searchTags.length))
+          allPosts.push(...posts)
+          
+          await logToDatabase(
+            LogLevel.INFO,
+            'TUMBLR_SEARCH_SUCCESS',
+            `Found ${posts.length} posts for tag: ${tag}`,
+            { tag, postsFound: posts.length }
+          )
+        } catch (searchError) {
+          const errorMessage = searchError instanceof Error ? searchError.message : 'Unknown search error'
+          result.errors.push(`Search error for tag "${tag}": ${errorMessage}`)
+          await logToDatabase(
+            LogLevel.ERROR,
+            'TUMBLR_SEARCH_ERROR',
+            `Error searching for tag "${tag}": ${errorMessage}`,
+            { tag, error: errorMessage }
+          )
+        }
+      }
+
+      // Deduplicate and limit
+      const uniquePosts = Array.from(
+        new Map(allPosts.map(post => [post.id, post])).values()
+      ).slice(0, maxPosts)
+
+      result.totalFound = uniquePosts.length
+
+      // Process each post
+      for (const post of uniquePosts) {
+        try {
+          // Apply content filtering
+          const contentAnalysis = await this.filteringService.isValidHotdogContent({
+            text: `${post.title} ${post.description} ${post.tags.join(' ')}`.trim(),
+            url: post.imageUrl || post.postUrl,
+            metadata: {
+              author: post.author,
+              noteCount: post.noteCount,
+              tags: post.tags
+            }
+          })
+
+          if (!contentAnalysis.is_valid_hotdog) {
+            result.rejected++
+            continue
+          }
+
+          // Prepare content data
+          const contentForHash = {
+            content_text: `${post.title} ${post.description}`.trim(),
+            content_image_url: post.imageUrl || null,
+            content_video_url: null,
+            original_url: post.postUrl
+          }
+
+          const contentData = {
+            content_text: `${post.title} ${post.description}`.trim(),
+            content_image_url: post.imageUrl || null,
+            content_video_url: null,
+            content_type: post.imageUrl ? 'image' as const : 'text' as const,
+            source_platform: 'tumblr' as const,
+            original_url: post.postUrl,
+            original_author: `@${post.author} on Tumblr`,
+            scraped_at: new Date(),
+            content_hash: this.contentProcessor.generateContentHash(contentForHash)
+          }
+
+          // Insert into database
+          const insertQuery = `
+            INSERT INTO content_queue (
+              content_text, content_image_url, content_video_url, content_type,
+              source_platform, original_url, original_author, 
+              scraped_at, content_hash
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+            ON CONFLICT (content_hash) DO UPDATE SET updated_at = NOW()
+            RETURNING id, content_text, source_platform
+          `
+          
+          const insertResult = await db.query(insertQuery, [
+            contentData.content_text,
+            contentData.content_image_url,
+            contentData.content_video_url,
+            contentData.content_type,
+            contentData.source_platform,
+            contentData.original_url,
+            contentData.original_author,
+            contentData.scraped_at,
+            contentData.content_hash
+          ])
+          
+          const contentId = insertResult.rows[0].id
+
+          // Process the content
+          const processingResult = await this.contentProcessor.processContent(contentId, {
+            autoApprovalThreshold: 0.7, // Higher threshold for Tumblr due to artistic/creative content
+            autoRejectionThreshold: 0.2,
+            enableDuplicateDetection: true
+          })
+
+          if (processingResult.success && processingResult.action === 'approved') {
+            result.approved++
+          } else if (processingResult.action === 'duplicate') {
+            result.duplicates++
+          } else {
+            result.rejected++
+          }
+          result.processed++
+
+        } catch (postError) {
+          const errorMessage = postError instanceof Error ? postError.message : 'Unknown post error'
+          result.errors.push(`Post processing error: ${errorMessage}`)
+        }
+      }
+
+      await logToDatabase(
+        LogLevel.INFO,
+        'TUMBLR_SCAN_COMPLETED',
+        `Tumblr scan completed: ${result.processed} processed, ${result.approved} approved`,
+        { scanId: `tumblr_scan_${Date.now()}`, ...result }
+      )
+
+      return result
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return {
+        totalFound: 0,
+        processed: 0,
+        approved: 0,
+        rejected: 0,
+        duplicates: 0,
+        errors: [errorMessage]
+      }
+    }
+  }
+
+  /**
+   * Search Tumblr tagged posts
+   */
+  private async searchTagged(tag: string, limit: number): Promise<ProcessedTumblrPost[]> {
+    const apiKey = process.env.TUMBLR_API_KEY
+    if (!apiKey) {
+      throw new Error('Tumblr API key not configured')
+    }
+
+    const url = `https://api.tumblr.com/v2/tagged?tag=${encodeURIComponent(tag)}&api_key=${apiKey}&limit=${Math.min(limit, 20)}`
+    
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'HotdogDiaries/1.0'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Tumblr API error: ${response.status} ${response.statusText}`)
+    }
+
+    const data: TumblrTaggedResponse = await response.json()
+
+    if (data.meta.status !== 200) {
+      throw new Error(`Tumblr API error: ${data.meta.msg}`)
+    }
+
+    return data.response
+      .filter(post => post.note_count >= 0) // Basic filter
+      .map(post => {
+        let imageUrl: string | undefined
+        let title = post.title || ''
+        let description = post.summary || post.body || post.caption || ''
+
+        // Extract image URL for photo posts
+        if (post.type === 'photo' && post.photos && post.photos.length > 0) {
+          imageUrl = post.photos[0].original_size.url
+          if (!description && post.photos[0].caption) {
+            description = post.photos[0].caption
+          }
+        }
+
+        // For text posts, use the body as title if no title
+        if (post.type === 'text' && !title && description) {
+          title = description.substring(0, 100)
+          if (title.length === 100) title += '...'
+        }
+
+        return {
+          id: post.id.toString(),
+          title: title || 'Untitled',
+          description: description || '',
+          imageUrl,
+          author: post.blog_name,
+          postUrl: post.post_url,
+          tags: post.tags || [],
+          noteCount: post.note_count || 0,
+          published: new Date(post.timestamp * 1000)
+        }
+      })
+  }
+
+  /**
+   * Perform a mock scan for testing without API key
+   */
+  private async performMockScan(options: TumblrPerformScanOptions): Promise<TumblrPerformScanResult> {
+    const mockPosts: ProcessedTumblrPost[] = [
+      {
+        id: 'mock_tumblr_1',
+        title: 'Aesthetic Hotdog Photography',
+        description: 'Just a beautiful Chicago-style hotdog shot with vintage film camera. The colors are so dreamy! #hotdog #foodphotography #aesthetic',
+        imageUrl: 'https://example.com/tumblr-hotdog1.jpg',
+        author: 'foodie-aesthetic',
+        postUrl: 'https://foodie-aesthetic.tumblr.com/post/123456789',
+        tags: ['hotdog', 'foodphotography', 'aesthetic', 'chicago'],
+        noteCount: 247,
+        published: new Date()
+      },
+      {
+        id: 'mock_tumblr_2',
+        title: '',
+        description: 'me: I should eat healthy\nalso me: *orders 3 hotdogs at 2am*\n\nwhy am I like this',
+        imageUrl: undefined,
+        author: 'chaotic-millennial',
+        postUrl: 'https://chaotic-millennial.tumblr.com/post/987654321',
+        tags: ['hotdog', 'relatable', 'foodblog', 'midnight snacks'],
+        noteCount: 1520,
+        published: new Date()
+      },
+      {
+        id: 'mock_tumblr_3',
+        title: 'DIY Galaxy Hotdog',
+        description: 'I made a galaxy-themed hotdog for my art project! Used food coloring and edible glitter. It tastes better than it looks (which is saying something because it looks amazing)',
+        imageUrl: 'https://example.com/tumblr-galaxy-hotdog.jpg',
+        author: 'creative-foodart',
+        postUrl: 'https://creative-foodart.tumblr.com/post/456789123',
+        tags: ['hotdog', 'food art', 'galaxy', 'diy', 'creative'],
+        noteCount: 892,
+        published: new Date()
+      }
+    ]
+
+    const result: TumblrPerformScanResult = {
+      totalFound: mockPosts.length,
+      processed: 0,
+      approved: 0,
+      rejected: 0,
+      duplicates: 0,
+      errors: []
+    }
+
+    // Process mock posts
+    for (const post of mockPosts.slice(0, options.maxPosts)) {
+      try {
+        const contentData = {
+          content_text: `${post.title} ${post.description}`.trim(),
+          content_image_url: post.imageUrl || null,
+          content_video_url: null,
+          content_type: post.imageUrl ? 'image' as const : 'text' as const,
+          source_platform: 'tumblr' as const,
+          original_url: post.postUrl,
+          original_author: `@${post.author} on Tumblr`,
+          scraped_at: new Date(),
+          content_hash: this.contentProcessor.generateContentHash({
+            content_text: `${post.title} ${post.description}`.trim(),
+            content_image_url: post.imageUrl || null,
+            content_video_url: null,
+            original_url: post.postUrl
+          })
+        }
+
+        const insertResult = await db.query(
+          `INSERT INTO content_queue (
+            content_text, content_image_url, content_video_url, content_type,
+            source_platform, original_url, original_author, scraped_at, content_hash
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+          ON CONFLICT (content_hash) DO UPDATE SET updated_at = NOW()
+          RETURNING id`,
+          [
+            contentData.content_text,
+            contentData.content_image_url,
+            contentData.content_video_url,
+            contentData.content_type,
+            contentData.source_platform,
+            contentData.original_url,
+            contentData.original_author,
+            contentData.scraped_at,
+            contentData.content_hash
+          ]
+        )
+
+        const contentId = insertResult.rows[0].id
+
+        const processingResult = await this.contentProcessor.processContent(contentId, {
+          autoApprovalThreshold: 0.7,
+          autoRejectionThreshold: 0.2,
+          enableDuplicateDetection: true
+        })
+
+        if (processingResult.success && processingResult.action === 'approved') {
+          result.approved++
+        } else if (processingResult.action === 'duplicate') {
+          result.duplicates++
+        } else {
+          result.rejected++
+        }
+        result.processed++
+
+      } catch (error) {
+        result.errors.push(`Mock post error: ${error.message}`)
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * Test connection to Tumblr API
+   */
+  async testConnection(): Promise<{ success: boolean; message: string; details?: any }> {
+    try {
+      const apiKey = process.env.TUMBLR_API_KEY
+      
+      if (!apiKey) {
+        return {
+          success: true,
+          message: 'No Tumblr API key configured, will use mock data',
+          details: { mockMode: true }
+        }
+      }
+
+      // Try a simple tag search to test the connection
+      const testPosts = await this.searchTagged('hotdog', 1)
+
+      return {
+        success: true,
+        message: `Tumblr connection successful. Found ${testPosts.length} test results.`,
+        details: {
+          testResultsCount: testPosts.length,
+          hasApiKey: true
+        }
+      }
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return {
+        success: false,
+        message: `Connection test failed: ${errorMessage}`,
+        details: { error: errorMessage }
+      }
+    }
+  }
+
+  /**
+   * Get or create scan configuration
+   */
+  async getScanConfig(): Promise<TumblrScanConfig> {
+    return {
+      isEnabled: true,
+      scanInterval: 360, // 6 hours (Tumblr has stricter rate limits)
+      maxPostsPerScan: 20,
+      searchTags: ['hotdog', 'hot dog', 'food photography', 'food blog'],
+      minNotes: 5
+    }
+  }
+}
+
+export const tumblrScanningService = new TumblrScanningService()

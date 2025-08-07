@@ -1,8 +1,8 @@
 import { redditScanningService } from './reddit-scanning'
 import { youtubeScanningService } from './youtube-scanning'
-import { flickrScanningService } from './flickr-scanning'
 import { mastodonScanningService } from './mastodon-scanning'
 import { mastodonMonitoringService } from './mastodon-monitoring'
+import { blueskyService } from './bluesky-scanning'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
@@ -30,8 +30,8 @@ export class SocialMediaService {
   private scanningServices = {
     reddit: redditScanningService,
     youtube: youtubeScanningService,
-    flickr: flickrScanningService,
-    mastodon: mastodonScanningService
+    mastodon: mastodonScanningService,
+    bluesky: blueskyService
   }
 
   async getAllPlatformStatus(): Promise<SocialMediaStats> {
@@ -93,32 +93,6 @@ export class SocialMediaService {
         })
       }
 
-      // Get Flickr status
-      try {
-        const flickrConfig = await this.scanningServices.flickr.getScanConfig()
-        const flickrConnection = await this.scanningServices.flickr.testConnection()
-        
-        platformStats.push({
-          platform: 'flickr',
-          isEnabled: flickrConfig.isEnabled,
-          isAuthenticated: flickrConnection.success,
-          lastScanTime: flickrConfig.lastScanTime,
-          totalContent: 0,
-          errorRate: 0,
-          healthStatus: flickrConnection.success ? 'healthy' : 'warning'
-        })
-
-        if (flickrConfig.isEnabled) activePlatforms++
-      } catch (error) {
-        platformStats.push({
-          platform: 'flickr',
-          isEnabled: false,
-          isAuthenticated: false,
-          totalContent: 0,
-          errorRate: 1,
-          healthStatus: 'error'
-        })
-      }
 
       // Get Mastodon status
       try {
@@ -140,6 +114,34 @@ export class SocialMediaService {
       } catch (error) {
         platformStats.push({
           platform: 'mastodon',
+          isEnabled: false,
+          isAuthenticated: false,
+          totalContent: 0,
+          errorRate: 1,
+          healthStatus: 'error'
+        })
+      }
+
+      // Get Bluesky status
+      try {
+        const blueskyConfig = await this.scanningServices.bluesky.getScanConfig()
+        const blueskyConnection = await this.scanningServices.bluesky.testConnection()
+        const blueskyStats = await this.scanningServices.bluesky.getScanningStats()
+        
+        platformStats.push({
+          platform: 'bluesky',
+          isEnabled: blueskyConfig.isEnabled,
+          isAuthenticated: blueskyConnection.success,
+          lastScanTime: blueskyConfig.lastScanTime,
+          totalContent: blueskyStats.totalPostsFound,
+          errorRate: 1 - blueskyStats.successRate,
+          healthStatus: blueskyConnection.success ? 'healthy' : 'error'
+        })
+
+        if (blueskyConfig.isEnabled) activePlatforms++
+      } catch (error) {
+        platformStats.push({
+          platform: 'bluesky',
           isEnabled: false,
           isAuthenticated: false,
           totalContent: 0,
@@ -185,13 +187,6 @@ export class SocialMediaService {
         results.push({ platform: 'youtube', success: false, message: error.message })
       }
 
-      // Start Flickr scanning
-      try {
-        await this.scanningServices.flickr.startAutomatedScanning()
-        results.push({ platform: 'flickr', success: true, message: 'Started successfully' })
-      } catch (error) {
-        results.push({ platform: 'flickr', success: false, message: error.message })
-      }
 
       // Start Mastodon scanning
       try {
@@ -199,6 +194,14 @@ export class SocialMediaService {
         results.push({ platform: 'mastodon', success: true, message: 'Started successfully' })
       } catch (error) {
         results.push({ platform: 'mastodon', success: false, message: error.message })
+      }
+
+      // Start Bluesky scanning
+      try {
+        await this.scanningServices.bluesky.startAutomatedScanning()
+        results.push({ platform: 'bluesky', success: true, message: 'Started successfully' })
+      } catch (error) {
+        results.push({ platform: 'bluesky', success: false, message: error.message })
       }
 
       const successCount = results.filter(r => r.success).length

@@ -2,9 +2,12 @@ import { db, logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 import { redditScanningService } from './reddit-scanning'
 import { mastodonScanningService } from './mastodon-scanning'
-import { flickrScanningService } from './flickr-scanning'
+import { blueskyService } from './bluesky-scanning'
 import { youtubeScanningService } from './youtube-scanning'
-import { unsplashScanningService } from './unsplash-scanning'
+import { pixabayScanningService } from './pixabay-scanning'
+import { lemmyScanningService } from './lemmy-scanning'
+import { imgurScanningService } from './imgur-scanning'
+import { tumblrScanningService } from './tumblr-scanning'
 
 export interface ScanConfig {
   id: number
@@ -56,16 +59,19 @@ export interface ScanningStatus {
 }
 
 export class ContentScanningService {
-  private static readonly DEFAULT_PLATFORMS = ['reddit', 'mastodon', 'flickr', 'youtube', 'unsplash']
+  private static readonly DEFAULT_PLATFORMS = ['reddit', 'mastodon', 'youtube', 'pixabay', 'bluesky', 'lemmy', 'imgur', 'tumblr']
   private static readonly DEFAULT_FREQUENCY_HOURS = 4
   private static readonly DEFAULT_MAX_POSTS = 50
 
   private readonly platformServices = {
     reddit: redditScanningService,
     mastodon: mastodonScanningService,
-    flickr: flickrScanningService,
     youtube: youtubeScanningService,
-    unsplash: unsplashScanningService
+    pixabay: pixabayScanningService,
+    bluesky: blueskyService,
+    lemmy: lemmyScanningService,
+    imgur: imgurScanningService,
+    tumblr: tumblrScanningService
   }
 
   async getScanConfig(): Promise<ScanConfig> {
