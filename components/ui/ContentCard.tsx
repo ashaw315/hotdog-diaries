@@ -68,6 +68,14 @@ export default function ContentCard({
         return '📰'
       case SourcePlatform.MASTODON:
         return '🐘'
+      case 'pixabay' as SourcePlatform:
+        return '📷'
+      case 'imgur' as SourcePlatform:
+        return '📸'
+      case 'lemmy' as SourcePlatform:
+        return '🔗'
+      case 'tumblr' as SourcePlatform:
+        return '📱'
       default:
         return '🌐'
     }
@@ -143,7 +151,6 @@ export default function ContentCard({
               alt="Content image"
               style={{ 
                 width: '100%', 
-                maxHeight: '200px', 
                 objectFit: 'cover',
                 display: imageLoading ? 'none' : 'block'
               }}
@@ -155,15 +162,26 @@ export default function ContentCard({
 
         {content_video_url && (
           <div className="mb-sm">
-            <a
-              href={content_video_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="nav-link flex align-center gap-xs"
+            <video 
+              controls 
+              loop 
+              autoPlay 
+              muted
+              style={{ 
+                width: '100%', 
+                maxWidth: '480px',
+                maxHeight: '300px',
+                objectFit: 'contain'
+              }}
             >
-              <span>🎥</span>
-              <span>View Video</span>
-            </a>
+              <source src={content_video_url} type="video/mp4" />
+              <p>
+                Your browser doesn't support video playback. 
+                <a href={content_video_url} target="_blank" rel="noopener noreferrer">
+                  View video directly
+                </a>
+              </p>
+            </video>
           </div>
         )}
       </div>

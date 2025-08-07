@@ -408,7 +408,20 @@ export default function ContentQueue() {
                           />
                           
                           {/* Media preview */}
-                          {item.content_image_url && (
+                          {item.content_video_url && (
+                            <div>
+                              <video
+                                src={item.content_video_url}
+                                muted
+                                loop
+                                style={{ width: '64px', height: '64px', objectFit: 'cover' }}
+                                className="content-video-preview"
+                                onMouseEnter={(e) => e.currentTarget.play()}
+                                onMouseLeave={(e) => e.currentTarget.pause()}
+                              />
+                            </div>
+                          )}
+                          {item.content_image_url && !item.content_video_url && (
                             <div>
                               <img
                                 src={item.content_image_url}

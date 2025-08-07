@@ -84,6 +84,7 @@ export interface ProcessedImgurPost {
   upvotes: number
   score: number
   published: Date
+  isVideo?: boolean
 }
 
 export interface ImgurScanConfig {
@@ -196,19 +197,20 @@ export class ImgurScanningService {
             continue
           }
 
-          // Prepare content data
+          // Prepare content data with proper video/image detection
+          const isVideo = post.isVideo || false
           const contentForHash = {
             content_text: `${post.title} ${post.description}`.trim(),
-            content_image_url: post.imageUrl,
-            content_video_url: null,
+            content_image_url: isVideo ? null : post.imageUrl,
+            content_video_url: isVideo ? post.imageUrl : null,
             original_url: post.link
           }
 
           const contentData = {
             content_text: `${post.title} ${post.description}`.trim(),
-            content_image_url: post.imageUrl,
-            content_video_url: null,
-            content_type: 'image' as const,
+            content_image_url: isVideo ? null : post.imageUrl,
+            content_video_url: isVideo ? post.imageUrl : null,
+            content_type: isVideo ? 'video' as const : 'image' as const,
             source_platform: 'imgur' as const,
             original_url: post.link,
             original_author: post.author ? `@${post.author} on Imgur` : 'Anonymous on Imgur',
@@ -316,26 +318,46 @@ export class ImgurScanningService {
     return data.data
       .slice(0, limit)
       .map(item => {
-        // Get the image URL - either direct link or first image in album
-        let imageUrl = item.link
+        // Get the media URL - either direct link or first media in album
+        let mediaUrl = item.link
+        let isVideo = false
+        
         if (item.is_album && item.images && item.images.length > 0) {
-          imageUrl = item.images[0].link
+          // For albums, use the first image/video
+          const firstImage = item.images[0]
+          mediaUrl = firstImage.link
+          // Check if it's a video based on MIME type or URL extension
+          isVideo = firstImage.type?.startsWith('video/') || 
+                   firstImage.animated ||
+                   mediaUrl.endsWith('.mp4') ||
+                   mediaUrl.endsWith('.gifv')
         } else if (item.cover) {
           // Some albums provide a cover ID instead of images array
-          imageUrl = `https://i.imgur.com/${item.cover}.jpg`
+          mediaUrl = `https://i.imgur.com/${item.cover}.jpg`
+        } else {
+          // Check direct link for video indicators
+          isVideo = mediaUrl.endsWith('.mp4') || 
+                   mediaUrl.endsWith('.gifv')
+        }
+        
+        // Convert .gifv to .mp4 for proper video playback
+        if (mediaUrl.endsWith('.gifv')) {
+          mediaUrl = mediaUrl.replace('.gifv', '.mp4')
+          isVideo = true
         }
 
         return {
           id: item.id,
           title: item.title || 'Untitled',
           description: item.description || '',
-          imageUrl,
+          imageUrl: mediaUrl,
           author: item.account_url || 'anonymous',
           link: `https://imgur.com/gallery/${item.id}`,
           views: item.views || 0,
           upvotes: item.ups || 0,
           score: item.score || 0,
-          published: new Date(item.datetime * 1000) // Convert from Unix timestamp
+          published: new Date(item.datetime * 1000), // Convert from Unix timestamp
+          isVideo // Add video detection flag
         }
       })
   }
