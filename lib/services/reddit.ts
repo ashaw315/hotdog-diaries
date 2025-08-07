@@ -65,6 +65,15 @@ export class RedditService {
   private isProcessingQueue = false
 
   constructor() {
+    console.log('=== REDDIT SERVICE CONSTRUCTOR DEBUG ===')
+    console.log('Reddit ENV vars:', {
+      CLIENT_ID: process.env.REDDIT_CLIENT_ID ? `SET (${process.env.REDDIT_CLIENT_ID.substring(0, 4)}...)` : 'NOT SET',
+      CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET ? `SET (${process.env.REDDIT_CLIENT_SECRET.substring(0, 4)}...)` : 'NOT SET',
+      USERNAME: process.env.REDDIT_USERNAME ? `SET (${process.env.REDDIT_USERNAME})` : 'NOT SET',
+      PASSWORD: process.env.REDDIT_PASSWORD ? 'SET (redacted)' : 'NOT SET',
+      USER_AGENT: process.env.REDDIT_USER_AGENT || 'NOT SET'
+    })
+    
     const clientId = process.env.REDDIT_CLIENT_ID
     const clientSecret = process.env.REDDIT_CLIENT_SECRET
     const userAgent = process.env.REDDIT_USER_AGENT || 'HotdogDiaries/1.0.0 by /u/hotdog_scanner'
@@ -76,9 +85,14 @@ export class RedditService {
       try {
         // Check if credentials look valid (not demo/test values)
         if (clientId.includes('demo') || clientSecret.includes('demo') || 
-            clientId === 'rEmsT6H1Tln9TZ4mSeDhWg' || // Specific test credentials
             clientId.length < 10 || clientSecret.length < 15) { // Basic validation
           throw new Error('Demo/test credentials detected, using mock client')
+        }
+        
+        // TEMPORARY: Allow test credentials for debugging
+        console.log('🔍 BYPASSING test credential check for debugging')
+        if (clientId === 'rEmsT6H1Tln9TZ4mSeDhWg') {
+          console.log('⚠️ WARNING: Using test credentials - these will fail Reddit API calls')
         }
 
         // Create real Snoowrap client with app-only authentication
@@ -397,18 +411,10 @@ export class RedditService {
    */
   getHotdogSubreddits(): string[] {
     return [
-      'hotdogs', // Dedicated hotdog community
-      'food', // General food content
+      'food', // General food content - most likely to have hotdog posts
       'FoodPorn', // High-quality food images
-      'grilling', // Hotdog grilling content
-      'baseball', // Ballpark hotdogs
-      'sausages', // Related sausage content
-      'BBQ', // Barbecue and grilling
-      'Cooking', // Cooking community
-      'MealPrepSunday', // Meal prep including hotdogs
-      'budgetfood', // Budget-friendly hotdog meals
-      'americanfood', // American cuisine including hotdogs
-      'ballparks' // Stadium food
+      'shittyfoodporn', // Often has hotdog content
+      'hotdogs' // Dedicated hotdog community (if it exists)
     ]
   }
 
@@ -417,15 +423,8 @@ export class RedditService {
    */
   getHotdogSearchTerms(): string[] {
     return [
-      'hotdog',
-      'hot dog', 
-      'frankfurter',
-      'bratwurst',
-      'wiener',
-      'ballpark frank',
-      'chili dog',
-      'corn dog',
-      'sausage grill'
+      'hot dog',
+      'hotdog'
     ]
   }
 
