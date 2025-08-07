@@ -1,12 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/post-content",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/cron/scan-content",
       "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/cron/automated-post",
+      "schedule": "0 7,12,15,18,20,22 * * *"
     }
   ]
 }

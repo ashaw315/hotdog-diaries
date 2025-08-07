@@ -410,15 +410,58 @@ export default function ContentQueue() {
                           {/* Media preview */}
                           {item.content_video_url && (
                             <div>
-                              <video
-                                src={item.content_video_url}
-                                muted
-                                loop
-                                style={{ width: '64px', height: '64px', objectFit: 'cover' }}
-                                className="content-video-preview"
-                                onMouseEnter={(e) => e.currentTarget.play()}
-                                onMouseLeave={(e) => e.currentTarget.pause()}
-                              />
+                              {/* For YouTube videos, show thumbnail instead of trying to embed */}
+                              {item.content_video_url.includes('youtube.com/watch') && item.content_image_url ? (
+                                <div style={{ position: 'relative', width: '64px', height: '64px' }}>
+                                  <img
+                                    src={item.content_image_url}
+                                    alt="Video thumbnail"
+                                    style={{ width: '64px', height: '64px', objectFit: 'cover' }}
+                                  />
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    color: 'white',
+                                    backgroundColor: 'rgba(0,0,0,0.7)',
+                                    borderRadius: '50%',
+                                    width: '20px',
+                                    height: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '10px'
+                                  }}>
+                                    ▶
+                                  </div>
+                                </div>
+                              ) : 
+                              /* For direct video files */
+                              item.content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
+                                <video
+                                  src={item.content_video_url}
+                                  muted
+                                  loop
+                                  style={{ width: '64px', height: '64px', objectFit: 'cover' }}
+                                  className="content-video-preview"
+                                  onMouseEnter={(e) => e.currentTarget.play()}
+                                  onMouseLeave={(e) => e.currentTarget.pause()}
+                                />
+                              ) : (
+                                /* Fallback for other video types */
+                                <div style={{
+                                  width: '64px',
+                                  height: '64px',
+                                  backgroundColor: '#f0f0f0',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#666'
+                                }}>
+                                  🎥
+                                </div>
+                              )}
                             </div>
                           )}
                           {item.content_image_url && !item.content_video_url && (

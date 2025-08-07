@@ -96,40 +96,39 @@ export class ContentProcessor {
         }
       }
 
-      // Check for duplicates first
+      // FIRST: Run content analysis to check if it's hotdog-related
+      const analysis = await filteringService.isValidHotdogContent(content)
+      analysis.content_id = contentId
+
+      // THEN: Check for duplicates only if content is potentially valid
       let duplicateOf: number | undefined
-      if (processingConfig.enableDuplicateDetection) {
+      if (processingConfig.enableDuplicateDetection && analysis.is_valid_hotdog && analysis.confidence_score > 0.3) {
         const duplicateCheck = await duplicateDetectionService.checkForDuplicates(content)
-        if (duplicateCheck.isDuplicate && duplicateCheck.originalContentId) {
+        if (duplicateCheck.isDuplicate && duplicateCheck.originalContentId && duplicateCheck.confidence > 0.95) {
           duplicateOf = duplicateCheck.originalContentId
           
-          // Mark as duplicate
-          await this.saveContentAnalysis(contentId, {
-            ...this.createEmptyAnalysis(),
-            duplicate_of: duplicateOf
-          })
+          // Mark as duplicate but preserve the hotdog analysis
+          analysis.duplicate_of = duplicateOf
 
           await logToDatabase(
             LogLevel.INFO,
-            'Duplicate content detected',
+            'Duplicate hotdog content detected',
             'ContentProcessor',
-            { contentId, duplicateOf }
+            { contentId, duplicateOf, confidence: duplicateCheck.confidence }
           )
+
+          await this.saveContentAnalysis(contentId, analysis)
 
           return {
             success: true,
             contentId,
             action: 'duplicate',
-            analysis: this.createEmptyAnalysis(),
-            reason: 'Duplicate content detected',
+            analysis: analysis,
+            reason: `Duplicate hotdog content detected (confidence: ${duplicateCheck.confidence})`,
             duplicateOf
           }
         }
       }
-
-      // Run content analysis
-      const analysis = await filteringService.isValidHotdogContent(content)
-      analysis.content_id = contentId
 
       // Apply configuration filters
       if (!processingConfig.enableSpamFilter) {

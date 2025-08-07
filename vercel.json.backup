@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/post-content",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/scan-content",
+      "schedule": "0 */4 * * *"
+    }
+  ]
+}

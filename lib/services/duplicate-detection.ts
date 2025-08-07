@@ -28,19 +28,35 @@ export interface DuplicateCluster {
 
 export class DuplicateDetectionService {
   private static readonly EXACT_MATCH_THRESHOLD = 1.0
-  private static readonly FUZZY_MATCH_THRESHOLD = 0.85
-  private static readonly URL_SIMILARITY_THRESHOLD = 0.9
-  private static readonly IMAGE_SIMILARITY_THRESHOLD = 0.95
-  private static readonly VIDEO_SIMILARITY_THRESHOLD = 0.95
+  private static readonly FUZZY_MATCH_THRESHOLD = 0.95  // Increased from 0.85
+  private static readonly URL_SIMILARITY_THRESHOLD = 0.98  // Increased from 0.9
+  private static readonly IMAGE_SIMILARITY_THRESHOLD = 0.98  // Increased from 0.95
+  private static readonly VIDEO_SIMILARITY_THRESHOLD = 0.98  // Increased from 0.95
+
+  // Platform-specific repost allowances (in milliseconds)
+  private static readonly PLATFORM_REPOST_INTERVALS = {
+    'reddit': 30 * 24 * 60 * 60 * 1000,     // 30 days
+    'imgur': 14 * 24 * 60 * 60 * 1000,      // 14 days  
+    'pixabay': 60 * 24 * 60 * 60 * 1000,    // 60 days (stock photos)
+    'youtube': 90 * 24 * 60 * 60 * 1000,    // 90 days
+    'tumblr': 14 * 24 * 60 * 60 * 1000,     // 14 days
+    'mastodon': 7 * 24 * 60 * 60 * 1000,    // 7 days
+    'lemmy': 7 * 24 * 60 * 60 * 1000,       // 7 days
+    'default': 7 * 24 * 60 * 60 * 1000      // 7 days default
+  }
 
   async checkForDuplicates(content: any): Promise<DuplicateCheckResult> {
     try {
       await logToDatabase(
         LogLevel.INFO,
-        'Starting duplicate detection',
+        'Starting enhanced duplicate detection',
         'DuplicateDetectionService',
-        { contentId: content.id }
+        { contentId: content.id, platform: content.source_platform }
       )
+
+      // Get platform-specific rules
+      const repostInterval = DuplicateDetectionService.PLATFORM_REPOST_INTERVALS[content.source_platform] || 
+                            DuplicateDetectionService.PLATFORM_REPOST_INTERVALS['default']
 
       // Generate various hashes for comparison
       const exactHash = this.generateExactHash(content)
@@ -49,8 +65,16 @@ export class DuplicateDetectionService {
       const imageHash = this.generateImageHash(content)
       const videoHash = this.generateVideoHash(content)
 
-      // Check for exact matches first
-      const exactMatch = await this.findExactMatch(exactHash, content.id)
+      const matchResults = {
+        exact: null,
+        url: null,
+        image: null,
+        video: null,
+        fuzzy: null
+      }
+
+      // Check for exact matches first (always blocking)
+      const exactMatch = await this.findExactMatchWithTimeCheck(exactHash, content.id, repostInterval)
       if (exactMatch) {
         return {
           isDuplicate: true,
@@ -61,71 +85,88 @@ export class DuplicateDetectionService {
         }
       }
 
-      // Check for URL matches
-      const urlMatch = await this.findUrlMatch(urlHash, content.id)
+      // Check for URL matches (with time-based allowance)
+      const urlMatch = await this.findUrlMatchWithTimeCheck(content.original_url, content.id, repostInterval)
       if (urlMatch) {
-        return {
-          isDuplicate: true,
-          originalContentId: urlMatch.id,
-          similarityScore: DuplicateDetectionService.URL_SIMILARITY_THRESHOLD,
-          matchType: 'url',
-          confidence: 0.95
+        matchResults.url = {
+          id: urlMatch.id,
+          confidence: DuplicateDetectionService.URL_SIMILARITY_THRESHOLD
         }
       }
 
-      // Check for image matches
+      // Check for image matches (with time-based allowance)
       if (content.content_image_url) {
-        const imageMatch = await this.findImageMatch(imageHash, content.id)
+        const imageMatch = await this.findImageMatchWithTimeCheck(imageHash, content.id, repostInterval)
         if (imageMatch) {
-          return {
-            isDuplicate: true,
-            originalContentId: imageMatch.id,
-            similarityScore: DuplicateDetectionService.IMAGE_SIMILARITY_THRESHOLD,
-            matchType: 'image',
-            confidence: 0.9
+          matchResults.image = {
+            id: imageMatch.id,
+            confidence: DuplicateDetectionService.IMAGE_SIMILARITY_THRESHOLD
           }
         }
       }
 
-      // Check for video matches
+      // Check for video matches (with time-based allowance)
       if (content.content_video_url) {
-        const videoMatch = await this.findVideoMatch(videoHash, content.id)
+        const videoMatch = await this.findVideoMatchWithTimeCheck(videoHash, content.id, repostInterval)
         if (videoMatch) {
-          return {
-            isDuplicate: true,
-            originalContentId: videoMatch.id,
-            similarityScore: DuplicateDetectionService.VIDEO_SIMILARITY_THRESHOLD,
-            matchType: 'video',
-            confidence: 0.9
+          matchResults.video = {
+            id: videoMatch.id,
+            confidence: DuplicateDetectionService.VIDEO_SIMILARITY_THRESHOLD
           }
         }
       }
 
-      // Check for fuzzy text matches
-      const fuzzyMatches = await this.findFuzzyMatches(content)
+      // Check for fuzzy text matches (with time-based allowance)
+      const fuzzyMatches = await this.findFuzzyMatchesWithTimeCheck(content, repostInterval)
       if (fuzzyMatches.length > 0) {
         const bestMatch = fuzzyMatches[0]
         if (bestMatch.similarity >= DuplicateDetectionService.FUZZY_MATCH_THRESHOLD) {
-          return {
-            isDuplicate: true,
-            originalContentId: bestMatch.contentId,
-            similarityScore: bestMatch.similarity,
-            matchType: 'fuzzy',
+          matchResults.fuzzy = {
+            id: bestMatch.contentId,
             confidence: bestMatch.similarity
           }
         }
       }
 
+      // Require multiple indicators to mark as duplicate (not just any single match)
+      const activeMatches = Object.values(matchResults).filter(match => match !== null)
+      const matchCount = activeMatches.length
+
+      if (matchCount >= 2) {
+        // Multiple matches found - likely duplicate
+        const bestMatch = activeMatches.reduce((best, current) => 
+          current.confidence > best.confidence ? current : best
+        )
+        
+        return {
+          isDuplicate: true,
+          originalContentId: bestMatch.id,
+          similarityScore: bestMatch.confidence,
+          matchType: matchCount > 2 ? 'multiple' : 'dual',
+          confidence: Math.min(1.0, bestMatch.confidence + (matchCount * 0.05)) // Boost confidence with multiple matches
+        }
+      } else if (matchCount === 1 && activeMatches[0].confidence > 0.98) {
+        // Single very high confidence match
+        const match = activeMatches[0]
+        return {
+          isDuplicate: true,
+          originalContentId: match.id,
+          similarityScore: match.confidence,
+          matchType: 'high_confidence_single',
+          confidence: match.confidence
+        }
+      }
+
       await logToDatabase(
         LogLevel.INFO,
-        'No duplicates found',
+        'No significant duplicates found',
         'DuplicateDetectionService',
-        { contentId: content.id }
+        { contentId: content.id, matchCount, platform: content.source_platform }
       )
 
       return {
         isDuplicate: false,
-        similarityScore: 0,
+        similarityScore: matchCount > 0 ? activeMatches[0].confidence : 0,
         matchType: 'none',
         confidence: 0
       }
@@ -287,6 +328,80 @@ export class DuplicateDetectionService {
     return result.rows.length > 0 ? result.rows[0] : null
   }
 
+  private async findExactMatchWithTimeCheck(hash: string, excludeId?: number, repostInterval?: number): Promise<any> {
+    if (!repostInterval) {
+      return this.findExactMatch(hash, excludeId)
+    }
+
+    const result = await db.query(
+      `SELECT cq.* FROM content_queue cq
+       WHERE cq.content_hash = $1 
+       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
+       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       ORDER BY cq.created_at ASC
+       LIMIT 1`,
+      [hash, excludeId]
+    )
+
+    return result.rows.length > 0 ? result.rows[0] : null
+  }
+
+  private async findUrlMatchWithTimeCheck(url: string, excludeId?: number, repostInterval?: number): Promise<any> {
+    if (!repostInterval) {
+      return this.findUrlMatch(this.generateUrlHash({ original_url: url }), excludeId)
+    }
+
+    const result = await db.query(
+      `SELECT cq.* FROM content_queue cq
+       WHERE cq.original_url = $1
+       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
+       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       ORDER BY cq.created_at ASC
+       LIMIT 1`,
+      [url, excludeId]
+    )
+
+    return result.rows.length > 0 ? result.rows[0] : null
+  }
+
+  private async findImageMatchWithTimeCheck(imageHash: string, excludeId?: number, repostInterval?: number): Promise<any> {
+    if (!repostInterval) {
+      return this.findImageMatch(imageHash, excludeId)
+    }
+
+    const result = await db.query(
+      `SELECT cq.* FROM content_queue cq
+       WHERE MD5(cq.content_image_url) = $1 
+       AND cq.content_image_url IS NOT NULL
+       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
+       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       ORDER BY cq.created_at ASC
+       LIMIT 1`,
+      [imageHash, excludeId]
+    )
+
+    return result.rows.length > 0 ? result.rows[0] : null
+  }
+
+  private async findVideoMatchWithTimeCheck(videoHash: string, excludeId?: number, repostInterval?: number): Promise<any> {
+    if (!repostInterval) {
+      return this.findVideoMatch(videoHash, excludeId)
+    }
+
+    const result = await db.query(
+      `SELECT cq.* FROM content_queue cq
+       WHERE MD5(cq.content_video_url) = $1 
+       AND cq.content_video_url IS NOT NULL
+       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
+       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       ORDER BY cq.created_at ASC
+       LIMIT 1`,
+      [videoHash, excludeId]
+    )
+
+    return result.rows.length > 0 ? result.rows[0] : null
+  }
+
   private async findUrlMatch(urlHash: string, excludeId?: number): Promise<any> {
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
@@ -356,6 +471,51 @@ export class DuplicateDetectionService {
       const similarity = this.calculateTextSimilarity(normalizedText, otherNormalizedText)
       
       if (similarity >= 0.7) {
+        matches.push({
+          contentId: row.id,
+          similarity,
+          matchType: 'text'
+        })
+      }
+    }
+
+    // Sort by similarity and return top matches
+    matches.sort((a, b) => b.similarity - a.similarity)
+    return matches.slice(0, limit)
+  }
+
+  private async findFuzzyMatchesWithTimeCheck(content: any, repostInterval?: number, limit: number = 10): Promise<SimilarityMatch[]> {
+    if (!content.content_text || content.content_text.length < 20) {
+      return []
+    }
+
+    if (!repostInterval) {
+      return this.findFuzzyMatches(content, limit)
+    }
+
+    const normalizedText = this.normalizeText(content.content_text)
+    
+    // Find content with similar text within the time window
+    const result = await db.query(
+      `SELECT cq.*, ca.similarity_hash
+       FROM content_queue cq
+       LEFT JOIN content_analysis ca ON cq.id = ca.content_queue_id
+       WHERE cq.content_text IS NOT NULL
+       AND cq.id != $1
+       AND length(cq.content_text) > 20
+       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       ORDER BY cq.created_at DESC
+       LIMIT 200`,
+      [content.id]
+    )
+
+    const matches: SimilarityMatch[] = []
+
+    for (const row of result.rows) {
+      const otherNormalizedText = this.normalizeText(row.content_text)
+      const similarity = this.calculateTextSimilarity(normalizedText, otherNormalizedText)
+      
+      if (similarity >= 0.8) { // Higher threshold for time-based matches
         matches.push({
           contentId: row.id,
           similarity,

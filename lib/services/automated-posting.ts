@@ -332,6 +332,7 @@ export class AutomatedPostingService {
       const updateResult = await db.query(
         `UPDATE content_queue 
          SET content_status = 'posted', 
+             is_posted = true,
              posted_at = NOW(), 
              updated_at = NOW()
          WHERE id = $1

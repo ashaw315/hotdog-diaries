@@ -76,6 +76,8 @@ export default function ContentCard({
         return '🔗'
       case 'tumblr' as SourcePlatform:
         return '📱'
+      case 'youtube' as SourcePlatform:
+        return '📺'
       default:
         return '🌐'
     }
@@ -162,26 +164,64 @@ export default function ContentCard({
 
         {content_video_url && (
           <div className="mb-sm">
-            <video 
-              controls 
-              loop 
-              autoPlay 
-              muted
-              style={{ 
-                width: '100%', 
-                maxWidth: '480px',
-                maxHeight: '300px',
-                objectFit: 'contain'
-              }}
-            >
-              <source src={content_video_url} type="video/mp4" />
-              <p>
-                Your browser doesn't support video playback. 
-                <a href={content_video_url} target="_blank" rel="noopener noreferrer">
-                  View video directly
+            {/* YouTube embed */}
+            {content_video_url.includes('youtube.com/watch') ? (
+              (() => {
+                const videoId = content_video_url.split('v=')[1]?.split('&')[0]
+                if (videoId) {
+                  return (
+                    <iframe
+                      width="100%"
+                      height="280"
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      title="YouTube video"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      style={{ maxWidth: '480px' }}
+                    />
+                  )
+                }
+                return null
+              })()
+            ) : 
+            /* Direct video files (MP4, etc.) */
+            content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
+              <video 
+                controls 
+                loop 
+                autoPlay 
+                muted
+                style={{ 
+                  width: '100%', 
+                  maxWidth: '480px',
+                  maxHeight: '300px',
+                  objectFit: 'contain'
+                }}
+              >
+                <source src={content_video_url} type="video/mp4" />
+                <p>
+                  Your browser doesn't support video playback. 
+                  <a href={content_video_url} target="_blank" rel="noopener noreferrer">
+                    View video directly
+                  </a>
+                </p>
+              </video>
+            ) : 
+            /* Fallback for other video URLs */
+            (
+              <div>
+                <a
+                  href={content_video_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="nav-link flex align-center gap-xs"
+                >
+                  <span>🎥</span>
+                  <span>Watch Video</span>
                 </a>
-              </p>
-            </video>
+              </div>
+            )}
           </div>
         )}
       </div>

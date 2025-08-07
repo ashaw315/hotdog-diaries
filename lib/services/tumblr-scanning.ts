@@ -54,6 +54,8 @@ export interface ProcessedTumblrPost {
   title: string
   description: string
   imageUrl?: string
+  videoUrl?: string
+  contentType?: 'text' | 'image' | 'video'
   author: string
   postUrl: string
   tags: string[]
@@ -91,6 +93,52 @@ export class TumblrScanningService {
   constructor() {
     this.filteringService = new FilteringService()
     this.contentProcessor = new ContentProcessor()
+  }
+
+  /**
+   * Extract image URL from Tumblr's HTML content
+   */
+  private extractImageFromHTML(html: string): string | null {
+    if (!html) return null
+    
+    // Look for img src in the HTML
+    const imgMatch = html.match(/<img[^>]+src="([^"]+)"/i)
+    if (imgMatch) {
+      // Get the URL and remove any srcset parameters
+      const url = imgMatch[1]
+      // Return the base URL without size parameters
+      return url.split(' ')[0]
+    }
+    
+    // Also check for data-orig-src which Tumblr sometimes uses
+    const dataOrigMatch = html.match(/data-orig-src="([^"]+)"/i)
+    if (dataOrigMatch) {
+      return dataOrigMatch[1]
+    }
+    
+    return null
+  }
+
+  /**
+   * Clean HTML from text content
+   */
+  private stripHTML(html: string): string {
+    if (!html) return ''
+    
+    // Remove all HTML tags
+    let text = html.replace(/<[^>]*>/g, ' ')
+    
+    // Decode HTML entities
+    text = text
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+    
+    // Clean up extra whitespace
+    return text.replace(/\s+/g, ' ').trim()
   }
 
   /**
@@ -171,19 +219,29 @@ export class TumblrScanningService {
             continue
           }
 
-          // Prepare content data
+          // Prepare content data with proper media handling
           const contentForHash = {
             content_text: `${post.title} ${post.description}`.trim(),
             content_image_url: post.imageUrl || null,
-            content_video_url: null,
+            content_video_url: post.videoUrl || null,
             original_url: post.postUrl
+          }
+
+          // Determine content type based on available media
+          let contentType: 'text' | 'image' | 'video' = 'text'
+          if (post.videoUrl) {
+            contentType = 'video'
+          } else if (post.imageUrl) {
+            contentType = 'image'
+          } else if (post.contentType) {
+            contentType = post.contentType
           }
 
           const contentData = {
             content_text: `${post.title} ${post.description}`.trim(),
             content_image_url: post.imageUrl || null,
-            content_video_url: null,
-            content_type: post.imageUrl ? 'image' as const : 'text' as const,
+            content_video_url: post.videoUrl || null,
+            content_type: contentType,
             source_platform: 'tumblr' as const,
             original_url: post.postUrl,
             original_author: `@${post.author} on Tumblr`,
@@ -292,18 +350,55 @@ export class TumblrScanningService {
       .filter(post => post.note_count >= 0) // Basic filter
       .map(post => {
         let imageUrl: string | undefined
+        let videoUrl: string | undefined
         let title = post.title || ''
         let description = post.summary || post.body || post.caption || ''
+        let contentType: 'text' | 'image' | 'video' = 'text'
 
         // Extract image URL for photo posts
         if (post.type === 'photo' && post.photos && post.photos.length > 0) {
           imageUrl = post.photos[0].original_size.url
+          contentType = 'image'
           if (!description && post.photos[0].caption) {
             description = post.photos[0].caption
           }
         }
+        // Extract image from text posts with embedded images
+        else if (post.type === 'text' && post.body) {
+          const extractedImage = this.extractImageFromHTML(post.body)
+          if (extractedImage) {
+            imageUrl = extractedImage
+            contentType = 'image'
+          }
+          // Clean the HTML from description
+          description = this.stripHTML(post.body).substring(0, 500)
+        }
+        // Handle video posts
+        else if (post.type === 'video') {
+          contentType = 'video'
+          // @ts-ignore - video_url might exist on video posts
+          if (post.video_url) {
+            // @ts-ignore
+            videoUrl = post.video_url
+          }
+          // @ts-ignore - player might exist
+          else if (post.player && Array.isArray(post.player) && post.player[0]) {
+            // Extract video URL from player embed
+            // @ts-ignore
+            const playerHtml = post.player[0].embed_code
+            const videoMatch = playerHtml.match(/src="([^"]+)"/i)
+            if (videoMatch) {
+              videoUrl = videoMatch[1]
+            }
+          }
+        }
 
-        // For text posts, use the body as title if no title
+        // Clean up the description if it contains HTML
+        if (description && description.includes('<')) {
+          description = this.stripHTML(description)
+        }
+
+        // For text posts, use the cleaned body as title if no title
         if (post.type === 'text' && !title && description) {
           title = description.substring(0, 100)
           if (title.length === 100) title += '...'
@@ -314,6 +409,8 @@ export class TumblrScanningService {
           title: title || 'Untitled',
           description: description || '',
           imageUrl,
+          videoUrl,
+          contentType,
           author: post.blog_name,
           postUrl: post.post_url,
           tags: post.tags || [],
