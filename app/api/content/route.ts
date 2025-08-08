@@ -43,24 +43,40 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
     `)
     const total = parseInt(countResult.rows[0]?.total || '0')
 
-    // Get paginated content - query content_queue directly for posted items
+    // Get paginated content with variety mixing - prioritize videos, then mix content types
     const contentResult = await db.query(`
+      WITH ranked_content AS (
+        SELECT 
+          id,
+          content_text,
+          content_image_url,
+          content_video_url,
+          content_type,
+          source_platform,
+          original_url,
+          original_author,
+          posted_at,
+          scraped_at,
+          is_posted,
+          is_approved,
+          CASE 
+            WHEN content_type = 'video' THEN 1
+            WHEN content_type = 'image' THEN 2  
+            WHEN content_type = 'mixed' THEN 3
+            WHEN content_type = 'text' THEN 4
+            ELSE 5
+          END as type_priority,
+          ROW_NUMBER() OVER (PARTITION BY content_type ORDER BY posted_at ${order.toUpperCase()}) as type_rank
+        FROM content_queue
+        WHERE content_status = 'posted' AND is_posted = true
+        AND (content_text IS NULL OR LENGTH(content_text) <= 200)
+      )
       SELECT 
-        id,
-        content_text,
-        content_image_url,
-        content_video_url,
-        content_type,
-        source_platform,
-        original_url,
-        original_author,
-        posted_at,
-        scraped_at,
-        is_posted,
-        is_approved
-      FROM content_queue
-      WHERE content_status = 'posted' AND is_posted = true
-      ORDER BY posted_at ${order.toUpperCase()}
+        id, content_text, content_image_url, content_video_url, content_type,
+        source_platform, original_url, original_author, posted_at, scraped_at,
+        is_posted, is_approved
+      FROM ranked_content
+      ORDER BY type_priority, type_rank
       LIMIT $1 OFFSET $2
     `, [limit, offset])
 

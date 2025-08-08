@@ -1,10 +1,7 @@
-import Layout from '@/components/Layout'
-import HomePage from '@/components/HomePage'
+'use client'
+
+import OptimizedTikTokFeed from '@/components/OptimizedTikTokFeed'
 
 export default function Page() {
-  return (
-    <Layout>
-      <HomePage />
-    </Layout>
-  )
+  return <OptimizedTikTokFeed />
 }

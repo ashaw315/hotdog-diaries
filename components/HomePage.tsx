@@ -1,60 +1,60 @@
 'use client'
 
-import ContentFeed from '@/components/ui/ContentFeed'
+import MobileFeedContent from '@/components/ui/MobileFeedContent'
 
 export default function HomePage() {
   return (
-    <div className="container content-area">
-      <div className="text-center mb-lg">
-        <h1>Welcome to Hotdog Diaries</h1>
-        
-        <p className="text-muted mb-md">
-          Your premier destination for hotdog content from across social media. 
-          We scan, curate, and serve up the best hotdog posts 6 times daily.
-        </p>
-      </div>
+    <div className="mobile-feed-container">
+      <MobileFeedContent />
+      
+      {/* Mini features footer */}
+      <footer className="feed-features">
+        <div className="features-mini">
+          <span>🌭 6x Daily</span>
+          <span>🔍 Smart Curation</span>
+          <span>📱 Mobile Ready</span>
+        </div>
+      </footer>
+      
+      <style jsx>{`
+        .mobile-feed-container {
+          max-width: var(--max-width);
+          margin: 0 auto;
+          padding: 0;
+        }
 
-      <div className="grid grid-3 gap-md mb-lg">
-        <div className="card">
-          <div className="card-body text-center">
-            <div className="mb-sm">🌭</div>
-            <h3>Daily Content</h3>
-            <p className="text-muted">
-              Fresh hotdog posts delivered 6 times per day from across social media platforms.
-            </p>
-          </div>
-        </div>
-        
-        <div className="card">
-          <div className="card-body text-center">
-            <div className="mb-sm">🔍</div>
-            <h3>Smart Scanning</h3>
-            <p className="text-muted">
-              Our intelligent system finds and curates the most interesting hotdog content.
-            </p>
-          </div>
-        </div>
-        
-        <div className="card">
-          <div className="card-body text-center">
-            <div className="mb-sm">📱</div>
-            <h3>Mobile Ready</h3>
-            <p className="text-muted">
-              Optimized for all devices so you never miss a great hotdog moment.
-            </p>
-          </div>
-        </div>
-      </div>
+        .feed-features {
+          margin-top: 40px;
+          padding: 20px;
+          background: #f5f5f5;
+          text-align: center;
+        }
 
-      <div>
-        <h2 className="text-center mb-md">Latest Hotdog Posts</h2>
-        
-        <ContentFeed
-          type="posted"
-          limit={6}
-          showActions={false}
-        />
-      </div>
+        .features-mini {
+          display: flex;
+          justify-content: center;
+          gap: 20px;
+          flex-wrap: wrap;
+          font-size: 12px;
+          color: #666;
+        }
+
+        @media (max-width: 768px) {
+          .mobile-feed-container {
+            padding: 0;
+          }
+          
+          .feed-features {
+            margin-top: 20px;
+            padding: 15px;
+          }
+
+          .features-mini {
+            gap: 15px;
+            font-size: 11px;
+          }
+        }
+      `}</style>
     </div>
   )
 }

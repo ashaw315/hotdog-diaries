@@ -1,56 +1,60 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
 
 export default function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-
   return (
-    <header className="site-header">
-      <div className="container">
-        <div className="flex justify-between align-center">
-          <Link href="/" className="site-title">
-            🌭 Hotdog Diaries
-          </Link>
-          
-          <nav className="nav nav-horizontal mobile-menu-hidden">
-            <Link href="/" className="nav-link">
-              Home
-            </Link>
-            <Link href="/admin" className="nav-link">
-              Admin
-            </Link>
-          </nav>
-
-          <button
-            className="mobile-menu-toggle"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? '✕' : '☰'}
-          </button>
-        </div>
-
-        {isMenuOpen && (
-          <nav className={`nav nav-vertical mobile-menu-hidden ${isMenuOpen ? '' : 'hidden'}`} style={{ borderTop: '1px solid var(--color-gray-light)', paddingTop: 'var(--spacing-sm)' }}>
-            <Link 
-              href="/" 
-              className="nav-link"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Home
-            </Link>
-            <Link 
-              href="/admin" 
-              className="nav-link"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Admin
-            </Link>
-          </nav>
-        )}
+    <header className="feed-header">
+      <div className="feed-header-content">
+        <Link href="/" className="feed-logo">
+          <span>🌭</span>
+          <span>Hotdog Diaries</span>
+        </Link>
       </div>
+      
+      <style jsx>{`
+        .feed-header {
+          background: linear-gradient(180deg, var(--bun-light) 0%, var(--bun-medium) 100%);
+          padding: 8px 16px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          position: sticky;
+          top: 0;
+          z-index: 100;
+        }
+
+        .feed-header-content {
+          max-width: var(--max-width);
+          margin: 0 auto;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+
+        .feed-logo {
+          font-size: 20px;
+          font-weight: bold;
+          color: var(--text-on-bun);
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: color 0.2s ease;
+        }
+
+        .feed-logo:hover {
+          color: var(--bun-dark);
+        }
+
+        @media (max-width: 768px) {
+          .feed-header {
+            padding: 6px 12px;
+          }
+          
+          .feed-logo {
+            font-size: 18px;
+          }
+        }
+      `}</style>
     </header>
   )
 }

@@ -7,7 +7,7 @@
   padding: 0;
 }
 
-/* Root Variables - Minimal Color Palette */
+/* Root Variables - Hotdog Bun Color Palette */
 :root {
   --color-black: #000000;
   --color-white: #ffffff;
@@ -16,8 +16,15 @@
   --color-blue: #0066cc;
   --color-green: #008000;
   --color-red: #cc0000;
+  
+  /* Hotdog Bun Theme */
+  --bun-light: #D4A574;    /* Light golden brown */
+  --bun-medium: #C19660;   /* Medium bun brown */
+  --bun-dark: #A67C52;     /* Darker bun brown */
+  --text-on-bun: #3D2817;  /* Dark brown text */
+  
   --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --max-width: 1200px;
+  --max-width: 600px;  /* Reduced for mobile-first feed */
   --spacing-xs: 0.5rem;
   --spacing-sm: 1rem;
   --spacing-md: 1.5rem;
@@ -25,18 +32,24 @@
   --spacing-xl: 3rem;
 }
 
-/* Base Elements */
-html {
+/* Base Elements - Clean White Design */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: white;
   font-size: 16px;
   line-height: 1.5;
 }
 
 body {
   font-family: var(--font-system);
-  color: var(--color-black);
-  background-color: var(--color-white);
+  color: #333;
+  background-color: white;
   max-width: 100vw;
   overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 /* Typography */
@@ -528,5 +541,195 @@ img {
   
   .mobile-menu-hidden {
     display: block;
+  }
+}
+
+/* Mobile-First Feed Styles */
+@media (max-width: 768px) {
+  /* Remove padding on mobile for full-width content */
+  body {
+    padding: 0;
+  }
+  
+  /* Ensure images and videos are responsive */
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Optimize touch targets for mobile */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve readability on small screens */
+  body {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  
+  /* Reduce spacing on mobile */
+  .spacing-mobile-sm {
+    padding: 8px;
+  }
+  
+  .spacing-mobile-md {
+    padding: 12px;
+  }
+}
+
+/* Performance optimizations */
+* {
+  /* Hardware acceleration for smooth scrolling */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Improve scroll performance */
+.mobile-feed {
+  will-change: scroll-position;
+}
+
+/* Optimize images for retina displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Focus styles for accessibility */
+button:focus,
+a:focus {
+  outline: 2px solid var(--bun-medium);
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-black: #ffffff;
+    --color-white: #121212;
+    --color-gray-light: #333333;
+    --color-gray: #999999;
+    
+    /* Adjust bun colors for dark mode */
+    --bun-light: #8B6914;
+    --bun-medium: #7A5A0F;
+    --bun-dark: #6B4E0B;
+    --text-on-bun: #FFFFFF;
+  }
+  
+  body {
+    background-color: var(--color-white);
+    color: var(--color-black);
+  }
+}
+
+/* TikTok Desktop Feed Specific Styles */
+.feed-container *,
+.post-slide *,
+.media-video,
+.media-image {
+  /* Hardware acceleration for smooth scrolling */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Smooth scroll behavior */
+@supports (scroll-behavior: smooth) {
+  .feed-container {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Enhanced snap scrolling for browsers that support it */
+@supports (scroll-snap-type: y mandatory) {
+  .feed-container {
+    scroll-snap-type: y mandatory;
+  }
+  
+  .post-slide {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+}
+
+/* Hide scrollbars across all browsers */
+.feed-container {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.feed-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
+/* Optimize video and image rendering */
+video, img {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Prevent selection and improve touch */
+.full-screen-post, .nav-button, .dot {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Optimize text rendering */
+.post-info-overlay {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Performance optimization for transforms */
+.nav-button, .dot {
+  will-change: transform;
+}
+
+/* Ensure proper aspect ratios on all devices */
+@supports (aspect-ratio: 16/9) {
+  .post-video, .post-image {
+    aspect-ratio: auto;
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-appearance: none) {
+  .feed-container {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Fix iOS Safari bounce scroll */
+  body {
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .post-image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
   }
 }
