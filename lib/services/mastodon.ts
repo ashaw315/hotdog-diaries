@@ -13,27 +13,18 @@ export interface MastodonInstance {
 
 export interface MastodonPost {
   id: string
-  content: string
-  createdAt: Date
-  author: {
-    username: string
-    displayName: string
-    profileUrl: string
-  }
-  mediaAttachments: Array<{
-    type: 'image' | 'video' | 'audio'
-    url: string
-    previewUrl?: string
-    description?: string
-  }>
-  stats: {
-    favouritesCount: number
-    reblogsCount: number
-    repliesCount: number
-  }
-  tags: string[]
+  text: string
+  author: string
+  authorId: string
   url: string
+  published: Date
+  platform: SourcePlatform
   instance: string
+  mediaUrls?: string[]
+  hashtags: string[]
+  mentions: string[]
+  boostCount: number
+  favouriteCount: number
 }
 
 export interface MastodonScanConfig {
@@ -201,10 +192,9 @@ export class MastodonService {
   }
 
   async searchPosts(
-    instance: string, 
-    query: string, 
-    limit: number = 20
+    options: { query: string; instance: string; limit?: number }
   ): Promise<MastodonPost[]> {
+    const { query, instance, limit = 20 } = options;
     try {
       const searchUrl = `https://${instance}/api/v2/search`
       const params = new URLSearchParams({
@@ -301,27 +291,18 @@ export class MastodonService {
       .filter(post => post && post.content && post.account)
       .map(post => ({
         id: post.id,
-        content: this.stripHtml(post.content),
-        createdAt: new Date(post.created_at),
-        author: {
-          username: post.account.username,
-          displayName: post.account.display_name || post.account.username,
-          profileUrl: post.account.url
-        },
-        mediaAttachments: (post.media_attachments || []).map((media: any) => ({
-          type: media.type,
-          url: media.url,
-          previewUrl: media.preview_url,
-          description: media.description
-        })),
-        stats: {
-          favouritesCount: post.favourites_count || 0,
-          reblogsCount: post.reblogs_count || 0,
-          repliesCount: post.replies_count || 0
-        },
-        tags: (post.tags || []).map((tag: any) => tag.name),
+        text: this.stripHtml(post.content),
+        author: post.account.display_name || post.account.username,
+        authorId: post.account.id,
         url: post.url,
-        instance
+        published: new Date(post.created_at),
+        platform: SourcePlatform.MASTODON,
+        instance,
+        mediaUrls: (post.media_attachments || []).map((media: any) => media.url).filter(Boolean),
+        hashtags: (post.tags || []).map((tag: any) => tag.name),
+        mentions: (post.mentions || []).map((mention: any) => mention.username),
+        boostCount: post.reblogs_count || 0,
+        favouriteCount: post.favourites_count || 0
       }))
   }
 
@@ -346,11 +327,11 @@ export class MastodonService {
       try {
         // Search for each search term
         for (const term of this.config.searchTerms) {
-          const posts = await this.searchPosts(
-            instance.domain, 
-            term, 
-            Math.floor(this.config.maxPostsPerScan / this.config.searchTerms.length)
-          )
+          const posts = await this.searchPosts({
+            instance: instance.domain,
+            query: term,
+            limit: Math.floor(this.config.maxPostsPerScan / this.config.searchTerms.length)
+          })
           allPosts.push(...posts)
         }
 
@@ -483,6 +464,17 @@ export class MastodonService {
     } catch (error) {
       console.error('Failed to get instance stats:', error)
       return []
+    }
+  }
+
+  async getActiveInstances(): Promise<string[]> {
+    try {
+      const config = await this.getConfig()
+      return config.enabledInstances || ['mastodon.social', 'mas.to']
+    } catch (error) {
+      console.error('Failed to get active instances:', error)
+      // Fallback to default instances
+      return ['mastodon.social', 'mas.to']
     }
   }
 }

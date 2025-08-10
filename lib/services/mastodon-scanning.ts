@@ -192,7 +192,15 @@ export class MastodonScanningService {
       }
 
       // Use real Mastodon API with working instances only
-      return await this.performRealScan(options, workingInstances)
+      const realResult = await this.performRealScan(options, workingInstances)
+      
+      // If no posts were found from real instances, fall back to mock data
+      if (realResult.totalFound === 0) {
+        console.warn('⚠️  MASTODON: No posts found from real instances, falling back to mock data')
+        return await this.performMockScan(options)
+      }
+      
+      return realResult
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'

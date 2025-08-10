@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { ContentType, SourcePlatform } from '@/types'
 
-
 interface Post {
   id: number
   content_text?: string
@@ -19,51 +18,7 @@ interface Post {
   posted_at?: Date
 }
 
-// Test videos with different aspect ratios
-const TEST_VIDEOS = [
-  {
-    id: -1,
-    content_text: "Perfect hotdog grilling technique 🔥",
-    content_type: 'video' as ContentType,
-    content_video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    content_image_url: "https://images.unsplash.com/photo-1612392061787-2d078b2cb4b4?w=800&h=600&fit=crop",
-    source_platform: 'youtube' as SourcePlatform,
-    original_author: "chef_hotdog",
-    original_url: "https://example.com/test1",
-    scraped_at: new Date(),
-    is_posted: false,
-    is_approved: true,
-    posted_at: new Date()
-  },
-  {
-    id: -2,
-    content_text: "Street vendor secrets revealed",
-    content_type: 'video' as ContentType,
-    content_video_url: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
-    content_image_url: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=800&h=600&fit=crop",
-    source_platform: 'tumblr' as SourcePlatform,
-    original_author: "street_chef",
-    original_url: "https://example.com/test2",
-    scraped_at: new Date(),
-    is_posted: false,
-    is_approved: true,
-    posted_at: new Date()
-  },
-  {
-    id: -3,
-    content_text: "Chicago vs New York style debate",
-    content_type: 'video' as ContentType,
-    content_video_url: "https://youtu.be/dQw4w9WgXcQ",
-    content_image_url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=800&h=600&fit=crop",
-    source_platform: 'youtube' as SourcePlatform,
-    original_author: "hotdog_expert",
-    original_url: "https://example.com/test3",
-    scraped_at: new Date(),
-    is_posted: false,
-    is_approved: true,
-    posted_at: new Date()
-  }
-]
+// No test data - using real database content only
 
 export default function OptimizedTikTokFeed() {
   const [posts, setPosts] = useState<Post[]>([])
@@ -71,7 +26,6 @@ export default function OptimizedTikTokFeed() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
-  const [debugMode, setDebugMode] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const videosRef = useRef<{ [key: number]: HTMLVideoElement }>({})
 
@@ -92,7 +46,7 @@ export default function OptimizedTikTokFeed() {
   const fetchPosts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/content?limit=20')
+      const response = await fetch('/api/content?limit=30')
       
       if (!response.ok) {
         throw new Error('Failed to load content')
@@ -103,12 +57,15 @@ export default function OptimizedTikTokFeed() {
       if (data.success) {
         const apiPosts = data.data?.content || []
         
-        const cleanedApiPosts = apiPosts.map(post => ({
-          ...post,
-          content_text: post.content_text && post.content_text.length > 150 
-            ? post.content_text.substring(0, 150) + '...' 
-            : post.content_text
-        }))
+        const cleanedApiPosts = apiPosts.map((post, index) => {
+
+          return {
+            ...post,
+            content_text: post.content_text && post.content_text.length > 150 
+              ? post.content_text.substring(0, 150) + '...' 
+              : post.content_text
+          }
+        })
 
         // Welcome card for mobile
         const welcomeCard = {
@@ -131,7 +88,6 @@ export default function OptimizedTikTokFeed() {
           ...cleanedApiPosts
         ]
         
-        console.log(`Loaded ${allPosts.length} posts`)
         setPosts(allPosts)
       } else {
         throw new Error(data.error || 'Failed to load content')
@@ -157,13 +113,13 @@ export default function OptimizedTikTokFeed() {
       const playPromise = currentVideo.play()
       if (playPromise !== undefined) {
         playPromise.catch(err => {
-          console.log('Video autoplay failed:', err)
         })
       }
     }
   }, [currentIndex])
 
-  // Keyboard navigation + debug toggle
+
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown' && currentIndex < posts.length - 1) {
@@ -174,9 +130,6 @@ export default function OptimizedTikTokFeed() {
         e.preventDefault()
         setCurrentIndex(currentIndex - 1)
         scrollToPost(currentIndex - 1)
-      } else if (e.key === 'd' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setDebugMode(prev => !prev)
       }
     }
 
@@ -186,9 +139,18 @@ export default function OptimizedTikTokFeed() {
 
   const scrollToPost = (index: number) => {
     if (containerRef.current) {
-      // Each card container is 100vh (85vh card + 7.5vh top + 7.5vh bottom padding)
+      // Calculate cumulative height for dynamic card sizes
+      let totalHeight = 0
+      for (let i = 0; i < index; i++) {
+        if (i < posts.length) {
+          const dimensions = getCardDimensions(posts[i])
+          // Add card height plus padding (15vh total padding per card slot)
+          totalHeight += parseFloat(dimensions.height.replace('px', '')) + (window.innerHeight * 0.15)
+        }
+      }
+      
       containerRef.current.scrollTo({
-        top: index * window.innerHeight,
+        top: totalHeight,
         behavior: 'smooth'
       })
     }
@@ -197,9 +159,28 @@ export default function OptimizedTikTokFeed() {
   const handleScroll = () => {
     if (containerRef.current) {
       const scrollPosition = containerRef.current.scrollTop
-      const newIndex = Math.round(scrollPosition / window.innerHeight)
       
-      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < posts.length) {
+      // Find which card we're currently viewing with variable heights
+      let cumulativeHeight = 0
+      let newIndex = 0
+      
+      for (let i = 0; i < posts.length; i++) {
+        const dimensions = getCardDimensions(posts[i])
+        const cardHeight = parseFloat(dimensions.height.replace('px', '')) + (window.innerHeight * 0.15)
+        
+        if (scrollPosition < cumulativeHeight + cardHeight / 2) {
+          newIndex = i
+          break
+        }
+        
+        cumulativeHeight += cardHeight
+        newIndex = i + 1
+      }
+      
+      // Ensure index is within bounds
+      newIndex = Math.max(0, Math.min(newIndex, posts.length - 1))
+      
+      if (newIndex !== currentIndex) {
         setCurrentIndex(newIndex)
       }
     }
@@ -227,25 +208,73 @@ export default function OptimizedTikTokFeed() {
     }
   }
 
-  // Determine card width based on content aspect ratio
-  const getCardWidth = (post: Post) => {
-    if (isMobile) return 'calc(100vw - 32px)'
-    
-    // For video content, try to determine aspect ratio
-    if (post.content_type === 'video' && post.content_video_url) {
-      if (post.content_video_url.includes('youtube.com') || post.content_video_url.includes('youtu.be')) {
-        return '700px' // YouTube videos are typically landscape
-      }
-      return '600px' // Other videos, assume landscape-ish
+  // Determine aspect ratio from content
+  const getContentAspectRatio = (post: Post): number => {
+    // Platform-specific aspect ratios
+    if (post.source_platform === 'youtube') {
+      return 16/9; // YouTube is typically 16:9 landscape
     }
     
-    // For images, assume portrait/square for social media content
-    if (post.content_image_url) {
-      return '450px'
+    if (post.source_platform === 'tumblr') {
+      return 1; // Tumblr tends to be square/portrait
     }
     
-    // Text posts
-    return '500px'
+    if (post.source_platform === 'reddit') {
+      if (post.content_type === 'image') return 4/3; // Reddit photos often 4:3
+      return 1.2; // Text posts slightly wide
+    }
+    
+    if (post.source_platform === 'pixabay') {
+      return 3/2; // Professional photos often 3:2
+    }
+    
+    if (post.source_platform === 'imgur') {
+      if (post.content_type === 'video') return 16/9; // Imgur GIFs/videos
+      return 1; // Imgur images often square/meme format
+    }
+    
+    if (post.source_platform === 'lemmy') {
+      return 16/9; // Discussion content with images
+    }
+    
+    // Content type defaults
+    if (post.content_type === 'video') return 16/9;
+    if (post.content_type === 'text') return 1;
+    
+    return 4/3; // Default photo ratio
+  }
+
+  // Calculate dynamic card dimensions
+  const getCardDimensions = (post: Post) => {
+    const aspectRatio = getContentAspectRatio(post)
+    const baseWidth = isMobile ? (window.innerWidth - 32) : 500
+    
+    // Calculate width with platform-specific adjustments
+    let width = baseWidth
+    if (!isMobile) {
+      if (post.source_platform === 'youtube') width = 700
+      if (post.source_platform === 'pixabay') width = 600
+      if (post.source_platform === 'imgur') width = aspectRatio > 1 ? 650 : 450
+      if (post.source_platform === 'lemmy') width = 580
+    }
+    
+    // Calculate height from aspect ratio
+    let height = width / aspectRatio
+    
+    // Set reasonable min/max heights for usability
+    const minHeight = isMobile ? 300 : 400
+    const maxHeight = isMobile ? (window.innerHeight * 0.85) : 800
+    
+    height = Math.min(Math.max(height, minHeight), maxHeight)
+    
+    
+    return {
+      width: `${width}px`,
+      height: `${height}px`,
+      aspectRatio,
+      cardClass: aspectRatio > 1.5 ? 'card-landscape' : 
+                 aspectRatio < 0.8 ? 'card-portrait' : 'card-square'
+    }
   }
 
   if (loading) {
@@ -426,25 +455,37 @@ export default function OptimizedTikTokFeed() {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {posts.map((post, index) => (
-          <div key={post.id} className="card-slot">
-            <div 
-              className="post-card"
-              style={{ width: getCardWidth(post) }}
-            >
-              <PostContent 
-                post={post} 
-                isActive={index === currentIndex}
-                isWelcomeCard={post.id === -999}
-                videoRef={(el) => {
-                  if (el) videosRef.current[index] = el
+        {posts.map((post, index) => {
+          const dimensions = getCardDimensions(post)
+          
+          // Log dimensions in development only
+          if (process.env.NODE_ENV === 'development' && index < 3) {
+          }
+          
+          return (
+            <div key={post.id} className="card-slot">
+              <div 
+                className={`post-card ${dimensions.cardClass}`}
+                style={{ 
+                  width: dimensions.width,
+                  height: dimensions.height
                 }}
-                index={index}
-                debugMode={debugMode}
-              />
+                data-platform={post.source_platform}
+                data-width={dimensions.width}
+                data-height={dimensions.height}
+              >
+                <PostContent 
+                  post={post} 
+                  isActive={index === currentIndex}
+                  isWelcomeCard={post.id === -999}
+                  videoRef={(el) => {
+                    if (el) videosRef.current[index] = el
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <style jsx>{`
@@ -491,7 +532,7 @@ export default function OptimizedTikTokFeed() {
 
         .card-slot {
           width: 100vw;
-          height: 100vh;
+          min-height: 100vh;
           scroll-snap-align: start;
           scroll-snap-stop: always;
           position: relative;
@@ -502,12 +543,26 @@ export default function OptimizedTikTokFeed() {
         }
 
         .post-card {
-          height: 85vh;
           background: black;
           border-radius: 16px;
           overflow: hidden;
           position: relative;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+          transition: all 0.3s ease;
+        }
+
+        /* Dynamic card classes for different aspect ratios */
+        .post-card.card-landscape {
+          border-radius: 20px;
+        }
+
+        .post-card.card-portrait {
+          border-radius: 12px;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .post-card.card-square {
+          border-radius: 16px;
         }
 
         @media (max-width: 768px) {
@@ -523,10 +578,23 @@ export default function OptimizedTikTokFeed() {
           
           .card-slot {
             padding: 5vh 16px;
+            min-height: 100vh;
           }
           
           .post-card {
-            height: 90vh;
+            border-radius: 12px;
+          }
+
+          .post-card.card-landscape {
+            border-radius: 16px;
+          }
+
+          .post-card.card-portrait {
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+          }
+
+          .post-card.card-square {
             border-radius: 12px;
           }
         }
@@ -539,16 +607,12 @@ function PostContent({
   post, 
   isActive, 
   isWelcomeCard = false,
-  videoRef,
-  index,
-  debugMode = false
+  videoRef 
 }: { 
   post: Post
   isActive: boolean
   isWelcomeCard?: boolean
   videoRef: (el: HTMLVideoElement | null) => void
-  index: number
-  debugMode?: boolean
 }) {
   const [imageError, setImageError] = useState(false)
   const [videoError, setVideoError] = useState(false)
@@ -602,6 +666,8 @@ function PostContent({
   }
 
   const extractYouTubeId = (url: string): string | null => {
+    if (!url) return null
+    
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&#?\n]+)/,
       /youtube\.com\/watch\?.*v=([^&#?\n]+)/
@@ -609,12 +675,48 @@ function PostContent({
     
     for (const pattern of patterns) {
       const match = url.match(pattern)
-      if (match) return match[1]
+      if (match && match[1]) {
+        // Ensure the video ID is exactly 11 characters (valid YouTube format)
+        const videoId = match[1].substring(0, 11)
+        if (/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+          return videoId
+        }
+      }
     }
     return null
   }
 
+  const extractImgurId = (url: string): string | null => {
+    if (!url) return null
+    
+    const patterns = [
+      /imgur\.com\/([A-Za-z0-9]+)/,
+      /i\.imgur\.com\/([A-Za-z0-9]+)/
+    ]
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match && match[1]) {
+        return match[1].split('.')[0] // Remove extension
+      }
+    }
+    return null
+  }
+
+  const logVideoError = async (platform: string, url: string, error: string) => {
+    try {
+      await fetch('/api/video-errors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform, url, error })
+      })
+    } catch (e) {
+      console.warn('[VIDEO ERROR LOGGING] Failed to log error:', e)
+    }
+  }
+
   const renderMedia = () => {
+
     // Welcome card
     if (isWelcomeCard) {
       return (
@@ -629,101 +731,167 @@ function PostContent({
       )
     }
 
-    // Video content - FORCED to fill entire card
-    if (post.content_type === 'video' && post.content_video_url && !videoError) {
-      // YouTube videos - Production-ready embed with autoplay
-      if (post.content_video_url.includes('youtube.com') || post.content_video_url.includes('youtu.be')) {
-        const videoId = extractYouTubeId(post.content_video_url);
+    // PLATFORM-SPECIFIC VIDEO HANDLING
+    const hasVideoUrl = post.content_video_url && !videoError
+    
+    // 1. YOUTUBE VIDEOS - Use iframe embedding (CORS-safe)
+    if (post.source_platform === 'youtube' && post.content_video_url) {
+      const videoId = extractYouTubeId(post.content_video_url)
+      
+      if (videoId) {
         return (
           <iframe
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&modestbranding=1&rel=0`}
-            className="content-image"
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&playsinline=1&loop=1&playlist=${videoId}`}
+            className="absolute inset-0 w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
-            title={`YouTube video ${videoId}`}
+            frameBorder="0"
+            onError={() => {
+              console.error('[YOUTUBE ERROR] Iframe failed to load:', videoId)
+              logVideoError('youtube', post.content_video_url!, 'iframe_failed')
+              setVideoError(true)
+            }}
+            onLoad={() => {}}
           />
-        );
+        )
+      } else {
+        console.error(`[YOUTUBE ERROR] Invalid video URL: ${post.content_video_url}`)
+        logVideoError('youtube', post.content_video_url, 'invalid_url_format')
+        setVideoError(true)
       }
+    }
+    
+    // 2. IMGUR VIDEOS/GIFS - Convert to MP4 format
+    if (post.source_platform === 'imgur' && hasVideoUrl) {
+      let videoUrl = post.content_video_url
       
-      // Direct video files - FORCED to fill
-      let videoSrc = post.content_video_url;
-      
-      // Fix Imgur URLs: convert .gif to .mp4 for better playback
-      if (post.source_platform === 'imgur' && videoSrc?.endsWith('.gif')) {
-        videoSrc = videoSrc.replace('.gif', '.mp4');
+      // Handle different Imgur formats
+      if (videoUrl?.includes('imgur.com')) {
+        const imgurId = extractImgurId(videoUrl)
+        
+        if (imgurId) {
+          // Force MP4 format for best compatibility
+          if (videoUrl.includes('.gif') || videoUrl.includes('/a/') || !videoUrl.includes('.mp4')) {
+            videoUrl = `https://i.imgur.com/${imgurId}.mp4`
+          }
+          
+          
+          return (
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              className="absolute inset-0 w-full h-full object-contain"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              onLoadedData={() => {}}
+              onError={() => {
+                console.error('[IMGUR] Video failed:', videoUrl)
+                logVideoError('imgur', videoUrl!, 'video_failed')
+                setVideoError(true)
+              }}
+            />
+          )
+        } else {
+          console.error(`[IMGUR ERROR] Could not extract Imgur ID from: ${videoUrl}`)
+          logVideoError('imgur', videoUrl, 'invalid_id_extraction')
+          setVideoError(true)
+        }
       }
+    }
+    
+    // 3. OTHER VIDEO FORMATS - Generic HTML5 video
+    if (post.content_type === 'video' && hasVideoUrl && post.source_platform !== 'youtube' && post.source_platform !== 'imgur') {
+      const videoUrl = post.content_video_url
+      
       
       return (
-        <div className="video-container">
-          <video
-            ref={videoRef}
-            className="direct-video"
-            src={videoSrc}
-            loop
-            muted
-            playsInline
-            autoPlay
-            poster={post.content_image_url}
-            onError={() => setVideoError(true)}
-          />
-        </div>
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          className="absolute inset-0 w-full h-full object-contain"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onLoadedData={() => {}}
+          onError={() => {
+            console.error(`[${post.source_platform.toUpperCase()}] Video failed:`, videoUrl)
+            logVideoError(post.source_platform, videoUrl!, 'video_failed')
+            setVideoError(true)
+          }}
+        />
       )
     }
 
-    // Image content - FORCED to fill
+    // 4. IMAGE CONTENT - FIX PIXABAY URLS
     if (post.content_image_url && !imageError) {
+      let imageUrl = post.content_image_url
+      
+      // FIX: Pixabay URLs are malformed - remove /get/ path
+      if (post.source_platform === 'pixabay' && imageUrl.includes('pixabay.com/get/')) {
+        const match = imageUrl.match(/\/get\/([a-z0-9]+)/)
+        if (match) {
+          imageUrl = `https://cdn.pixabay.com/photo/${match[1]}.jpg`
+          }
+      }
+      
       return (
-        <div className="image-container">
-          <img 
-            className="content-image"
-            src={post.content_image_url}
-            alt={post.content_text || 'Hotdog content'}
-            onError={() => setImageError(true)}
-          />
-        </div>
+        <img 
+          src={imageUrl}
+          alt={post.content_text || 'Hotdog content'}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={() => {
+            console.error(`[${post.source_platform.toUpperCase()}] Failed to load:`, imageUrl)
+            logVideoError(post.source_platform, imageUrl, 'image_failed')
+            setImageError(true)
+          }}
+          onLoad={() => {}}
+        />
       )
     }
 
-    // Text content
+    // Fallback content (when video/image fails or doesn't exist)
+    const fallbackText = post.content_text || 
+                        `Check out this hotdog content from ${post.source_platform}!`
+    
     return (
       <div className="text-content">
         <div className="text-wrapper">
           <div className="hotdog-emoji">🌭</div>
-          <p className="post-text">{post.content_text || 'Delicious hotdog content'}</p>
+          <p className="post-text">{fallbackText}</p>
           <div className="platform-badge">
             {getPlatformIcon(post.source_platform)} {post.source_platform}
           </div>
+          {(videoError || imageError) && (
+            <div className="error-message">
+              Content failed to load - showing text instead
+            </div>
+          )}
         </div>
       </div>
     )
   }
 
   return (
-    <div 
-      ref={postContentRef} 
-      className="post-content" 
-      data-platform={post.source_platform} 
-      data-testid="content-card"
-      data-id={post.id}
-      data-type={post.content_type}
-      data-video-url={post.content_video_url || ''}
-      data-image-url={post.content_image_url || ''}
-      data-author={post.original_author || ''}
-    >
+    <div ref={postContentRef} className="post-content">
       {renderMedia()}
       
-      {/* Debug overlay */}
-      {debugMode && !isWelcomeCard && (
-        <div className="debug-overlay">
-          <div>Platform: {post.source_platform}</div>
-          <div>ID: {post.id}</div>
-          <div>Has Video: {post.content_video_url ? 'Yes' : 'No'}</div>
-          <div>Has Image: {post.content_image_url ? 'Yes' : 'No'}</div>
-          <div>Index: {index}</div>
-          <div>Type: {post.content_type}</div>
-          <div>Author: {post.original_author}</div>
-          <div>Video URL: {post.content_video_url?.substring(0, 50)}...</div>
-          <div>Image URL: {post.content_image_url?.substring(0, 50)}...</div>
+      {/* Info overlay */}
+      {!isWelcomeCard && (
+        <div className="info-overlay">
+          <div className="creator-info">
+            <div className="username">@{cleanAuthor(post.original_author)}</div>
+            {post.content_text && post.content_type !== 'text' && (
+              <div className="caption">{post.content_text}</div>
+            )}
+            <div className="platform-info">
+              {getPlatformIcon(post.source_platform)} {post.source_platform}
+            </div>
+          </div>
         </div>
       )}
 
@@ -798,20 +966,6 @@ function PostContent({
           object-fit: cover !important;
           min-width: 100% !important;
           min-height: 100% !important;
-        }
-
-        .debug-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          background: rgba(0, 0, 0, 0.9);
-          color: white;
-          padding: 8px;
-          font-size: 12px;
-          font-family: monospace;
-          z-index: 100;
-          line-height: 1.3;
         }
 
         /* Welcome card */
@@ -904,6 +1058,17 @@ function PostContent({
           border-radius: 20px;
           font-size: 14px;
           backdrop-filter: blur(10px);
+        }
+
+        .error-message {
+          margin-top: 16px;
+          padding: 8px 12px;
+          background: rgba(255, 165, 0, 0.2);
+          border: 1px solid rgba(255, 165, 0, 0.4);
+          border-radius: 12px;
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 12px;
+          text-align: center;
         }
 
         /* Info overlay */

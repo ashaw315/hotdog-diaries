@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Playback Test</title>
+  <style>
+    .test-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px; }
+    .test-item { border: 2px solid #ccc; padding: 10px; }
+    .media-container { position: relative; width: 100%; height: 200px; background: #f0f0f0; }
+    .status { margin-top: 10px; padding: 5px; background: #fff; }
+    .success { background: #d4edda; }
+    .error { background: #f8d7da; }
+  </style>
+</head>
+<body>
+  <h1>Media Playback Test Suite</h1>
+  <div id="results"></div>
+  
+  <div class="test-grid">
+    <!-- YouTube iframe test -->
+    <div class="test-item">
+      <h3>YouTube (iframe)</h3>
+      <div class="media-container">
+        <iframe 
+          id="yt-test"
+          src="https://www.youtube.com/embed/eIwOI0XLCTk?autoplay=1&mute=1"
+          style="width:100%; height:100%;"
+          allow="autoplay">
+        </iframe>
+      </div>
+      <div id="yt-status" class="status">Loading...</div>
+    </div>
+    
+    <!-- Imgur video test -->
+    <div class="test-item">
+      <h3>Imgur (video)</h3>
+      <div class="media-container">
+        <video 
+          id="imgur-test"
+          src="https://i.imgur.com/MNFK1t7.mp4"
+          style="width:100%; height:100%;"
+          autoplay muted loop>
+        </video>
+      </div>
+      <div id="imgur-status" class="status">Loading...</div>
+    </div>
+    
+    <!-- Direct video test -->
+    <div class="test-item">
+      <h3>Direct MP4</h3>
+      <div class="media-container">
+        <video 
+          id="direct-test"
+          src="https://www.w3schools.com/html/mov_bbb.mp4"
+          style="width:100%; height:100%;"
+          autoplay muted loop>
+        </video>
+      </div>
+      <div id="direct-status" class="status">Loading...</div>
+    </div>
+  </div>
+  
+  <script>
+    // Test suite
+    const tests = {
+      cors: { pass: 0, fail: 0, blocked: [] },
+      videos: { playing: 0, failed: 0 },
+      iframes: { loaded: 0, failed: 0 },
+      errors: []
+    };
+    
+    // Monitor CORS
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.transferSize === 0 && (entry.name.includes('video') || entry.name.includes('google'))) {
+          tests.cors.fail++;
+          tests.cors.blocked.push(entry.name);
+        }
+      }
+    });
+    observer.observe({ entryTypes: ['resource'] });
+    
+    // Monitor console errors
+    window.addEventListener('error', (e) => {
+      tests.errors.push(e.message);
+    }, true);
+    
+    // Test videos
+    document.getElementById('imgur-test').addEventListener('loadeddata', () => {
+      tests.videos.playing++;
+      document.getElementById('imgur-status').className = 'status success';
+      document.getElementById('imgur-status').textContent = '✅ Playing';
+    });
+    
+    document.getElementById('imgur-test').addEventListener('error', () => {
+      tests.videos.failed++;
+      document.getElementById('imgur-status').className = 'status error';
+      document.getElementById('imgur-status').textContent = '❌ Failed';
+    });
+    
+    document.getElementById('direct-test').addEventListener('loadeddata', () => {
+      tests.videos.playing++;
+      document.getElementById('direct-status').className = 'status success';
+      document.getElementById('direct-status').textContent = '✅ Playing';
+    });
+    
+    // Check YouTube iframe
+    setTimeout(() => {
+      const ytFrame = document.getElementById('yt-test');
+      if (ytFrame) {
+        tests.iframes.loaded++;
+        document.getElementById('yt-status').className = 'status success';
+        document.getElementById('yt-status').textContent = '✅ Loaded (check for CORS errors in console)';
+      }
+      
+      // Final report
+      const results = document.getElementById('results');
+      results.innerHTML = `
+        <h2>Test Results</h2>
+        <p>CORS Blocked: ${tests.cors.fail} (${tests.cors.blocked.length > 0 ? tests.cors.blocked[0].substring(0, 50) + '...' : 'None'})</p>
+        <p>Videos Playing: ${tests.videos.playing}</p>
+        <p>Videos Failed: ${tests.videos.failed}</p>
+        <p>Console Errors: ${tests.errors.length}</p>
+        <p class="${tests.cors.fail === 0 && tests.errors.length === 0 ? 'success' : 'error'}">
+          ${tests.cors.fail === 0 && tests.errors.length === 0 ? '✅ ALL TESTS PASSED' : '❌ TESTS FAILED'}
+        </p>
+      `;
+    }, 3000);
+  </script>
+</body>
+</html>

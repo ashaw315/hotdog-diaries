@@ -169,18 +169,13 @@ export default function ContentCard({
               (() => {
                 const videoId = content_video_url.split('v=')[1]?.split('&')[0]
                 if (videoId) {
-                  return (
-                    <iframe
-                      width="100%"
-                      height="280"
-                      src={`https://www.youtube.com/embed/${videoId}`}
-                      title="YouTube video"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      style={{ maxWidth: '480px' }}
-                    />
-                  )
+                  <iframe
+        src={`https://www.youtube.com/embed/${videoId}?controls=1&rel=0`}
+        // NO autoplay - user must click play
+        className="absolute inset-0 w-full h-full"
+        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
                 }
                 return null
               })()

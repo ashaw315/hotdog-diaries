@@ -68,13 +68,67 @@ export interface BlueskyStats {
   successRate: number
 }
 
+interface BlueskyAuthSession {
+  accessJwt: string
+  refreshJwt: string
+  handle: string
+  did: string
+}
+
 export class BlueskyService {
-  private readonly baseUrl = 'https://public.api.bsky.app'
+  private readonly baseUrl = 'https://bsky.social/xrpc'
+  private session: BlueskyAuthSession | null = null
   private readonly searchTerms = [
     'hotdog', 'hot dog', 'hot-dog', 
     'sausage', 'frankfurter', 'wiener', 'bratwurst',
     'corn dog', 'chili dog'
   ]
+
+  /**
+   * Authenticate with Bluesky using identifier and app password
+   */
+  private async authenticate(): Promise<BlueskyAuthSession> {
+    const identifier = process.env.BLUESKY_IDENTIFIER
+    const password = process.env.BLUESKY_APP_PASSWORD
+
+    if (!identifier || !password) {
+      throw new Error('Missing BLUESKY_IDENTIFIER or BLUESKY_APP_PASSWORD in environment variables')
+    }
+
+    console.log(`[BLUESKY] Authenticating as ${identifier}...`)
+
+    const response = await fetch(`${this.baseUrl}/com.atproto.server.createSession`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'HotdogDiaries/1.0'
+      },
+      body: JSON.stringify({
+        identifier,
+        password
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Authentication failed: ${response.status} ${error}`)
+    }
+
+    const session = await response.json()
+    console.log(`[BLUESKY] Authenticated successfully as @${session.handle}`)
+    
+    this.session = session
+    return session
+  }
+
+  /**
+   * Ensure we have a valid session
+   */
+  private async ensureAuthenticated(): Promise<void> {
+    if (!this.session) {
+      await this.authenticate()
+    }
+  }
 
   async performScan(options?: { maxPosts?: number }): Promise<{
     totalFound: number
@@ -175,8 +229,8 @@ export class BlueskyService {
       await logToDatabase(
         LogLevel.ERROR,
         'BLUESKY_SCAN_ERROR',
-        `Bluesky scan failed: ${error.message}`,
-        { error: error.message, duration }
+        `Bluesky scan failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error: error instanceof Error ? error.message : 'Unknown error', duration }
       )
       throw error
     }
@@ -184,7 +238,9 @@ export class BlueskyService {
 
   private async searchPosts(query: string, limit: number = 20): Promise<BlueskyPost[]> {
     try {
-      const url = `${this.baseUrl}/xrpc/app.bsky.feed.searchPosts`
+      await this.ensureAuthenticated()
+      
+      const url = `${this.baseUrl}/app.bsky.feed.searchPosts`
       const params = new URLSearchParams({
         q: query,
         limit: limit.toString(),
@@ -196,6 +252,7 @@ export class BlueskyService {
       const response = await fetch(`${url}?${params}`, {
         method: 'GET',
         headers: {
+          'Authorization': `Bearer ${this.session!.accessJwt}`,
           'Accept': 'application/json',
           'User-Agent': 'HotdogDiaries/1.0'
         }
@@ -309,11 +366,11 @@ export class BlueskyService {
       await logToDatabase(
         LogLevel.ERROR,
         'BLUESKY_SAVE_ERROR',
-        `Failed to save Bluesky post: ${error.message}`,
+        `Failed to save Bluesky post: ${error instanceof Error ? error.message : 'Unknown error'}`,
         { 
           postUri: post.uri, 
           authorHandle: post.author.handle,
-          error: error.message 
+          error: error instanceof Error ? error.message : 'Unknown error' 
         }
       )
       return null
@@ -395,57 +452,28 @@ export class BlueskyService {
 
   async testConnection(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
-      console.log('🔗 Testing Bluesky API connection...')
+      console.log('🔗 Testing Bluesky API connection with authentication...')
       
-      // Test with a simple health check endpoint instead of search
-      const response = await fetch(`${this.baseUrl}/xrpc/com.atproto.server.describeServer`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'HotdogDiaries/1.0'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        return {
-          success: true,
-          message: 'Successfully connected to Bluesky API',
-          details: {
-            status: response.status,
-            server: data.availableUserDomains || ['bsky.social']
-          }
-        }
-      } else {
-        // If server describe fails, try a simple search as fallback
-        const searchResponse = await fetch(`${this.baseUrl}/xrpc/app.bsky.feed.searchPosts?q=hello&limit=1`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'HotdogDiaries/1.0'
-          }
-        })
-        
-        if (searchResponse.ok) {
-          return {
-            success: true,
-            message: 'Bluesky API reachable via search endpoint',
-            details: {
-              status: searchResponse.status,
-              method: 'search_fallback'
-            }
-          }
-        }
-        
-        return {
-          success: false,
-          message: `Bluesky API connection failed: ${response.status} ${response.statusText}`
+      // Test authentication first
+      await this.ensureAuthenticated()
+      
+      // Test with a simple authenticated search
+      const testPosts = await this.searchPosts('test', 1)
+      
+      return {
+        success: true,
+        message: `Successfully connected to Bluesky as @${this.session!.handle}`,
+        details: {
+          handle: this.session!.handle,
+          did: this.session!.did,
+          testPostsFound: testPosts.length
         }
       }
     } catch (error) {
       return {
         success: false,
-        message: `Bluesky connection test failed: ${error.message}`
+        message: `Bluesky connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        details: { error: error instanceof Error ? error.message : 'Unknown error' }
       }
     }
   }
@@ -460,8 +488,10 @@ export class BlueskyService {
     try {
       const stats = await this.getScanningStats()
       
+      const hasCredentials = !!(process.env.BLUESKY_IDENTIFIER && process.env.BLUESKY_APP_PASSWORD)
+      
       return {
-        isEnabled: true, // Bluesky is always enabled (no auth required)
+        isEnabled: hasCredentials, // Bluesky requires authentication now
         scanInterval: 4 * 60 * 60 * 1000, // 4 hours
         lastScanTime: stats.lastScanTime,
         nextScanTime: stats.nextScanTime,
@@ -494,8 +524,8 @@ export class BlueskyService {
       await logToDatabase(
         LogLevel.ERROR,
         'BLUESKY_AUTO_SCAN_ERROR',
-        `Failed to start automated Bluesky scanning: ${error.message}`,
-        { error: error.message }
+        `Failed to start automated Bluesky scanning: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error: error instanceof Error ? error.message : 'Unknown error' }
       )
       throw error
     }
