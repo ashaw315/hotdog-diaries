@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         scanVsPost: scanVsPost.rows,
         cronConfig,
         defaults: {
-          platforms: ['reddit', 'mastodon', 'youtube', 'pixabay', 'bluesky', 'lemmy', 'imgur', 'tumblr'],
+          platforms: ['reddit', 'youtube', 'pixabay', 'bluesky', 'lemmy', 'imgur', 'tumblr'],
           frequencyHours: 4,
           maxPostsPerScan: 50
         }

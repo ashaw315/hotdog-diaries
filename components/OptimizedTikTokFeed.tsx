@@ -13,6 +13,7 @@ interface Post {
   original_author?: string
   content_image_url?: string
   content_video_url?: string
+  content_metadata?: string
   scraped_at: Date
   is_posted: boolean
   is_approved: boolean
@@ -552,7 +553,74 @@ function PostContent({
 }) {
   const [imageError, setImageError] = useState(false)
   const [videoError, setVideoError] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isIntersecting, setIsIntersecting] = useState(false)
+  const [giphyPlaying, setGiphyPlaying] = useState(false)
   const postContentRef = useRef<HTMLDivElement>(null)
+  const giphyVideoRef = useRef<HTMLVideoElement>(null)
+
+  // Mobile detection and network awareness
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Check if on slow connection for Giphy optimization
+  const isSlowConnection = () => {
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection
+      return connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g' || connection.saveData
+    }
+    return false
+  }
+
+  // Handle Giphy tap-to-play on mobile
+  const handleGiphyTap = () => {
+    if (isMobile && post.source_platform === 'giphy' && giphyVideoRef.current) {
+      if (giphyPlaying) {
+        giphyVideoRef.current.pause()
+        setGiphyPlaying(false)
+      } else {
+        giphyVideoRef.current.play().then(() => {
+          setGiphyPlaying(true)
+        }).catch(() => {
+          // If play fails, fallback to showing static image
+          setVideoError(true)
+        })
+      }
+    }
+  }
+
+  // Intersection Observer for performance
+  useEffect(() => {
+    if (!postContentRef.current) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsIntersecting(entry.isIntersecting)
+          
+          // Pause Giphy GIFs when off-screen
+          if (post.source_platform === 'giphy' && giphyVideoRef.current) {
+            if (entry.isIntersecting && isActive) {
+              giphyVideoRef.current.play().catch(() => {})
+            } else {
+              giphyVideoRef.current.pause()
+            }
+          }
+        })
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(postContentRef.current)
+    return () => observer.disconnect()
+  }, [post.source_platform, isActive])
 
   // NUCLEAR OPTION: Force YouTube sizing after render
   useEffect(() => {
@@ -586,9 +654,9 @@ function PostContent({
       pixabay: '📷',
       imgur: '📸',
       tumblr: '📱',
-      mastodon: '🐘',
       flickr: '📸',
-      unsplash: '🎨'
+      unsplash: '🎨',
+      giphy: '🎭'
     }
     return icons[platform] || '🌐'
   }
@@ -627,6 +695,71 @@ function PostContent({
           </div>
         </div>
       )
+    }
+
+    // Giphy content - Optimized rendering with MP4 fallback and mobile optimization
+    if (post.source_platform === 'giphy') {
+      // Parse metadata for size options
+      const metadata = post.content_metadata ? JSON.parse(post.content_metadata) : null
+      const hasMP4 = post.content_video_url && post.content_video_url.includes('.mp4')
+      const hasGIF = post.content_image_url && (post.content_image_url.includes('.gif') || post.content_image_url.includes('giphy.com'))
+      
+      // Select appropriate size based on device and metadata
+      let imageUrl = post.content_image_url
+      if (metadata?.sizes && isMobile) {
+        // Use smaller size for mobile to save bandwidth
+        imageUrl = metadata.sizes.fixed_width_small || metadata.sizes.preview || post.content_image_url
+      }
+      
+      if (hasMP4 && !videoError && !isSlowConnection()) {
+        return (
+          <div className="giphy-container" onClick={handleGiphyTap}>
+            <video
+              ref={(el) => {
+                videoRef(el)
+                giphyVideoRef.current = el
+              }}
+              className="giphy-video"
+              src={post.content_video_url}
+              loop
+              muted
+              playsInline
+              autoPlay={!isMobile && isActive && isIntersecting}
+              poster={imageUrl}
+              onError={() => setVideoError(true)}
+              onPlay={() => setGiphyPlaying(true)}
+              onPause={() => setGiphyPlaying(false)}
+              style={{
+                willChange: isActive ? 'transform' : 'auto'
+              }}
+              loading={index > 2 ? 'lazy' : 'eager'}
+              preload={isMobile ? 'metadata' : 'auto'}
+            />
+            {isMobile && !giphyPlaying && (
+              <div className="tap-to-play-overlay">
+                <div className="play-button">▶️</div>
+                <div className="tap-instruction">Tap to play</div>
+              </div>
+            )}
+          </div>
+        )
+      } else if (hasGIF && !imageError) {
+        // Fallback to GIF with mobile optimization
+        return (
+          <div className="giphy-container">
+            <img 
+              className="giphy-gif"
+              src={imageUrl}
+              alt={post.content_text || 'Giphy GIF'}
+              onError={() => setImageError(true)}
+              loading={index > 2 ? 'lazy' : 'eager'}
+              style={{
+                willChange: isActive ? 'transform' : 'auto'
+              }}
+            />
+          </div>
+        )
+      }
     }
 
     // Video content - FORCED to fill entire card
@@ -750,7 +883,8 @@ function PostContent({
 
         /* FORCE ALL MEDIA TO FILL CARD COMPLETELY */
         .video-container,
-        .image-container {
+        .image-container,
+        .giphy-container {
           position: absolute !important;
           top: 0 !important;
           left: 0 !important;
@@ -788,7 +922,9 @@ function PostContent({
         }
 
         .direct-video,
-        .content-image {
+        .content-image,
+        .giphy-video,
+        .giphy-gif {
           position: absolute !important;
           top: 0 !important;
           left: 0 !important;
@@ -798,6 +934,52 @@ function PostContent({
           object-fit: cover !important;
           min-width: 100% !important;
           min-height: 100% !important;
+        }
+
+        /* Giphy-specific optimizations */
+        .giphy-video,
+        .giphy-gif {
+          transform: translateZ(0); /* Force hardware acceleration */
+          image-rendering: optimizeQuality;
+        }
+
+        .giphy-video {
+          background-color: transparent;
+        }
+
+        .giphy-gif {
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
+        }
+
+        /* Tap-to-play overlay for mobile Giphy content */
+        .tap-to-play-overlay {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(0, 0, 0, 0.7);
+          border-radius: 20px;
+          padding: 16px 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          color: white;
+          font-size: 14px;
+          z-index: 10;
+          pointer-events: none;
+          backdrop-filter: blur(10px);
+        }
+
+        .play-button {
+          font-size: 32px;
+          margin-bottom: 4px;
+        }
+
+        .tap-instruction {
+          font-weight: 500;
+          opacity: 0.9;
         }
 
         .debug-overlay {

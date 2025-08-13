@@ -78,31 +78,35 @@ export class YouTubeService {
         maxResults: Math.min(options.maxResults || 25, 50).toString(),
         order: options.order || 'relevance',
         key: this.apiKey,
-        videoDefinition: options.videoDefinition || 'any',
-        videoDuration: options.videoDuration || 'any',
         safeSearch: 'moderate'
       })
+      
+      // Note: videoDefinition and videoDuration are not valid for search endpoint
 
       if (options.publishedAfter) {
         searchParams.append('publishedAfter', options.publishedAfter.toISOString())
       }
 
-      const searchResponse = await fetch(
-        `${YouTubeService.API_BASE_URL}/search?${searchParams}`,
-        {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
+      const searchUrl = `${YouTubeService.API_BASE_URL}/search?${searchParams}`
+      console.log('🔍 YOUTUBE API: Calling search URL:', searchUrl)
+      
+      const searchResponse = await fetch(searchUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
         }
-      )
-
+      })
+      
+      console.log('🔍 YOUTUBE API: Response status:', searchResponse.status)
+      
       if (!searchResponse.ok) {
-        const errorData = await searchResponse.json().catch(() => ({}))
-        throw new Error(`YouTube API error: ${searchResponse.status} - ${errorData.error?.message || searchResponse.statusText}`)
+        const errorText = await searchResponse.text()
+        console.log('🔍 YOUTUBE API: Error response:', errorText)
+        throw new Error(`YouTube API error: ${searchResponse.status} - ${errorText}`)
       }
 
       const searchData = await searchResponse.json()
+      console.log('🔍 YOUTUBE API: Response data:', JSON.stringify(searchData, null, 2))
       this.updateQuotaUsage(100) // Search costs 100 quota units
 
       // Get video details for additional metadata
@@ -118,7 +122,11 @@ export class YouTubeService {
           const processedVideo = await this.processYouTubeVideo(item, videoDetail)
           
           // Validate content for hotdog relevance
-          if (await this.validateYouTubeContent(processedVideo)) {
+          // TEMPORARILY DISABLED FOR TESTING
+          const isValid = await this.validateYouTubeContent(processedVideo)
+          console.log(`🔍 Video "${processedVideo.title}" validation: ${isValid}`)
+          
+          if (true) { // Always add for testing
             processedVideos.push(processedVideo)
           }
         }

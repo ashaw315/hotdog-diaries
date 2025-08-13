@@ -23,3 +23,7 @@ server.log
 
 # Build info
 tsconfig.tsbuildinfo
+
+# Test results
+test-results.json
+backups/

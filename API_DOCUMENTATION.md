@@ -22,7 +22,7 @@
 
 ## Overview
 
-The Hotdog Diaries API provides comprehensive endpoints for managing a social media content aggregation system. The API supports content discovery from multiple platforms (Reddit, YouTube, Unsplash, Flickr, Mastodon), automated posting scheduling, and administrative controls.
+The Hotdog Diaries API provides comprehensive endpoints for managing a social media content aggregation system. The API supports content discovery from multiple platforms (Reddit, YouTube, Unsplash, Flickr, Bluesky, Lemmy, Imgur, Tumblr), automated posting scheduling, and administrative controls.
 
 ### Key Features
 - 81 total API endpoints

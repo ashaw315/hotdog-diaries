@@ -44,13 +44,14 @@ export class AutomatedPostingService {
   ]
 
   private static readonly PLATFORM_WEIGHTS = {
-    reddit: 0.22,     // 22% Reddit discussions
-    youtube: 0.18,    // 18% YouTube videos
+    reddit: 0.25,     // 25% Reddit discussions
+    youtube: 0.20,    // 20% YouTube videos
     imgur: 0.18,      // 18% Imgur GIFs/images
-    lemmy: 0.14,      // 14% Lemmy posts
+    lemmy: 0.15,      // 15% Lemmy posts
     bluesky: 0.12,    // 12% Bluesky posts
-    tumblr: 0.08,     // 8% Tumblr images
-    pixabay: 0.08     // 8% Pixabay stock photos
+    giphy: 0.06,      // 6% Giphy GIFs
+    tumblr: 0.02,     // 2% Tumblr images
+    pixabay: 0.02     // 2% Pixabay stock photos
   }
 
   /**

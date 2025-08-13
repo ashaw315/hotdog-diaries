@@ -19,7 +19,10 @@
     "test:regression:high": "node -e \"const runner = require('./__tests__/regression/runner.test.ts').runner; runner.runPriority('high')\"",
     "db:migrate": "tsx lib/migrations/migrator.ts migrate",
     "db:rollback": "tsx lib/migrations/migrator.ts rollback",
-    "db:status": "tsx lib/migrations/migrator.ts status"
+    "db:status": "tsx lib/migrations/migrator.ts status",
+    "inspect-db": "tsx scripts/inspect-db.ts",
+    "reset-db": "tsx scripts/simple-reset.ts",
+    "test:platforms": "tsx scripts/reset-and-test.ts && curl -X POST http://localhost:3000/api/test/scan-all"
   },
   "dependencies": {
     "@playwright/test": "^1.54.1",
@@ -32,6 +35,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/pg": "^8.15.4",
     "@types/react": "^19.1.8",
+    "@types/sqlite3": "^3.1.11",
     "@types/uuid": "^10.0.0",
     "@vercel/postgres": "^0.10.0",
     "bcryptjs": "^3.0.2",
@@ -52,6 +56,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "snoowrap": "^1.23.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3",

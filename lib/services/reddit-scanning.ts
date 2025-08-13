@@ -534,9 +534,9 @@ export class RedditScanningService {
         .first()
 
       if (!config) {
-        // Return default configuration
+        // Return default configuration with Reddit ENABLED
         return {
-          isEnabled: false,
+          isEnabled: true, // ✅ ENABLED - Reddit was performing at 100% approval
           scanInterval: 30, // 30 minutes
           maxPostsPerScan: 25,
           targetSubreddits: this.redditService.getHotdogSubreddits(),
@@ -562,9 +562,9 @@ export class RedditScanningService {
         lastScanTime: config.last_scan_time ? new Date(config.last_scan_time) : undefined
       }
     } catch (error) {
-      // If table doesn't exist, return defaults
+      // If table doesn't exist, return defaults with Reddit ENABLED
       return {
-        isEnabled: false,
+        isEnabled: true, // ✅ ENABLED - Reddit was performing at 100% approval
         scanInterval: 30,
         maxPostsPerScan: 25,
         targetSubreddits: this.redditService.getHotdogSubreddits(),

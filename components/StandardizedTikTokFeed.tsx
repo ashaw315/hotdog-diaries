@@ -534,7 +534,6 @@ function PostContent({
       pixabay: '📷',
       imgur: '📸',
       tumblr: '📱',
-      mastodon: '🐘',
       flickr: '📸',
       unsplash: '🎨'
     }

@@ -1,8 +1,7 @@
 import { redditScanningService } from './reddit-scanning'
 import { youtubeScanningService } from './youtube-scanning'
-import { mastodonScanningService } from './mastodon-scanning'
-import { mastodonMonitoringService } from './mastodon-monitoring'
 import { blueskyService } from './bluesky-scanning'
+import { giphyScanningService } from './giphy-scanning'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
@@ -30,8 +29,8 @@ export class SocialMediaService {
   private scanningServices = {
     reddit: redditScanningService,
     youtube: youtubeScanningService,
-    mastodon: mastodonScanningService,
-    bluesky: blueskyService
+    bluesky: blueskyService,
+    giphy: giphyScanningService
   }
 
   async getAllPlatformStatus(): Promise<SocialMediaStats> {
@@ -94,33 +93,6 @@ export class SocialMediaService {
       }
 
 
-      // Get Mastodon status
-      try {
-        const mastodonStats = await this.scanningServices.mastodon.getScanningStats()
-        const mastodonHealth = await mastodonMonitoringService.getHealthSummary()
-        
-        platformStats.push({
-          platform: 'mastodon',
-          isEnabled: mastodonHealth.onlineInstances > 0,
-          isAuthenticated: true, // Mastodon doesn't require auth for public posts
-          lastScanTime: mastodonStats.lastScanTime,
-          totalContent: mastodonStats.totalPostsFound,
-          errorRate: 1 - mastodonStats.successRate,
-          healthStatus: mastodonHealth.scanningStatus === 'active' ? 'healthy' : 
-                       mastodonHealth.scanningStatus === 'error' ? 'error' : 'warning'
-        })
-
-        if (mastodonHealth.onlineInstances > 0) activePlatforms++
-      } catch (error) {
-        platformStats.push({
-          platform: 'mastodon',
-          isEnabled: false,
-          isAuthenticated: false,
-          totalContent: 0,
-          errorRate: 1,
-          healthStatus: 'error'
-        })
-      }
 
       // Get Bluesky status
       try {
@@ -142,6 +114,33 @@ export class SocialMediaService {
       } catch (error) {
         platformStats.push({
           platform: 'bluesky',
+          isEnabled: false,
+          isAuthenticated: false,
+          totalContent: 0,
+          errorRate: 1,
+          healthStatus: 'error'
+        })
+      }
+
+      // Get Giphy status
+      try {
+        const giphyConfig = await this.scanningServices.giphy.getScanConfig()
+        const giphyConnection = await this.scanningServices.giphy.testConnection()
+        
+        platformStats.push({
+          platform: 'giphy',
+          isEnabled: giphyConfig.isEnabled,
+          isAuthenticated: giphyConnection.success,
+          lastScanTime: giphyConfig.lastScanTime,
+          totalContent: 0,
+          errorRate: 0,
+          healthStatus: giphyConnection.success ? 'healthy' : 'warning'
+        })
+
+        if (giphyConfig.isEnabled) activePlatforms++
+      } catch (error) {
+        platformStats.push({
+          platform: 'giphy',
           isEnabled: false,
           isAuthenticated: false,
           totalContent: 0,
@@ -188,13 +187,6 @@ export class SocialMediaService {
       }
 
 
-      // Start Mastodon scanning
-      try {
-        await this.scanningServices.mastodon.startAutomaticScanning()
-        results.push({ platform: 'mastodon', success: true, message: 'Started successfully' })
-      } catch (error) {
-        results.push({ platform: 'mastodon', success: false, message: error.message })
-      }
 
       // Start Bluesky scanning
       try {

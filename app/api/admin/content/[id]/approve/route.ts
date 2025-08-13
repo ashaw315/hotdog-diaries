@@ -26,13 +26,13 @@ async function approveContentHandler(request: NextRequest, { params }: { params:
              WHEN admin_notes IS NULL THEN 'Approved'
              ELSE admin_notes || ' | Approved'
            END
-       WHERE id = $1 AND is_approved = FALSE
+       WHERE id = $1
        RETURNING *`,
       [contentId]
     )
 
     if (result.rows.length === 0) {
-      throw createApiError('Content not found or already approved', 404, 'CONTENT_NOT_FOUND_OR_APPROVED')
+      throw createApiError('Content not found', 404, 'CONTENT_NOT_FOUND')
     }
 
     return createSuccessResponse(

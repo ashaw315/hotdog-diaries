@@ -60,7 +60,6 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
         youtube_data,
         flickr_data,
         unsplash_data,
-        mastodon_data
       FROM content_queue
       WHERE ${whereClause}
       ORDER BY scraped_at DESC
@@ -99,7 +98,6 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
         youtube: row.youtube_data,
         flickr: row.flickr_data,
         unsplash: row.unsplash_data,
-        mastodon: row.mastodon_data
       }
     }))
 

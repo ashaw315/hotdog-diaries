@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { blueskyService } from '@/lib/services/bluesky-scanning'
 import { youtubeScanningService } from '@/lib/services/youtube-scanning'
 import { unsplashScanningService } from '@/lib/services/unsplash-scanning'
-import { mastodonScanningService } from '@/lib/services/mastodon-scanning'
 
 export interface PlatformStatus {
   name: string
@@ -35,13 +34,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       testPlatformStatus('Bluesky', blueskyService, false), // No API key needed
       testPlatformStatus('YouTube', youtubeScanningService, !!process.env.YOUTUBE_API_KEY),
       testPlatformStatus('Unsplash', unsplashScanningService, !!process.env.UNSPLASH_ACCESS_KEY),
-      testPlatformStatus('Mastodon', mastodonScanningService, false) // No API key needed
     ])
 
     const platforms: PlatformStatus[] = []
     
     platformTests.forEach((result, index) => {
-      const platformNames = ['Bluesky', 'YouTube', 'Unsplash', 'Mastodon']
+      const platformNames = ['Bluesky', 'YouTube', 'Unsplash']
       
       if (result.status === 'fulfilled') {
         platforms.push(result.value)
@@ -111,22 +109,7 @@ async function testPlatformStatus(
         status = 'mock'
         usingMockData = true
       } else {
-        // For platforms like Mastodon that might be partially available
-        if (name === 'Mastodon' && connectionResult.details?.workingInstances?.length > 0) {
-          const totalInstances = connectionResult.details.totalInstances || 1
-          const workingInstances = connectionResult.details.workingInstances?.length || 0
-          
-          if (workingInstances === totalInstances) {
-            status = 'available'
-            usingMockData = false
-          } else if (workingInstances > 0) {
-            status = 'partial'
-            usingMockData = false
-          } else {
-            status = 'mock'
-            usingMockData = true
-          }
-        } else if (name === 'Bluesky' && connectionResult.success) {
+        if (name === 'Bluesky' && connectionResult.success) {
           status = 'available'
           usingMockData = false
         } else {
@@ -137,7 +120,7 @@ async function testPlatformStatus(
 
     // Add API key warnings to message
     let message = connectionResult.message
-    if (!hasApiKey && name !== 'Mastodon' && name !== 'Bluesky') {
+    if (!hasApiKey && name !== 'Bluesky') {
       message += ` (API key not configured)`
     }
 

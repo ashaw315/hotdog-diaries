@@ -100,7 +100,6 @@ export default function PostedContentPage() {
       case 'youtube': return '📺'
       case 'flickr': return '📸'
       case 'unsplash': return '🖼️'
-      case 'mastodon': return '🐘'
       case 'instagram': return '📷'
       case 'tiktok': return '🎵'
       default: return '🌐'

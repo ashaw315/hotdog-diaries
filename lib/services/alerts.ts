@@ -670,10 +670,10 @@ export class AlertService {
 
     if (checks.database.status === HealthStatus.CRITICAL) critical.push('Database')
     if (checks.apis.reddit.status === HealthStatus.CRITICAL) critical.push('Reddit API')
-    if (checks.apis.mastodon.status === HealthStatus.CRITICAL) critical.push('Mastodon API')
     if (checks.apis.flickr.status === HealthStatus.CRITICAL) critical.push('Flickr API')
     if (checks.apis.youtube.status === HealthStatus.CRITICAL) critical.push('YouTube API')
     if (checks.apis.unsplash.status === HealthStatus.CRITICAL) critical.push('Unsplash API')
+    if (checks.apis.giphy?.status === HealthStatus.CRITICAL) critical.push('Giphy API')
     if (checks.services.contentQueue.status === HealthStatus.CRITICAL) critical.push('Content Queue')
     if (checks.services.scheduler.status === HealthStatus.CRITICAL) critical.push('Scheduler')
 
@@ -686,10 +686,10 @@ export class AlertService {
 
     if (checks.database.status === HealthStatus.WARNING) warnings.push('Database')
     if (checks.apis.reddit.status === HealthStatus.WARNING) warnings.push('Reddit API')
-    if (checks.apis.mastodon.status === HealthStatus.WARNING) warnings.push('Mastodon API')
     if (checks.apis.flickr.status === HealthStatus.WARNING) warnings.push('Flickr API')
     if (checks.apis.youtube.status === HealthStatus.WARNING) warnings.push('YouTube API')
     if (checks.apis.unsplash.status === HealthStatus.WARNING) warnings.push('Unsplash API')
+    if (checks.apis.giphy?.status === HealthStatus.WARNING) warnings.push('Giphy API')
     if (checks.services.contentQueue.status === HealthStatus.WARNING) warnings.push('Content Queue')
     if (checks.services.scheduler.status === HealthStatus.WARNING) warnings.push('Scheduler')
 

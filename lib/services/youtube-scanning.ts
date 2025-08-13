@@ -298,8 +298,10 @@ export class YouTubeScanningService {
    * Perform a scan with options (interface for content-scanning service)
    */
   async performScan(options: YouTubePerformScanOptions): Promise<YouTubePerformScanResult> {
+    console.log('🎬 YOUTUBE: performScan called with options:', options)
     try {
       const config = await this.getScanConfig()
+      console.log('🎬 YOUTUBE: Config loaded:', config)
       
       // Skip config enabled check for mock mode - always allow mock data
       // if (!config || !config.isEnabled) {
@@ -319,22 +321,42 @@ export class YouTubeScanningService {
       // }
 
       // Check rate limits
-      if (!this.checkRateLimit()) {
+      const rateLimitOk = this.checkRateLimit()
+      console.log('🔍 YOUTUBE RATE LIMIT:', {
+        rateLimitOk,
+        requestCount: this.requestCount,
+        limit: this.DAILY_QUOTA_LIMIT,
+        lastReset: this.lastReset
+      })
+      
+      if (!rateLimitOk) {
         console.warn('⚠️  YOUTUBE: Rate limit exceeded, using mock data')
-        return await this.performMockScan(options)
+        const mockResult = await this.performMockScan(options)
+        mockResult.errors.push('DEBUG: Used mock due to rate limit')
+        return mockResult
       }
 
       // Check if YouTube API is available
       const apiStatus = await this.youtubeService.getApiStatus()
       const useRealAPI = apiStatus.isAuthenticated && process.env.YOUTUBE_API_KEY
 
+      console.log('🔍 YOUTUBE DEBUG:', {
+        isAuthenticated: apiStatus.isAuthenticated,
+        hasEnvKey: !!process.env.YOUTUBE_API_KEY,
+        useRealAPI
+      })
+
       if (!useRealAPI) {
         console.warn('⚠️  YOUTUBE: API key not configured, using mock data')
-        return await this.performMockScan(options)
+        const mockResult = await this.performMockScan(options)
+        mockResult.errors.push('DEBUG: Used mock due to no API key or auth failure')
+        return mockResult
       }
 
       // Use real YouTube API
-      return await this.performRealScan(options, config)
+      const realResult = await this.performRealScan(options, config)
+      realResult.errors.push('DEBUG: Used real YouTube API')
+      return realResult
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -427,36 +449,24 @@ export class YouTubeScanningService {
           continue
         }
 
-        // Process and store the content
-        const processedContent = await this.contentProcessor.processContent({
-          platform: 'youtube',
-          type: 'video',
-          title: video.title,
-          content: video.description,
-          url: video.url,
-          videoUrl: video.videoUrl,
-          thumbnailUrl: video.thumbnailUrl,
-          author: video.channelTitle,
-          authorUrl: video.channelUrl,
-          publishedAt: video.publishedAt,
-          metadata: {
-            originalId: video.id,
-            channelId: video.channelId,
-            viewCount: video.viewCount,
-            likeCount: video.likeCount,
-            commentCount: video.commentCount,
-            duration: video.duration,
-            tags: video.tags,
-            definition: video.definition,
-            caption: video.caption,
-            categoryId: video.categoryId
-          }
-        })
+        // Store the content first
+        const contentId = await this.saveVideoToQueue(video)
+        
+        if (contentId) {
+          // Process with content processor using the ID
+          const processingResult = await this.contentProcessor.processContent(contentId, {
+            autoApprovalThreshold: 0.5, // Slightly lower threshold for YouTube videos
+            autoRejectionThreshold: 0.2,
+            enableDuplicateDetection: true
+          })
 
-        if (processedContent.isApproved) {
-          result.approved++
+          if (processingResult.action === 'approved') {
+            result.approved++
+          } else {
+            result.rejected++
+          }
         } else {
-          result.rejected++
+          result.errors.push(`Failed to save YouTube video: ${video.title}`)
         }
         result.processed++
 
@@ -479,6 +489,9 @@ export class YouTubeScanningService {
    * Perform scan using real YouTube API
    */
   private async performRealScan(options: YouTubePerformScanOptions, config: YouTubeScanConfig): Promise<YouTubePerformScanResult> {
+    console.log('🎬 YOUTUBE: Starting real API scan!')
+    console.log('🎬 YOUTUBE CONFIG:', config)
+    
     const result: YouTubePerformScanResult = {
       totalFound: 0,
       processed: 0,
@@ -489,9 +502,12 @@ export class YouTubeScanningService {
     }
 
     const maxVideos = Math.min(options.maxPosts, config.maxVideosPerScan)
+    console.log('🎬 YOUTUBE: Max videos to search:', maxVideos)
     
     // Search for hotdog content using different search terms
+    console.log('🎬 YOUTUBE: Search terms:', config.searchTerms)
     for (const searchTerm of config.searchTerms.slice(0, 3)) { // Limit to 3 terms to avoid API limits
+      console.log(`🎬 YOUTUBE: Searching for "${searchTerm}"...`)
       try {
         if (!this.checkRateLimit()) {
           result.errors.push(`YouTube API quota exceeded for term: ${searchTerm}`)
@@ -500,14 +516,23 @@ export class YouTubeScanningService {
 
         const searchOptions: YouTubeSearchOptions = {
           q: searchTerm,
-          maxResults: Math.floor(maxVideos / config.searchTerms.length),
+          maxResults: 5, // Fixed number for testing
           type: 'video',
-          videoDuration: config.videoDuration,
-          publishedAfter: new Date(Date.now() - config.publishedWithin * 24 * 60 * 60 * 1000),
           order: 'relevance'
+          // Removed date restriction and videoDuration to test
         }
+        
+        console.log('🎬 YOUTUBE: Search options:', searchOptions)
 
         const videos = await this.youtubeService.searchVideos(searchOptions)
+        console.log(`🎬 YOUTUBE: Found ${videos.length} videos for "${searchTerm}"`)
+        
+        // Debug: Add search result info to errors for visibility
+        result.errors.push(`DEBUG: Search "${searchTerm}" returned ${videos.length} videos`)
+        if (videos.length > 0) {
+          result.errors.push(`DEBUG: First video: "${videos[0].title}" by ${videos[0].channelTitle}`)
+        }
+        
         this.incrementRequestCount(100) // Search costs 100 quota units
         result.totalFound += videos.length
 
@@ -528,6 +553,8 @@ export class YouTubeScanningService {
             }
 
             // Apply content filtering
+            result.errors.push(`DEBUG: Processing video "${video.title}" (${video.viewCount} views)`)
+            
             const contentAnalysis = await this.filteringService.isValidHotdogContent({
               text: `${video.title} ${video.description}`,
               url: video.url,
@@ -539,9 +566,12 @@ export class YouTubeScanningService {
             })
 
             if (!contentAnalysis.is_valid_hotdog) {
+              result.errors.push(`DEBUG: Video "${video.title}" rejected by content filter`)
               result.rejected++
               continue
             }
+            
+            result.errors.push(`DEBUG: Video "${video.title}" passed content filter`)
 
             // Check view count threshold
             if (video.viewCount < config.minViewCount) {
@@ -683,17 +713,37 @@ export class YouTubeScanningService {
     }
 
     try {
-      const result = await query<YouTubeScanConfig>(`
+      const result = await query<any>(`
         SELECT * FROM youtube_scan_config 
         ORDER BY created_at DESC 
         LIMIT 1
       `)
 
       if (result.length === 0) {
+        console.log('No YouTube config found, using default config')
         return defaultConfig
       }
 
-      return result[0]
+      const dbConfig = result[0]
+      
+      // Map database field names (snake_case) to interface field names (camelCase)
+      const mappedConfig: YouTubeScanConfig = {
+        isEnabled: dbConfig.is_enabled ?? defaultConfig.isEnabled,
+        scanInterval: dbConfig.scan_interval ?? defaultConfig.scanInterval,
+        maxVideosPerScan: dbConfig.max_videos_per_scan ?? defaultConfig.maxVideosPerScan,
+        searchTerms: Array.isArray(dbConfig.search_terms) ? dbConfig.search_terms : defaultConfig.searchTerms,
+        videoDuration: dbConfig.video_duration ?? defaultConfig.videoDuration,
+        publishedWithin: dbConfig.published_within ?? defaultConfig.publishedWithin,
+        minViewCount: dbConfig.min_view_count ?? defaultConfig.minViewCount,
+        includeChannelIds: Array.isArray(dbConfig.include_channel_ids) ? dbConfig.include_channel_ids : defaultConfig.includeChannelIds,
+        excludeChannelIds: Array.isArray(dbConfig.exclude_channel_ids) ? dbConfig.exclude_channel_ids : defaultConfig.excludeChannelIds,
+        lastScanTime: dbConfig.last_scan_time ? new Date(dbConfig.last_scan_time) : undefined,
+        lastScanId: dbConfig.last_scan_id
+      }
+
+      console.log('YouTube config loaded:', { maxVideosPerScan: mappedConfig.maxVideosPerScan })
+      return mappedConfig
+
     } catch (error) {
       // If table doesn't exist or query fails, return default config
       console.warn('YouTube config query failed, using default config:', error.message)
@@ -749,6 +799,78 @@ export class YouTubeScanningService {
     }
 
     return config
+  }
+
+  /**
+   * Save YouTube video to content queue
+   */
+  private async saveVideoToQueue(video: ProcessedYouTubeVideo): Promise<number | null> {
+    try {
+      const contentHash = this.generateContentHash(video.url, video.title)
+      
+      const result = await db.query(
+        `INSERT INTO content_queue (
+          content_text, content_image_url, content_video_url, content_type, 
+          source_platform, original_url, original_author, content_hash, 
+          content_metadata, scraped_at, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), NOW()) 
+        RETURNING id`,
+        [
+          video.title,
+          video.thumbnailUrl,
+          video.videoUrl,
+          'video',
+          'youtube',
+          video.url,
+          video.channelTitle,
+          contentHash,
+          JSON.stringify({
+            originalId: video.id,
+            channelId: video.channelId,
+            channelUrl: video.channelUrl,
+            description: video.description,
+            publishedAt: video.publishedAt,
+            viewCount: video.viewCount,
+            likeCount: video.likeCount,
+            commentCount: video.commentCount,
+            duration: video.duration,
+            tags: video.tags,
+            definition: video.definition,
+            caption: video.caption,
+            categoryId: video.categoryId
+          })
+        ]
+      )
+
+      const contentId = result.rows[0]?.id
+      if (contentId) {
+        await logToDatabase(
+          LogLevel.INFO,
+          'YOUTUBE_VIDEO_SAVED',
+          `YouTube video saved to queue: ${video.title}`,
+          { contentId, videoId: video.id }
+        )
+      }
+      
+      return contentId || null
+
+    } catch (error) {
+      await logToDatabase(
+        LogLevel.ERROR,
+        'YOUTUBE_SAVE_ERROR',
+        `Failed to save YouTube video: ${error.message}`,
+        { video: video.title, error: error.message }
+      )
+      return null
+    }
+  }
+
+  /**
+   * Generate content hash for duplicate detection
+   */
+  private generateContentHash(url: string, title: string): string {
+    const crypto = require('crypto')
+    return crypto.createHash('md5').update(`${url}:${title}`).digest('hex')
   }
 }
 

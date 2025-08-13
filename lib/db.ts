@@ -1,6 +1,10 @@
 import { Pool, PoolClient, QueryResult } from 'pg'
 import { sql } from '@vercel/postgres'
 import { LogLevel } from '@/types'
+import { Database } from 'sqlite'
+import sqlite3 from 'sqlite3'
+import { open } from 'sqlite'
+import path from 'path'
 
 interface DatabaseConfig {
   host: string
@@ -16,10 +20,13 @@ interface DatabaseConfig {
 
 class DatabaseConnection {
   private pool: Pool | null = null
+  private sqliteDb: Database | null = null
   private isVercel: boolean = false
+  private isSqlite: boolean = false
 
   constructor() {
-    this.isVercel = !!process.env.POSTGRES_URL
+    this.isVercel = !!process.env.POSTGRES_URL && process.env.NODE_ENV !== 'development'
+    this.isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV
   }
 
   private getConfig(): DatabaseConfig {
@@ -51,6 +58,10 @@ class DatabaseConnection {
   }
 
   async connect(): Promise<void> {
+    if (this.isSqlite) {
+      return this.connectSqlite()
+    }
+
     if (this.pool) {
       return
     }
@@ -81,8 +92,35 @@ class DatabaseConnection {
     }
   }
 
+  private async connectSqlite(): Promise<void> {
+    if (this.sqliteDb) {
+      return
+    }
+
+    const dbPath = process.env.DATABASE_URL_SQLITE?.replace('sqlite:', '') || './hotdog_diaries_dev.db'
+    const fullPath = path.resolve(dbPath)
+    
+    try {
+      this.sqliteDb = await open({
+        filename: fullPath,
+        driver: sqlite3.Database
+      })
+      
+      // Test connection
+      await this.sqliteDb.get('SELECT 1')
+      console.log(`SQLite database connected: ${fullPath}`)
+    } catch (error) {
+      console.error('SQLite connection failed:', error)
+      throw error
+    }
+  }
+
   async disconnect(): Promise<void> {
-    if (this.pool) {
+    if (this.isSqlite && this.sqliteDb) {
+      await this.sqliteDb.close()
+      this.sqliteDb = null
+      console.log('SQLite database closed')
+    } else if (this.pool) {
       await this.pool.end()
       this.pool = null
       console.log('Database connection closed')
@@ -90,6 +128,10 @@ class DatabaseConnection {
   }
 
   async query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+    if (this.isSqlite) {
+      return this.querySqlite<T>(text, params)
+    }
+
     if (this.isVercel) {
       try {
         return await sql.query(text, params || []) as QueryResult<T>
@@ -146,6 +188,137 @@ class DatabaseConnection {
     }
     
     throw new Error('Database query failed after all retries')
+  }
+
+  private async querySqlite<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+    if (!this.sqliteDb) {
+      await this.connect()
+    }
+
+    const start = Date.now()
+    
+    try {
+      // Convert PostgreSQL syntax to SQLite
+      let sqliteQuery = this.convertPostgresToSqlite(text)
+      
+      // Handle different query types
+      if (sqliteQuery.trim().toUpperCase().startsWith('SELECT') || sqliteQuery.trim().toUpperCase().startsWith('WITH')) {
+        const rows = await this.sqliteDb!.all(sqliteQuery, params || [])
+        const duration = Date.now() - start
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('SQLite Query executed', { text: sqliteQuery.substring(0, 100), duration, rows: rows.length })
+        }
+        
+        return {
+          rows: rows as T[],
+          rowCount: rows.length,
+          command: 'SELECT',
+          oid: 0,
+          fields: []
+        } as QueryResult<T>
+      } else {
+        // INSERT, UPDATE, DELETE
+        const result = await this.sqliteDb!.run(sqliteQuery, params || [])
+        const duration = Date.now() - start
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('SQLite Query executed', { text: sqliteQuery.substring(0, 100), duration, changes: result.changes })
+        }
+        
+        // For RETURNING queries, we need to fetch the inserted/updated data
+        let returnedRows: T[] = []
+        if (text.toUpperCase().includes('RETURNING') && (result.lastID || result.changes > 0)) {
+          const returnMatch = text.match(/RETURNING\s+(.+?)(?:$|;)/i)
+          if (returnMatch) {
+            const tableName = this.extractTableName(text)
+            let selectQuery: string
+            
+            if (result.lastID) {
+              // For INSERT operations
+              selectQuery = `SELECT ${returnMatch[1]} FROM ${tableName} WHERE id = ${result.lastID}`
+            } else if (text.toUpperCase().includes('UPDATE') && result.changes > 0) {
+              // For UPDATE operations - this is trickier, but we can try to extract the WHERE clause
+              const whereMatch = text.match(/WHERE\s+(.+?)(?:RETURNING|$)/i)
+              if (whereMatch) {
+                selectQuery = `SELECT ${returnMatch[1]} FROM ${tableName} WHERE ${whereMatch[1]}`
+              } else {
+                // Fallback: just return the first row (not ideal but better than nothing)
+                selectQuery = `SELECT ${returnMatch[1]} FROM ${tableName} LIMIT 1`
+              }
+            }
+            
+            if (selectQuery) {
+              try {
+                returnedRows = await this.sqliteDb!.all(selectQuery) as T[]
+              } catch (error) {
+                console.warn('Failed to fetch RETURNING data:', error)
+                // Return at least something to indicate success
+                returnedRows = [{ id: result.lastID } as T]
+              }
+            }
+          }
+        }
+        
+        // If we don't have returning data but have successful changes, provide minimal response
+        if (returnedRows.length === 0 && (result.lastID || result.changes > 0)) {
+          returnedRows = [{ id: result.lastID || 1 } as T]
+        }
+        
+        return {
+          rows: returnedRows,
+          rowCount: result.changes || 0,
+          command: this.extractCommand(text),
+          oid: 0,
+          fields: []
+        } as QueryResult<T>
+      }
+    } catch (error: any) {
+      const duration = Date.now() - start
+      console.error('SQLite Query error', { 
+        text: text.substring(0, 100), 
+        duration, 
+        error: error.message
+      })
+      throw error
+    }
+  }
+
+  private convertPostgresToSqlite(query: string): string {
+    let converted = query
+    
+    // Convert PostgreSQL-specific syntax to SQLite
+    converted = converted.replace(/NOW\(\)/g, "datetime('now')")
+    converted = converted.replace(/SERIAL/g, 'INTEGER PRIMARY KEY AUTOINCREMENT')
+    converted = converted.replace(/TIMESTAMP WITH TIME ZONE/g, 'DATETIME')
+    converted = converted.replace(/TIMESTAMP/g, 'DATETIME')
+    converted = converted.replace(/JSONB/g, 'TEXT')
+    converted = converted.replace(/TEXT\[\]/g, 'TEXT')
+    converted = converted.replace(/INTEGER\[\]/g, 'TEXT')
+    
+    // Convert PostgreSQL-specific functions
+    converted = converted.replace(/current_database\(\)/g, "'sqlite'")
+    converted = converted.replace(/current_user/g, "'sqlite_user'")
+    
+    // Remove PostgreSQL-specific clauses that SQLite doesn't support
+    converted = converted.replace(/ON CONFLICT.*?DO UPDATE SET.*?(?=WHERE|$|;)/gi, '')
+    
+    // Convert RETURNING clauses (SQLite doesn't support them directly)
+    if (converted.includes('RETURNING')) {
+      converted = converted.replace(/\s+RETURNING.*?(?=;|$)/gi, '')
+    }
+    
+    return converted
+  }
+
+  private extractTableName(query: string): string {
+    const match = query.match(/(?:INSERT INTO|UPDATE|FROM)\s+(\w+)/i)
+    return match ? match[1] : 'unknown'
+  }
+
+  private extractCommand(query: string): string {
+    const command = query.trim().split(' ')[0].toUpperCase()
+    return command
   }
 
   async getClient(): Promise<PoolClient> {

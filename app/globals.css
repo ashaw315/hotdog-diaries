@@ -34,10 +34,8 @@
 
 /* Base Elements - Clean White Design */
 html, body {
-  height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
   background: white;
   font-size: 16px;
   line-height: 1.5;

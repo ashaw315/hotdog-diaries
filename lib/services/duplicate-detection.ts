@@ -40,7 +40,6 @@ export class DuplicateDetectionService {
     'pixabay': 60 * 24 * 60 * 60 * 1000,    // 60 days (stock photos)
     'youtube': 90 * 24 * 60 * 60 * 1000,    // 90 days
     'tumblr': 14 * 24 * 60 * 60 * 1000,     // 14 days
-    'mastodon': 7 * 24 * 60 * 60 * 1000,    // 7 days
     'lemmy': 7 * 24 * 60 * 60 * 1000,       // 7 days
     'default': 7 * 24 * 60 * 60 * 1000      // 7 days default
   }

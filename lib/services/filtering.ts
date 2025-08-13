@@ -481,9 +481,10 @@ export class FilteringService {
       // Apply platform-specific scoring adjustments
       const platformBoosts = {
         'imgur': 0.15,     // Boost for meme/image content
+        'giphy': 0.18,     // High boost for GIF content about hotdogs
         'tumblr': 0.12,    // Boost for creative visual content  
-        'lemmy': 0.08,     // Slight boost for community content
         'youtube': 0.10,   // Boost for video content
+        'lemmy': 0.08,     // Slight boost for community content
         'pixabay': 0.05,   // Already performs well, small boost
         'reddit': 0.02     // Already performs well, tiny boost
       }
@@ -511,6 +512,18 @@ export class FilteringService {
       if (isVisualContent) {
         confidence = Math.min(0.99, confidence + 0.08)
         processingNotes.push('Visual content confidence boost applied')
+      }
+      
+      // GIFs get extra boost - they're perfect for hotdog memes and reactions
+      if (content.content_type === 'gif') {
+        confidence = Math.min(0.99, confidence + 0.1)
+        processingNotes.push('GIF content boost applied - perfect for food memes')
+      }
+      
+      // Videos get boost - they're great for cooking tutorials and reviews
+      if (content.content_type === 'video') {
+        confidence = Math.min(0.99, confidence + 0.08)
+        processingNotes.push('Video content boost applied - great for food tutorials')
       }
       
       // Penalty for obvious spam/inappropriate

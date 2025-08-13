@@ -162,7 +162,6 @@ export function PostingManagement({ onRefresh }: PostingManagementProps) {
       case 'reddit': return '🤖'
       case 'unsplash': return '🖼️'
       case 'flickr': return '📷'
-      case 'mastodon': return '🐘'
       case 'flickr': return '📷'
       case 'youtube': return '📺'
       default: return '🌐'

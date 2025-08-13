@@ -492,7 +492,7 @@ export class ContentProcessor {
     }
 
     // Platform validation
-    const validPlatforms = ['reddit', 'mastodon', 'youtube', 'unsplash', 'news', 'pixabay', 'bluesky']
+    const validPlatforms = ['reddit', 'youtube', 'unsplash', 'news', 'pixabay', 'bluesky', 'lemmy', 'imgur', 'tumblr', 'giphy']
     if (content.source_platform && !validPlatforms.includes(content.source_platform)) {
       errors.push(`Invalid source platform: ${content.source_platform}`)
     }
