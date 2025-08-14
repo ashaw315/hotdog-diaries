@@ -41,6 +41,8 @@ export default function AdaptiveTikTokFeed() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showDebugBorders, setShowDebugBorders] = useState(false)
+  const [showSizeDebug, setShowSizeDebug] = useState(false)
+  const [cardSizes, setCardSizes] = useState<{[key: number]: any}>({})
   const containerRef = useRef<HTMLDivElement>(null)
   const videosRef = useRef<{ [key: number]: HTMLVideoElement }>({})
 
@@ -48,10 +50,169 @@ export default function AdaptiveTikTokFeed() {
     fetchPosts()
   }, [])
 
+  // Apply critical platform-specific fixes via JavaScript
+  useEffect(() => {
+    if (posts.length > 0) {
+      const timer = setTimeout(() => {
+        try {
+          // SAFETY GUARD: Process only first 16 cards to prevent performance issues
+          const postsToProcess = posts.slice(0, 16)
+          
+          // Batch DOM operations using requestAnimationFrame for better performance
+          requestAnimationFrame(() => {
+            postsToProcess.forEach((post) => {
+              const cardElement = document.querySelector(`[data-card-id="${post.id}"]`) as HTMLElement
+              if (!cardElement) return
+
+              // Fix YouTube iframe - enforce strict containment
+              if (post.source_platform === 'youtube') {
+                const iframe = cardElement.querySelector('iframe') as HTMLIFrameElement
+                const container = cardElement.querySelector('.youtube-container') as HTMLElement
+                if (iframe && container) {
+                  // Force fixed dimensions - NO dynamic sizing
+                  iframe.style.cssText = `position: absolute !important; top: 0 !important; left: 0 !important; width: 400px !important; height: 225px !important; border: none !important; max-width: 400px !important; max-height: 225px !important;`
+                  container.style.cssText = `position: relative !important; width: 400px !important; height: 225px !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;`
+                  console.log(`🎥 YouTube enforced containment: ${post.id} (400x225 fixed)`)
+                }
+              }
+
+              // Fix Bluesky text visibility with optimized styling
+              if (post.source_platform === 'bluesky') {
+                const textContainer = cardElement.querySelector('.text-container') as HTMLElement
+                if (textContainer) {
+                  // Batch style updates for better performance
+                  textContainer.style.cssText = 'color: #000000 !important; background-color: white !important; width: 100%; font-size: 16px;'
+                  
+                  const pElement = textContainer.querySelector('p') as HTMLElement
+                  if (pElement) {
+                    pElement.style.cssText = 'color: #000000 !important; font-size: 16px; line-height: 1.4; white-space: normal; word-wrap: break-word;'
+                  }
+                  console.log(`📝 Fixed Bluesky text color: ${post.id}`)
+                }
+              }
+            })
+          })
+        } catch (error) {
+          console.error('❌ Error applying style fixes:', error)
+        }
+      }, 200) // Small delay to ensure elements are rendered
+
+      return () => clearTimeout(timer)
+    }
+  }, [posts])
+
+  // EMERGENCY: Clean up any expanded YouTube players  
+  useEffect(() => {
+    const cleanupYouTubePlayers = () => {
+      // Remove any full YouTube players that might have expanded
+      const players = document.querySelectorAll('.html5-video-player, .ytp-player')
+      players.forEach(player => {
+        const card = player.closest('[data-card-id]')
+        if (card) {
+          console.log(`🚨 Removing expanded YouTube player from card ${card.getAttribute('data-card-id')}`)
+          // Don't remove the player, just force it to be contained
+          const playerElement = player as HTMLElement
+          playerElement.style.maxWidth = '400px'
+          playerElement.style.maxHeight = '225px' 
+          playerElement.style.overflow = 'hidden'
+        }
+      })
+
+      // Also ensure all YouTube containers are properly contained
+      const containers = document.querySelectorAll('.youtube-container')
+      containers.forEach(container => {
+        const containerElement = container as HTMLElement
+        containerElement.style.width = '400px'
+        containerElement.style.height = '225px'
+        containerElement.style.overflow = 'hidden'
+      })
+    }
+
+    const timer = setTimeout(cleanupYouTubePlayers, 500)
+    return () => clearTimeout(timer)
+  }, [posts])
+
+  // Measure cards when size debug is enabled
+  useEffect(() => {
+    if (!showSizeDebug || posts.length === 0) return
+
+    const measureCards = () => {
+      const newSizes: {[key: number]: any} = {}
+      
+      posts.forEach((post) => {
+        const cardElement = document.querySelector(`[data-card-id="${post.id}"]`) as HTMLElement
+        if (!cardElement) return
+        
+        const contentElement = cardElement.querySelector('.content-card') as HTMLElement
+        const mediaElement = cardElement.querySelector('img, video, iframe, .text-container') as HTMLElement
+        
+        if (contentElement && mediaElement) {
+          const cardBounds = contentElement.getBoundingClientRect()
+          const mediaBounds = mediaElement.getBoundingClientRect()
+          
+          newSizes[post.id] = {
+            card: {
+              width: cardBounds.width,
+              height: cardBounds.height
+            },
+            content: {
+              width: mediaBounds.width,
+              height: mediaBounds.height,
+              type: mediaElement.tagName.toLowerCase()
+            },
+            diff: {
+              width: cardBounds.width - mediaBounds.width,
+              height: cardBounds.height - mediaBounds.height
+            },
+            platform: post.source_platform
+          }
+        }
+      })
+      
+      setCardSizes(newSizes)
+      console.log('📏 Card measurements:', newSizes)
+    }
+
+    const timer = setTimeout(measureCards, 500)
+    return () => clearTimeout(timer)
+  }, [showSizeDebug, posts, currentIndex])
+
+  // Auto-fit cards to content size
+  useEffect(() => {
+    if (posts.length === 0) return
+
+    const autoFitCards = () => {
+      posts.forEach((post) => {
+        const cardElement = document.querySelector(`[data-card-id="${post.id}"]`) as HTMLElement
+        if (!cardElement) return
+        
+        const contentCard = cardElement.querySelector('.content-card') as HTMLElement
+        const postContent = cardElement.querySelector('.post-content') as HTMLElement
+        const mediaElement = cardElement.querySelector('img, video, iframe, .text-container') as HTMLElement
+        
+        if (contentCard && postContent && mediaElement) {
+          // Get the actual content dimensions
+          const mediaBounds = mediaElement.getBoundingClientRect()
+          
+          // Set card to match content exactly
+          contentCard.style.width = `${mediaBounds.width}px`
+          contentCard.style.height = `${mediaBounds.height}px`
+          postContent.style.width = `${mediaBounds.width}px`
+          postContent.style.height = `${mediaBounds.height}px`
+          
+          console.log(`✨ Auto-fit ${post.source_platform}: ${mediaBounds.width}×${mediaBounds.height}`)
+        }
+      })
+    }
+
+    const timer = setTimeout(autoFitCards, 600)
+    return () => clearTimeout(timer)
+  }, [posts])
+
   const fetchPosts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/content?limit=20')
+      const response = await fetch('/api/content?limit=50')
       
       if (!response.ok) {
         throw new Error('Failed to load content')
@@ -72,7 +233,17 @@ export default function AdaptiveTikTokFeed() {
         is_approved: true
       }
       
-      setPosts([welcomeCard, ...data.items])
+      // Transform API response to match Post interface
+      const transformedContent = data.data.content.map((item: any) => ({
+        ...item,
+        is_posted: !!item.is_posted,
+        is_approved: !!item.is_approved,
+        scraped_at: new Date(item.scraped_at),
+        posted_at: item.posted_at ? new Date(item.posted_at) : undefined
+      }))
+      
+      setPosts([welcomeCard, ...transformedContent])
+      console.log(`✅ Loaded ${transformedContent.length} posts with proxy fixes applied`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load content')
     } finally {
@@ -102,11 +273,13 @@ export default function AdaptiveTikTokFeed() {
     }
   }
 
-  // Toggle debug borders with 'D' key
+  // Toggle debug features with keyboard
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === 'd' || e.key === 'D') {
         setShowDebugBorders(prev => !prev)
+      } else if (e.key === 's' || e.key === 'S') {
+        setShowSizeDebug(prev => !prev)
       }
     }
     window.addEventListener('keypress', handleKeyPress)
@@ -121,7 +294,7 @@ export default function AdaptiveTikTokFeed() {
       giphy: '🎬',
       bluesky: '🦋',
       imgur: '🟢',
-      pixabay: '🖼️',
+      pixabay: '📸',
       lemmy: '🐭'
     }
     return icons[platform] || '🌐'
@@ -192,6 +365,34 @@ export default function AdaptiveTikTokFeed() {
         <span className="hotdog-icon">🌭</span>
         <span className="title-text">Hotdog Diaries</span>
         {showDebugBorders && <span className="debug-indicator">DEBUG</span>}
+        {showSizeDebug && <span className="debug-indicator" style={{ background: 'blue' }}>SIZE</span>}
+      </div>
+      
+      {/* Debug controls - temporary */}
+      <div className="debug-controls" style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        zIndex: 100,
+        background: 'rgba(255, 255, 255, 0.9)',
+        padding: '8px',
+        borderRadius: '8px',
+        display: 'flex',
+        gap: '8px',
+        fontSize: '12px'
+      }}>
+        <button 
+          onClick={() => setShowDebugBorders(!showDebugBorders)}
+          style={{ padding: '4px 8px', fontSize: '12px' }}
+        >
+          Borders (D)
+        </button>
+        <button 
+          onClick={() => setShowSizeDebug(!showSizeDebug)}
+          style={{ padding: '4px 8px', fontSize: '12px' }}
+        >
+          Sizes (S)
+        </button>
       </div>
       
       {/* Feed container */}
@@ -204,6 +405,7 @@ export default function AdaptiveTikTokFeed() {
           <div 
             key={post.id} 
             className={`card-wrapper ${showDebugBorders ? 'debug-borders' : ''}`}
+            data-card-id={post.id}
           >
             <div className={`content-card ${getCardClass(post)}`}>
               <PostContent 
@@ -214,6 +416,28 @@ export default function AdaptiveTikTokFeed() {
                 }}
                 getPlatformIcon={getPlatformIcon}
               />
+              {showSizeDebug && cardSizes[post.id] && (
+                <div style={{
+                  position: 'absolute',
+                  top: '10px',
+                  left: '10px',
+                  background: 'rgba(0, 0, 0, 0.8)',
+                  color: 'white',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  zIndex: 10,
+                  lineHeight: '1.4'
+                }}>
+                  <div>{post.source_platform} ({cardSizes[post.id].content.type})</div>
+                  <div>Card: {Math.round(cardSizes[post.id].card.width)}×{Math.round(cardSizes[post.id].card.height)}</div>
+                  <div>Content: {Math.round(cardSizes[post.id].content.width)}×{Math.round(cardSizes[post.id].content.height)}</div>
+                  <div style={{ color: cardSizes[post.id].diff.height > 0 ? '#ff6666' : '#66ff66' }}>
+                    Diff: {Math.round(cardSizes[post.id].diff.width)}×{Math.round(cardSizes[post.id].diff.height)}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -286,44 +510,54 @@ export default function AdaptiveTikTokFeed() {
 
         /* Base card - perfect fit sizing */
         .content-card {
-          width: 100%;
+          width: fit-content;
           max-width: 500px;
-          height: fit-content; /* Perfect content fit */
-          min-height: unset; /* No minimum height */
+          height: fit-content !important; /* Perfect content fit */
+          min-height: unset !important; /* No minimum height */
           max-height: 85vh;
           background: black;
-          border-radius: 16px;
+          border-radius: 0; /* Remove radius to prevent visual gaps */
           overflow: hidden;
           position: relative;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-          display: flex;
-          flex-direction: column;
+          display: block; /* Block instead of flex for tighter fit */
+          margin: 0 !important;
+          padding: 0 !important;
+          line-height: 0 !important;
+          font-size: 0 !important;
+          box-sizing: border-box !important;
         }
 
-        /* Platform-specific card types - perfect fit */
+        /* Platform-specific card types - exact fit */
         .card-youtube {
-          aspect-ratio: 16/9;
-          height: fit-content;
+          width: 400px !important;
+          height: 225px !important;
         }
 
         .card-gif {
-          height: fit-content;
+          width: fit-content !important;
+          height: fit-content !important;
           max-height: 70vh;
         }
 
         .card-image {
-          height: fit-content;
+          width: fit-content !important;
+          height: fit-content !important;
           max-height: 80vh;
         }
 
         .card-text {
-          height: fit-content; /* No minimum height */
+          width: fit-content !important;
+          height: fit-content !important;
           max-height: 60vh;
           background: #f8f8f8;
+          line-height: normal !important; /* Allow text line height */
+          font-size: inherit !important; /* Allow text font size */
         }
 
         .card-mixed {
-          height: fit-content;
+          width: fit-content !important;
+          height: fit-content !important;
           max-height: 80vh;
         }
 
@@ -427,16 +661,31 @@ function PostContent({
   }
 
   const renderMedia = () => {
-    // YouTube videos - maintain 16:9 aspect ratio
+    // YouTube videos - STRICT iframe containment (no expansion allowed)
     if (post.source_platform === 'youtube' && post.content_video_url && !videoError) {
       const videoId = post.content_video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]
+      console.log(`🎥 YouTube rendering: ID=${post.id}, videoId=${videoId}, isActive=${isActive}`)
+      
       if (videoId) {
         return (
-          <div className="youtube-container">
+          <div className="youtube-container" data-youtube-id={videoId}>
             <iframe
-              src={`https://www.youtube.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=1&loop=1&playlist=${videoId}`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
+              src={`https://www.youtube.com/embed/${videoId}?autoplay=0&mute=1&rel=0&modestbranding=1&playsinline=1&controls=1&showinfo=0&iv_load_policy=3`}
+              frameBorder="0"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen={false}
+              sandbox="allow-scripts allow-same-origin allow-presentation"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '400px',
+                height: '225px',
+                border: 'none',
+                pointerEvents: 'all',
+                maxWidth: '400px',
+                maxHeight: '225px'
+              }}
             />
           </div>
         )
@@ -494,12 +743,26 @@ function PostContent({
 
     // Images - contain instead of cover
     if (post.content_image_url && !imageError) {
+      let imageSrc = post.content_image_url
+      
+      // Apply proxy for platforms that need it
+      if (post.source_platform === 'pixabay') {
+        const pageUrl = post.original_url
+        imageSrc = `/api/proxy/pixabay-image?url=${encodeURIComponent(post.content_image_url)}&page=${encodeURIComponent(pageUrl)}`
+      } else if (post.source_platform === 'bluesky') {
+        imageSrc = `/api/proxy/bluesky-image?url=${encodeURIComponent(post.content_image_url)}`
+      }
+      
       return (
         <div className="image-container">
           <img 
-            src={post.content_image_url}
-            alt={post.content_text || 'Content'}
-            onError={() => setImageError(true)}
+            src={imageSrc}
+            alt={post.content_text || 'Content image'}
+            loading="lazy"
+            onError={() => {
+              console.log(`❌ Image failed to load: ${post.source_platform} ${post.id}`)
+              setImageError(true)
+            }}
           />
         </div>
       )
@@ -527,52 +790,86 @@ function PostContent({
       
       <style jsx>{`
         .post-content {
-          width: 100%;
-          height: 100%;
+          width: fit-content !important;
+          height: fit-content !important;
           position: relative;
-          display: flex;
-          flex-direction: column;
+          display: block !important; /* Block for tight fit */
+          margin: 0 !important;
+          padding: 0 !important;
+          line-height: 0 !important;
+          font-size: 0 !important;
         }
 
-        /* YouTube 16:9 container */
+        /* YouTube container - STRICT containment (match test-adaptive exactly) */
         .youtube-container {
           position: relative;
-          width: 100%;
-          padding-bottom: 56.25%; /* 16:9 aspect ratio */
+          width: 400px !important; /* Fixed width - no expansion */
+          height: 225px !important; /* Fixed height - no expansion */
           background: black;
+          overflow: hidden !important; /* CRITICAL: prevent any expansion */
+          margin: 0 !important;
+          padding: 0 !important;
+          line-height: 0 !important;
+          font-size: 0 !important;
+          box-sizing: border-box !important;
         }
 
         .youtube-container iframe {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          border: none;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 400px !important; /* Fixed - no dynamic sizing */
+          height: 225px !important; /* Fixed - no dynamic sizing */
+          border: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          pointer-events: all !important;
+          box-sizing: border-box !important;
         }
 
-        /* Giphy - maintain aspect ratio, no padding */
+        /* EMERGENCY: Prevent ANY YouTube player expansion */
+        .html5-video-player {
+          display: none !important;
+          max-width: 400px !important;
+          max-height: 225px !important;
+          overflow: hidden !important;
+        }
+
+        /* Prevent YouTube API expansion */
+        .ytp-player {
+          max-width: 400px !important;
+          max-height: 225px !important;
+          overflow: hidden !important;
+        }
+
+        /* Giphy - exact match to test-adaptive (no whitespace) */
         .giphy-container {
-          width: 100%;
+          width: fit-content; /* Let container size to content */
           height: fit-content; /* Fit content height */
-          display: block; /* Block instead of flex to eliminate spacing */
+          display: block; /* Block to eliminate spacing */
           background: black;
-          padding: 0; /* Remove all padding */
-          margin: 0;
-          line-height: 0; /* Remove line-height spacing */
+          padding: 0 !important; /* Force no padding */
+          margin: 0 !important; /* Force no margins */
+          border: 0 !important; /* Force no border */
+          box-sizing: border-box;
+          line-height: 0 !important; /* Remove line-height spacing */
+          font-size: 0 !important; /* Remove font-based spacing */
+          position: relative; /* Prevent margin collapse */
         }
 
         .giphy-container video,
         .giphy-container img {
-          width: 100%;
-          height: auto; /* Natural height */
+          width: auto; /* Natural width - no forcing */
+          height: auto; /* Natural height - no forcing */
           object-fit: contain; /* Preserve aspect ratio */
-          display: block; /* Remove inline spacing */
-          margin: 0;
-          padding: 0;
-          border: 0; /* Remove any border */
-          outline: 0; /* Remove any outline */
-          vertical-align: top; /* Remove baseline spacing */
+          max-width: 500px; /* Reasonable maximum */
+          display: block !important; /* Force block display */
+          margin: 0 !important; /* Force no margins */
+          padding: 0 !important; /* Force no padding */
+          border: 0 !important; /* Force no border */
+          outline: 0 !important; /* Force no outline */
+          vertical-align: top !important; /* Remove baseline spacing */
+          box-sizing: border-box !important; /* Consistent box model */
         }
 
         /* Video container - no padding */
@@ -598,28 +895,33 @@ function PostContent({
           vertical-align: top; /* Remove baseline spacing */
         }
 
-        /* Image container - edge to edge */
+        /* Image container - exact match to test-adaptive (no whitespace) */
         .image-container {
-          width: 100%;
-          height: fit-content; /* Fit image height */
-          display: block; /* Block instead of flex */
+          width: fit-content; /* Let container size to content */
+          height: fit-content; /* Fit content height */
+          display: block; /* Block to eliminate spacing */
           background: black;
-          padding: 0; /* Remove padding - edge to edge */
-          margin: 0;
+          padding: 0 !important; /* Force no padding */
+          margin: 0 !important; /* Force no margins */
+          border: 0 !important; /* Force no border */
           box-sizing: border-box;
-          line-height: 0; /* Remove line-height spacing */
+          line-height: 0 !important; /* Remove line-height spacing */
+          font-size: 0 !important; /* Remove font-based spacing */
+          position: relative; /* Prevent margin collapse */
         }
 
         .image-container img {
-          width: 100%;
-          height: auto; /* Natural image height */
+          width: auto; /* Natural width - no forcing */
+          height: auto; /* Natural height - no forcing */
           object-fit: contain; /* Preserve aspect ratio */
-          display: block; /* Remove inline spacing */
-          margin: 0;
-          padding: 0;
-          border: 0; /* Remove any border */
-          outline: 0; /* Remove any outline */
-          vertical-align: top; /* Remove baseline spacing */
+          max-width: 500px; /* Reasonable maximum */
+          display: block !important; /* Force block display */
+          margin: 0 !important; /* Force no margins */
+          padding: 0 !important; /* Force no padding */
+          border: 0 !important; /* Force no border */
+          outline: 0 !important; /* Force no outline */
+          vertical-align: top !important; /* Remove baseline spacing */
+          box-sizing: border-box !important; /* Consistent box model */
         }
 
         /* Text content - minimal padding */
@@ -633,7 +935,7 @@ function PostContent({
           align-items: center;
           text-align: center;
           background: white;
-          color: #333;
+          color: #000000; /* Ensure black text for readability */
           min-height: unset; /* No minimum height */
         }
 
@@ -663,6 +965,7 @@ function PostContent({
           line-height: 1.4; /* Tighter line height */
           margin: 0; /* Remove margins */
           padding: 0; /* No padding */
+          color: #000000; /* Ensure black text for all platforms */
         }
 
         .author {

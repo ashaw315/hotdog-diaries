@@ -35,11 +35,11 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   const offset = (page - 1) * limit
 
   try {
-    // Get total count for pagination - query content_queue directly for posted items
+    // Get total count for pagination - include both posted and discovered content
     const countResult = await db.query(`
       SELECT COUNT(*) as total 
       FROM content_queue
-      WHERE content_status = 'posted' AND is_posted = true
+      WHERE content_status IN ('posted', 'discovered')
     `)
     const total = parseInt(countResult.rows[0]?.total || '0')
 
@@ -61,7 +61,7 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
           is_approved,
           ROW_NUMBER() OVER (PARTITION BY source_platform ORDER BY posted_at ${order.toUpperCase()}) as platform_rank
         FROM content_queue
-        WHERE content_status = 'posted' AND is_posted = true
+        WHERE content_status IN ('posted', 'discovered')
         AND (content_text IS NULL OR LENGTH(content_text) <= 200)
       ),
       diverse_content AS (
