@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 interface ContentItem {
   id: number
@@ -23,6 +23,25 @@ function getCardClass(item: ContentItem): string {
 }
 
 export default function TestAdaptivePage() {
+  // 🚨 EMERGENCY CIRCUIT BREAKER
+  console.log('🚨 PAGE COMPONENT STARTING')
+  
+  // Add render counter to detect infinite loops
+  const renderCount = useRef(0)
+  renderCount.current++
+  console.log(`🔄 Render #${renderCount.current}`)
+  
+  if (renderCount.current > 50) {
+    console.error('🔥 INFINITE RENDER DETECTED')
+    return (
+      <div style={{ padding: '20px', color: 'red', fontSize: '24px' }}>
+        <h1>🔥 INFINITE RENDER LOOP DETECTED</h1>
+        <p>Render count: {renderCount.current}</p>
+        <p>Component stopped to prevent browser crash</p>
+      </div>
+    )
+  }
+
   const [content, setContent] = useState<ContentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showDebugInfo, setShowDebugInfo] = useState(true)
@@ -56,26 +75,62 @@ export default function TestAdaptivePage() {
     fetchContent()
   }, [])
 
-  // Auto-apply exact sizing when content loads
+  // FORCE STYLING FIXES via JavaScript (since CSS isn't being applied)
   useEffect(() => {
     if (content.length > 0) {
-      // Auto-apply exact sizing after content loads
       const timer = setTimeout(() => {
-        applyAutoExactSizing()
-      }, 200) // Small delay for content to render
-      
+        try {
+          content.forEach((item) => {
+            const cardElement = document.querySelector(`[data-card-id="${item.id}"]`) as HTMLElement
+            if (!cardElement) return
+
+            // Fix YouTube iframe sizing
+            if (item.platform === 'youtube') {
+              const iframe = cardElement.querySelector('iframe') as HTMLIFrameElement
+              if (iframe) {
+                iframe.style.width = '400px'
+                iframe.style.height = '225px'
+                console.log(`🎥 Fixed YouTube iframe: ${item.id}`)
+              }
+              // Also fix the card size
+              cardElement.style.width = '400px'
+              cardElement.style.height = '225px'
+            }
+
+            // Fix Bluesky text color
+            if (item.platform === 'bluesky') {
+              const textContainer = cardElement.querySelector('.text-container') as HTMLElement
+              if (textContainer) {
+                textContainer.style.color = '#000000'
+                textContainer.style.backgroundColor = 'white'
+                
+                const pElement = textContainer.querySelector('p') as HTMLElement
+                if (pElement) {
+                  pElement.style.color = '#000000'
+                  pElement.style.fontSize = '16px'
+                }
+                console.log(`📝 Fixed Bluesky text color: ${item.id}`)
+              }
+            }
+          })
+        } catch (error) {
+          console.error('❌ Error applying style fixes:', error)
+        }
+      }, 200) // Small delay to ensure elements are rendered
+
       return () => clearTimeout(timer)
     }
   }, [content])
 
-  // Measure card and content sizes when size debug is enabled
-  useEffect(() => {
-    if (showSizeDebug && content.length > 0) {
-      setTimeout(() => {
-        measureCardSizes()
-      }, 500) // Wait for content to render
-    }
-  }, [showSizeDebug, content])
+  // DISABLED AUTO-SIZING TO PREVENT SERVER CRASHES
+  // useEffect(() => {
+  //   console.log('⏭️ Auto-sizing disabled to prevent server crashes')
+  // }, [content])
+
+  // DISABLED COMPLEX MEASUREMENTS TO PREVENT SERVER CRASHES
+  // useEffect(() => {
+  //   console.log('⏭️ Complex measurements disabled to prevent server crashes')
+  // }, [showSizeDebug, content])
 
   // Improved content measurement for all types
   const measureContent = (cardElement: HTMLElement, platform: string) => {
@@ -156,11 +211,196 @@ export default function TestAdaptivePage() {
     return null
   }
 
-  // Auto-apply exact sizing (runs automatically)
-  const applyAutoExactSizing = () => {
-    console.log('🎯 Auto-applying exact sizing...')
+  // EMERGENCY SIMPLE AUTO-SIZING (no hangs, basic functionality)
+  const applySimpleAutoSizing = () => {
+    console.log('🔧 Running simple auto-sizing (emergency mode)')
     
-    content.forEach((item) => {
+    try {
+      content.slice(0, 16).forEach((item, index) => { // Max 16 cards
+        const cardElement = document.querySelector(`[data-card-id="${item.id}"]`) as HTMLElement
+        if (!cardElement) return
+
+        // Simple Bluesky text fix only
+        if (item.platform === 'bluesky') {
+          cardElement.style.width = '432px'
+          cardElement.style.height = '120px' // Fixed height
+          cardElement.style.fontSize = '16px'
+          cardElement.style.lineHeight = '1.4'
+          cardElement.style.background = 'white'
+          
+          const textContainer = cardElement.querySelector('.text-container') as HTMLElement
+          if (textContainer) {
+            textContainer.style.color = '#000000'
+            textContainer.style.fontSize = '16px'
+            textContainer.style.backgroundColor = 'white'
+          }
+        }
+      })
+      console.log('✅ Simple auto-sizing completed')
+    } catch (error) {
+      console.error('❌ Even simple auto-sizing failed:', error)
+    }
+  }
+
+  // Text measurement cache to avoid repeated calculations
+  const textMeasurementCache = new Map<string, {width: number, height: number}>()
+
+  // Optimized auto-sizing with batched DOM operations
+  const applyOptimizedAutoSizing = () => {
+    // SAFETY GUARDS
+    if (!content || content.length === 0) {
+      console.log('⏭️ No content to size')
+      return
+    }
+
+    console.time('⚡ Optimized Auto-sizing')
+    const startTime = performance.now()
+    console.log(`⚡ Optimized auto-sizing for ${content.length} cards...`)
+
+    try {
+      // STEP 1: Batch all DOM reads (no writes to prevent reflows)
+      const readStart = performance.now()
+      const measurements = content.slice(0, 20).map((item, index) => { // Limit to 20 cards max
+        if (!item || !item.id) {
+          console.warn(`⚠️ Invalid item at index ${index}:`, item)
+          return null
+        }
+
+        const cardElement = document.querySelector(`[data-card-id="${item.id}"]`) as HTMLElement
+        if (!cardElement) {
+          console.warn(`⚠️ Card element not found for ID: ${item.id}`)
+          return null
+        }
+
+        // Fast measurement without DOM writes
+        const measurement = measureContentOptimized(cardElement, item.platform, item.contentText || '')
+        if (!measurement) {
+          console.warn(`⚠️ Could not measure content for ${item.platform}`)
+          return null
+        }
+
+        return { cardElement, item, measurement }
+      }).filter(Boolean) as Array<{cardElement: HTMLElement, item: any, measurement: any}>
+
+    const readEnd = performance.now()
+    console.log(`📖 DOM reads: ${(readEnd - readStart).toFixed(2)}ms`)
+
+      // STEP 2: Batch all DOM writes using requestAnimationFrame
+      if (measurements.length === 0) {
+        console.log('⏭️ No measurements to apply')
+        console.timeEnd('⚡ Optimized Auto-sizing')
+        return
+      }
+
+      console.log(`📝 Applying styles to ${measurements.length} cards`)
+      
+      requestAnimationFrame(() => {
+        try {
+          const writeStart = performance.now()
+          
+          measurements.forEach(({ cardElement, item, measurement }, index) => {
+            if (!measurement || !cardElement) {
+              console.warn(`⚠️ Skipping card ${index} - missing data`)
+              return
+            }
+
+            try {
+              // Batch style changes in single cssText assignment (faster than individual properties)
+              if (item.platform === 'bluesky' && measurement.type === 'text') {
+                // Optimized Bluesky text styling
+                cardElement.style.cssText = `width: 432px !important; height: ${measurement.height}px !important; font-size: 16px; line-height: 1.4; background: white;`
+                
+                // Fix text container in single operation
+                const textContainer = cardElement.querySelector('.text-container') as HTMLElement
+                if (textContainer) {
+                  textContainer.style.cssText = 'width: 400px; height: auto; color: #000000; background-color: white; font-size: 16px; line-height: 1.4; white-space: normal; word-wrap: break-word;'
+                  
+                  const pElement = textContainer.querySelector('p') as HTMLElement
+                  if (pElement) {
+                    pElement.style.cssText = 'color: #000000; font-size: 16px; line-height: 1.4; margin: 0; padding: 0; display: block; white-space: normal; word-wrap: break-word;'
+                  }
+                }
+              } else {
+                // Other platforms - simple sizing
+                cardElement.style.cssText = `width: ${measurement.width}px; height: ${measurement.height}px;`
+              }
+            } catch (styleError) {
+              console.error(`❌ Error styling card ${index}:`, styleError)
+            }
+          })
+
+          const writeEnd = performance.now()
+          const totalTime = writeEnd - startTime
+          console.log(`✍️ DOM writes: ${(writeEnd - writeStart).toFixed(2)}ms`)
+          console.log(`🏁 Optimized sizing: ${totalTime.toFixed(2)}ms total (${(totalTime / measurements.length).toFixed(2)}ms/card)`)
+          console.timeEnd('⚡ Optimized Auto-sizing')
+        } catch (writeError) {
+          console.error('❌ Error in DOM writes:', writeError)
+          console.timeEnd('⚡ Optimized Auto-sizing')
+        }
+      })
+    } catch (error) {
+      console.error('❌ Error in optimized auto-sizing:', error)
+      console.timeEnd('⚡ Optimized Auto-sizing')
+    }
+  }
+
+  // Optimized content measurement with caching
+  const measureContentOptimized = (cardElement: HTMLElement, platform: string, text: string) => {
+    const img = cardElement.querySelector('img') as HTMLImageElement
+    const video = cardElement.querySelector('video') as HTMLVideoElement
+    const iframe = cardElement.querySelector('iframe') as HTMLIFrameElement
+    const textContainer = cardElement.querySelector('.text-container') as HTMLElement
+    
+    // For media content (fast path)
+    if (img && img.complete && img.naturalWidth > 0) {
+      const rect = img.getBoundingClientRect()
+      return { width: rect.width, height: rect.height, type: 'image' }
+    }
+    
+    if (video && video.videoWidth > 0) {
+      const rect = video.getBoundingClientRect()
+      return { width: rect.width, height: rect.height, type: 'video' }
+    }
+    
+    if (iframe) {
+      const rect = iframe.getBoundingClientRect()
+      return { width: rect.width, height: rect.height, type: 'iframe' }
+    }
+    
+    // For text content with caching
+    if (textContainer) {
+      const cacheKey = `${platform}_${text.substring(0, 100)}`
+      
+      if (textMeasurementCache.has(cacheKey)) {
+        return { ...textMeasurementCache.get(cacheKey)!, type: 'text' }
+      }
+      
+      // Measure text (only if not cached)
+      if (platform === 'bluesky') {
+        // Quick Bluesky measurement - assume 400px width, calculate height
+        const measurement = { width: 400, height: Math.max(80, Math.ceil(text.length / 50) * 20 + 32) }
+        textMeasurementCache.set(cacheKey, measurement)
+        return { ...measurement, type: 'text' }
+      } else {
+        // Default text measurement
+        const measurement = { width: Math.min(textContainer.offsetWidth, 500), height: textContainer.scrollHeight }
+        textMeasurementCache.set(cacheKey, measurement)
+        return { ...measurement, type: 'text' }
+      }
+    }
+    
+    return null
+  }
+
+  // Auto-apply exact sizing (runs automatically - legacy version for debugging)
+  const applyAutoExactSizing = () => {
+    console.time('🎯 Auto-sizing Performance')
+    const startTime = performance.now()
+    console.log(`🎯 Auto-applying exact sizing for ${content.length} cards...`)
+    
+    content.forEach((item, index) => {
+      const itemStart = performance.now()
       const cardElement = document.querySelector(`[data-card-id="${item.id}"]`) as HTMLElement
       
       if (cardElement) {
@@ -209,21 +449,33 @@ export default function TestAdaptivePage() {
         } else {
           console.log(`⚠️ Could not measure content for ${item.platform} ${item.contentType}`)
         }
+        
+        const itemEnd = performance.now()
+        console.log(`📊 Card ${index + 1}/${content.length} (${item.platform}): ${(itemEnd - itemStart).toFixed(2)}ms`)
       }
     })
+    
+    const endTime = performance.now()
+    console.log(`🏁 Auto-sizing completed: ${(endTime - startTime).toFixed(2)}ms total for ${content.length} cards`)
+    console.timeEnd('🎯 Auto-sizing Performance')
   }
 
-  // Handle individual image loads
+  // Optimized individual image load handler
   const handleImageLoad = (cardId: number) => {
+    const startTime = performance.now()
     const cardElement = document.querySelector(`[data-card-id="${cardId}"]`) as HTMLElement
     const item = content.find(c => c.id === cardId)
     
     if (cardElement && item) {
-      const measurement = measureContent(cardElement, item.platform)
+      // Fast measurement for single card
+      const measurement = measureContentOptimized(cardElement, item.platform, item.contentText || '')
       if (measurement) {
-        console.log(`🖼️ Image loaded, resizing ${item.platform}: ${measurement.width}×${measurement.height}`)
-        cardElement.style.width = `${measurement.width}px`
-        cardElement.style.height = `${measurement.height}px`
+        // Single cssText assignment for performance
+        requestAnimationFrame(() => {
+          cardElement.style.cssText = `width: ${measurement.width}px; height: ${measurement.height}px;`
+          const endTime = performance.now()
+          console.log(`🖼️ Image ${item.platform} resized: ${measurement.width}×${measurement.height} (${(endTime - startTime).toFixed(2)}ms)`)
+        })
       }
     }
   }
@@ -540,7 +792,6 @@ export default function TestAdaptivePage() {
             loop
             muted
             playsInline
-            onLoadedMetadata={() => handleImageLoad(item.id)}
             onError={() => console.log(`❌ Video failed to load: ${item.platform} ${item.id}`)}
           >
             <source src={contentVideoUrl} type="video/mp4" />
@@ -565,7 +816,7 @@ export default function TestAdaptivePage() {
           <img 
             src={imageSrc} 
             alt={contentText || 'Content image'}
-            onLoad={() => handleImageLoad(item.id)}
+            loading="lazy"
             onError={() => console.log(`❌ Image failed to load: ${item.platform} ${item.id}`)}
           />
         </div>
@@ -776,8 +1027,8 @@ export default function TestAdaptivePage() {
 
         /* Platform-specific cards - tight fitting */
         .card-youtube {
-          aspect-ratio: 16/9;
-          height: fit-content;
+          width: 400px !important; /* Match YouTube container */
+          height: 225px !important; /* Match YouTube container */
           background: black;
           /* Ensure no extra elements cause height issues */
         }
@@ -814,10 +1065,8 @@ export default function TestAdaptivePage() {
         /* Content containers */
         .youtube-container {
           position: relative;
-          width: fit-content;
-          max-width: 500px;
-          min-width: 300px;
-          aspect-ratio: 16/9;
+          width: 400px; /* Standard YouTube width */
+          height: 225px; /* Standard 16:9 ratio (400/16*9) */
           background: black;
         }
 
@@ -825,8 +1074,8 @@ export default function TestAdaptivePage() {
           position: absolute;
           top: 0;
           left: 0;
-          width: 100%;
-          height: 100%;
+          width: 400px; /* Match card width exactly */
+          height: 225px; /* Match card height exactly */
           border: none;
         }
 
@@ -888,14 +1137,13 @@ export default function TestAdaptivePage() {
           overflow-wrap: break-word !important; /* Modern word breaking */
           height: auto !important; /* Let height expand with content */
           background: white !important; /* Visible background */
-          color: #333 !important; /* Dark text */
+          color: #000000 !important; /* BLACK text for visibility */
           font-size: 16px !important; /* Visible font size */
           line-height: 1.4 !important; /* Readable line height */
           display: flex !important; /* Ensure container displays */
           align-items: center !important;
           justify-content: center !important;
           box-sizing: border-box !important;
-          border: 2px solid red !important; /* DEBUG: Visual border to see container */
           opacity: 1 !important; /* Ensure not transparent */
           z-index: 10 !important; /* Bring to front */
         }
@@ -918,7 +1166,7 @@ export default function TestAdaptivePage() {
           overflow-wrap: break-word !important;
           font-size: 16px !important; /* Visible font size */
           line-height: 1.4 !important; /* Readable line height */
-          color: #333 !important; /* Dark text color */
+          color: #000000 !important; /* BLACK text for visibility */
           margin: 0 !important;
           padding: 0 !important;
         }
