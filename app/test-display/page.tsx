@@ -18,9 +18,22 @@ export default function TestDisplayPage() {
   const [error, setError] = useState<string | null>(null)
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [scrollTest, setScrollTest] = useState(0)
+  const [refreshCount, setRefreshCount] = useState(0)
 
   useEffect(() => {
     fetchSampleContent()
+  }, [refreshCount]) // Re-fetch when refreshCount changes
+  
+  useEffect(() => {
+    
+    // Ensure page can scroll - override any CSS that might prevent scrolling
+    document.body.style.setProperty('overflow', 'auto', 'important')
+    document.body.style.setProperty('overflow-y', 'auto', 'important')
+    document.body.style.setProperty('height', 'auto', 'important')
+    document.body.style.setProperty('position', 'static', 'important')
+    document.body.style.setProperty('width', 'auto', 'important')
+    document.documentElement.style.setProperty('overflow', 'auto', 'important')
+    document.documentElement.style.setProperty('height', 'auto', 'important')
     
     // Handle scroll for back-to-top button and test scrolling
     const handleScroll = () => {
@@ -31,21 +44,58 @@ export default function TestDisplayPage() {
     }
     
     window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      // Cleanup - restore original CSS
+      document.body.style.removeProperty('overflow')
+      document.body.style.removeProperty('overflow-y') 
+      document.body.style.removeProperty('height')
+      document.body.style.removeProperty('position')
+      document.body.style.removeProperty('width')
+      document.documentElement.style.removeProperty('overflow')
+      document.documentElement.style.removeProperty('height')
+    }
   }, [])
 
   const fetchSampleContent = async () => {
     try {
-      const response = await fetch('/api/test/display-samples')
+      setLoading(true)
+      setError(null)
+      
+      // Calculate offset based on refresh count (cycle through different sets of content)
+      const offset = refreshCount * 2
+      
+      const response = await fetch(`/api/test/platform-display?offset=${offset}`)
       if (!response.ok) throw new Error('Failed to fetch content')
       
       const data = await response.json()
-      setContent(data.samples)
+      
+      // Transform the data to match expected interface
+      const transformedContent = (data.items || []).map((item: any) => ({
+        id: item.id,
+        platform: item.source_platform,
+        contentType: item.content_type,
+        contentText: item.content_text,
+        contentImageUrl: item.content_image_url,
+        contentVideoUrl: item.content_video_url,
+        originalUrl: item.original_url
+      }))
+      
+      setContent(transformedContent)
+      
+      // If we got less content than expected, reset to beginning
+      if (transformedContent.length < 8) {
+        setRefreshCount(0)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
+  }
+  
+  const handleRefreshContent = () => {
+    setRefreshCount(prev => prev + 1)
   }
 
   const scrollToTop = () => {
@@ -97,16 +147,38 @@ export default function TestDisplayPage() {
 
     // Images (Pixabay, Imgur, Reddit with images)
     if (contentImageUrl && contentType === 'image') {
+      // Determine the image source - use proxy for problematic platforms
+      let imageSrc = contentImageUrl
+      let imageLabel = 'Image (img tag)'
+      
+      if (item.platform === 'pixabay') {
+        const pageUrl = item.originalUrl
+        imageSrc = `/api/proxy/pixabay-image?url=${encodeURIComponent(contentImageUrl)}&page=${encodeURIComponent(pageUrl)}`
+        imageLabel = 'Pixabay Image (via proxy with refresh)'
+      } else if (item.platform === 'bluesky') {
+        imageSrc = `/api/proxy/bluesky-image?url=${encodeURIComponent(contentImageUrl)}`
+        imageLabel = 'Bluesky Image (via AT Protocol proxy)'
+      }
+      
       return (
         <div>
-          <p className="text-xs mb-1">Image (img tag)</p>
+          <p className="text-xs mb-1">{imageLabel}</p>
           <img 
-            src={contentImageUrl} 
+            src={imageSrc} 
             alt={contentText || 'Content image'}
             style={{ width: '100%', height: '200px', objectFit: 'cover' }}
             onError={(e) => {
-              console.error('Image failed to load:', contentImageUrl)
-              e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23ccc"/%3E%3Ctext x="50" y="50" text-anchor="middle" fill="%23666"%3EImage Error%3C/text%3E%3C/svg%3E'
+              console.error(`❌ Image failed to load for ${item.platform}:`)
+              console.error('Original URL:', contentImageUrl)
+              console.error('Proxied URL:', imageSrc)
+              const target = e.currentTarget
+              target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23ff6b6b"/%3E%3Ctext x="50" y="50" text-anchor="middle" fill="%23fff" font-size="10"%3E' + item.platform.toUpperCase() + ' ERROR%3C/text%3E%3C/svg%3E'
+              // Add red border to indicate error
+              target.style.border = '2px solid #ff6b6b'
+              target.style.borderRadius = '4px'
+            }}
+            onLoad={() => {
+              console.log(`✅ Image loaded successfully for ${item.platform}:`, imageSrc)
             }}
           />
         </div>
@@ -158,7 +230,12 @@ export default function TestDisplayPage() {
   )
 
   return (
-    <div style={{ minHeight: '200vh', backgroundColor: '#f9fafb' }}>
+    <div style={{ 
+      minHeight: '200vh', 
+      backgroundColor: '#f9fafb',
+      overflow: 'auto',
+      position: 'relative'
+    }}>
       {/* Scroll Test Banner */}
       <div style={{ 
         position: 'fixed', 
@@ -175,8 +252,46 @@ export default function TestDisplayPage() {
       
       {/* Header */}
       <div style={{ backgroundColor: 'white', padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>🌭 Content Display Test</h1>
-        <p style={{ color: '#666', margin: '5px 0 0 0' }}>Testing content rendering from all platforms - SCROLL TEST</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>🌭 Content Display Test</h1>
+            <p style={{ color: '#666', margin: '5px 0 0 0' }}>Testing content rendering from all platforms - SCROLL TEST</p>
+          </div>
+          <button 
+            onClick={handleRefreshContent}
+            disabled={loading}
+            style={{
+              padding: '10px 20px',
+              background: loading ? '#ccc' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {loading ? (
+              <>
+                <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span>
+                Loading...
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: '18px' }}>🔄</span>
+                Load Different Content
+              </>
+            )}
+          </button>
+        </div>
+        {refreshCount > 0 && (
+          <div style={{ marginTop: '10px', padding: '8px 12px', background: '#f0f9ff', borderRadius: '6px', fontSize: '14px', color: '#0369a1' }}>
+            📊 Showing content set #{refreshCount + 1} (offset: {refreshCount * 2} items per platform)
+          </div>
+        )}
       </div>
 
       {/* Content Grid */}
@@ -300,7 +415,7 @@ export default function TestDisplayPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
             <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '15px' }}>
               <div style={{ fontWeight: 'bold', color: '#166534' }}>Platforms Found</div>
-              <div style={{ color: '#16a34a' }}>{content.length} out of 8</div>
+              <div style={{ color: '#16a34a' }}>{[...new Set(content.map(item => item.platform))].length} out of 8</div>
             </div>
             <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '15px' }}>
               <div style={{ fontWeight: 'bold', color: '#1e40af' }}>Content Types</div>
@@ -311,6 +426,10 @@ export default function TestDisplayPage() {
             <div style={{ backgroundColor: '#faf5ff', border: '1px solid #d8b4fe', borderRadius: '6px', padding: '15px' }}>
               <div style={{ fontWeight: 'bold', color: '#7c2d12' }}>Scroll Status</div>
               <div style={{ color: '#a855f7' }}>Position: {scrollTest}px</div>
+            </div>
+            <div style={{ backgroundColor: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '6px', padding: '15px' }}>
+              <div style={{ fontWeight: 'bold', color: '#92400e' }}>Content Set</div>
+              <div style={{ color: '#d97706' }}>#{refreshCount + 1} (Items {refreshCount * 2 + 1}-{refreshCount * 2 + 2})</div>
             </div>
           </div>
         </div>
@@ -351,6 +470,17 @@ export default function TestDisplayPage() {
       }}>
         🎯 END OF PAGE - SCROLLING WORKS!
       </div>
+      
+      <style jsx>{`
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   )
 }

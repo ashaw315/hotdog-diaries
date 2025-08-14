@@ -1,7 +1,11 @@
 'use client'
 
-import OptimizedTikTokFeed from '@/components/OptimizedTikTokFeed'
+// import PlatformDisplayTest from '@/components/PlatformDisplayTest'
+// import OptimizedTikTokFeed from '@/components/OptimizedTikTokFeed'
+import AdaptiveTikTokFeed from '@/components/AdaptiveTikTokFeed'
 
 export default function Page() {
-  return <OptimizedTikTokFeed />
+  // return <PlatformDisplayTest />
+  // return <OptimizedTikTokFeed />
+  return <AdaptiveTikTokFeed />
 }

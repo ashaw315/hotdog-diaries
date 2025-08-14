@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
       WITH platform_scan_analysis AS (
         SELECT 
           source_platform,
-          DATE_TRUNC('hour', scraped_at) as scan_session,
+          strftime('%Y-%m-%d %H', scraped_at) as scan_session,
           COUNT(*) as items_in_session,
           MAX(scraped_at) as session_end,
           MIN(scraped_at) as session_start
         FROM content_queue
-        WHERE scraped_at > NOW() - INTERVAL '7 days'
-        GROUP BY source_platform, DATE_TRUNC('hour', scraped_at)
+        WHERE scraped_at > datetime('now', '-7 days')
+        GROUP BY source_platform, strftime('%Y-%m-%d %H', scraped_at)
       )
       SELECT 
         source_platform,
@@ -34,16 +34,16 @@ export async function GET(request: NextRequest) {
     // Check for any reactive scanning triggers by looking at scan patterns vs posting patterns
     const scanVsPost = await db.query(`
       WITH posting_times AS (
-        SELECT DATE_TRUNC('hour', posted_at) as post_hour
+        SELECT strftime('%Y-%m-%d %H', posted_at) as post_hour
         FROM content_queue 
-        WHERE is_posted = true AND posted_at > NOW() - INTERVAL '7 days'
-        GROUP BY DATE_TRUNC('hour', posted_at)
+        WHERE is_posted = true AND posted_at > datetime('now', '-7 days')
+        GROUP BY strftime('%Y-%m-%d %H', posted_at)
       ),
       scan_times AS (
-        SELECT DATE_TRUNC('hour', scraped_at) as scan_hour
+        SELECT strftime('%Y-%m-%d %H', scraped_at) as scan_hour
         FROM content_queue
-        WHERE scraped_at > NOW() - INTERVAL '7 days'
-        GROUP BY DATE_TRUNC('hour', scraped_at)
+        WHERE scraped_at > datetime('now', '-7 days')
+        GROUP BY strftime('%Y-%m-%d %H', scraped_at)
       )
       SELECT 
         'scans' as type, COUNT(*) as count
