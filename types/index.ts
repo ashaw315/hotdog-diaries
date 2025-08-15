@@ -93,6 +93,7 @@ export enum ContentType {
   TEXT = 'text',
   IMAGE = 'image',
   VIDEO = 'video',
+  GIF = 'gif',
   MIXED = 'mixed'
 }
 
@@ -102,7 +103,10 @@ export enum SourcePlatform {
   PIXABAY = 'pixabay',
   NEWS = 'news',
   MASTODON = 'mastodon',
-  BLUESKY = 'bluesky'
+  BLUESKY = 'bluesky',
+  GIPHY = 'giphy',
+  TUMBLR = 'tumblr',
+  LEMMY = 'lemmy'
 }
 
 export enum LogLevel {

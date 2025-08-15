@@ -49,6 +49,7 @@ export interface ProcessedLemmyPost {
   title: string
   description: string
   imageUrl?: string
+  videoUrl?: string
   thumbnailUrl?: string
   author: string
   community: string
@@ -172,22 +173,23 @@ export class LemmyScanningService {
             continue
           }
 
-          // Determine content type
+          // Determine content type - prioritize video over image
+          const hasVideo = !!post.videoUrl
           const hasImage = !!(post.imageUrl || post.thumbnailUrl)
-          const contentType = hasImage ? 'image' : 'text'
+          const contentType = hasVideo ? 'video' : hasImage ? 'image' : 'text'
 
           // Prepare content data
           const contentForHash = {
             content_text: contentText,
             content_image_url: post.imageUrl || post.thumbnailUrl || null,
-            content_video_url: null,
+            content_video_url: post.videoUrl || null,
             original_url: post.postUrl
           }
 
           const contentData = {
             content_text: contentText,
             content_image_url: post.imageUrl || post.thumbnailUrl || null,
-            content_video_url: null,
+            content_video_url: post.videoUrl || null,
             content_type: contentType,
             source_platform: 'lemmy',
             original_url: post.postUrl,
@@ -412,11 +414,16 @@ export class LemmyScanningService {
     const contentSource = isCommunityTargeted ? 'community' : 'search'
     console.log(`✅ Lemmy post passed filters (${contentSource}): "${title}" (${title.length + body.length} chars)`)
 
+    // Check for video content first, then image
+    const videoUrl = this.extractVideoUrl(item.post.url)
+    const imageUrl = videoUrl ? undefined : this.extractImageUrl(item.post.url)
+
     return {
       id: item.post.id ? item.post.id.toString() : `lemmy_${Date.now()}_${Math.random()}`,
       title,
       description: body,
-      imageUrl: this.extractImageUrl(item.post.url),
+      imageUrl,
+      videoUrl, // Add video URL to the processed post
       thumbnailUrl: item.post.thumbnail_url,
       author: item.creator?.name || 'Unknown',
       community: item.community?.name || 'Unknown',
@@ -505,13 +512,47 @@ export class LemmyScanningService {
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const lowerUrl = url.toLowerCase()
     
-    if (imageExtensions.some(ext => lowerUrl.endsWith(ext))) {
+    // Check for direct image extensions
+    if (imageExtensions.some(ext => lowerUrl.includes(ext))) {
       return url
     }
     
     // Check if it's an imgur link without extension
     if (lowerUrl.includes('imgur.com') && !lowerUrl.includes('/a/')) {
       return url + '.jpg' // Try adding .jpg
+    }
+    
+    return undefined
+  }
+
+  /**
+   * Extract video URL if the post URL is a video
+   */
+  private extractVideoUrl(url?: string): string | undefined {
+    if (!url) return undefined
+    
+    const lowerUrl = url.toLowerCase()
+    
+    // Direct video file patterns
+    const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.gifv']
+    if (videoExtensions.some(ext => lowerUrl.includes(ext))) {
+      return url
+    }
+    
+    // Video platform patterns
+    const videoPatterns = [
+      /youtube\.com\/watch/i,
+      /youtu\.be\//i,
+      /vimeo\.com\//i,
+      /v\.redd\.it/i,
+      /reddit\.com.*\.mp4/i,
+      /packaged-media\.redd\.it.*\.mp4/i, // Reddit packaged media
+      /tiktok\.com/i,
+      /streamable\.com/i
+    ]
+    
+    if (videoPatterns.some(pattern => pattern.test(url))) {
+      return url
     }
     
     return undefined

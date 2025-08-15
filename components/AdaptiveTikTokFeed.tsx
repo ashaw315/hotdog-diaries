@@ -362,11 +362,12 @@ export default function AdaptiveTikTokFeed() {
     const icons: Record<SourcePlatform, string> = {
       reddit: '🟠',
       youtube: '🔴',
-      tumblr: '💙',
-      giphy: '🎬',
-      bluesky: '🦋',
-      imgur: '🟢',
       pixabay: '📸',
+      news: '📰',
+      mastodon: '🐘',
+      bluesky: '🦋',
+      giphy: '🎬',
+      tumblr: '💙',
       lemmy: '🐭'
     }
     return icons[platform] || '🌐'
@@ -893,6 +894,54 @@ export default function AdaptiveTikTokFeed() {
         
         .bluesky-text-container .author {
           color: #666666 !important;
+          font-size: 14px !important;
+          margin-top: 16px !important;
+        }
+        
+        /* Lemmy text-only cards - match Bluesky/Tumblr styling exactly */
+        .lemmy-text-container {
+          background: #ffffff !important;
+          color: #000000 !important;
+          margin: 2rem !important;
+          padding: 24px !important;
+          border-radius: 12px !important;
+          width: 400px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          text-align: left !important;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        .lemmy-text-container * {
+          color: #000000 !important;
+        }
+        
+        .lemmy-text-container .platform-badge {
+          background-color: #f0f0f0 !important;
+          color: #000000 !important;
+          padding: 8px 16px !important;
+          border-radius: 20px !important;
+          font-size: 14px !important;
+          margin-bottom: 16px !important;
+        }
+        
+        .lemmy-text-container .text-content {
+          flex: 1 !important;
+          display: flex !important;
+          align-items: center !important;
+          color: #000000 !important;
+        }
+        
+        .lemmy-text-container .text-content p {
+          color: #000000 !important;
+          font-size: 18px !important;
+          line-height: 1.6 !important;
+          margin: 0 !important;
+        }
+        
+        .lemmy-text-container .author {
+          color: #000000 !important;
           font-size: 14px !important;
           margin-top: 16px !important;
         }
@@ -1463,7 +1512,7 @@ function PostContent({
     // Text content - scale card to match text container
     return (
       <div 
-        className={`text-container ${post.source_platform === 'bluesky' ? 'bluesky-text-container' : ''} ${post.source_platform === 'tumblr' ? 'tumblr-text-container' : ''}`}
+        className={`text-container ${post.source_platform === 'bluesky' ? 'bluesky-text-container' : ''} ${post.source_platform === 'tumblr' ? 'tumblr-text-container' : ''} ${post.source_platform === 'lemmy' ? 'lemmy-text-container' : ''}`}
         style={{
           // Force proper styling for Bluesky text cards (no min-height to match others)
           ...(post.source_platform === 'bluesky' && {
@@ -1480,6 +1529,19 @@ function PostContent({
           }),
           // Force proper styling for Tumblr text cards to match Bluesky
           ...(post.source_platform === 'tumblr' && {
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            margin: '2rem',
+            padding: '24px',
+            borderRadius: '12px',
+            width: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            textAlign: 'left'
+          }),
+          // Force proper styling for Lemmy text cards to match Bluesky/Tumblr
+          ...(post.source_platform === 'lemmy' && {
             backgroundColor: '#ffffff',
             color: '#000000',
             margin: '2rem',
