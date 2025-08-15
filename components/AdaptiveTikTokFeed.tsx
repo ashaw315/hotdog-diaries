@@ -23,9 +23,24 @@ interface Post {
 function getCardClass(post: Post): string {
   if (post.content_type === 'video' && post.source_platform === 'youtube') return 'card-youtube'
   if (post.content_type === 'gif' || post.source_platform === 'giphy') return 'card-gif'
-  if (post.content_type === 'image' && !post.content_text) return 'card-image'
-  if (post.content_type === 'text' || (!post.content_image_url && !post.content_video_url)) return 'card-text'
-  if (post.content_image_url && post.content_text) return 'card-mixed'
+  
+  // Check for mixed content (both text and image/video)
+  if (post.content_text && (post.content_image_url || post.content_video_url)) {
+    if (post.source_platform === 'bluesky') return 'card-mixed card-bluesky'
+    return 'card-mixed'
+  }
+  
+  // Pure image/video content (no text)
+  if (post.content_image_url && !post.content_text) return 'card-image'
+  if (post.content_video_url && !post.content_text) return 'card-video'
+  
+  // Pure text content
+  if (post.content_type === 'text' || (!post.content_image_url && !post.content_video_url)) {
+    // Special handling for Bluesky text
+    if (post.source_platform === 'bluesky') return 'card-text card-bluesky'
+    return 'card-text'
+  }
+  
   return 'card-default'
 }
 
@@ -34,6 +49,7 @@ function isPortraitContent(url: string): boolean {
   // Common portrait platforms/patterns
   return url.includes('tiktok') || url.includes('instagram') || url.includes('stories')
 }
+
 
 export default function AdaptiveTikTokFeed() {
   const [posts, setPosts] = useState<Post[]>([])
@@ -50,6 +66,7 @@ export default function AdaptiveTikTokFeed() {
     fetchPosts()
   }, [])
 
+
   // Apply critical platform-specific fixes via JavaScript
   useEffect(() => {
     if (posts.length > 0) {
@@ -64,30 +81,60 @@ export default function AdaptiveTikTokFeed() {
               const cardElement = document.querySelector(`[data-card-id="${post.id}"]`) as HTMLElement
               if (!cardElement) return
 
-              // Fix YouTube iframe - enforce strict containment
+              // YouTube smart scaling fallback
               if (post.source_platform === 'youtube') {
                 const iframe = cardElement.querySelector('iframe') as HTMLIFrameElement
-                const container = cardElement.querySelector('.youtube-container') as HTMLElement
-                if (iframe && container) {
-                  // Force fixed dimensions - NO dynamic sizing
-                  iframe.style.cssText = `position: absolute !important; top: 0 !important; left: 0 !important; width: 400px !important; height: 225px !important; border: none !important; max-width: 400px !important; max-height: 225px !important;`
-                  container.style.cssText = `position: relative !important; width: 400px !important; height: 225px !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; line-height: 0 !important; font-size: 0 !important;`
-                  console.log(`🎥 YouTube enforced containment: ${post.id} (400x225 fixed)`)
+                if (iframe && iframe.style.width === '') {
+                  // Fallback smart scaling if onLoad didn't trigger
+                  const vw = window.innerWidth;
+                  const vh = window.innerHeight;
+                  const constraints = vw < 480 ? 
+                    { minHeight: vh * 0.5, maxWidth: vw * 0.95, maxHeight: vh * 0.7 } :
+                    vw < 768 ? 
+                    { minHeight: 400, maxWidth: vw * 0.85, maxHeight: vh * 0.75 } :
+                    { minHeight: 500, maxWidth: Math.min(vw * 0.8, 800), maxHeight: vh * 0.85 };
+                  
+                  const ytAspectRatio = 16 / 9;
+                  let ytHeight = Math.min(constraints.minHeight, constraints.maxHeight);
+                  let ytWidth = ytHeight * ytAspectRatio;
+                  
+                  if (ytWidth > constraints.maxWidth) {
+                    ytWidth = constraints.maxWidth;
+                    ytHeight = ytWidth / ytAspectRatio;
+                  }
+                  
+                  iframe.style.width = `${ytWidth}px`;
+                  iframe.style.height = `${ytHeight}px`;
+                  
+                  const card = iframe.closest('.content-card') as HTMLElement;
+                  if (card) {
+                    card.style.width = `${ytWidth}px`;
+                    card.style.height = `${ytHeight}px`;
+                  }
+                  
+                  console.log(`🎥 YouTube smart fallback: ${post.id} (${Math.round(ytWidth)}×${Math.round(ytHeight)} fits: ${ytWidth <= vw * 0.9})`);
                 }
               }
 
-              // Fix Bluesky text visibility with optimized styling
+              // Fix Bluesky text visibility - FORCE black text EVERYWHERE
               if (post.source_platform === 'bluesky') {
                 const textContainer = cardElement.querySelector('.text-container') as HTMLElement
                 if (textContainer) {
-                  // Batch style updates for better performance
-                  textContainer.style.cssText = 'color: #000000 !important; background-color: white !important; width: 100%; font-size: 16px;'
+                  // Force black text on container and ALL children + add margin (no width override)
+                  textContainer.style.cssText = 'color: #000000 !important; background-color: #ffffff !important; font-size: 16px; margin: 2rem !important;'
                   
-                  const pElement = textContainer.querySelector('p') as HTMLElement
-                  if (pElement) {
-                    pElement.style.cssText = 'color: #000000 !important; font-size: 16px; line-height: 1.4; white-space: normal; word-wrap: break-word;'
-                  }
-                  console.log(`📝 Fixed Bluesky text color: ${post.id}`)
+                  // Apply to ALL text elements
+                  const allTextElements = textContainer.querySelectorAll('p, span, div, *')
+                  allTextElements.forEach(el => {
+                    (el as HTMLElement).style.setProperty('color', '#000000', 'important');
+                    (el as HTMLElement).style.color = '#000000';
+                  });
+                  
+                  // Also set on card itself for good measure
+                  cardElement.style.color = '#000000';
+                  cardElement.style.backgroundColor = '#ffffff';
+                  
+                  console.log(`📝 Fixed Bluesky text color (FORCED BLACK): ${post.id}`)
                 }
               }
             })
@@ -118,13 +165,14 @@ export default function AdaptiveTikTokFeed() {
         }
       })
 
-      // Also ensure all YouTube containers are properly contained
+      // YouTube containers are now scaled by onLoad handlers
       const containers = document.querySelectorAll('.youtube-container')
       containers.forEach(container => {
         const containerElement = container as HTMLElement
-        containerElement.style.width = '400px'
-        containerElement.style.height = '225px'
-        containerElement.style.overflow = 'hidden'
+        // Only apply if not already scaled
+        if (!containerElement.style.width) {
+          containerElement.style.background = 'black'
+        }
       })
     }
 
@@ -177,37 +225,47 @@ export default function AdaptiveTikTokFeed() {
     return () => clearTimeout(timer)
   }, [showSizeDebug, posts, currentIndex])
 
-  // Auto-fit cards to content size
+  // Verification and fix function to ensure no whitespace
   useEffect(() => {
-    if (posts.length === 0) return
+    if (posts.length === 0) return;
 
-    const autoFitCards = () => {
+    const verifyNoWhitespace = () => {
       posts.forEach((post) => {
         const cardElement = document.querySelector(`[data-card-id="${post.id}"]`) as HTMLElement
-        if (!cardElement) return
-        
-        const contentCard = cardElement.querySelector('.content-card') as HTMLElement
-        const postContent = cardElement.querySelector('.post-content') as HTMLElement
-        const mediaElement = cardElement.querySelector('img, video, iframe, .text-container') as HTMLElement
-        
-        if (contentCard && postContent && mediaElement) {
-          // Get the actual content dimensions
-          const mediaBounds = mediaElement.getBoundingClientRect()
-          
-          // Set card to match content exactly
-          contentCard.style.width = `${mediaBounds.width}px`
-          contentCard.style.height = `${mediaBounds.height}px`
-          postContent.style.width = `${mediaBounds.width}px`
-          postContent.style.height = `${mediaBounds.height}px`
-          
-          console.log(`✨ Auto-fit ${post.source_platform}: ${mediaBounds.width}×${mediaBounds.height}`)
-        }
-      })
-    }
+        if (!cardElement) return;
 
-    const timer = setTimeout(autoFitCards, 600)
-    return () => clearTimeout(timer)
+        const contentCard = cardElement.querySelector('.content-card') as HTMLElement
+        const content = contentCard?.querySelector('img, video, iframe, .text-container') as HTMLElement
+
+        if (contentCard && content) {
+          const cardRect = contentCard.getBoundingClientRect();
+          const contentRect = content.getBoundingClientRect();
+
+          // Check for whitespace gaps
+          const heightDiff = Math.abs(cardRect.height - contentRect.height);
+          const widthDiff = Math.abs(cardRect.width - contentRect.width);
+
+          if (heightDiff > 2 || widthDiff > 2) { // Allow 2px tolerance
+            console.warn(`⚠️  Whitespace detected on ${post.source_platform} ${post.id}: Card ${Math.round(cardRect.width)}×${Math.round(cardRect.height)} vs Content ${Math.round(contentRect.width)}×${Math.round(contentRect.height)}`);
+            
+            // Force fix - card matches content exactly
+            contentCard.style.width = `${contentRect.width}px`;
+            contentCard.style.height = `${contentRect.height}px`;
+            contentCard.style.minHeight = 'unset';
+            contentCard.style.maxHeight = 'unset';
+            
+            console.log(`🔧 Fixed whitespace: ${post.source_platform} now ${Math.round(contentRect.width)}×${Math.round(contentRect.height)}`);
+          }
+        }
+      });
+    };
+
+    // Run verification after scaling completes
+    const timer = setTimeout(verifyNoWhitespace, 1000);
+    return () => clearTimeout(timer);
   }, [posts])
+
+  // Content scaling is handled by individual onLoad handlers
 
   const fetchPosts = async () => {
     try {
@@ -243,7 +301,7 @@ export default function AdaptiveTikTokFeed() {
       }))
       
       setPosts([welcomeCard, ...transformedContent])
-      console.log(`✅ Loaded ${transformedContent.length} posts with proxy fixes applied`)
+      console.log(`✅ Loaded ${transformedContent.length} posts with minimum height system applied`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load content')
     } finally {
@@ -280,6 +338,20 @@ export default function AdaptiveTikTokFeed() {
         setShowDebugBorders(prev => !prev)
       } else if (e.key === 's' || e.key === 'S') {
         setShowSizeDebug(prev => !prev)
+      } else if (e.key === 't' || e.key === 'T') {
+        // Test smart scaling results
+        console.log('=== Smart Scaling Test Results ===');
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        console.log(`Viewport: ${vw}×${vh}`);
+        
+        document.querySelectorAll('.content-card').forEach(card => {
+          const rect = card.getBoundingClientRect();
+          const platform = card.closest('[data-card-id]')?.querySelector('.platform-badge')?.textContent || 'unknown';
+          const fitsWidth = rect.width <= vw * 0.9;
+          const fitsHeight = rect.height <= vh * 0.85;
+          console.log(`${platform}: ${Math.round(rect.width)}×${Math.round(rect.height)} (fits screen: width=${fitsWidth}, height=${fitsHeight})`);
+        });
       }
     }
     window.addEventListener('keypress', handleKeyPress)
@@ -378,20 +450,101 @@ export default function AdaptiveTikTokFeed() {
         padding: '8px',
         borderRadius: '8px',
         display: 'flex',
-        gap: '8px',
-        fontSize: '12px'
+        gap: '6px',
+        fontSize: '11px'
       }}>
         <button 
           onClick={() => setShowDebugBorders(!showDebugBorders)}
-          style={{ padding: '4px 8px', fontSize: '12px' }}
+          style={{ padding: '3px 6px', fontSize: '11px' }}
         >
           Borders (D)
         </button>
         <button 
           onClick={() => setShowSizeDebug(!showSizeDebug)}
-          style={{ padding: '4px 8px', fontSize: '12px' }}
+          style={{ padding: '3px 6px', fontSize: '11px' }}
         >
           Sizes (S)
+        </button>
+        <button 
+          onClick={() => {
+            console.log('=== BLUESKY CSS DEBUG ANALYSIS ===');
+            
+            // Find the specific problematic card
+            const problemCard = Array.from(document.querySelectorAll('[data-card-id]')).find(el => {
+              const text = el.textContent;
+              return text && text.includes('sausage is way too big');
+            });
+            
+            if (problemCard) {
+              const cardId = problemCard.getAttribute('data-card-id');
+              const card = problemCard.querySelector('.content-card') as HTMLElement;
+              const textContainer = problemCard.querySelector('.text-container') as HTMLElement;
+              
+              if (card && textContainer) {
+                const cardStyles = window.getComputedStyle(card);
+                const textStyles = window.getComputedStyle(textContainer);
+                
+                console.log(`🎯 FOUND PROBLEM CARD ${cardId}:`);
+                console.log('Card classes:', card.className);
+                console.log('Text container classes:', textContainer.className);
+                console.log('Card computed styles:', {
+                  margin: cardStyles.margin,
+                  padding: cardStyles.padding,
+                  backgroundColor: cardStyles.backgroundColor,
+                  borderRadius: cardStyles.borderRadius,
+                  boxShadow: cardStyles.boxShadow,
+                  width: cardStyles.width,
+                  height: cardStyles.height
+                });
+                console.log('Text container computed styles:', {
+                  margin: textStyles.margin,
+                  padding: textStyles.padding,
+                  backgroundColor: textStyles.backgroundColor,
+                  borderRadius: textStyles.borderRadius,
+                  color: textStyles.color
+                });
+                
+                // Check if CSS selectors exist
+                const hasBlueskyStyles = Array.from(document.styleSheets).some(sheet => {
+                  try {
+                    return Array.from(sheet.cssRules || []).some(rule => 
+                      rule.cssText && (
+                        rule.cssText.includes('card-bluesky') || 
+                        rule.cssText.includes('bluesky-text-container')
+                      )
+                    );
+                  } catch(e) { return false; }
+                });
+                
+                console.log('CSS rules present:', hasBlueskyStyles);
+                console.log('Has card-bluesky class:', card.className.includes('card-bluesky'));
+                console.log('Has bluesky-text-container class:', textContainer.className.includes('bluesky-text-container'));
+              }
+            } else {
+              console.log('❌ Problem card not found on page');
+            }
+            
+            // General verification
+            console.log('=== ALL CARD VERIFICATION ===');
+            document.querySelectorAll('.content-card').forEach(card => {
+              const cardRect = card.getBoundingClientRect();
+              const cardId = card.closest('[data-card-id]')?.getAttribute('data-card-id');
+              const platform = card.closest('[data-card-id]')?.querySelector('.platform-badge')?.textContent || 'unknown';
+              
+              if (platform.includes('bluesky')) {
+                const computedStyles = window.getComputedStyle(card);
+                console.log(`🦋 Bluesky Card ${cardId}:`, {
+                  hasProperMargin: computedStyles.margin !== '0px',
+                  margin: computedStyles.margin,
+                  backgroundColor: computedStyles.backgroundColor,
+                  classes: (card as HTMLElement).className
+                });
+              }
+            });
+          }}
+          style={{ padding: '3px 6px', fontSize: '11px' }}
+        >
+          Verify (T)
         </button>
       </div>
       
@@ -442,6 +595,7 @@ export default function AdaptiveTikTokFeed() {
           </div>
         ))}
       </div>
+
 
       <style jsx>{`
         .page-container {
@@ -508,79 +662,276 @@ export default function AdaptiveTikTokFeed() {
           background: rgba(255, 0, 0, 0.05);
         }
 
-        /* Base card - perfect fit sizing */
+        /* Base card - exact fit to content dimensions */
         .content-card {
-          width: fit-content;
-          max-width: 500px;
-          height: fit-content !important; /* Perfect content fit */
-          min-height: unset !important; /* No minimum height */
-          max-height: 85vh;
           background: black;
-          border-radius: 0; /* Remove radius to prevent visual gaps */
+          border-radius: 12px;
           overflow: hidden;
           position: relative;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-          display: block; /* Block instead of flex for tighter fit */
-          margin: 0 !important;
-          padding: 0 !important;
-          line-height: 0 !important;
-          font-size: 0 !important;
-          box-sizing: border-box !important;
+          display: block;
+          margin: 0 auto; /* Center in viewport */
+          padding: 0 !important; /* No padding that adds to size */
+          box-sizing: border-box;
+          
+          /* CRITICAL: Let content determine size - NO fixed dimensions */
+          width: fit-content !important;
+          height: fit-content !important;
+          min-height: unset !important; /* Remove any min-height forcing */
+          
+          /* Safety constraints for layout protection */
+          max-width: 90vw;
+          max-height: 80vh !important; /* NEVER taller than 80% of viewport */
         }
 
-        /* Platform-specific card types - exact fit */
+        /* All images must respect viewport height */
+        .content-card img {
+          max-height: 80vh !important;
+          max-width: 90vw !important;
+          object-fit: contain; /* Maintain aspect ratio */
+        }
+
+        /* All videos must respect viewport height */
+        .content-card video {
+          max-height: 80vh !important;
+          max-width: 90vw !important;
+          object-fit: contain;
+        }
+
+        /* YouTube cards - dimensions set by JavaScript */
         .card-youtube {
-          width: 400px !important;
-          height: 225px !important;
+          background: black;
+          display: block;
+          /* Width and height set by scaling logic */
         }
 
+        /* Image and GIF cards - dimensions set by JavaScript */
+        .card-image,
         .card-gif {
-          width: fit-content !important;
-          height: fit-content !important;
-          max-height: 70vh;
+          background: black;
+          display: block;
+          /* Dimensions set by scaling logic */
         }
 
-        .card-image {
-          width: fit-content !important;
-          height: fit-content !important;
-          max-height: 80vh;
-        }
-
+        /* Text cards - minimum 500px height */
         .card-text {
-          width: fit-content !important;
-          height: fit-content !important;
-          max-height: 60vh;
+          min-height: 500px;
+          width: 400px; /* Fixed width for text readability */
           background: #f8f8f8;
-          line-height: normal !important; /* Allow text line height */
-          font-size: inherit !important; /* Allow text font size */
+          display: block;
         }
 
+        /* Mixed content cards */
         .card-mixed {
-          width: fit-content !important;
-          height: fit-content !important;
-          max-height: 80vh;
+          min-height: 500px;
+          justify-content: flex-start;
+          align-items: stretch;
         }
 
-        /* Mobile adjustments */
+        /* Bluesky specific styling - FORCE black text */
+        .card-bluesky {
+          background: #ffffff !important; /* White background for contrast */
+          color: #000000 !important; /* Black text */
+        }
+        
+        /* Force ALL Bluesky text elements to be black */
+        .card-bluesky *,
+        .card-bluesky p,
+        .card-bluesky span,
+        .card-bluesky div,
+        .card-bluesky .text-container,
+        .card-bluesky .text-content,
+        .card-bluesky .text-content p {
+          color: #000000 !important;
+          background-color: transparent !important;
+        }
+        
+        /* Bluesky text container - combined styles */
+        .card-bluesky .text-container {
+          background: #ffffff !important;
+          color: #000000 !important;
+          height: 100%;
+          overflow-y: auto;
+          padding: 24px;
+          text-align: left;
+        }
+        
+        /* Bluesky mixed content (text above image) */
+        .bluesky-mixed-container {
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: flex-end !important;
+          max-height: 700px !important;
+          width: auto !important;
+          background: white;
+          overflow: hidden;
+        }
+
+        .bluesky-mixed-container .text-container {
+          flex-shrink: 0 !important; /* Don't shrink text */
+          background: white;
+          padding: 1.5rem;
+          color: #000000 !important;
+          max-height: 150px; /* Limit text area */
+          overflow: auto;
+        }
+
+        .bluesky-mixed-container .image-container {
+          flex: 1 !important; /* Take remaining space */
+          min-height: 0; /* Allow shrinking */
+          overflow: hidden;
+          display: flex !important;
+          justify-content: flex-start !important;
+          padding: 0.5rem !important;
+          border-radius: 47px !important;
+        }
+
+        .bluesky-mixed-container img {
+          max-width: 100% !important;
+          width: auto !important;
+          height: 400px !important;
+          object-fit: contain !important;
+        }
+        
+        .bluesky-mixed-container .text-container * {
+          color: #000000 !important;
+        }
+        
+        /* Mobile adjustments for Bluesky mixed */
         @media (max-width: 768px) {
+          .bluesky-mixed-container {
+            max-height: 70vh !important;
+          }
+          
+          .bluesky-mixed-container .text-container {
+            padding: 1rem !important;
+            max-height: 120px !important;
+          }
+        }
+        
+        /* Bluesky text-only cards - ensure they get proper styling */
+        .bluesky-text-container {
+          background: #ffffff !important;
+          color: #000000 !important;
+          margin: 2rem !important;
+          padding: 24px !important;
+          border-radius: 12px !important;
+          width: 400px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          text-align: left !important;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        .bluesky-text-container * {
+          color: #000000 !important;
+        }
+        
+        .bluesky-text-container .platform-badge {
+          background-color: #f0f0f0 !important;
+          color: #000000 !important;
+          padding: 8px 16px !important;
+          border-radius: 20px !important;
+          font-size: 14px !important;
+          margin-bottom: 16px !important;
+        }
+        
+        .bluesky-text-container .text-content p {
+          color: #000000 !important;
+          font-size: 18px !important;
+          line-height: 1.6 !important;
+          margin: 0 !important;
+        }
+        
+        .bluesky-text-container .author {
+          color: #666666 !important;
+          font-size: 14px !important;
+          margin-top: 16px !important;
+        }
+        
+        /* Mixed content containers removed - Reddit, Tumblr, Lemmy now show media only */
+
+        .card-bluesky .text-content {
+          align-items: flex-start;
+          justify-content: flex-start;
+        }
+
+        .card-bluesky .text-content p {
+          font-size: 16px;
+          line-height: 1.6;
+          color: #000000;
+          margin-bottom: 12px;
+        }
+
+        /* Responsive minimum heights */
+        
+        /* Desktop: 500px minimum */
+        @media (min-width: 769px) {
+          .content-card {
+            min-height: 500px;
+          }
+          .card-image, .card-gif {
+            min-height: 400px;
+          }
+        }
+
+        /* Tablet: 450px minimum */
+        @media (min-width: 481px) and (max-width: 768px) {
+          .content-card {
+            min-height: 450px;
+          }
+          .card-image, .card-gif {
+            min-height: 350px;
+          }
           .header-title {
             font-size: 20px;
             top: 15px;
             left: 15px;
           }
-          
           .card-wrapper {
             padding: 20px 16px;
           }
-          
-          .content-card {
-            max-width: 100%;
-            max-height: 90vh;
-            border-radius: 12px;
-          }
+        }
 
-          .card-youtube {
-            max-width: 100%;
+        /* Responsive design - NO fixed dimensions, constraints handled by JavaScript */
+        @media (max-width: 480px) {
+          .content-card {
+            max-width: 95vw !important;  /* Only constrain max width */
+            border-radius: 8px;
+            /* No min-height - let content determine */
+          }
+          .header-title {
+            font-size: 18px;
+            top: 10px;
+            left: 10px;
+          }
+          .card-wrapper {
+            padding: 15px 10px;
+          }
+        }
+        
+        /* Tablet: Only width constraints */
+        @media (min-width: 481px) and (max-width: 768px) {
+          .content-card {
+            max-width: 85vw !important;    /* Only constrain max width */
+            /* No fixed heights - JavaScript handles this */
+          }
+          .header-title {
+            font-size: 20px;
+            top: 15px;
+            left: 15px;
+          }
+          .card-wrapper {
+            padding: 20px 16px;
+          }
+        }
+        
+        /* Desktop: Only width constraints */
+        @media (min-width: 769px) {
+          .content-card {
+            max-width: min(80vw, 800px) !important; /* Only width constraint */
+            /* Height is determined by scaled content exactly */
           }
         }
 
@@ -608,6 +959,204 @@ function PostContent({
 }) {
   const [imageError, setImageError] = useState(false)
   const [videoError, setVideoError] = useState(false)
+
+  // Get responsive constraints based on screen size
+  const getResponsiveConstraints = () => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    
+    if (vw < 480) { // Mobile
+      return {
+        minHeight: vh * 0.4,  // 40% of screen
+        maxWidth: vw * 0.95,   // 95% of screen width
+        maxHeight: vh * 0.7    // 70% of screen height
+      };
+    } else if (vw < 768) { // Tablet
+      return {
+        minHeight: 400,
+        maxWidth: vw * 0.85,
+        maxHeight: vh * 0.75   // 75% of screen height
+      };
+    } else { // Desktop
+      return {
+        minHeight: 500,
+        maxWidth: Math.min(vw * 0.8, 800),
+        maxHeight: vh * 0.8    // 80% of screen height (was 85%)
+      };
+    }
+  };
+
+  // Smart scaling with BOTH min and max constraints
+  const smartScaleContent = (element: HTMLElement, post: Post) => {
+    const card = element.closest('.content-card') as HTMLElement;
+    if (!card) return;
+
+    const constraints = getResponsiveConstraints();
+    let naturalWidth = 0;
+    let naturalHeight = 0;
+
+    // Get natural dimensions based on element type
+    if (element.tagName === 'IMG') {
+      const img = element as HTMLImageElement;
+      naturalWidth = img.naturalWidth;
+      naturalHeight = img.naturalHeight;
+    } else if (element.tagName === 'VIDEO') {
+      const video = element as HTMLVideoElement;
+      naturalWidth = video.videoWidth;
+      naturalHeight = video.videoHeight;
+    } else if (element.tagName === 'IFRAME') {
+      // YouTube: default 16:9 aspect ratio
+      naturalWidth = 1280;
+      naturalHeight = 720;
+    }
+
+    if (!naturalWidth || !naturalHeight) {
+      console.log(`⚠️  Could not get dimensions for ${post.source_platform} ${post.id}`);
+      return;
+    }
+
+    const aspectRatio = naturalWidth / naturalHeight;
+    let finalWidth = naturalWidth;
+    let finalHeight = naturalHeight;
+
+    // Step 1: FIRST check if too tall (priority fix for layout issues)
+    if (naturalHeight > constraints.maxHeight) {
+      finalHeight = constraints.maxHeight;
+      finalWidth = constraints.maxHeight * aspectRatio;
+      console.log(`🚨 Height LIMITED ${post.source_platform}: ${naturalWidth}×${naturalHeight} → ${Math.round(finalWidth)}×${Math.round(finalHeight)} (was too tall)`);
+    }
+
+    // Step 2: Scale UP if too small (but only if not already constrained by height)
+    if (finalHeight < constraints.minHeight && naturalHeight <= constraints.maxHeight) {
+      finalHeight = constraints.minHeight;
+      finalWidth = constraints.minHeight * aspectRatio;
+      console.log(`📏 Scaling UP ${post.source_platform}: ${naturalWidth}×${naturalHeight} → ${Math.round(finalWidth)}×${finalHeight}`);
+    }
+
+    // Step 3: Scale DOWN if too wide
+    if (finalWidth > constraints.maxWidth) {
+      finalWidth = constraints.maxWidth;
+      finalHeight = constraints.maxWidth / aspectRatio;
+      console.log(`📏 Constraining width ${post.source_platform}: → ${Math.round(finalWidth)}×${Math.round(finalHeight)}`);
+    }
+
+    // Step 4: Final check - ensure height still within limits after width scaling
+    if (finalHeight > constraints.maxHeight) {
+      finalHeight = constraints.maxHeight;
+      finalWidth = constraints.maxHeight * aspectRatio;
+      console.log(`🔒 Final height constraint ${post.source_platform}: → ${Math.round(finalWidth)}×${Math.round(finalHeight)}`);
+    }
+
+    // Apply final dimensions to content
+    element.style.width = `${finalWidth}px`;
+    element.style.height = `${finalHeight}px`;
+
+    // CRITICAL: Card must match content EXACTLY - no fixed dimensions
+    setTimeout(() => {
+      // Get actual content dimensions after rendering
+      const contentRect = element.getBoundingClientRect();
+      card.style.width = `${contentRect.width}px`;
+      card.style.height = `${contentRect.height}px`;
+      
+      // Remove any conflicting styles that might add fixed dimensions
+      card.style.minHeight = 'unset';
+      card.style.maxHeight = 'unset';
+      
+      console.log(`🎯 Card EXACT match: ${post.source_platform} ${Math.round(contentRect.width)}×${Math.round(contentRect.height)}`);
+    }, 50);
+
+    // Apply to container as well
+    const container = element.parentElement;
+    if (container) {
+      container.style.width = `${finalWidth}px`;
+      container.style.height = `${finalHeight}px`;
+    }
+
+    console.log(`✨ Smart scaled ${post.source_platform}: ${naturalWidth}×${naturalHeight} → ${Math.round(finalWidth)}×${Math.round(finalHeight)} (fits: ${finalWidth <= window.innerWidth * 0.9})`);
+  }
+
+  // Platform-specific scaling logic
+  const scalePlatformContent = (element: HTMLElement, post: Post) => {
+    const card = element.closest('.content-card') as HTMLElement;
+    if (!card) return;
+
+    const constraints = getResponsiveConstraints();
+
+    switch (post.source_platform) {
+      case 'youtube':
+        // Always 16:9, smart scale to fit screen
+        const ytAspectRatio = 16 / 9;
+        let ytHeight = Math.min(constraints.minHeight, constraints.maxHeight);
+        let ytWidth = ytHeight * ytAspectRatio;
+        
+        if (ytWidth > constraints.maxWidth) {
+          // Too wide, constrain by width
+          ytWidth = constraints.maxWidth;
+          ytHeight = ytWidth / ytAspectRatio;
+        }
+        
+        element.style.width = `${ytWidth}px`;
+        element.style.height = `${ytHeight}px`;
+        
+        // CRITICAL: Card matches content exactly, not fixed dimensions
+        setTimeout(() => {
+          const contentRect = element.getBoundingClientRect();
+          card.style.width = `${contentRect.width}px`;
+          card.style.height = `${contentRect.height}px`;
+          
+          // Remove fixed dimensions that might create whitespace
+          card.style.minHeight = 'unset';
+          card.style.maxHeight = 'unset';
+          
+          console.log(`🎯 YouTube EXACT match: ${Math.round(contentRect.width)}×${Math.round(contentRect.height)}`);
+        }, 50);
+        
+        const ytContainer = element.parentElement;
+        if (ytContainer) {
+          ytContainer.style.width = `${ytWidth}px`;
+          ytContainer.style.height = `${ytHeight}px`;
+        }
+        
+        console.log(`🎥 YouTube scaled: ${Math.round(ytWidth)}×${Math.round(ytHeight)} (16:9 fit)`);
+        break;
+        
+      case 'giphy':
+        // GIFs tend to be smaller, use smart scaling
+        smartScaleContent(element, post);
+        break;
+        
+      case 'bluesky':
+        // Handle Bluesky mixed content specially
+        if (post.content_text && post.content_image_url) {
+          // For mixed content, let the container determine size naturally
+          setTimeout(() => {
+            const container = element.closest('.bluesky-mixed-container') as HTMLElement;
+            if (container) {
+              const containerRect = container.getBoundingClientRect();
+              card.style.width = `${containerRect.width}px`;
+              card.style.height = `${containerRect.height}px`;
+              console.log(`🦋 Bluesky mixed content sized: ${Math.round(containerRect.width)}×${Math.round(containerRect.height)}`);
+            }
+          }, 100);
+        } else {
+          // Pure image or text, use normal scaling
+          smartScaleContent(element, post);
+        }
+        break;
+        
+      case 'reddit':
+      case 'tumblr':
+      case 'lemmy':
+        // All these platforms now show media only (no captions), use normal scaling
+        smartScaleContent(element, post);
+        break;
+        
+      default:
+        // Images and other content use smart scaling
+        smartScaleContent(element, post);
+        break;
+    }
+  }
 
   const isWelcomeCard = post.id === -999
 
@@ -661,6 +1210,22 @@ function PostContent({
   }
 
   const renderMedia = () => {
+    // Debug logging to check for missing mixed content (only Bluesky shows mixed content now)
+    if (['bluesky'].includes(post.source_platform)) {
+      const hasBoth = !!(post.content_text && (post.content_image_url || post.content_video_url));
+      console.log(`${post.source_platform.toUpperCase()} post analysis:`, {
+        id: post.id,
+        hasText: !!post.content_text,
+        textPreview: post.content_text?.substring(0, 80) + '...',
+        hasImage: !!post.content_image_url,
+        hasVideo: !!post.content_video_url,
+        contentType: post.content_type,
+        shouldShowBoth: hasBoth,
+        currentClassification: getCardClass(post),
+        MISSING_CONTENT_WARNING: hasBoth && post.content_type !== 'mixed' ? 'YES - Text being hidden!' : 'No'
+      });
+    }
+
     // YouTube videos - STRICT iframe containment (no expansion allowed)
     if (post.source_platform === 'youtube' && post.content_video_url && !videoError) {
       const videoId = post.content_video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]
@@ -675,22 +1240,19 @@ function PostContent({
               allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen={false}
               sandbox="allow-scripts allow-same-origin allow-presentation"
+              onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
               style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '400px',
-                height: '225px',
                 border: 'none',
                 pointerEvents: 'all',
-                maxWidth: '400px',
-                maxHeight: '225px'
+                display: 'block'
               }}
             />
           </div>
         )
       }
     }
+
+    // Mixed content removed - Reddit, Tumblr, and Lemmy now show media only (no captions)
 
     // Giphy content - preserve aspect ratio
     if (post.source_platform === 'giphy') {
@@ -705,6 +1267,7 @@ function PostContent({
               muted
               playsInline
               poster={post.content_image_url}
+              onLoadedMetadata={(e) => scalePlatformContent(e.target as HTMLElement, post)}
               onError={() => setVideoError(true)}
             />
           </div>
@@ -715,6 +1278,7 @@ function PostContent({
             <img 
               src={post.content_image_url}
               alt={post.content_text || 'Giphy content'}
+              onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
               onError={() => setImageError(true)}
             />
           </div>
@@ -735,13 +1299,14 @@ function PostContent({
             playsInline
             controls={false}
             poster={post.content_image_url}
+            onLoadedMetadata={(e) => scalePlatformContent(e.target as HTMLElement, post)}
             onError={() => setVideoError(true)}
           />
         </div>
       )
     }
 
-    // Images - contain instead of cover
+    // Images - handle both pure image posts and mixed content
     if (post.content_image_url && !imageError) {
       let imageSrc = post.content_image_url
       
@@ -753,12 +1318,92 @@ function PostContent({
         imageSrc = `/api/proxy/bluesky-image?url=${encodeURIComponent(post.content_image_url)}`
       }
       
+      // For Bluesky with both text and image, show mixed content
+      if (post.source_platform === 'bluesky' && post.content_text) {
+        console.log(`🦋 Rendering Bluesky mixed content: ${post.id}`);
+        return (
+          <div className="bluesky-mixed-container" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            maxHeight: '700px',
+            width: 'auto'
+          }}>
+            {/* TEXT FIRST - Above image */}
+            <div className="text-container" style={{
+              backgroundColor: 'white',
+              padding: '1.5rem',
+              color: '#000000',
+              flexShrink: 0
+            }}>
+              <p style={{
+                margin: 0,
+                fontSize: '16px',
+                lineHeight: '1.5',
+                color: '#000000'
+              }}>
+                {post.content_text}
+              </p>
+              {post.original_author && (
+                <div style={{
+                  marginTop: '0.5rem',
+                  fontSize: '14px',
+                  color: '#666'
+                }}>
+                  @{post.original_author}
+                </div>
+              )}
+            </div>
+            
+            {/* IMAGE BELOW TEXT */}
+            <div className="image-container" style={{
+              flex: 1,
+              overflow: 'hidden',
+              display: 'flex',
+              justifyContent: 'flex-start',
+              padding: '0.5rem',
+              borderRadius: '47px'
+            }}>
+              <img 
+                src={imageSrc}
+                alt={post.content_text || 'Bluesky post image'}
+                loading="lazy"
+                style={{
+                  maxWidth: '100%',
+                  width: 'auto',
+                  height: '400px',
+                  objectFit: 'contain'
+                }}
+                onLoad={(e) => {
+                  // Maintain aspect ratio for container sizing
+                  const img = e.target as HTMLImageElement;
+                  const container = img.closest('.bluesky-mixed-container') as HTMLElement;
+                  if (container) {
+                    const aspectRatio = img.naturalWidth / img.naturalHeight;
+                    const height = 400;
+                    const width = height * aspectRatio;
+                    container.style.width = `${width}px`;
+                    console.log(`🦋 Bluesky mixed container sized: ${width}×${height} (${aspectRatio.toFixed(2)} ratio)`);
+                  }
+                }}
+                onError={() => {
+                  console.log(`❌ Bluesky image failed to load: ${post.id} - ${imageSrc}`)
+                  setImageError(true)
+                }}
+              />
+            </div>
+          </div>
+        )
+      }
+      
+      // Pure image post (no text)
       return (
         <div className="image-container">
           <img 
             src={imageSrc}
             alt={post.content_text || 'Content image'}
             loading="lazy"
+            onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
             onError={() => {
               console.log(`❌ Image failed to load: ${post.source_platform} ${post.id}`)
               setImageError(true)
@@ -768,17 +1413,95 @@ function PostContent({
       )
     }
 
-    // Text content
+    // Text content - scale card to match text container
     return (
-      <div className="text-container">
-        <div className="platform-badge">
+      <div 
+        className={`text-container ${post.source_platform === 'bluesky' ? 'bluesky-text-container' : ''}`}
+        style={{
+          // Force proper styling for Bluesky text cards (no min-height to match others)
+          ...(post.source_platform === 'bluesky' && {
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            margin: '2rem',
+            padding: '24px',
+            borderRadius: '12px',
+            width: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            textAlign: 'left'
+          })
+        }}
+        ref={(el) => {
+          if (el) {
+            // Scale text card to minimum dimensions
+            setTimeout(() => {
+              const card = el.closest('.content-card') as HTMLElement;
+              if (card) {
+                const MIN_HEIGHT = 500;
+                const WIDTH = 400; // Fixed width for text readability
+                
+                card.style.width = `${WIDTH}px`;
+                card.style.height = `${Math.max(el.offsetHeight, MIN_HEIGHT)}px`;
+                
+                console.log(`📝 Text card scaled: ${post.source_platform} ${WIDTH}×${Math.max(el.offsetHeight, MIN_HEIGHT)}`);
+                
+                // Debug specific card styling
+                if (post.source_platform === 'bluesky') {
+                  const computedStyles = window.getComputedStyle(card);
+                  console.log(`🦋 Bluesky card ${post.id} CSS debug:`, {
+                    id: post.id,
+                    cardClasses: card.className,
+                    margin: computedStyles.margin,
+                    padding: computedStyles.padding,
+                    backgroundColor: computedStyles.backgroundColor,
+                    borderRadius: computedStyles.borderRadius,
+                    hasCardBlueskyClass: card.className.includes('card-bluesky'),
+                    textSnippet: post.content_text?.substring(0, 50)
+                  });
+                }
+              }
+            }, 100);
+          }
+        }}
+      >
+        <div className="platform-badge" style={{
+          ...(post.source_platform === 'bluesky' && {
+            backgroundColor: '#f0f0f0',
+            color: '#000000',
+            padding: '8px 16px',
+            borderRadius: '20px',
+            fontSize: '14px',
+            marginBottom: '16px'
+          })
+        }}>
           {getPlatformIcon(post.source_platform)} {post.source_platform}
         </div>
-        <div className="text-content">
-          <p>{post.content_text || 'No content available'}</p>
+        <div className="text-content" style={{
+          ...(post.source_platform === 'bluesky' && {
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            color: '#000000'
+          })
+        }}>
+          <p style={{
+            ...(post.source_platform === 'bluesky' && {
+              color: '#000000',
+              fontSize: '18px',
+              lineHeight: '1.6',
+              margin: 0
+            })
+          }}>{post.content_text || 'No content available'}</p>
         </div>
         {post.original_author && (
-          <div className="author">by {post.original_author}</div>
+          <div className="author" style={{
+            ...(post.source_platform === 'bluesky' && {
+              color: '#666666',
+              fontSize: '14px',
+              marginTop: '16px'
+            })
+          }}>by {post.original_author}</div>
         )}
       </div>
     )
@@ -790,41 +1513,27 @@ function PostContent({
       
       <style jsx>{`
         .post-content {
-          width: fit-content !important;
-          height: fit-content !important;
-          position: relative;
-          display: block !important; /* Block for tight fit */
-          margin: 0 !important;
-          padding: 0 !important;
-          line-height: 0 !important;
-          font-size: 0 !important;
+          display: block;
+          margin: 0;
+          padding: 0;
+          /* Dimensions determined by content scaling */
         }
 
-        /* YouTube container - STRICT containment (match test-adaptive exactly) */
+        /* YouTube container - dimensions set by scaling */
         .youtube-container {
-          position: relative;
-          width: 400px !important; /* Fixed width - no expansion */
-          height: 225px !important; /* Fixed height - no expansion */
+          display: block;
           background: black;
-          overflow: hidden !important; /* CRITICAL: prevent any expansion */
-          margin: 0 !important;
-          padding: 0 !important;
-          line-height: 0 !important;
-          font-size: 0 !important;
-          box-sizing: border-box !important;
+          margin: 0;
+          padding: 0;
+          /* Dimensions set by JavaScript */
         }
 
         .youtube-container iframe {
-          position: absolute !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 400px !important; /* Fixed - no dynamic sizing */
-          height: 225px !important; /* Fixed - no dynamic sizing */
-          border: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          pointer-events: all !important;
-          box-sizing: border-box !important;
+          display: block;
+          border: none;
+          margin: 0;
+          padding: 0;
+          /* Dimensions set by JavaScript based on minimum 500px height */
         }
 
         /* EMERGENCY: Prevent ANY YouTube player expansion */
@@ -842,101 +1551,75 @@ function PostContent({
           overflow: hidden !important;
         }
 
-        /* Giphy - exact match to test-adaptive (no whitespace) */
+        /* Giphy container - dimensions set by scaling */
         .giphy-container {
-          width: fit-content; /* Let container size to content */
-          height: fit-content; /* Fit content height */
-          display: block; /* Block to eliminate spacing */
+          display: block;
           background: black;
-          padding: 0 !important; /* Force no padding */
-          margin: 0 !important; /* Force no margins */
-          border: 0 !important; /* Force no border */
-          box-sizing: border-box;
-          line-height: 0 !important; /* Remove line-height spacing */
-          font-size: 0 !important; /* Remove font-based spacing */
-          position: relative; /* Prevent margin collapse */
+          margin: 0;
+          padding: 0;
+          /* Dimensions set by JavaScript */
         }
 
         .giphy-container video,
         .giphy-container img {
-          width: auto; /* Natural width - no forcing */
-          height: auto; /* Natural height - no forcing */
-          object-fit: contain; /* Preserve aspect ratio */
-          max-width: 500px; /* Reasonable maximum */
-          display: block !important; /* Force block display */
-          margin: 0 !important; /* Force no margins */
-          padding: 0 !important; /* Force no padding */
-          border: 0 !important; /* Force no border */
-          outline: 0 !important; /* Force no outline */
-          vertical-align: top !important; /* Remove baseline spacing */
-          box-sizing: border-box !important; /* Consistent box model */
+          display: block;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          outline: 0;
+          /* Dimensions set by JavaScript - no object-fit */
         }
 
-        /* Video container - no padding */
+        /* Video container - dimensions set by scaling */
         .video-container {
-          width: 100%;
-          height: fit-content; /* Fit video height */
-          display: block; /* Block instead of flex */
+          display: block;
           background: black;
-          padding: 0; /* Remove padding */
           margin: 0;
-          line-height: 0; /* Remove line-height spacing */
+          padding: 0;
+          /* Dimensions set by JavaScript */
         }
 
         .video-container video {
-          width: 100%;
-          height: auto; /* Natural video height */
-          object-fit: contain; /* Preserve aspect ratio */
-          display: block; /* Remove inline spacing */
+          display: block;
           margin: 0;
           padding: 0;
-          border: 0; /* Remove any border */
-          outline: 0; /* Remove any outline */
-          vertical-align: top; /* Remove baseline spacing */
+          border: 0;
+          outline: 0;
+          /* Dimensions set by JavaScript - no object-fit */
         }
 
-        /* Image container - exact match to test-adaptive (no whitespace) */
+        /* Image container - dimensions set by scaling */
         .image-container {
-          width: fit-content; /* Let container size to content */
-          height: fit-content; /* Fit content height */
-          display: block; /* Block to eliminate spacing */
+          display: block;
           background: black;
-          padding: 0 !important; /* Force no padding */
-          margin: 0 !important; /* Force no margins */
-          border: 0 !important; /* Force no border */
-          box-sizing: border-box;
-          line-height: 0 !important; /* Remove line-height spacing */
-          font-size: 0 !important; /* Remove font-based spacing */
-          position: relative; /* Prevent margin collapse */
+          margin: 0;
+          padding: 0;
+          /* Dimensions set by JavaScript */
         }
 
         .image-container img {
-          width: auto; /* Natural width - no forcing */
-          height: auto; /* Natural height - no forcing */
-          object-fit: contain; /* Preserve aspect ratio */
-          max-width: 500px; /* Reasonable maximum */
-          display: block !important; /* Force block display */
-          margin: 0 !important; /* Force no margins */
-          padding: 0 !important; /* Force no padding */
-          border: 0 !important; /* Force no border */
-          outline: 0 !important; /* Force no outline */
-          vertical-align: top !important; /* Remove baseline spacing */
-          box-sizing: border-box !important; /* Consistent box model */
+          display: block;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          outline: 0;
+          /* Dimensions set by JavaScript - no object-fit */
         }
 
-        /* Text content - minimal padding */
+        /* Text content - minimum height, scales as needed */
         .text-container {
           width: 100%;
-          height: fit-content; /* Fit text content */
-          padding: 12px; /* Minimal padding for readability */
+          min-height: 500px; /* Minimum height for text cards */
+          padding: 30px; /* Generous padding for readability */
           display: flex;
           flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
+          justify-content: center; /* Center text vertically */
+          align-items: stretch; /* Text takes full width */
+          text-align: center; /* Center text for better appearance */
           background: white;
-          color: #000000; /* Ensure black text for readability */
-          min-height: unset; /* No minimum height */
+          color: #000000;
+          box-sizing: border-box;
+          overflow-y: auto; /* Scroll if text is very long */
         }
 
         .platform-badge {
@@ -951,21 +1634,24 @@ function PostContent({
         }
 
         .text-content {
-          flex: 1;
+          flex: 1; /* Take available space in text container */
           display: flex;
-          align-items: center;
+          align-items: flex-start; /* Align to top */
           justify-content: center;
-          overflow-y: auto;
-          max-height: 400px;
+          overflow-y: auto; /* Scroll if needed */
           width: 100%;
+          margin: 16px 0; /* Space around text */
         }
 
         .text-content p {
           font-size: 18px;
-          line-height: 1.4; /* Tighter line height */
-          margin: 0; /* Remove margins */
-          padding: 0; /* No padding */
-          color: #000000; /* Ensure black text for all platforms */
+          line-height: 1.5; /* Better readability */
+          margin: 0;
+          padding: 0;
+          color: #000000;
+          width: 100%;
+          word-wrap: break-word;
+          white-space: normal;
         }
 
         .author {
@@ -974,14 +1660,24 @@ function PostContent({
           margin-top: 16px;
         }
 
-        /* Mobile adjustments */
+        /* Mobile text adjustments */
         @media (max-width: 768px) {
           .text-container {
-            padding: 20px;
+            padding: 16px;
           }
           
           .text-content p {
-            font-size: 16px;
+            font-size: 15px;
+            line-height: 1.5;
+          }
+          
+          .card-bluesky .text-container {
+            padding: 20px 16px;
+          }
+          
+          .card-bluesky .text-content p {
+            font-size: 15px;
+            line-height: 1.5;
           }
         }
       `}</style>

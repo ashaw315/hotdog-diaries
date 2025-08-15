@@ -103,6 +103,7 @@ export default function TestAdaptivePage() {
               if (textContainer) {
                 textContainer.style.color = '#000000'
                 textContainer.style.backgroundColor = 'white'
+                textContainer.style.margin = '2rem'
                 
                 const pElement = textContainer.querySelector('p') as HTMLElement
                 if (pElement) {
