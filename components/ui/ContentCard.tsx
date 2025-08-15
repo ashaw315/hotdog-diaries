@@ -47,9 +47,60 @@ export default function ContentCard({
 }: ContentCardProps) {
   const [imageError, setImageError] = useState(false)
   const [imageLoading, setImageLoading] = useState(true)
+  const [isHovered, setIsHovered] = useState(false)
+
+  // Detect touch device
+  const isTouchDevice = typeof window !== 'undefined' && 'ontouchstart' in window
 
   const formatDate = (date: Date) => {
     return formatDistanceToNow(new Date(date), { addSuffix: true })
+  }
+
+  const formatCaption = (text: string) => {
+    if (!text) return ''
+    
+    // Remove extra whitespace
+    text = text.trim().replace(/\s+/g, ' ')
+    
+    // Truncate if too long
+    const maxLength = 120
+    if (text.length > maxLength) {
+      return text.substring(0, maxLength).trim() + '...'
+    }
+    
+    return text
+  }
+
+  const getOverlayStyle = (platform: SourcePlatform) => {
+    const baseStyle = {
+      position: 'absolute' as const,
+      bottom: 0,
+      left: 0,
+      padding: '12px 16px',
+      fontSize: '13px',
+      lineHeight: '1.4',
+      color: 'white',
+      maxWidth: '80%',
+      opacity: (!isTouchDevice && isHovered) ? 1 : 0,
+      transition: 'opacity 0.2s ease, transform 0.2s ease',
+      transform: (!isTouchDevice && isHovered) ? 'translateY(0)' : 'translateY(10px)',
+      pointerEvents: 'none' as const,
+      zIndex: 10,
+      display: isTouchDevice ? 'none' : 'block'
+    }
+    
+    // Platform-specific backgrounds
+    const platformStyles = {
+      youtube: { background: 'linear-gradient(to top, rgba(255,0,0,0.9), transparent)' },
+      reddit: { background: 'linear-gradient(to top, rgba(255,69,0,0.9), transparent)' },
+      bluesky: { background: 'linear-gradient(to top, rgba(0,168,232,0.9), transparent)' },
+      default: { background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }
+    }
+    
+    return {
+      ...baseStyle,
+      ...(platformStyles[platform as keyof typeof platformStyles] || platformStyles.default)
+    }
   }
 
   const getPlatformIcon = (platform: SourcePlatform) => {
@@ -109,8 +160,53 @@ export default function ContentCard({
     setImageLoading(false)
   }
 
+  const renderHiddenMeta = () => (
+    <>
+      {/* Screen reader only */}
+      <div 
+        className="sr-only" 
+        style={{
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          padding: 0,
+          margin: '-1px',
+          overflow: 'hidden',
+          clip: 'rect(0,0,0,0)',
+          whiteSpace: 'nowrap',
+          border: 0
+        }}
+      >
+        Posted by {original_author} on {source_platform}
+      </div>
+      
+      {/* Data attributes for debugging */}
+      <div 
+        data-author={original_author}
+        data-platform={source_platform}
+        data-post-id={id}
+        style={{ display: 'none' }}
+      />
+    </>
+  )
+
+  const renderCaptionOverlay = () => {
+    if (!content_text) return null
+    
+    return (
+      <div style={getOverlayStyle(source_platform)}>
+        {formatCaption(content_text)}
+      </div>
+    )
+  }
+
   return (
-    <div className="card">
+    <div 
+      className="card"
+      style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="card-header">
         <div className="flex justify-between align-center">
           <div className="flex align-center gap-sm">
@@ -142,7 +238,7 @@ export default function ContentCard({
         )}
 
         {content_image_url && !imageError && (
-          <div className="mb-sm">
+          <div className="mb-sm" style={{ position: 'relative' }}>
             {imageLoading && (
               <div className="text-center p-md text-muted">
                 Loading image...
@@ -163,7 +259,7 @@ export default function ContentCard({
         )}
 
         {content_video_url && (
-          <div className="mb-sm">
+          <div className="mb-sm" style={{ position: 'relative' }}>
             {/* YouTube embed */}
             {content_video_url.includes('youtube.com/watch') ? (
               (() => {
@@ -282,6 +378,11 @@ export default function ContentCard({
           </div>
         </div>
       )}
+      
+      {renderHiddenMeta()}
+      
+      {/* Caption overlay for entire card */}
+      {renderCaptionOverlay()}
     </div>
   )
 }

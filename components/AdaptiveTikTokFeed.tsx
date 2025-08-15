@@ -561,7 +561,23 @@ export default function AdaptiveTikTokFeed() {
             className={`card-wrapper ${showDebugBorders ? 'debug-borders' : ''}`}
             data-card-id={post.id}
           >
-            <div className={`content-card ${getCardClass(post)}`}>
+            <div 
+              className={`content-card ${getCardClass(post)}`}
+              onMouseEnter={() => {
+                const cardElement = document.querySelector(`[data-card-id="${post.id}"] .caption-overlay`) as HTMLElement;
+                if (cardElement && post.content_text && typeof window !== 'undefined' && !('ontouchstart' in window)) {
+                  cardElement.style.opacity = '1';
+                  cardElement.style.transform = 'translateY(0)';
+                }
+              }}
+              onMouseLeave={() => {
+                const cardElement = document.querySelector(`[data-card-id="${post.id}"] .caption-overlay`) as HTMLElement;
+                if (cardElement) {
+                  cardElement.style.opacity = '0';
+                  cardElement.style.transform = 'translateY(10px)';
+                }
+              }}
+            >
               <PostContent 
                 post={post} 
                 isActive={index === currentIndex}
@@ -570,6 +586,55 @@ export default function AdaptiveTikTokFeed() {
                 }}
                 getPlatformIcon={getPlatformIcon}
               />
+              
+              {/* Caption overlay */}
+              {post.content_text && (
+                <div 
+                  className="caption-overlay"
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    lineHeight: '1.4',
+                    color: 'white',
+                    maxWidth: '80%',
+                    opacity: 0,
+                    transition: 'opacity 0.2s ease, transform 0.2s ease',
+                    transform: 'translateY(10px)',
+                    pointerEvents: 'none',
+                    zIndex: 10,
+                    background: post.source_platform === 'youtube' ? 'linear-gradient(to top, rgba(255,0,0,0.9), transparent)' :
+                               post.source_platform === 'reddit' ? 'linear-gradient(to top, rgba(255,69,0,0.9), transparent)' :
+                               post.source_platform === 'bluesky' ? 'linear-gradient(to top, rgba(0,168,232,0.9), transparent)' :
+                               'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+                    display: typeof window !== 'undefined' && 'ontouchstart' in window ? 'none' : 'block'
+                  }}
+                >
+                  {post.content_text.length > 120 
+                    ? post.content_text.substring(0, 120).trim() + '...'
+                    : post.content_text
+                  }
+                </div>
+              )}
+              
+              {/* Hidden author metadata for accessibility */}
+              <div 
+                style={{
+                  position: 'absolute',
+                  width: '1px',
+                  height: '1px',
+                  padding: 0,
+                  margin: '-1px',
+                  overflow: 'hidden',
+                  clip: 'rect(0,0,0,0)',
+                  whiteSpace: 'nowrap',
+                  border: 0
+                }}
+              >
+                Posted by {post.original_author} on {post.source_platform}
+              </div>
               {showSizeDebug && cardSizes[post.id] && (
                 <div style={{
                   position: 'absolute',
