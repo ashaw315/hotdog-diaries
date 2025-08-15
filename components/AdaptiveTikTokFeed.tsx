@@ -59,6 +59,7 @@ export default function AdaptiveTikTokFeed() {
   const [showDebugBorders, setShowDebugBorders] = useState(false)
   const [showSizeDebug, setShowSizeDebug] = useState(false)
   const [cardSizes, setCardSizes] = useState<{[key: number]: any}>({})
+  const [isMobile, setIsMobile] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const videosRef = useRef<{ [key: number]: HTMLVideoElement }>({})
 
@@ -267,6 +268,60 @@ export default function AdaptiveTikTokFeed() {
 
   // Content scaling is handled by individual onLoad handlers
 
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Navigation functions
+  const handleUp = () => {
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1
+      setCurrentIndex(newIndex)
+      scrollToCard(newIndex)
+    }
+  }
+
+  const handleDown = () => {
+    if (currentIndex < posts.length - 1) {
+      const newIndex = currentIndex + 1
+      setCurrentIndex(newIndex)
+      scrollToCard(newIndex)
+    }
+  }
+
+  const scrollToCard = (index: number) => {
+    const card = document.querySelector(`[data-card-index="${index}"]`)
+    if (card) {
+      card.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      })
+    }
+  }
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        handleUp()
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        handleDown()
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [currentIndex, posts.length])
+
   const fetchPosts = async () => {
     try {
       setLoading(true)
@@ -372,6 +427,95 @@ export default function AdaptiveTikTokFeed() {
     }
     return icons[platform] || '🌐'
   }
+
+  // Navigation Buttons Component
+  const NavigationButtons = () => {
+    // Don't show on mobile
+    if (isMobile) return null;
+    
+    return (
+      <div className="navigation-buttons" style={{
+        position: 'fixed',
+        right: '40px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px',
+        zIndex: 100
+      }}>
+        {/* UP Button */}
+        <button
+          onClick={handleUp}
+          disabled={currentIndex === 0}
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            backgroundColor: '#CC2522',
+            border: 'none',
+            cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
+            opacity: currentIndex === 0 ? 0.3 : 1,
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(204, 37, 34, 0.3)'
+          }}
+          onMouseEnter={(e) => {
+            if (currentIndex !== 0) {
+              (e.target as HTMLElement).style.transform = 'scale(1.1)';
+              (e.target as HTMLElement).style.boxShadow = '0 6px 20px rgba(204, 37, 34, 0.5)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLElement).style.transform = 'scale(1)';
+            (e.target as HTMLElement).style.boxShadow = '0 4px 12px rgba(204, 37, 34, 0.3)';
+          }}
+          aria-label="Previous card"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+            <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+          </svg>
+        </button>
+        
+        {/* DOWN Button */}
+        <button
+          onClick={handleDown}
+          disabled={currentIndex === posts.length - 1}
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            backgroundColor: '#E8AE02',
+            border: 'none',
+            cursor: currentIndex === posts.length - 1 ? 'not-allowed' : 'pointer',
+            opacity: currentIndex === posts.length - 1 ? 0.3 : 1,
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(232, 174, 2, 0.3)'
+          }}
+          onMouseEnter={(e) => {
+            if (currentIndex !== posts.length - 1) {
+              (e.target as HTMLElement).style.transform = 'scale(1.1)';
+              (e.target as HTMLElement).style.boxShadow = '0 6px 20px rgba(232, 174, 2, 0.5)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLElement).style.transform = 'scale(1)';
+            (e.target as HTMLElement).style.boxShadow = '0 4px 12px rgba(232, 174, 2, 0.3)';
+          }}
+          aria-label="Next card"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+          </svg>
+        </button>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -560,6 +704,7 @@ export default function AdaptiveTikTokFeed() {
             key={post.id} 
             className={`card-wrapper ${showDebugBorders ? 'debug-borders' : ''}`}
             data-card-id={post.id}
+            data-card-index={index}
           >
             <div 
               className={`content-card ${getCardClass(post)}`}
@@ -659,6 +804,8 @@ export default function AdaptiveTikTokFeed() {
         ))}
       </div>
 
+      {/* Navigation Buttons */}
+      <NavigationButtons />
 
       <style jsx>{`
         .page-container {
@@ -1865,6 +2012,25 @@ function PostContent({
           .card-bluesky .text-content p {
             font-size: 15px;
             line-height: 1.5;
+          }
+        }
+
+        /* Navigation buttons responsive styles */
+        @media (max-width: 767px) {
+          .navigation-buttons {
+            display: none !important;
+          }
+        }
+
+        @media (min-width: 768px) and (max-width: 1024px) {
+          .navigation-buttons {
+            right: 20px !important;
+          }
+        }
+
+        @media (min-width: 1440px) {
+          .navigation-buttons {
+            right: 60px !important;
           }
         }
       `}</style>
