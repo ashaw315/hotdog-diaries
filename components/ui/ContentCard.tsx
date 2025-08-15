@@ -89,17 +89,12 @@ export default function ContentCard({
       display: isTouchDevice ? 'none' : 'block'
     }
     
-    // Platform-specific backgrounds
-    const platformStyles = {
-      youtube: { background: 'linear-gradient(to top, rgba(255,0,0,0.9), transparent)' },
-      reddit: { background: 'linear-gradient(to top, rgba(255,69,0,0.9), transparent)' },
-      bluesky: { background: 'linear-gradient(to top, rgba(0,168,232,0.9), transparent)' },
-      default: { background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }
-    }
+    // Single color for all platforms - warm brown/orange
+    const overlayBackground = { background: 'linear-gradient(to top, rgba(197, 123, 39, 0.9), transparent)' }
     
     return {
       ...baseStyle,
-      ...(platformStyles[platform as keyof typeof platformStyles] || platformStyles.default)
+      ...overlayBackground
     }
   }
 
@@ -191,7 +186,8 @@ export default function ContentCard({
   )
 
   const renderCaptionOverlay = () => {
-    if (!content_text) return null
+    // Don't show overlay for text-only cards (they already display the text)
+    if (!content_text || (!content_image_url && !content_video_url)) return null
     
     return (
       <div style={getOverlayStyle(source_platform)}>

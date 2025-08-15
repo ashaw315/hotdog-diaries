@@ -587,8 +587,8 @@ export default function AdaptiveTikTokFeed() {
                 getPlatformIcon={getPlatformIcon}
               />
               
-              {/* Caption overlay */}
-              {post.content_text && (
+              {/* Caption overlay - only show for media content, not text-only cards */}
+              {post.content_text && (post.content_image_url || post.content_video_url) && (
                 <div 
                   className="caption-overlay"
                   style={{
@@ -605,10 +605,7 @@ export default function AdaptiveTikTokFeed() {
                     transform: 'translateY(10px)',
                     pointerEvents: 'none',
                     zIndex: 10,
-                    background: post.source_platform === 'youtube' ? 'linear-gradient(to top, rgba(255,0,0,0.9), transparent)' :
-                               post.source_platform === 'reddit' ? 'linear-gradient(to top, rgba(255,69,0,0.9), transparent)' :
-                               post.source_platform === 'bluesky' ? 'linear-gradient(to top, rgba(0,168,232,0.9), transparent)' :
-                               'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+                    background: 'linear-gradient(to top, rgba(197, 123, 39, 0.9), transparent)',
                     display: typeof window !== 'undefined' && 'ontouchstart' in window ? 'none' : 'block'
                   }}
                 >
@@ -1574,50 +1571,42 @@ function PostContent({
       )
     }
 
-    // Text content - scale card to match text container
+    // Text content - beautiful gradient cards with dynamic typography
+    const textLength = post.content_text?.length || 0;
+    const isShort = textLength < 50;
+    const isMedium = textLength >= 50 && textLength < 150;
+    const isLong = textLength >= 150;
+    
+    // Variety of gradient backgrounds
+    const gradients = [
+      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+      'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+      'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+      'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+      'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)'
+    ];
+    
+    // Select gradient based on post ID for consistency
+    const gradientIndex = Math.abs(post.id) % gradients.length;
+    const selectedGradient = gradients[gradientIndex];
+    
     return (
       <div 
-        className={`text-container ${post.source_platform === 'bluesky' ? 'bluesky-text-container' : ''} ${post.source_platform === 'tumblr' ? 'tumblr-text-container' : ''} ${post.source_platform === 'lemmy' ? 'lemmy-text-container' : ''}`}
+        className="text-container"
         style={{
-          // Force proper styling for Bluesky text cards (no min-height to match others)
-          ...(post.source_platform === 'bluesky' && {
-            backgroundColor: '#ffffff',
-            color: '#000000',
-            margin: '2rem',
-            padding: '24px',
-            borderRadius: '12px',
-            width: '400px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            textAlign: 'left'
-          }),
-          // Force proper styling for Tumblr text cards to match Bluesky
-          ...(post.source_platform === 'tumblr' && {
-            backgroundColor: '#ffffff',
-            color: '#000000',
-            margin: '2rem',
-            padding: '24px',
-            borderRadius: '12px',
-            width: '400px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            textAlign: 'left'
-          }),
-          // Force proper styling for Lemmy text cards to match Bluesky/Tumblr
-          ...(post.source_platform === 'lemmy' && {
-            backgroundColor: '#ffffff',
-            color: '#000000',
-            margin: '2rem',
-            padding: '24px',
-            borderRadius: '12px',
-            width: '400px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            textAlign: 'left'
-          })
+          background: selectedGradient,
+          padding: '3rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '500px',
+          width: '400px',
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: '12px'
         }}
         ref={(el) => {
           if (el) {
@@ -1626,102 +1615,74 @@ function PostContent({
               const card = el.closest('.content-card') as HTMLElement;
               if (card) {
                 const MIN_HEIGHT = 500;
-                const WIDTH = 400; // Fixed width for text readability
+                const WIDTH = 400;
                 
                 card.style.width = `${WIDTH}px`;
                 card.style.height = `${Math.max(el.offsetHeight, MIN_HEIGHT)}px`;
                 
-                console.log(`📝 Text card scaled: ${post.source_platform} ${WIDTH}×${Math.max(el.offsetHeight, MIN_HEIGHT)}`);
-                
-                // Debug specific card styling
-                if (post.source_platform === 'bluesky') {
-                  const computedStyles = window.getComputedStyle(card);
-                  console.log(`🦋 Bluesky card ${post.id} CSS debug:`, {
-                    id: post.id,
-                    cardClasses: card.className,
-                    margin: computedStyles.margin,
-                    padding: computedStyles.padding,
-                    backgroundColor: computedStyles.backgroundColor,
-                    borderRadius: computedStyles.borderRadius,
-                    hasCardBlueskyClass: card.className.includes('card-bluesky'),
-                    textSnippet: post.content_text?.substring(0, 50)
-                  });
-                }
-                if (post.source_platform === 'tumblr') {
-                  const computedStyles = window.getComputedStyle(card);
-                  console.log(`💙 Tumblr card ${post.id} CSS debug:`, {
-                    id: post.id,
-                    cardClasses: card.className,
-                    margin: computedStyles.margin,
-                    padding: computedStyles.padding,
-                    backgroundColor: computedStyles.backgroundColor,
-                    borderRadius: computedStyles.borderRadius,
-                    hasTumblrClass: card.className.includes('tumblr-text-container'),
-                    textSnippet: post.content_text?.substring(0, 50)
-                  });
-                }
+                console.log(`📝 Text card styled: ${post.source_platform} ${WIDTH}×${Math.max(el.offsetHeight, MIN_HEIGHT)}`);
               }
             }, 100);
           }
         }}
       >
-        <div className="platform-badge" style={{
-          ...(post.source_platform === 'bluesky' && {
-            backgroundColor: '#f0f0f0',
-            color: '#000000',
-            padding: '8px 16px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            marginBottom: '16px'
-          }),
-          ...(post.source_platform === 'tumblr' && {
-            backgroundColor: '#f0f0f0',
-            color: '#000000',
-            padding: '8px 16px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            marginBottom: '16px'
-          })
-        }}>
-          {getPlatformIcon(post.source_platform)} {post.source_platform}
-        </div>
-        <div className="text-content" style={{
-          ...(post.source_platform === 'bluesky' && {
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            color: '#000000'
-          }),
-          ...(post.source_platform === 'tumblr' && {
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            color: '#000000'
-          })
+        
+        {/* Geometric pattern overlay */}
+        <div style={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          opacity: 0.1,
+          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.1) 35px, rgba(255,255,255,.1) 70px)',
+          pointerEvents: 'none'
+        }} />
+        
+        {/* Text content */}
+        <div style={{
+          position: 'relative',
+          zIndex: 1,
+          textAlign: 'center',
+          maxWidth: '85%'
         }}>
           <p style={{
-            ...(post.source_platform === 'bluesky' && {
-              color: '#000000',
-              fontSize: '18px',
-              lineHeight: '1.6',
-              margin: 0
-            }),
-            ...(post.source_platform === 'tumblr' && {
-              color: '#000000',
-              fontSize: '18px',
-              lineHeight: '1.6',
-              margin: 0
-            })
-          }}>{post.content_text || 'No content available'}</p>
+            color: 'white',
+            fontSize: isShort ? '32px' : isMedium ? '24px' : '20px',
+            fontWeight: isShort ? '700' : '400',
+            lineHeight: '1.6',
+            margin: 0,
+            textShadow: '0 2px 20px rgba(0,0,0,0.2)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            letterSpacing: isShort ? '0.5px' : '0'
+          }}>
+            {isShort && post.content_text ? post.content_text.toUpperCase() : post.content_text || 'No content available'}
+          </p>
         </div>
-        {post.original_author && (
-          <div className="author" style={{
-            ...(post.source_platform === 'bluesky' && {
-              color: '#666666',
-              fontSize: '14px',
-              marginTop: '16px'
-            })
-          }}>by {post.original_author}</div>
+        
+        {/* Decorative quotes for short text */}
+        {isShort && (
+          <>
+            <div style={{
+              position: 'absolute',
+              top: '30px',
+              left: '30px',
+              fontSize: '48px',
+              opacity: 0.15,
+              color: 'white',
+              fontFamily: 'Georgia, serif',
+              pointerEvents: 'none'
+            }}>"</div>
+            <div style={{
+              position: 'absolute',
+              bottom: '30px',
+              right: '30px',
+              fontSize: '48px',
+              opacity: 0.15,
+              color: 'white',
+              fontFamily: 'Georgia, serif',
+              transform: 'rotate(180deg)',
+              pointerEvents: 'none'
+            }}>"</div>
+          </>
         )}
       </div>
     )
@@ -1879,6 +1840,7 @@ function PostContent({
           color: #666;
           margin-top: 16px;
         }
+
 
         /* Mobile text adjustments */
         @media (max-width: 768px) {
