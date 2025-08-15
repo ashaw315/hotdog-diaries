@@ -106,9 +106,7 @@ export default function ContentCard({
         return '🤖'
       case SourcePlatform.YOUTUBE:
         return '📺'
-      case SourcePlatform.FLICKR:
-        return '📸'
-      case SourcePlatform.UNSPLASH:
+      case SourcePlatform.PIXABAY:
         return '🎨'
       case SourcePlatform.NEWS:
         return '📰'

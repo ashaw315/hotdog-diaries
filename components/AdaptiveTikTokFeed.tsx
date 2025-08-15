@@ -1642,7 +1642,10 @@ function PostContent({
           position: 'relative',
           zIndex: 1,
           textAlign: 'center',
-          maxWidth: '85%'
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
           <p style={{
             color: 'white',
@@ -1652,7 +1655,9 @@ function PostContent({
             margin: 0,
             textShadow: '0 2px 20px rgba(0,0,0,0.2)',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            letterSpacing: isShort ? '0.5px' : '0'
+            letterSpacing: isShort ? '0.5px' : '0',
+            maxWidth: '85%',
+            textAlign: 'center'
           }}>
             {isShort && post.content_text ? post.content_text.toUpperCase() : post.content_text || 'No content available'}
           </p>
