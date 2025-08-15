@@ -130,9 +130,9 @@ export default function AdaptiveTikTokFeed() {
                     (el as HTMLElement).style.color = '#000000';
                   });
                   
-                  // Also set on card itself for good measure
+                  // Also set on card wrapper - should be transparent to show hotdog background  
                   cardElement.style.color = '#000000';
-                  cardElement.style.backgroundColor = '#ffffff';
+                  cardElement.style.removeProperty('background-color'); // Remove any background to show hotdogs
                   
                   console.log(`📝 Fixed Bluesky text color (FORCED BLACK): ${post.id}`)
                 }
@@ -600,7 +600,8 @@ export default function AdaptiveTikTokFeed() {
       <style jsx>{`
         .page-container {
           height: 100vh;
-          background: white;
+          background: url('/hotdog-tile.jpg') repeat;
+          background-size: 100px 100px;
           position: relative;
           overflow: hidden;
         }
@@ -717,8 +718,9 @@ export default function AdaptiveTikTokFeed() {
         .card-text {
           min-height: 500px;
           width: 400px; /* Fixed width for text readability */
-          background: #f8f8f8;
+          background: #ffffff;
           display: block;
+          color: black;
         }
 
         /* Mixed content cards */
@@ -730,7 +732,7 @@ export default function AdaptiveTikTokFeed() {
 
         /* Bluesky specific styling - FORCE black text */
         .card-bluesky {
-          background: #ffffff !important; /* White background for contrast */
+          background: #ffffff !important; /* White background for readability */
           color: #000000 !important; /* Black text */
         }
         
@@ -793,7 +795,10 @@ export default function AdaptiveTikTokFeed() {
           object-fit: contain !important;
         }
         
-        .bluesky-mixed-container .text-container * {
+        .bluesky-mixed-container .text-container,
+        .bluesky-mixed-container .text-container *,
+        .bluesky-mixed-container .text-container p,
+        .bluesky-mixed-container .text-container div {
           color: #000000 !important;
         }
         
@@ -838,6 +843,48 @@ export default function AdaptiveTikTokFeed() {
         }
         
         .bluesky-text-container .text-content p {
+          color: #000000 !important;
+          font-size: 18px !important;
+          line-height: 1.6 !important;
+          margin: 0 !important;
+        }
+        
+        /* Tumblr text-only cards - match Bluesky styling exactly */
+        .tumblr-text-container {
+          background: #ffffff !important;
+          color: #000000 !important;
+          margin: 2rem !important;
+          padding: 24px !important;
+          border-radius: 12px !important;
+          width: 400px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          text-align: left !important;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        .tumblr-text-container * {
+          color: #000000 !important;
+        }
+        
+        .tumblr-text-container .platform-badge {
+          background-color: #f0f0f0 !important;
+          color: #000000 !important;
+          padding: 8px 16px !important;
+          border-radius: 20px !important;
+          font-size: 14px !important;
+          margin-bottom: 16px !important;
+        }
+        
+        .tumblr-text-container .text-content {
+          flex: 1 !important;
+          display: flex !important;
+          align-items: center !important;
+          color: #000000 !important;
+        }
+        
+        .tumblr-text-container .text-content p {
           color: #000000 !important;
           font-size: 18px !important;
           line-height: 1.6 !important;
@@ -1348,7 +1395,7 @@ function PostContent({
                 <div style={{
                   marginTop: '0.5rem',
                   fontSize: '14px',
-                  color: '#666'
+                  color: '#000000'
                 }}>
                   @{post.original_author}
                 </div>
@@ -1416,10 +1463,23 @@ function PostContent({
     // Text content - scale card to match text container
     return (
       <div 
-        className={`text-container ${post.source_platform === 'bluesky' ? 'bluesky-text-container' : ''}`}
+        className={`text-container ${post.source_platform === 'bluesky' ? 'bluesky-text-container' : ''} ${post.source_platform === 'tumblr' ? 'tumblr-text-container' : ''}`}
         style={{
           // Force proper styling for Bluesky text cards (no min-height to match others)
           ...(post.source_platform === 'bluesky' && {
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            margin: '2rem',
+            padding: '24px',
+            borderRadius: '12px',
+            width: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            textAlign: 'left'
+          }),
+          // Force proper styling for Tumblr text cards to match Bluesky
+          ...(post.source_platform === 'tumblr' && {
             backgroundColor: '#ffffff',
             color: '#000000',
             margin: '2rem',
@@ -1460,6 +1520,19 @@ function PostContent({
                     textSnippet: post.content_text?.substring(0, 50)
                   });
                 }
+                if (post.source_platform === 'tumblr') {
+                  const computedStyles = window.getComputedStyle(card);
+                  console.log(`💙 Tumblr card ${post.id} CSS debug:`, {
+                    id: post.id,
+                    cardClasses: card.className,
+                    margin: computedStyles.margin,
+                    padding: computedStyles.padding,
+                    backgroundColor: computedStyles.backgroundColor,
+                    borderRadius: computedStyles.borderRadius,
+                    hasTumblrClass: card.className.includes('tumblr-text-container'),
+                    textSnippet: post.content_text?.substring(0, 50)
+                  });
+                }
               }
             }, 100);
           }
@@ -1467,6 +1540,14 @@ function PostContent({
       >
         <div className="platform-badge" style={{
           ...(post.source_platform === 'bluesky' && {
+            backgroundColor: '#f0f0f0',
+            color: '#000000',
+            padding: '8px 16px',
+            borderRadius: '20px',
+            fontSize: '14px',
+            marginBottom: '16px'
+          }),
+          ...(post.source_platform === 'tumblr' && {
             backgroundColor: '#f0f0f0',
             color: '#000000',
             padding: '8px 16px',
@@ -1483,10 +1564,22 @@ function PostContent({
             display: 'flex',
             alignItems: 'center',
             color: '#000000'
+          }),
+          ...(post.source_platform === 'tumblr' && {
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            color: '#000000'
           })
         }}>
           <p style={{
             ...(post.source_platform === 'bluesky' && {
+              color: '#000000',
+              fontSize: '18px',
+              lineHeight: '1.6',
+              margin: 0
+            }),
+            ...(post.source_platform === 'tumblr' && {
               color: '#000000',
               fontSize: '18px',
               lineHeight: '1.6',
