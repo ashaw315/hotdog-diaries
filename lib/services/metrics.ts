@@ -1,6 +1,11 @@
-import { query, insert } from '@/lib/db-query-builder'
 import { loggingService } from './logging'
-import { db } from '@/lib/db'
+import { metricsService as newMetricsService } from './metrics-service'
+
+// Re-export the new metrics service to maintain backward compatibility
+export { metricsService } from './metrics-service'
+
+// Deprecated: Use the new metrics service instead
+// This file is kept for backward compatibility
 
 export interface MetricEntry {
   id?: string
@@ -102,9 +107,8 @@ export class MetricsService {
 
   constructor() {
     this.environment = process.env.NODE_ENV || 'development'
-    // Temporarily disabled to prevent SQLite errors
-    // this.startPeriodicFlush()
-    // this.ensureMetricsTable()
+    // Note: This legacy service is deprecated
+    // Use the new metrics-service.ts instead for database-agnostic operations
   }
 
   /**
@@ -717,14 +721,12 @@ export class MetricsService {
   // Private helper methods
 
   private async addToBuffer(metric: MetricEntry): Promise<void> {
-    // Temporarily disabled to prevent SQLite errors
-    return
-    // this.metricBuffer.push(metric)
+    this.metricBuffer.push(metric)
 
     // If buffer is full, flush immediately
-    // if (this.metricBuffer.length >= this.maxBatchSize) {
-    //   await this.flushBuffer()
-    // }
+    if (this.metricBuffer.length >= this.maxBatchSize) {
+      await this.flushBuffer()
+    }
   }
 
   private async flushBuffer(): Promise<void> {
@@ -826,16 +828,16 @@ export class MetricsService {
   }
 }
 
-// Export singleton instance
-export const metricsService = new MetricsService()
+// Export singleton instance (legacy)
+export const legacyMetricsService = new MetricsService()
 
 // Graceful shutdown handling
 if (typeof process !== 'undefined') {
   process.on('SIGTERM', async () => {
-    await metricsService.shutdown()
+    await legacyMetricsService.shutdown()
   })
 
   process.on('SIGINT', async () => {
-    await metricsService.shutdown()
+    await legacyMetricsService.shutdown()
   })
 }
