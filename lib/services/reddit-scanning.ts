@@ -548,12 +548,40 @@ export class RedditScanningService {
         }
       }
 
+      // Parse JSON fields that might be stored as strings
+      let targetSubreddits = this.redditService.getHotdogSubreddits()
+      let searchTerms = this.redditService.getHotdogSearchTerms()
+      
+      try {
+        if (config.target_subreddits) {
+          if (Array.isArray(config.target_subreddits)) {
+            targetSubreddits = config.target_subreddits
+          } else if (typeof config.target_subreddits === 'string') {
+            targetSubreddits = JSON.parse(config.target_subreddits)
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to parse target_subreddits, using defaults:', error)
+      }
+      
+      try {
+        if (config.search_terms) {
+          if (Array.isArray(config.search_terms)) {
+            searchTerms = config.search_terms
+          } else if (typeof config.search_terms === 'string') {
+            searchTerms = JSON.parse(config.search_terms)
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to parse search_terms, using defaults:', error)
+      }
+
       return {
         isEnabled: config.is_enabled,
         scanInterval: config.scan_interval,
         maxPostsPerScan: config.max_posts_per_scan,
-        targetSubreddits: config.target_subreddits || this.redditService.getHotdogSubreddits(),
-        searchTerms: config.search_terms || this.redditService.getHotdogSearchTerms(),
+        targetSubreddits,
+        searchTerms,
         minScore: config.min_score,
         sortBy: config.sort_by,
         timeRange: config.time_range,
@@ -590,8 +618,8 @@ export class RedditScanningService {
           is_enabled: updated.isEnabled,
           scan_interval: updated.scanInterval,
           max_posts_per_scan: updated.maxPostsPerScan,
-          target_subreddits: updated.targetSubreddits,
-          search_terms: updated.searchTerms,
+          target_subreddits: JSON.stringify(updated.targetSubreddits),
+          search_terms: JSON.stringify(updated.searchTerms),
           min_score: updated.minScore,
           sort_by: updated.sortBy,
           time_range: updated.timeRange,

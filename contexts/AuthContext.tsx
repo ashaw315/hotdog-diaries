@@ -101,17 +101,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Skip initialization for non-admin paths
     if (!pathname.startsWith('/admin')) {
       console.log('🔄 [AuthContext] Not on admin path, skipping initialization')
+      // Reset state for non-admin paths
+      if (initialized) {
+        setInitialized(false)
+        setUser(null)
+        setIsLoading(false)
+      }
       return
     }
 
-    // If already initialized, skip
-    if (initialized) {
-      console.log('🔄 [AuthContext] Already initialized, skipping')
+    // If already initialized and we have a user, skip
+    if (initialized && user) {
+      console.log('🔄 [AuthContext] Already initialized with user, skipping')
       return
     }
 
-    // For login page, still check auth but don't force redirect
+    // For login page, only initialize if we don't have a user
     const isLoginPage = pathname === '/admin/login'
+    if (isLoginPage && user) {
+      console.log('🔄 [AuthContext] On login page but user exists, skipping init')
+      return
+    }
     
     console.log('🔄 [AuthContext] Starting auth initialization for', isLoginPage ? 'login page' : 'admin page')
     setInitialized(true)
@@ -129,7 +139,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('🔄 [AuthContext] Error - State updated - isLoading set to false, isAuthenticated: false')
     })
     
-  }, [isMounted, pathname, initialized]) // Re-run when client mounts, route changes, or initialization state changes
+  }, [isMounted, pathname, initialized, user]) // Re-run when client mounts, route changes, initialization state, or user changes
 
   // Login function
   const login = async (username: string, password: string): Promise<void> => {
@@ -156,8 +166,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Update local state
       setUser(result.data.user)
       
-      // Reset initialization state to ensure auth check runs after redirect
-      setInitialized(false)
+      // Don't reset initialization - let the current auth state persist
+      // setInitialized(false)
+      
+      // Small delay to ensure state updates are processed
+      await new Promise(resolve => setTimeout(resolve, 100))
       
       // Redirect
       const redirectTo = searchParams.get('from') || '/admin'

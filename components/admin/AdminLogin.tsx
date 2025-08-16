@@ -87,137 +87,307 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center">
-            <span className="text-4xl">🌭</span>
+    <div className="login-container" style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px'
+    }}>
+      <div className="login-card" style={{
+        width: '100%',
+        maxWidth: '400px',
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        padding: '40px',
+        position: 'relative',
+        animation: 'fadeIn 0.4s ease'
+      }}>
+        <div className="login-header" style={{
+          textAlign: 'center',
+          marginBottom: '32px'
+        }}>
+          {/* Logo/Icon */}
+          <div style={{
+            width: '64px',
+            height: '64px',
+            margin: '0 auto 16px',
+            backgroundColor: '#667eea',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+            </svg>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Admin Login
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to access the Hotdog Diaries admin panel
-          </p>
+          
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: '600',
+            color: '#1a1a1a',
+            margin: '0 0 8px 0'
+          }}>Admin Login</h1>
+          
+          <p style={{
+            fontSize: '14px',
+            color: '#666',
+            margin: 0
+          }}>Enter your credentials to access the dashboard</p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                Username
-              </label>
+        {getErrorMessage() && (
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#fee2e2',
+            border: '1px solid #fecaca',
+            borderRadius: '6px',
+            marginBottom: '20px'
+          }}>
+            <p style={{
+              color: '#dc2626',
+              fontSize: '14px',
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <svg width="16" height="16" style={{ marginRight: '8px' }} fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 1.5A6.5 6.5 0 1014.5 8 6.507 6.507 0 008 1.5zm0 11.5a1 1 0 110-2 1 1 0 010 2zm1-3.5v-4a1 1 0 00-2 0v4a1 1 0 002 0z"/>
+              </svg>
+              {getErrorMessage()}
+            </p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group" style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              required
+              value={form.username}
+              onChange={(e) => handleInputChange('username', e.target.value)}
+              disabled={isLoading}
+              placeholder="Enter username"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                fontSize: '16px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                outline: 'none',
+                transition: 'all 0.2s',
+                backgroundColor: '#f9fafb',
+                boxSizing: 'border-box'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#667eea';
+                e.target.style.backgroundColor = 'white';
+                e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.backgroundColor = '#f9fafb';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          </div>
+          
+          <div className="form-group" style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Password
+            </label>
+            <div style={{ position: 'relative' }}>
               <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your username"
-                value={form.username}
-                onChange={(e) => handleInputChange('username', e.target.value)}
+                value={form.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
                 disabled={isLoading}
+                placeholder="Enter password"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  paddingRight: '48px',
+                  fontSize: '16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  backgroundColor: '#f9fafb',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#667eea';
+                  e.target.style.backgroundColor = 'white';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e5e7eb';
+                  e.target.style.backgroundColor = '#f9fafb';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your password"
-                  value={form.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  <span className="text-gray-400 hover:text-gray-600">
-                    {showPassword ? '🙈' : '👁️'}
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: '#6b7280'
+                }}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: '16px'
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              color: '#4b5563',
+              cursor: 'pointer'
+            }}>
               <input
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 checked={form.rememberMe}
                 onChange={(e) => handleInputChange('rememberMe', e.target.checked)}
                 disabled={isLoading}
+                style={{
+                  marginRight: '8px',
+                  width: '16px',
+                  height: '16px',
+                  cursor: 'pointer'
+                }}
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
-            </div>
+              Remember me
+            </label>
           </div>
 
-          {getErrorMessage() && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <span className="text-red-400">❌</span>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Login Failed
-                  </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    {getErrorMessage()}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading && (
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                </span>
-              )}
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <p className="text-xs text-gray-500">
-              By signing in, you agree to the terms of service and privacy policy.
-            </p>
-          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            style={{
+              width: '100%',
+              padding: '14px',
+              fontSize: '16px',
+              fontWeight: '600',
+              color: 'white',
+              backgroundColor: '#667eea',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.7 : 1,
+              transition: 'all 0.2s',
+              marginTop: '24px'
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) e.target.style.backgroundColor = '#5a67d8';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#667eea';
+            }}
+          >
+            {isLoading ? (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="20" height="20" style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} fill="none" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25"/>
+                  <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Signing in...
+              </span>
+            ) : (
+              'Sign In'
+            )}
+          </button>
         </form>
 
         {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-            <h4 className="text-sm font-medium text-yellow-800 mb-2">Development Mode</h4>
-            <p className="text-xs text-yellow-700">
+          <div style={{
+            marginTop: '24px',
+            padding: '12px',
+            backgroundColor: '#fef3c7',
+            border: '1px solid #f59e0b',
+            borderRadius: '8px'
+          }}>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#92400e',
+              margin: '0 0 4px 0'
+            }}>Development Mode</h4>
+            <p style={{
+              fontSize: '12px',
+              color: '#92400e',
+              margin: 0
+            }}>
               Demo credentials will be available after database setup.
             </p>
           </div>
         )}
       </div>
+      
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 480px) {
+          .login-card {
+            padding: 24px !important;
+            margin: 16px !important;
+          }
+          
+          .login-header h1 {
+            font-size: 20px !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

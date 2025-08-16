@@ -56,9 +56,6 @@ export default function AdaptiveTikTokFeed() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showDebugBorders, setShowDebugBorders] = useState(false)
-  const [showSizeDebug, setShowSizeDebug] = useState(false)
-  const [cardSizes, setCardSizes] = useState<{[key: number]: any}>({})
   const [isMobile, setIsMobile] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const videosRef = useRef<{ [key: number]: HTMLVideoElement }>({})
@@ -181,50 +178,6 @@ export default function AdaptiveTikTokFeed() {
     return () => clearTimeout(timer)
   }, [posts])
 
-  // Measure cards when size debug is enabled
-  useEffect(() => {
-    if (!showSizeDebug || posts.length === 0) return
-
-    const measureCards = () => {
-      const newSizes: {[key: number]: any} = {}
-      
-      posts.forEach((post) => {
-        const cardElement = document.querySelector(`[data-card-id="${post.id}"]`) as HTMLElement
-        if (!cardElement) return
-        
-        const contentElement = cardElement.querySelector('.content-card') as HTMLElement
-        const mediaElement = cardElement.querySelector('img, video, iframe, .text-container') as HTMLElement
-        
-        if (contentElement && mediaElement) {
-          const cardBounds = contentElement.getBoundingClientRect()
-          const mediaBounds = mediaElement.getBoundingClientRect()
-          
-          newSizes[post.id] = {
-            card: {
-              width: cardBounds.width,
-              height: cardBounds.height
-            },
-            content: {
-              width: mediaBounds.width,
-              height: mediaBounds.height,
-              type: mediaElement.tagName.toLowerCase()
-            },
-            diff: {
-              width: cardBounds.width - mediaBounds.width,
-              height: cardBounds.height - mediaBounds.height
-            },
-            platform: post.source_platform
-          }
-        }
-      })
-      
-      setCardSizes(newSizes)
-      console.log('📏 Card measurements:', newSizes)
-    }
-
-    const timer = setTimeout(measureCards, 500)
-    return () => clearTimeout(timer)
-  }, [showSizeDebug, posts, currentIndex])
 
   // Verification and fix function to ensure no whitespace
   useEffect(() => {
@@ -581,115 +534,42 @@ export default function AdaptiveTikTokFeed() {
       <div className="header-title">
         <span className="hotdog-icon">🌭</span>
         <span className="title-text">Hotdog Diaries</span>
-        {showDebugBorders && <span className="debug-indicator">DEBUG</span>}
-        {showSizeDebug && <span className="debug-indicator" style={{ background: 'blue' }}>SIZE</span>}
       </div>
       
-      {/* Debug controls - temporary */}
-      <div className="debug-controls" style={{
+      {/* Admin login button */}
+      <div className="admin-controls" style={{
         position: 'fixed',
         top: '20px',
         right: '20px',
-        zIndex: 100,
-        background: 'rgba(255, 255, 255, 0.9)',
-        padding: '8px',
-        borderRadius: '8px',
-        display: 'flex',
-        gap: '6px',
-        fontSize: '11px'
+        zIndex: 100
       }}>
         <button 
-          onClick={() => setShowDebugBorders(!showDebugBorders)}
-          style={{ padding: '3px 6px', fontSize: '11px' }}
-        >
-          Borders (D)
-        </button>
-        <button 
-          onClick={() => setShowSizeDebug(!showSizeDebug)}
-          style={{ padding: '3px 6px', fontSize: '11px' }}
-        >
-          Sizes (S)
-        </button>
-        <button 
-          onClick={() => {
-            console.log('=== BLUESKY CSS DEBUG ANALYSIS ===');
-            
-            // Find the specific problematic card
-            const problemCard = Array.from(document.querySelectorAll('[data-card-id]')).find(el => {
-              const text = el.textContent;
-              return text && text.includes('sausage is way too big');
-            });
-            
-            if (problemCard) {
-              const cardId = problemCard.getAttribute('data-card-id');
-              const card = problemCard.querySelector('.content-card') as HTMLElement;
-              const textContainer = problemCard.querySelector('.text-container') as HTMLElement;
-              
-              if (card && textContainer) {
-                const cardStyles = window.getComputedStyle(card);
-                const textStyles = window.getComputedStyle(textContainer);
-                
-                console.log(`🎯 FOUND PROBLEM CARD ${cardId}:`);
-                console.log('Card classes:', card.className);
-                console.log('Text container classes:', textContainer.className);
-                console.log('Card computed styles:', {
-                  margin: cardStyles.margin,
-                  padding: cardStyles.padding,
-                  backgroundColor: cardStyles.backgroundColor,
-                  borderRadius: cardStyles.borderRadius,
-                  boxShadow: cardStyles.boxShadow,
-                  width: cardStyles.width,
-                  height: cardStyles.height
-                });
-                console.log('Text container computed styles:', {
-                  margin: textStyles.margin,
-                  padding: textStyles.padding,
-                  backgroundColor: textStyles.backgroundColor,
-                  borderRadius: textStyles.borderRadius,
-                  color: textStyles.color
-                });
-                
-                // Check if CSS selectors exist
-                const hasBlueskyStyles = Array.from(document.styleSheets).some(sheet => {
-                  try {
-                    return Array.from(sheet.cssRules || []).some(rule => 
-                      rule.cssText && (
-                        rule.cssText.includes('card-bluesky') || 
-                        rule.cssText.includes('bluesky-text-container')
-                      )
-                    );
-                  } catch(e) { return false; }
-                });
-                
-                console.log('CSS rules present:', hasBlueskyStyles);
-                console.log('Has card-bluesky class:', card.className.includes('card-bluesky'));
-                console.log('Has bluesky-text-container class:', textContainer.className.includes('bluesky-text-container'));
-              }
-            } else {
-              console.log('❌ Problem card not found on page');
-            }
-            
-            // General verification
-            console.log('=== ALL CARD VERIFICATION ===');
-            document.querySelectorAll('.content-card').forEach(card => {
-              const cardRect = card.getBoundingClientRect();
-              const cardId = card.closest('[data-card-id]')?.getAttribute('data-card-id');
-              const platform = card.closest('[data-card-id]')?.querySelector('.platform-badge')?.textContent || 'unknown';
-              
-              if (platform.includes('bluesky')) {
-                const computedStyles = window.getComputedStyle(card);
-                console.log(`🦋 Bluesky Card ${cardId}:`, {
-                  hasProperMargin: computedStyles.margin !== '0px',
-                  margin: computedStyles.margin,
-                  backgroundColor: computedStyles.backgroundColor,
-                  classes: (card as HTMLElement).className
-                });
-              }
-            });
+          onClick={() => window.location.href = '/admin/login'}
+          style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#333',
+            cursor: 'pointer',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.2s ease'
           }}
-          style={{ padding: '3px 6px', fontSize: '11px' }}
+          onMouseEnter={(e) => {
+            (e.target as HTMLElement).style.background = 'rgba(255, 255, 255, 1)';
+            (e.target as HTMLElement).style.transform = 'translateY(-1px)';
+            (e.target as HTMLElement).style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLElement).style.background = 'rgba(255, 255, 255, 0.95)';
+            (e.target as HTMLElement).style.transform = 'translateY(0)';
+            (e.target as HTMLElement).style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+          }}
         >
-          Verify (T)
+          Admin
         </button>
       </div>
       
@@ -702,7 +582,7 @@ export default function AdaptiveTikTokFeed() {
         {posts.map((post, index) => (
           <div 
             key={post.id} 
-            className={`card-wrapper ${showDebugBorders ? 'debug-borders' : ''}`}
+            className="card-wrapper"
             data-card-id={post.id}
             data-card-index={index}
           >
@@ -777,28 +657,6 @@ export default function AdaptiveTikTokFeed() {
               >
                 Posted by {post.original_author} on {post.source_platform}
               </div>
-              {showSizeDebug && cardSizes[post.id] && (
-                <div style={{
-                  position: 'absolute',
-                  top: '10px',
-                  left: '10px',
-                  background: 'rgba(0, 0, 0, 0.8)',
-                  color: 'white',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  zIndex: 10,
-                  lineHeight: '1.4'
-                }}>
-                  <div>{post.source_platform} ({cardSizes[post.id].content.type})</div>
-                  <div>Card: {Math.round(cardSizes[post.id].card.width)}×{Math.round(cardSizes[post.id].card.height)}</div>
-                  <div>Content: {Math.round(cardSizes[post.id].content.width)}×{Math.round(cardSizes[post.id].content.height)}</div>
-                  <div style={{ color: cardSizes[post.id].diff.height > 0 ? '#ff6666' : '#66ff66' }}>
-                    Diff: {Math.round(cardSizes[post.id].diff.width)}×{Math.round(cardSizes[post.id].diff.height)}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         ))}

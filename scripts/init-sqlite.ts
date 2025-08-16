@@ -77,6 +77,38 @@ async function initializeSqliteDatabase() {
     `)
     console.log('✅ system_logs table created')
 
+    // Create admin_users table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        full_name VARCHAR(255),
+        is_active BOOLEAN DEFAULT TRUE,
+        last_login_at DATETIME,
+        login_count INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    console.log('✅ admin_users table created')
+
+    // Create posted_content table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS posted_content (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content_queue_id INTEGER NOT NULL,
+        posted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        scheduled_time DATETIME,
+        post_order INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (content_queue_id) REFERENCES content_queue(id) ON DELETE CASCADE
+      )
+    `)
+    console.log('✅ posted_content table created')
+
     // Create system_metrics table
     await db.query(`
       CREATE TABLE IF NOT EXISTS system_metrics (
@@ -128,6 +160,13 @@ async function initializeSqliteDatabase() {
     await db.query(`CREATE INDEX IF NOT EXISTS idx_platform_logs_platform ON platform_scanning_logs(platform)`)
     await db.query(`CREATE INDEX IF NOT EXISTS idx_platform_logs_status ON platform_scanning_logs(scan_status)`)
     await db.query(`CREATE INDEX IF NOT EXISTS idx_platform_logs_created ON platform_scanning_logs(created_at)`)
+    
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username)`)
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_admin_users_active ON admin_users(is_active)`)
+    
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_posted_content_queue_id ON posted_content(content_queue_id)`)
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_posted_content_posted_at ON posted_content(posted_at)`)
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_posted_content_order ON posted_content(post_order)`)
     
     console.log('✅ Database indexes created')
 

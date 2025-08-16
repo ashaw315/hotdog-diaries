@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db-query-builder'
-import { logToDatabase } from '@/lib/db'
+import { db, logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 import { RedditScanResult } from '@/lib/services/reddit-scanning'
 
@@ -43,49 +42,67 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Ensure table exists (SQLite compatible)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reddit_scan_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        scan_id TEXT UNIQUE NOT NULL,
+        start_time DATETIME NOT NULL,
+        end_time DATETIME NOT NULL,
+        posts_found INTEGER DEFAULT 0,
+        posts_processed INTEGER DEFAULT 0,
+        posts_approved INTEGER DEFAULT 0,
+        posts_rejected INTEGER DEFAULT 0,
+        posts_flagged INTEGER DEFAULT 0,
+        duplicates_found INTEGER DEFAULT 0,
+        subreddits_scanned TEXT DEFAULT '[]',
+        highest_score INTEGER DEFAULT 0,
+        errors TEXT DEFAULT '[]',
+        rate_limit_hit BOOLEAN DEFAULT FALSE,
+        created_at DATETIME DEFAULT (datetime('now'))
+      )
+    `)
+
     // Get scan history from database
-    const scanResults = await query('reddit_scan_results')
-      .select([
-        'scan_id',
-        'start_time',
-        'end_time',
-        'posts_found',
-        'posts_processed',
-        'posts_approved',
-        'posts_rejected',
-        'posts_flagged',
-        'duplicates_found',
-        'subreddits_scanned',
-        'highest_score',
-        'errors',
-        'rate_limit_hit',
-        'created_at'
-      ])
-      .orderBy('created_at', 'desc')
-      .limit(limit)
-      .offset(offset)
+    const scanResults = await db.query(`
+      SELECT 
+        scan_id,
+        start_time,
+        end_time,
+        posts_found,
+        posts_processed,
+        posts_approved,
+        posts_rejected,
+        posts_flagged,
+        duplicates_found,
+        subreddits_scanned,
+        highest_score,
+        errors,
+        rate_limit_hit,
+        created_at
+      FROM reddit_scan_results
+      ORDER BY created_at DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset])
 
     // Get total count for pagination
-    const totalCountResult = await query('reddit_scan_results')
-      .count('*')
-      .first()
-    
-    const totalCount = parseInt(totalCountResult?.count || '0')
+    const totalCountResult = await db.query('SELECT COUNT(*) as count FROM reddit_scan_results')
+    const totalCount = parseInt(totalCountResult.rows[0]?.count || '0')
 
     // Transform database results to match RedditScanResult interface
-    const history: RedditScanResult[] = scanResults.map((row: any) => ({
+    const history: RedditScanResult[] = scanResults.rows.map((row: any) => ({
       scanId: row.scan_id,
       startTime: new Date(row.start_time),
       endTime: new Date(row.end_time),
-      postsFound: row.posts_found,
-      postsProcessed: row.posts_processed,
-      postsApproved: row.posts_approved,
-      postsRejected: row.posts_rejected,
-      postsFlagged: row.posts_flagged,
-      duplicatesFound: row.duplicates_found,
-      errors: Array.isArray(row.errors) ? row.errors : [],
-      rateLimitHit: row.rate_limit_hit,
-      subredditsScanned: Array.isArray(row.subreddits_scanned) ? row.subreddits_scanned : [],
+      postsFound: row.posts_found || 0,
+      postsProcessed: row.posts_processed || 0,
+      postsApproved: row.posts_approved || 0,
+      postsRejected: row.posts_rejected || 0,
+      postsFlagged: row.posts_flagged || 0,
+      duplicatesFound: row.duplicates_found || 0,
+      errors: row.errors ? JSON.parse(row.errors) : [],
+      rateLimitHit: Boolean(row.rate_limit_hit),
+      subredditsScanned: row.subreddits_scanned ? JSON.parse(row.subreddits_scanned) : [],
       highestScoredPost: row.highest_score > 0 ? {
         id: 'unknown',
         title: 'Unknown',

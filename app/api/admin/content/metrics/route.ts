@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { NextAuthUtils } from '@/lib/auth'
+import { 
+  validateRequestMethod,
+  createSuccessResponse,
+  createApiError,
+  handleApiError
+} from '@/lib/api-middleware'
+import { AdminService } from '@/lib/services/admin'
 import { db, logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await NextAuthUtils.verifyRequestAuth(request)
-    if (!authResult.isValid || !authResult.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    validateRequestMethod(request, ['GET'])
+
+    // Get user info from middleware headers (middleware already verified auth)
+    const userId = request.headers.get('x-user-id')
+    const username = request.headers.get('x-username')
+    
+    if (!userId || !username) {
+      throw createApiError('Unauthorized', 401, 'UNAUTHORIZED')
     }
 
     // Get status counts
@@ -39,9 +50,11 @@ export async function GET(request: NextRequest) {
     const flowMetricsQuery = `
       SELECT 
         COUNT(*) as processed_today,
-        COUNT(*) FILTER (WHERE content_status = 'approved') as approved_today,
-        COUNT(*) FILTER (WHERE content_status = 'rejected') as rejected_today,
-        AVG(EXTRACT(EPOCH FROM (reviewed_at - created_at))/60) as avg_review_time_minutes
+        SUM(CASE WHEN content_status = 'approved' THEN 1 ELSE 0 END) as approved_today,
+        SUM(CASE WHEN content_status = 'rejected' THEN 1 ELSE 0 END) as rejected_today,
+        AVG(
+          (julianday(reviewed_at) - julianday(created_at)) * 24 * 60
+        ) as avg_review_time_minutes
       FROM content_queue
       WHERE reviewed_at >= $1
     `
@@ -57,8 +70,8 @@ export async function GET(request: NextRequest) {
     // Get queue health metrics
     const queueHealthQuery = `
       SELECT 
-        COUNT(*) FILTER (WHERE content_status = 'approved') as approved_available,
-        COUNT(*) FILTER (WHERE content_status = 'scheduled') as scheduled_upcoming,
+        SUM(CASE WHEN content_status = 'approved' THEN 1 ELSE 0 END) as approved_available,
+        SUM(CASE WHEN content_status = 'scheduled' THEN 1 ELSE 0 END) as scheduled_upcoming,
         MIN(scheduled_for) as next_scheduled
       FROM content_queue
       WHERE content_status IN ('approved', 'scheduled')
@@ -94,7 +107,7 @@ export async function GET(request: NextRequest) {
       SELECT 
         source_platform,
         COUNT(*) as total_processed,
-        COUNT(*) FILTER (WHERE content_status = 'approved') as approved_count,
+        SUM(CASE WHEN content_status = 'approved' THEN 1 ELSE 0 END) as approved_count,
         AVG(ca.confidence_score) as avg_confidence
       FROM content_queue cq
       LEFT JOIN content_analysis ca ON cq.id = ca.content_queue_id
@@ -137,23 +150,13 @@ export async function GET(request: NextRequest) {
       'AdminAPI',
       { 
         totalContent: Object.values(statusCounts).reduce((a, b) => a + b, 0),
-        user: authResult.user.username 
+        user: username
       }
     )
 
-    return NextResponse.json(metrics)
+    return createSuccessResponse(metrics, 'Content metrics retrieved successfully')
 
   } catch (error) {
-    await logToDatabase(
-      LogLevel.ERROR,
-      'Failed to fetch content metrics',
-      'AdminAPI',
-      { error: error instanceof Error ? error.message : 'Unknown error' }
-    )
-
-    return NextResponse.json(
-      { error: 'Failed to fetch metrics' },
-      { status: 500 }
-    )
+    return await handleApiError(error, request, '/api/admin/content/metrics')
   }
 }

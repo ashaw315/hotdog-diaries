@@ -271,34 +271,540 @@ export default function ContentQueue() {
 
   if (isLoading) {
     return (
-      <div className="container content-area">
-        <div className="text-center">
-          <div className="spinner mb-sm"></div>
-          <p className="loading">Loading content queue...</p>
+      <>
+        <style jsx>{`
+          .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            padding: 40px;
+          }
+          
+          .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+          }
+          
+          @keyframes spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+          
+          .loading-text {
+            color: #6b7280;
+            font-size: 16px;
+            margin: 0;
+          }
+        `}</style>
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p className="loading-text">Loading content queue...</p>
         </div>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="container content-area">
-      <div className="grid gap-lg">
+    <>
+      <style jsx>{`
+        .queue-container {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 32px;
+          display: flex;
+          flex-direction: column;
+          gap: 32px;
+        }
+        
+        .queue-section {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+        
+        .section-header {
+          padding: 24px;
+          border-bottom: 1px solid #e5e7eb;
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+        
+        .header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        
+        .header-info h1 {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 24px;
+          font-weight: 600;
+          color: #1f2937;
+          margin: 0 0 8px 0;
+        }
+        
+        .header-description {
+          font-size: 14px;
+          color: #6b7280;
+          margin: 0;
+        }
+        
+        .refresh-btn {
+          padding: 10px 20px;
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .refresh-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .section-body {
+          padding: 24px;
+        }
+        
+        .controls-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        
+        .filters-group {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+        
+        .filter-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .filter-label {
+          font-size: 14px;
+          color: #374151;
+          font-weight: 500;
+        }
+        
+        .filter-select {
+          padding: 8px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          background: white;
+          color: #374151;
+          font-size: 14px;
+          cursor: pointer;
+          transition: border-color 0.2s;
+        }
+        
+        .filter-select:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .bulk-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        
+        .selected-count {
+          font-size: 14px;
+          color: #6b7280;
+          font-weight: 500;
+        }
+        
+        .action-btn {
+          padding: 6px 12px;
+          border: none;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .action-btn-success {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+        }
+        
+        .action-btn-danger {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          color: white;
+        }
+        
+        .action-btn-primary {
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          color: white;
+        }
+        
+        .action-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .list-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 24px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .select-checkbox {
+          width: 16px;
+          height: 16px;
+          cursor: pointer;
+        }
+        
+        .select-all-text {
+          font-size: 14px;
+          color: #374151;
+          font-weight: 500;
+        }
+        
+        .content-list {
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        
+        .content-item {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 20px;
+          transition: all 0.2s ease;
+        }
+        
+        .content-item:hover {
+          border-color: #d1d5db;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .item-main {
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        
+        .media-preview {
+          flex-shrink: 0;
+          width: 80px;
+          height: 80px;
+          border-radius: 8px;
+          overflow: hidden;
+          background: #f3f4f6;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .preview-image, .preview-video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        
+        .preview-placeholder {
+          font-size: 24px;
+          color: #9ca3af;
+        }
+        
+        .youtube-preview {
+          position: relative;
+        }
+        
+        .play-overlay {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(0, 0, 0, 0.7);
+          color: white;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+        }
+        
+        .item-content {
+          flex: 1;
+          min-width: 0;
+        }
+        
+        .content-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        
+        .content-main {
+          flex: 1;
+          min-width: 0;
+        }
+        
+        .content-tags {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+        
+        .content-tag {
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+        
+        .tag-platform {
+          background: #e0e7ff;
+          color: #3730a3;
+        }
+        
+        .tag-discovered {
+          background: #dbeafe;
+          color: #1e40af;
+        }
+        
+        .tag-pending {
+          background: #fef3c7;
+          color: #d97706;
+        }
+        
+        .tag-approved {
+          background: #d1fae5;
+          color: #065f46;
+        }
+        
+        .tag-scheduled {
+          background: #e9d5ff;
+          color: #6b21a8;
+        }
+        
+        .tag-posted {
+          background: #f3f4f6;
+          color: #4b5563;
+        }
+        
+        .tag-rejected {
+          background: #fee2e2;
+          color: #991b1b;
+        }
+        
+        .tag-archived {
+          background: #f9fafb;
+          color: #6b7280;
+        }
+        
+        .tag-confidence-high {
+          background: #d1fae5;
+          color: #065f46;
+        }
+        
+        .tag-confidence-med {
+          background: #fef3c7;
+          color: #d97706;
+        }
+        
+        .tag-confidence-low {
+          background: #fee2e2;
+          color: #991b1b;
+        }
+        
+        .content-text {
+          margin: 12px 0;
+          color: #374151;
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .content-meta {
+          font-size: 13px;
+          color: #6b7280;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        
+        .meta-link {
+          color: #3b82f6;
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        
+        .meta-link:hover {
+          color: #1d4ed8;
+          text-decoration: underline;
+        }
+        
+        .edit-textarea {
+          width: 100%;
+          padding: 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          resize: vertical;
+          font-size: 14px;
+          line-height: 1.5;
+          margin-bottom: 12px;
+        }
+        
+        .edit-textarea:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .edit-actions {
+          display: flex;
+          gap: 8px;
+        }
+        
+        .timestamps {
+          text-align: right;
+          font-size: 12px;
+          color: #6b7280;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        
+        .action-buttons {
+          display: flex;
+          gap: 8px;
+          margin-top: 16px;
+          flex-wrap: wrap;
+        }
+        
+        .empty-state {
+          text-align: center;
+          padding: 60px 20px;
+        }
+        
+        .empty-icon {
+          font-size: 4rem;
+          margin-bottom: 20px;
+        }
+        
+        .empty-title {
+          font-size: 20px;
+          font-weight: 600;
+          color: #1f2937;
+          margin-bottom: 8px;
+        }
+        
+        .empty-description {
+          color: #6b7280;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+          .queue-container {
+            padding: 16px;
+          }
+          
+          .section-header {
+            padding: 20px;
+          }
+          
+          .header-content {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+          }
+          
+          .controls-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 20px;
+          }
+          
+          .filters-group {
+            justify-content: center;
+          }
+          
+          .bulk-actions {
+            justify-content: center;
+          }
+          
+          .item-main {
+            flex-direction: column;
+            gap: 12px;
+          }
+          
+          .content-header {
+            flex-direction: column;
+            gap: 12px;
+          }
+          
+          .timestamps {
+            text-align: left;
+          }
+          
+          .action-buttons {
+            justify-content: center;
+          }
+        }
+      `}</style>
+      
+      <div className="queue-container">
         {/* Header */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex justify-between align-center">
-              <div>
-                <h1 className="flex align-center gap-sm">
+        <div className="queue-section">
+          <div className="section-header">
+            <div className="header-content">
+              <div className="header-info">
+                <h1>
                   <span>📋</span>
                   Content Queue
                 </h1>
-                <p className="text-muted">
+                <p className="header-description">
                   Manage pending and scheduled content for posting
                 </p>
               </div>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="refresh-btn"
                 onClick={fetchQueuedContent}
               >
                 🔄 Refresh
@@ -308,18 +814,18 @@ export default function ContentQueue() {
         </div>
 
         {/* Filters and Bulk Actions */}
-        <div className="card">
-          <div className="card-body">
-            <div className="flex justify-between align-center flex-wrap gap-md">
+        <div className="queue-section">
+          <div className="section-body">
+            <div className="controls-row">
               {/* Filters */}
-              <div className="flex align-center gap-md flex-wrap">
-                <div className="flex align-center gap-xs">
-                  <label htmlFor="filter" className="text-muted">Filter:</label>
+              <div className="filters-group">
+                <div className="filter-group">
+                  <label htmlFor="filter" className="filter-label">Filter:</label>
                   <select
                     id="filter"
                     value={filterBy}
                     onChange={(e) => setFilterBy(e.target.value as any)}
-                    className="form-select"
+                    className="filter-select"
                   >
                     <option value="all">All</option>
                     <option value="discovered">Discovered</option>
@@ -328,13 +834,13 @@ export default function ContentQueue() {
                     <option value="rejected">Rejected</option>
                   </select>
                 </div>
-                <div className="flex align-center gap-xs">
-                  <label htmlFor="sort" className="text-muted">Sort by:</label>
+                <div className="filter-group">
+                  <label htmlFor="sort" className="filter-label">Sort by:</label>
                   <select
                     id="sort"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="form-select"
+                    className="filter-select"
                   >
                     <option value="created_at">Created Date</option>
                     <option value="updated_at">Updated Date</option>
@@ -346,25 +852,25 @@ export default function ContentQueue() {
 
               {/* Bulk Actions */}
               {selectedItems.size > 0 && (
-                <div className="flex align-center gap-sm">
-                  <span className="text-muted">
+                <div className="bulk-actions">
+                  <span className="selected-count">
                     {selectedItems.size} selected
                   </span>
                   <button
                     onClick={() => handleBulkAction('approve')}
-                    className="btn btn-success btn-sm"
+                    className="action-btn action-btn-success"
                   >
                     Approve
                   </button>
                   <button
                     onClick={() => handleBulkAction('reject')}
-                    className="btn btn-danger btn-sm"
+                    className="action-btn action-btn-danger"
                   >
                     Reject
                   </button>
                   <button
                     onClick={() => setShowBulkEditModal(true)}
-                    className="btn btn-primary btn-sm"
+                    className="action-btn action-btn-primary"
                   >
                     📝 Bulk Edit
                   </button>
@@ -375,261 +881,230 @@ export default function ContentQueue() {
         </div>
 
         {/* Content List */}
-        <div className="card">
+        <div className="queue-section">
           {queuedContent.length > 0 ? (
             <>
-              {/* Header */}
-              <div className="card-header">
-                <div className="flex align-center gap-sm">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.size === queuedContent.length && queuedContent.length > 0}
-                    onChange={handleSelectAll}
-                    className="form-checkbox"
-                  />
-                  <span>
-                    Select All ({queuedContent.length} items)
-                  </span>
-                </div>
+              {/* List Header */}
+              <div className="list-header">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.size === queuedContent.length && queuedContent.length > 0}
+                  onChange={handleSelectAll}
+                  className="select-checkbox"
+                />
+                <span className="select-all-text">
+                  Select All ({queuedContent.length} items)
+                </span>
               </div>
 
               {/* Content Items */}
-              <div className="card-body">
-                <div className="grid gap-md">
-                  {queuedContent.map((item) => (
-                    <div key={item.id} className="card">
-                      <div className="card-body">
-                        <div className="flex align-start gap-md">
-                          <input
-                            type="checkbox"
-                            checked={selectedItems.has(item.id)}
-                            onChange={() => handleSelectItem(item.id)}
-                            className="form-checkbox"
-                          />
-                          
-                          {/* Media preview */}
-                          {item.content_video_url && (
-                            <div>
-                              {/* For YouTube videos, show thumbnail instead of trying to embed */}
-                              {item.content_video_url.includes('youtube.com/watch') && item.content_image_url ? (
-                                <div style={{ position: 'relative', width: '64px', height: '64px' }}>
-                                  <img
-                                    src={item.content_image_url}
-                                    alt="Video thumbnail"
-                                    style={{ width: '64px', height: '64px', objectFit: 'cover' }}
-                                  />
-                                  <div style={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    color: 'white',
-                                    backgroundColor: 'rgba(0,0,0,0.7)',
-                                    borderRadius: '50%',
-                                    width: '20px',
-                                    height: '20px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '10px'
-                                  }}>
-                                    ▶
-                                  </div>
-                                </div>
-                              ) : 
-                              /* For direct video files */
-                              item.content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
-                                <video
-                                  src={item.content_video_url}
-                                  muted
-                                  loop
-                                  style={{ width: '64px', height: '64px', objectFit: 'cover' }}
-                                  className="content-video-preview"
-                                  onMouseEnter={(e) => e.currentTarget.play()}
-                                  onMouseLeave={(e) => e.currentTarget.pause()}
+              <div className="content-list">
+                {queuedContent.map((item) => (
+                  <div key={item.id} className="content-item">
+                    <div className="item-main">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.has(item.id)}
+                        onChange={() => handleSelectItem(item.id)}
+                        className="select-checkbox"
+                      />
+                      
+                      {/* Media preview */}
+                      <div className="media-preview">
+                        {item.content_video_url ? (
+                          <>
+                            {/* For YouTube videos, show thumbnail instead of trying to embed */}
+                            {item.content_video_url.includes('youtube.com/watch') && item.content_image_url ? (
+                              <div className="youtube-preview">
+                                <img
+                                  src={item.content_image_url}
+                                  alt="Video thumbnail"
+                                  className="preview-image"
                                 />
-                              ) : (
-                                /* Fallback for other video types */
-                                <div style={{
-                                  width: '64px',
-                                  height: '64px',
-                                  backgroundColor: '#f0f0f0',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: '#666'
-                                }}>
-                                  🎥
-                                </div>
+                                <div className="play-overlay">▶</div>
+                              </div>
+                            ) : 
+                            /* For direct video files */
+                            item.content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
+                              <video
+                                src={item.content_video_url}
+                                muted
+                                loop
+                                className="preview-video"
+                                onMouseEnter={(e) => e.currentTarget.play()}
+                                onMouseLeave={(e) => e.currentTarget.pause()}
+                              />
+                            ) : (
+                              /* Fallback for other video types */
+                              <div className="preview-placeholder">🎥</div>
+                            )}
+                          </>
+                        ) : item.content_image_url ? (
+                          <img
+                            src={item.content_image_url}
+                            alt="Content preview"
+                            className="preview-image"
+                          />
+                        ) : (
+                          <div className="preview-placeholder">
+                            {getContentTypeIcon(item.content_type)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content details */}
+                      <div className="item-content">
+                        <div className="content-header">
+                          <div className="content-main">
+                            <div className="content-tags">
+                              <span className="content-tag tag-platform">{item.source_platform}</span>
+                              <span className={`content-tag tag-${item.content_status}`}>
+                                {item.content_status.replace('_', ' ')}
+                              </span>
+                              {item.confidence_score && (
+                                <span className={`content-tag ${
+                                  item.confidence_score >= 0.8 ? 'tag-confidence-high' :
+                                  item.confidence_score >= 0.6 ? 'tag-confidence-med' : 'tag-confidence-low'
+                                }`}>
+                                  {Math.round(item.confidence_score * 100)}% confidence
+                                </span>
                               )}
                             </div>
-                          )}
-                          {item.content_image_url && !item.content_video_url && (
-                            <div>
-                              <img
-                                src={item.content_image_url}
-                                alt="Content preview"
-                                className="content-image"
-                                style={{ width: '64px', height: '64px', objectFit: 'cover' }}
-                              />
-                            </div>
-                          )}
-
-                          {/* Content details */}
-                          <div className="flex-1">
-                            <div className="flex justify-between align-start">
-                              <div className="flex-1">
-                                <div className="flex align-center gap-sm mb-xs">
-                                  <span>{getContentTypeIcon(item.content_type)}</span>
-                                  <span className="tag">{item.source_platform}</span>
-                                  <span className={`tag ${getStatusColor(item.content_status)}`}>
-                                    {item.content_status.replace('_', ' ')}
-                                  </span>
-                                  {item.confidence_score && (
-                                    <span className={`tag ${getConfidenceColor(item.confidence_score)}`}>
-                                      {Math.round(item.confidence_score * 100)}% confidence
-                                    </span>
-                                  )}
+                            
+                            {editingContent === item.id ? (
+                              <div>
+                                <textarea
+                                  value={editText}
+                                  onChange={(e) => setEditText(e.target.value)}
+                                  className="edit-textarea"
+                                  rows={4}
+                                  placeholder="Edit content text..."
+                                />
+                                <div className="edit-actions">
+                                  <button
+                                    onClick={handleSaveEdit}
+                                    className="action-btn action-btn-success"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    className="action-btn"
+                                  >
+                                    Cancel
+                                  </button>
                                 </div>
-                                
-                                {editingContent === item.id ? (
-                                  <div className="mb-sm">
-                                    <textarea
-                                      value={editText}
-                                      onChange={(e) => setEditText(e.target.value)}
-                                      className="form-textarea w-full"
-                                      rows={4}
-                                      placeholder="Edit content text..."
-                                    />
-                                    <div className="flex gap-xs mt-xs">
-                                      <button
-                                        onClick={handleSaveEdit}
-                                        className="btn btn-sm btn-success"
-                                      >
-                                        Save
-                                      </button>
-                                      <button
-                                        onClick={handleCancelEdit}
-                                        className="btn btn-sm"
-                                      >
-                                        Cancel
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="mb-sm">
-                                    {item.content_text && (
-                                      <p className="text-muted mb-sm line-clamp-3">
-                                        {item.content_text}
-                                      </p>
-                                    )}
-                                    <div className="text-sm text-muted">
-                                      <div>Author: {item.original_author}</div>
-                                      <a 
-                                        href={item.original_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-primary hover:underline"
-                                      >
-                                        View Original
-                                      </a>
-                                    </div>
+                              </div>
+                            ) : (
+                              <div>
+                                {item.content_text && (
+                                  <div className="content-text">
+                                    {item.content_text}
                                   </div>
                                 )}
-                              </div>
-
-                              {/* Timestamps and details */}
-                              <div className="text-right">
-                                <div className="text-muted text-sm">
-                                  <div>Created: {formatDate(new Date(item.created_at))}</div>
-                                  <div>Updated: {formatDate(new Date(item.updated_at))}</div>
-                                  {item.scheduled_for && (
-                                    <div>Scheduled: {formatDate(new Date(item.scheduled_for))}</div>
-                                  )}
-                                  {item.reviewed_at && (
-                                    <div>Reviewed: {formatDate(new Date(item.reviewed_at))}</div>
-                                  )}
+                                <div className="content-meta">
+                                  <div>Author: {item.original_author}</div>
+                                  <a 
+                                    href={item.original_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="meta-link"
+                                  >
+                                    View Original
+                                  </a>
                                 </div>
                               </div>
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="flex gap-sm mt-sm flex-wrap">
-                              {editingContent !== item.id && (
-                                <button
-                                  onClick={() => handleStartEdit(item)}
-                                  className="btn btn-sm"
-                                  disabled={item.content_status === 'posted'}
-                                >
-                                  ✏️ Edit
-                                </button>
-                              )}
-                              
-                              {item.content_status === 'pending_review' && (
-                                <>
-                                  <button
-                                    onClick={() => handleUpdateContent(item.id, { content_status: 'approved' })}
-                                    className="btn btn-sm btn-success"
-                                  >
-                                    ✅ Approve
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateContent(item.id, { content_status: 'rejected', rejection_reason: 'Manual review rejection' })}
-                                    className="btn btn-sm btn-danger"
-                                  >
-                                    ❌ Reject
-                                  </button>
-                                </>
-                              )}
-                              
-                              {item.content_status === 'approved' && (
-                                <button
-                                  onClick={() => handleUpdateContent(item.id, { 
-                                    content_status: 'scheduled',
-                                    scheduled_for: new Date(Date.now() + 60 * 60 * 1000).toISOString()
-                                  })}
-                                  className="btn btn-sm btn-primary"
-                                >
-                                  📅 Schedule
-                                </button>
-                              )}
-                              
-                              {item.content_status !== 'posted' && (
-                                <button
-                                  onClick={() => handleUpdateContent(item.id, { content_status: 'archived' })}
-                                  className="btn btn-sm btn-warning"
-                                >
-                                  🗄️ Archive
-                                </button>
-                              )}
-                            </div>
+                            )}
                           </div>
+
+                          {/* Timestamps */}
+                          <div className="timestamps">
+                            <div>Created: {formatDate(new Date(item.created_at))}</div>
+                            <div>Updated: {formatDate(new Date(item.updated_at))}</div>
+                            {item.scheduled_for && (
+                              <div>Scheduled: {formatDate(new Date(item.scheduled_for))}</div>
+                            )}
+                            {item.reviewed_at && (
+                              <div>Reviewed: {formatDate(new Date(item.reviewed_at))}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="action-buttons">
+                          {editingContent !== item.id && (
+                            <button
+                              onClick={() => handleStartEdit(item)}
+                              className="action-btn"
+                              disabled={item.content_status === 'posted'}
+                            >
+                              ✏️ Edit
+                            </button>
+                          )}
+                          
+                          {item.content_status === 'pending_review' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateContent(item.id, { content_status: 'approved' })}
+                                className="action-btn action-btn-success"
+                              >
+                                ✅ Approve
+                              </button>
+                              <button
+                                onClick={() => handleUpdateContent(item.id, { content_status: 'rejected', rejection_reason: 'Manual review rejection' })}
+                                className="action-btn action-btn-danger"
+                              >
+                                ❌ Reject
+                              </button>
+                            </>
+                          )}
+                          
+                          {item.content_status === 'approved' && (
+                            <button
+                              onClick={() => handleUpdateContent(item.id, { 
+                                content_status: 'scheduled',
+                                scheduled_for: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+                              })}
+                              className="action-btn action-btn-primary"
+                            >
+                              📅 Schedule
+                            </button>
+                          )}
+                          
+                          {item.content_status !== 'posted' && (
+                            <button
+                              onClick={() => handleUpdateContent(item.id, { content_status: 'archived' })}
+                              className="action-btn"
+                            >
+                              🗄️ Archive
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             </>
           ) : (
-            <div className="card-body text-center">
-              <div className="mb-md" style={{ fontSize: '3rem' }}>📭</div>
-              <h3 className="mb-sm">No content found</h3>
-              <p className="text-muted">
+            <div className="empty-state">
+              <div className="empty-icon">📭</div>
+              <h3 className="empty-title">No content found</h3>
+              <p className="empty-description">
                 No content matches the current filter. Try changing the filter or running a content scan.
               </p>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Bulk Edit Modal */}
-      <BulkEditModal
-        isOpen={showBulkEditModal}
-        onClose={() => setShowBulkEditModal(false)}
-        selectedCount={selectedItems.size}
-        onBulkEdit={handleBulkEdit}
-      />
-    </div>
+        {/* Bulk Edit Modal */}
+        <BulkEditModal
+          isOpen={showBulkEditModal}
+          onClose={() => setShowBulkEditModal(false)}
+          selectedCount={selectedItems.size}
+          onBulkEdit={handleBulkEdit}
+        />
+      </div>
+    </>
   )
 }
