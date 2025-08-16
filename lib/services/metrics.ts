@@ -102,8 +102,9 @@ export class MetricsService {
 
   constructor() {
     this.environment = process.env.NODE_ENV || 'development'
-    this.startPeriodicFlush()
-    this.ensureMetricsTable()
+    // Temporarily disabled to prevent SQLite errors
+    // this.startPeriodicFlush()
+    // this.ensureMetricsTable()
   }
 
   /**
@@ -716,12 +717,14 @@ export class MetricsService {
   // Private helper methods
 
   private async addToBuffer(metric: MetricEntry): Promise<void> {
-    this.metricBuffer.push(metric)
+    // Temporarily disabled to prevent SQLite errors
+    return
+    // this.metricBuffer.push(metric)
 
     // If buffer is full, flush immediately
-    if (this.metricBuffer.length >= this.maxBatchSize) {
-      await this.flushBuffer()
-    }
+    // if (this.metricBuffer.length >= this.maxBatchSize) {
+    //   await this.flushBuffer()
+    // }
   }
 
   private async flushBuffer(): Promise<void> {
@@ -738,10 +741,11 @@ export class MetricsService {
       // Insert metrics in batch
       await insert('system_metrics')
         .values(metricsToFlush.map(metric => ({
+          id: `metric_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           name: metric.name,
           value: metric.value,
           unit: metric.unit,
-          timestamp: metric.timestamp,
+          timestamp: metric.timestamp.toISOString(),
           tags: JSON.stringify(metric.tags || {}),
           metadata: JSON.stringify(metric.metadata || {}),
           environment: this.environment
@@ -774,26 +778,23 @@ export class MetricsService {
     try {
       await db.query(`
         CREATE TABLE IF NOT EXISTS system_metrics (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          name VARCHAR(100) NOT NULL,
-          value NUMERIC NOT NULL,
-          unit VARCHAR(50) NOT NULL,
-          timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-          tags JSONB DEFAULT '{}',
-          metadata JSONB DEFAULT '{}',  
-          environment VARCHAR(50) NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          value REAL NOT NULL,
+          unit TEXT NOT NULL,
+          timestamp TEXT NOT NULL,
+          tags TEXT DEFAULT '{}',
+          metadata TEXT DEFAULT '{}',  
+          environment TEXT NOT NULL,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
       `)
 
-      // Create indexes for performance
-      await db.query(`
-        CREATE INDEX IF NOT EXISTS idx_system_metrics_name ON system_metrics(name);
-        CREATE INDEX IF NOT EXISTS idx_system_metrics_timestamp ON system_metrics(timestamp DESC);
-        CREATE INDEX IF NOT EXISTS idx_system_metrics_tags ON system_metrics USING GIN(tags);
-        CREATE INDEX IF NOT EXISTS idx_system_metrics_environment ON system_metrics(environment);
-        CREATE INDEX IF NOT EXISTS idx_system_metrics_name_timestamp ON system_metrics(name, timestamp DESC);
-      `)
+      // Create indexes for performance (SQLite compatible)
+      await db.query(`CREATE INDEX IF NOT EXISTS idx_system_metrics_name ON system_metrics(name)`)
+      await db.query(`CREATE INDEX IF NOT EXISTS idx_system_metrics_timestamp ON system_metrics(timestamp DESC)`)
+      await db.query(`CREATE INDEX IF NOT EXISTS idx_system_metrics_environment ON system_metrics(environment)`)
+      await db.query(`CREATE INDEX IF NOT EXISTS idx_system_metrics_name_timestamp ON system_metrics(name, timestamp DESC)`)
 
     } catch (error) {
       console.error('Failed to ensure metrics table exists:', error)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import './admin-analytics.css'
 
 interface AnalyticsData {
   filteringStats: {
@@ -117,14 +118,10 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
-          </div>
+      <div className="analytics-admin-container">
+        <div className="analytics-loading">
+          <div className="analytics-spinner"></div>
+          <span style={{ marginLeft: '0.5rem' }}>Loading analytics data...</span>
         </div>
       </div>
     )
@@ -132,14 +129,11 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
-          <p className="text-red-600">{error}</p>
-          <button
-            onClick={fetchAnalytics}
-            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-          >
+      <div className="analytics-admin-container">
+        <div className="analytics-error">
+          <h2>📊 Analytics Error</h2>
+          <p>{error}</p>
+          <button onClick={fetchAnalytics}>
             Retry
           </button>
         </div>
@@ -149,226 +143,227 @@ export default function AnalyticsPage() {
 
   if (!data) {
     return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <p className="text-gray-500">No analytics data available</p>
+      <div className="analytics-admin-container">
+        <div className="analytics-empty-state">
+          <h3>📊 No Analytics Data</h3>
+          <p>No analytics data available</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="analytics-admin-container">
+      {/* Header */}
+      <div className="analytics-admin-header">
+        <div className="analytics-header-actions">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Comprehensive filtering and processing metrics
-            </p>
+            <h1>📊 Analytics Dashboard</h1>
+            <p>Comprehensive filtering and processing metrics</p>
           </div>
           <button
             onClick={fetchAnalytics}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            disabled={loading}
+            className="analytics-btn analytics-btn-primary"
           >
-            Refresh
+            {loading && <span className="analytics-spinner"></span>}
+            🔄 Refresh
           </button>
         </div>
+      </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="text-2xl">📊</div>
-              </div>
-              <div className="ml-4">
-                <div className="text-sm font-medium text-gray-500">Total Processed</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {data.filteringStats.current.total_processed.toLocaleString()}
-                </div>
-              </div>
-            </div>
+      {/* Key Metrics */}
+      <div className="analytics-metrics-grid">
+        <div className="analytics-metric-card">
+          <div className="analytics-metric-header">
+            <span className="analytics-metric-title">Total Processed</span>
+            <span className="analytics-metric-icon">📊</span>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="text-2xl">🎯</div>
-              </div>
-              <div className="ml-4">
-                <div className="text-sm font-medium text-gray-500">Accuracy Rate</div>
-                <div className={`text-2xl font-bold ${getEffectivenessColor(data.filteringStats.current.accuracy_rate)}`}>
-                  {formatPercentage(data.filteringStats.current.accuracy_rate)}
-                </div>
-              </div>
-            </div>
+          <div className="analytics-metric-value">
+            {data.filteringStats.current.total_processed.toLocaleString()}
           </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="text-2xl">⚡</div>
-              </div>
-              <div className="ml-4">
-                <div className="text-sm font-medium text-gray-500">Auto-Processing</div>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatPercentage(
-                    (data.filteringStats.current.auto_approved + data.filteringStats.current.auto_rejected) / 
-                    Math.max(data.filteringStats.current.total_processed, 1)
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="text-2xl">⏱️</div>
-              </div>
-              <div className="ml-4">
-                <div className="text-sm font-medium text-gray-500">Avg Process Time</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {formatTime(data.processingStats.stats.avg_processing_time)}
-                </div>
-              </div>
-            </div>
-          </div>
+          <p className="analytics-metric-description">Items processed from all sources</p>
         </div>
 
-        {/* Filter Detection Results */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Filter Detection Results</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
+        <div className="analytics-metric-card">
+          <div className="analytics-metric-header">
+            <span className="analytics-metric-title">Accuracy Rate</span>
+            <span className="analytics-metric-icon">🎯</span>
+          </div>
+          <div className={`analytics-metric-value ${getEffectivenessColor(data.filteringStats.current.accuracy_rate)}`}>
+            {formatPercentage(data.filteringStats.current.accuracy_rate)}
+          </div>
+          <p className="analytics-metric-description">Filter accuracy percentage</p>
+        </div>
+
+        <div className="analytics-metric-card">
+          <div className="analytics-metric-header">
+            <span className="analytics-metric-title">Auto-Processing</span>
+            <span className="analytics-metric-icon">⚡</span>
+          </div>
+          <div className="analytics-metric-value status-healthy">
+            {formatPercentage(
+              (data.filteringStats.current.auto_approved + data.filteringStats.current.auto_rejected) / 
+              Math.max(data.filteringStats.current.total_processed, 1)
+            )}
+          </div>
+          <p className="analytics-metric-description">Automated processing rate</p>
+        </div>
+
+        <div className="analytics-metric-card">
+          <div className="analytics-metric-header">
+            <span className="analytics-metric-title">Avg Process Time</span>
+            <span className="analytics-metric-icon">⏱️</span>
+          </div>
+          <div className="analytics-metric-value">
+            {formatTime(data.processingStats.stats.avg_processing_time)}
+          </div>
+          <p className="analytics-metric-description">Average processing duration</p>
+        </div>
+      </div>
+
+      {/* Filter Detection Results */}
+      <div className="analytics-admin-card">
+        <div className="analytics-admin-card-header">
+          <h2>🔍 Filter Detection Results</h2>
+        </div>
+        <div className="analytics-admin-card-body">
+          <div className="analytics-detection-grid">
+            <div className="analytics-detection-card bg-red-50 border-red-200">
+              <div className="analytics-detection-header">
                 <span className="text-lg">🚫</span>
                 <div className="text-sm font-medium text-red-800">Spam Detected</div>
               </div>
-              <div className="text-xl font-bold text-red-600">
+              <div className="analytics-detection-value text-red-600">
                 {data.filteringStats.current.spam_detected.toLocaleString()}
               </div>
-              <div className="text-xs text-red-600 mt-1">
+              <div className="analytics-detection-percentage text-red-600">
                 {formatPercentage(data.filteringStats.current.spam_detected / Math.max(data.filteringStats.current.total_processed, 1))}
               </div>
             </div>
 
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="analytics-detection-card bg-orange-50 border-orange-200">
+              <div className="analytics-detection-header">
                 <span className="text-lg">⚠️</span>
                 <div className="text-sm font-medium text-orange-800">Inappropriate</div>
               </div>
-              <div className="text-xl font-bold text-orange-600">
+              <div className="analytics-detection-value text-orange-600">
                 {data.filteringStats.current.inappropriate_detected.toLocaleString()}
               </div>
-              <div className="text-xs text-orange-600 mt-1">
+              <div className="analytics-detection-percentage text-orange-600">
                 {formatPercentage(data.filteringStats.current.inappropriate_detected / Math.max(data.filteringStats.current.total_processed, 1))}
               </div>
             </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="analytics-detection-card bg-yellow-50 border-yellow-200">
+              <div className="analytics-detection-header">
                 <span className="text-lg">🔄</span>
                 <div className="text-sm font-medium text-yellow-800">Unrelated</div>
               </div>
-              <div className="text-xl font-bold text-yellow-600">
+              <div className="analytics-detection-value text-yellow-600">
                 {data.filteringStats.current.unrelated_detected.toLocaleString()}
               </div>
-              <div className="text-xs text-yellow-600 mt-1">
+              <div className="analytics-detection-percentage text-yellow-600">
                 {formatPercentage(data.filteringStats.current.unrelated_detected / Math.max(data.filteringStats.current.total_processed, 1))}
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="analytics-detection-card bg-blue-50 border-blue-200">
+              <div className="analytics-detection-header">
                 <span className="text-lg">📄</span>
                 <div className="text-sm font-medium text-blue-800">Duplicates</div>
               </div>
-              <div className="text-xl font-bold text-blue-600">
+              <div className="analytics-detection-value text-blue-600">
                 {data.filteringStats.current.duplicates_detected.toLocaleString()}
               </div>
-              <div className="text-xs text-blue-600 mt-1">
+              <div className="analytics-detection-percentage text-blue-600">
                 {formatPercentage(data.filteringStats.current.duplicates_detected / Math.max(data.filteringStats.current.total_processed, 1))}
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Pattern Effectiveness */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Top Performing Patterns</h2>
-          
-          <div className="space-y-4">
+      {/* Pattern Effectiveness */}
+      <div className="analytics-admin-card">
+        <div className="analytics-admin-card-header">
+          <h2>🎯 Top Performing Patterns</h2>
+        </div>
+        <div className="analytics-admin-card-body">
+          <div className="analytics-pattern-list">
             {data.filteringStats.patternEffectiveness.slice(0, 10).map((pattern, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getPatternTypeColor(pattern.pattern_type)}`}>
+              <div key={index} className="analytics-pattern-item">
+                <div className="analytics-pattern-content">
+                  <div className="analytics-pattern-header">
+                    <span className={`analytics-pattern-type ${getPatternTypeColor(pattern.pattern_type)}`}>
                       {pattern.pattern_type.toUpperCase()}
                     </span>
-                    <code className="bg-white px-2 py-1 rounded text-sm font-mono">
+                    <code className="analytics-pattern-code">
                       {pattern.pattern}
                     </code>
                   </div>
                   {pattern.description && (
-                    <p className="text-sm text-gray-600">{pattern.description}</p>
+                    <p className="analytics-pattern-description">{pattern.description}</p>
                   )}
                 </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-gray-900">
+                <div className="analytics-pattern-stats">
+                  <div className="analytics-pattern-matches">
                     {pattern.matches.toLocaleString()}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <p className="analytics-pattern-confidence">
                     {formatPercentage(pattern.avg_confidence)} confidence
-                  </div>
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Processing Pipeline Status */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Processing Pipeline Status</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-yellow-600">
+      {/* Processing Pipeline Status */}
+      <div className="analytics-admin-card">
+        <div className="analytics-admin-card-header">
+          <h2>⚙️ Processing Pipeline Status</h2>
+        </div>
+        <div className="analytics-admin-card-body">
+          <div className="analytics-pipeline-grid">
+            <div className="analytics-pipeline-status bg-yellow-50 border-yellow-200">
+              <div className="analytics-pipeline-value text-yellow-600">
                 {data.processingStats.stats.pending.toLocaleString()}
               </div>
-              <div className="text-sm text-yellow-800">Pending</div>
+              <div className="analytics-pipeline-label text-yellow-800">Pending</div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="analytics-pipeline-status bg-blue-50 border-blue-200">
+              <div className="analytics-pipeline-value text-blue-600">
                 {data.processingStats.stats.processing.toLocaleString()}
               </div>
-              <div className="text-sm text-blue-800">Processing</div>
+              <div className="analytics-pipeline-label text-blue-800">Processing</div>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">
+            <div className="analytics-pipeline-status bg-green-50 border-green-200">
+              <div className="analytics-pipeline-value text-green-600">
                 {data.processingStats.stats.approved.toLocaleString()}
               </div>
-              <div className="text-sm text-green-800">Approved</div>
+              <div className="analytics-pipeline-label text-green-800">Approved</div>
             </div>
 
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-red-600">
+            <div className="analytics-pipeline-status bg-red-50 border-red-200">
+              <div className="analytics-pipeline-value text-red-600">
                 {data.processingStats.stats.rejected.toLocaleString()}
               </div>
-              <div className="text-sm text-red-800">Rejected</div>
+              <div className="analytics-pipeline-label text-red-800">Rejected</div>
             </div>
 
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-orange-600">
+            <div className="analytics-pipeline-status bg-orange-50 border-orange-200">
+              <div className="analytics-pipeline-value text-orange-600">
                 {data.processingStats.stats.flagged.toLocaleString()}
               </div>
-              <div className="text-sm text-orange-800">Flagged</div>
+              <div className="analytics-pipeline-label text-orange-800">Flagged</div>
             </div>
           </div>
         </div>
+      </div>
     </div>
   )
 }

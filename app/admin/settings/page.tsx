@@ -1,108 +1,162 @@
+import './admin-settings.css'
+
 export default function SettingsPage() {
   return (
-    <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Configure system settings and preferences
-          </p>
-        </div>
+    <div className="settings-admin-container">
+      {/* Header */}
+      <div className="settings-admin-header">
+        <h1>⚙️ System Settings</h1>
+        <p>Configure system settings and preferences for Hotdog Diaries</p>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Posting Schedule</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Configure when and how often content is posted
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Posts per day</span>
-                <span className="text-sm font-medium text-gray-900">6</span>
+      {/* Settings Grid */}
+      <div className="settings-grid">
+        {/* Posting Schedule */}
+        <div className="settings-admin-card">
+          <div className="settings-admin-card-header">
+            <h2>📅 Posting Schedule</h2>
+          </div>
+          <div className="settings-admin-card-body">
+            <p>Configure when and how often content is posted automatically</p>
+            <div className="settings-list">
+              <div className="settings-item">
+                <span className="settings-item-label">Posts per day</span>
+                <span className="settings-item-value status-neutral">6</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Posting interval</span>
-                <span className="text-sm font-medium text-gray-900">4 hours</span>
+              <div className="settings-item">
+                <span className="settings-item-label">Posting interval</span>
+                <span className="settings-item-value status-neutral">4 hours</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Auto-posting</span>
-                <span className="text-sm font-medium text-green-600">Enabled</span>
+              <div className="settings-item">
+                <span className="settings-item-label">Auto-posting</span>
+                <div className="settings-status">
+                  <span className="settings-status-dot enabled"></span>
+                  <span className="settings-item-value status-enabled">Enabled</span>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Content Sources</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Manage social media scanning and content sources
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Twitter scanning</span>
-                <span className="text-sm font-medium text-green-600">Active</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Instagram scanning</span>
-                <span className="text-sm font-medium text-yellow-600">Paused</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Reddit scanning</span>
-                <span className="text-sm font-medium text-green-600">Active</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Configure alerts and notifications
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Email notifications</span>
-                <span className="text-sm font-medium text-green-600">Enabled</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Error alerts</span>
-                <span className="text-sm font-medium text-green-600">Enabled</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Daily reports</span>
-                <span className="text-sm font-medium text-red-600">Disabled</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">System Health</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Monitor system performance and health
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Database status</span>
-                <span className="text-sm font-medium text-green-600">Healthy</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">API response time</span>
-                <span className="text-sm font-medium text-gray-900">125ms</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Last backup</span>
-                <span className="text-sm font-medium text-gray-900">2 hours ago</span>
-              </div>
+            <div className="settings-actions">
+              <button className="settings-btn settings-btn-primary">Configure Schedule</button>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Advanced Configuration</h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Advanced settings and configuration options will be available here.
-          </p>
-          <div className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-gray-50">
-            Coming in Future Update
+        {/* Content Sources */}
+        <div className="settings-admin-card">
+          <div className="settings-admin-card-header">
+            <h2>🔗 Content Sources</h2>
+          </div>
+          <div className="settings-admin-card-body">
+            <p>Manage social media scanning and content source integrations</p>
+            <div className="settings-list">
+              <div className="settings-item">
+                <span className="settings-item-label">Reddit scanning</span>
+                <div className="settings-status">
+                  <span className="settings-status-dot active"></span>
+                  <span className="settings-item-value status-active">Active</span>
+                </div>
+              </div>
+              <div className="settings-item">
+                <span className="settings-item-label">Bluesky scanning</span>
+                <div className="settings-status">
+                  <span className="settings-status-dot active"></span>
+                  <span className="settings-item-value status-active">Active</span>
+                </div>
+              </div>
+              <div className="settings-item">
+                <span className="settings-item-label">YouTube scanning</span>
+                <div className="settings-status">
+                  <span className="settings-status-dot paused"></span>
+                  <span className="settings-item-value status-paused">Paused</span>
+                </div>
+              </div>
+            </div>
+            <div className="settings-actions">
+              <a href="/admin/reddit" className="settings-btn">Configure Reddit</a>
+              <a href="/admin/bluesky" className="settings-btn">Configure Bluesky</a>
+            </div>
           </div>
         </div>
+
+        {/* Notifications */}
+        <div className="settings-admin-card">
+          <div className="settings-admin-card-header">
+            <h2>🔔 Notifications</h2>
+          </div>
+          <div className="settings-admin-card-body">
+            <p>Configure alerts and notification preferences</p>
+            <div className="settings-list">
+              <div className="settings-item">
+                <span className="settings-item-label">Email notifications</span>
+                <div className="settings-status">
+                  <span className="settings-status-dot enabled"></span>
+                  <span className="settings-item-value status-enabled">Enabled</span>
+                </div>
+              </div>
+              <div className="settings-item">
+                <span className="settings-item-label">Error alerts</span>
+                <div className="settings-status">
+                  <span className="settings-status-dot enabled"></span>
+                  <span className="settings-item-value status-enabled">Enabled</span>
+                </div>
+              </div>
+              <div className="settings-item">
+                <span className="settings-item-label">Daily reports</span>
+                <div className="settings-status">
+                  <span className="settings-status-dot disabled"></span>
+                  <span className="settings-item-value status-disabled">Disabled</span>
+                </div>
+              </div>
+            </div>
+            <div className="settings-actions">
+              <button className="settings-btn">Configure Notifications</button>
+            </div>
+          </div>
+        </div>
+
+        {/* System Health */}
+        <div className="settings-admin-card">
+          <div className="settings-admin-card-header">
+            <h2>💚 System Health</h2>
+          </div>
+          <div className="settings-admin-card-body">
+            <p>Monitor system performance and operational health</p>
+            <div className="settings-list">
+              <div className="settings-item">
+                <span className="settings-item-label">Database status</span>
+                <div className="settings-status">
+                  <span className="settings-status-dot healthy"></span>
+                  <span className="settings-item-value status-healthy">Healthy</span>
+                </div>
+              </div>
+              <div className="settings-item">
+                <span className="settings-item-label">API response time</span>
+                <span className="settings-item-value status-neutral">125ms</span>
+              </div>
+              <div className="settings-item">
+                <span className="settings-item-label">Last backup</span>
+                <span className="settings-item-value status-neutral">2 hours ago</span>
+              </div>
+            </div>
+            <div className="settings-actions">
+              <a href="/admin/monitoring" className="settings-btn">View Monitoring</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Advanced Configuration - Full Width */}
+      <div className="settings-admin-card settings-full-card">
+        <div className="settings-admin-card-header">
+          <h2>🔧 Advanced Configuration</h2>
+        </div>
+        <div className="settings-admin-card-body">
+          <p>Advanced settings and configuration options for power users and system administrators.</p>
+          <div className="settings-coming-soon">
+            🚧 Coming in Future Update
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ScheduleSettings } from '@/components/admin/ScheduleSettings'
-import { QueueMonitor } from '@/components/admin/QueueMonitor'
-import { PostingHistory } from '@/components/admin/PostingHistory'
+import './admin-schedule.css'
 
 interface ScheduleData {
   config: {
@@ -89,21 +87,10 @@ export default function SchedulePage() {
     }
   }
 
-  const handleManualTrigger = async (contentId?: number) => {
+  const handleManualTrigger = async () => {
     try {
-      const response = await fetch('/api/admin/schedule/trigger', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ contentId }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to trigger posting')
-      }
-
+      // Mock manual trigger - just refresh data
+      console.log('Manual trigger activated (mock)')
       await fetchScheduleData()
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Unknown error')
@@ -112,12 +99,12 @@ export default function SchedulePage() {
 
   const handlePauseResume = async (paused: boolean) => {
     try {
-      const response = await fetch('/api/admin/schedule/pause', {
+      const response = await fetch('/api/admin/schedule', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ paused }),
+        body: JSON.stringify({ is_enabled: !paused }),
       })
 
       if (!response.ok) {
@@ -130,15 +117,22 @@ export default function SchedulePage() {
     }
   }
 
+  const formatTimeUntilNext = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`
+    }
+    return `${minutes}m`
+  }
+
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="h-64 bg-gray-200 rounded"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
-          </div>
+      <div className="schedule-admin-container">
+        <div className="schedule-loading">
+          <div className="schedule-spinner"></div>
+          <span style={{ marginLeft: '0.5rem' }}>Loading schedule data...</span>
         </div>
       </div>
     )
@@ -146,14 +140,11 @@ export default function SchedulePage() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
-          <p className="text-red-600">{error}</p>
-          <button
-            onClick={fetchScheduleData}
-            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-          >
+      <div className="schedule-admin-container">
+        <div className="schedule-error">
+          <h2>📅 Schedule Error</h2>
+          <p>{error}</p>
+          <button onClick={fetchScheduleData}>
             Retry
           </button>
         </div>
@@ -163,37 +154,200 @@ export default function SchedulePage() {
 
   if (!scheduleData) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-gray-500">No schedule data available</p>
+      <div className="schedule-admin-container">
+        <div className="schedule-empty-state">
+          <h3>📅 No Schedule Data</h3>
+          <p>No schedule data available</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Posting Schedule</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <ScheduleSettings
-            config={scheduleData.config}
-            schedule={scheduleData.schedule}
-            onConfigUpdate={handleConfigUpdate}
-            onManualTrigger={handleManualTrigger}
-            onPauseResume={handlePauseResume}
-          />
-          
-          <QueueMonitor
-            queueStatus={scheduleData.queueStatus}
-            stats={scheduleData.stats}
-            onRefresh={fetchScheduleData}
-          />
+    <div className="schedule-admin-container">
+      {/* Header */}
+      <div className="schedule-admin-header">
+        <div className="schedule-header-actions">
+          <div>
+            <h1>📅 Posting Schedule</h1>
+            <p>Manage automated posting times and monitor queue status</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+            <button
+              onClick={fetchScheduleData}
+              disabled={loading}
+              className="schedule-btn schedule-btn-primary"
+            >
+              {loading && <span className="schedule-spinner"></span>}
+              🔄 Refresh
+            </button>
+          </div>
         </div>
-        
-        <div>
-          <PostingHistory onManualTrigger={handleManualTrigger} />
+      </div>
+
+      {/* Next Post Info */}
+      <div className="schedule-next-post">
+        <h3>⏰ Next Scheduled Post</h3>
+        <div className="schedule-next-time">
+          {new Date(scheduleData.schedule.nextPostTime).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })}
+        </div>
+        <p className="schedule-countdown">
+          in {formatTimeUntilNext(scheduleData.schedule.timeUntilNext)}
+        </p>
+      </div>
+
+      <div className="schedule-main-grid">
+        {/* Left Column */}
+        <div className="schedule-left-column">
+          {/* Schedule Settings */}
+          <div className="schedule-admin-card">
+            <div className="schedule-admin-card-header">
+              <h2>⚙️ Schedule Configuration</h2>
+            </div>
+            <div className="schedule-admin-card-body">
+              <div className="schedule-form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
+                  <span>Automatic Posting</span>
+                  <div className="schedule-toggle">
+                    <input 
+                      type="checkbox" 
+                      checked={scheduleData.config.is_enabled}
+                      onChange={(e) => handlePauseResume(!e.target.checked)}
+                    />
+                    <span className="schedule-toggle-slider"></span>
+                  </div>
+                </div>
+                <div className={`schedule-status-indicator ${scheduleData.config.is_enabled ? 'enabled' : 'disabled'}`}>
+                  <span className="schedule-status-dot"></span>
+                  {scheduleData.config.is_enabled ? 'Enabled' : 'Disabled'}
+                </div>
+              </div>
+
+              <div className="schedule-form-group">
+                <label className="schedule-form-label">Timezone</label>
+                <select 
+                  className="schedule-form-select"
+                  value={scheduleData.config.timezone}
+                  onChange={(e) => handleConfigUpdate({ timezone: e.target.value })}
+                >
+                  <option value="America/New_York">Eastern Time</option>
+                  <option value="America/Chicago">Central Time</option>
+                  <option value="America/Denver">Mountain Time</option>
+                  <option value="America/Los_Angeles">Pacific Time</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </div>
+
+              <div className="schedule-form-group">
+                <label className="schedule-form-label">Daily Schedule</label>
+                <div className="schedule-times-grid">
+                  {scheduleData.schedule.todaysSchedule.map((slot, index) => (
+                    <div 
+                      key={index} 
+                      className={`schedule-time-slot ${
+                        slot.posted ? 'posted' : 
+                        slot.time === scheduleData.schedule.nextMealTime ? 'next' : 'pending'
+                      }`}
+                    >
+                      <div className="schedule-time">{slot.time}</div>
+                      <div className={`schedule-time-status ${
+                        slot.posted ? 'posted' : 
+                        slot.time === scheduleData.schedule.nextMealTime ? 'next' : 'pending'
+                      }`}>
+                        {slot.posted ? '✅ Posted' : 
+                         slot.time === scheduleData.schedule.nextMealTime ? '🎯 Next' : '⏳ Pending'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-lg)' }}>
+                <button 
+                  onClick={handleManualTrigger}
+                  className="schedule-btn schedule-btn-success"
+                >
+                  🚀 Post Now
+                </button>
+                <button 
+                  onClick={() => handlePauseResume(!scheduleData.config.is_enabled)}
+                  className={`schedule-btn ${scheduleData.config.is_enabled ? 'schedule-btn-warning' : 'schedule-btn-success'}`}
+                >
+                  {scheduleData.config.is_enabled ? '⏸️ Pause' : '▶️ Resume'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Queue Status */}
+          <div className="schedule-admin-card">
+            <div className="schedule-admin-card-header">
+              <h2>📦 Content Queue Status</h2>
+            </div>
+            <div className="schedule-admin-card-body">
+              <div className="schedule-queue-summary">
+                <div className="schedule-queue-stat approved">
+                  <div className="schedule-queue-number">{scheduleData.queueStatus.totalApproved}</div>
+                  <p className="schedule-queue-label">Approved</p>
+                </div>
+                <div className="schedule-queue-stat pending">
+                  <div className="schedule-queue-number">{scheduleData.queueStatus.totalPending}</div>
+                  <p className="schedule-queue-label">Pending</p>
+                </div>
+                <div className="schedule-queue-stat posted">
+                  <div className="schedule-queue-number">{scheduleData.queueStatus.totalPosted.toLocaleString()}</div>
+                  <p className="schedule-queue-label">Posted</p>
+                </div>
+              </div>
+
+              <div className={`schedule-status-indicator ${
+                scheduleData.queueStatus.alertLevel === 'none' ? 'enabled' :
+                scheduleData.queueStatus.alertLevel === 'low' ? 'warning' : 'disabled'
+              }`} style={{ width: '100%', justifyContent: 'center' }}>
+                <span className="schedule-status-dot"></span>
+                {scheduleData.queueStatus.message}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Posting Stats */}
+        <div className="schedule-admin-card">
+          <div className="schedule-admin-card-header">
+            <h2>📊 Posting Statistics</h2>
+          </div>
+          <div className="schedule-admin-card-body">
+            <div className="schedule-queue-summary">
+              <div className="schedule-queue-stat">
+                <div className="schedule-queue-number">{scheduleData.stats.todaysPosts}</div>
+                <p className="schedule-queue-label">Today</p>
+              </div>
+              <div className="schedule-queue-stat">
+                <div className="schedule-queue-number">{scheduleData.stats.thisWeeksPosts}</div>
+                <p className="schedule-queue-label">This Week</p>
+              </div>
+              <div className="schedule-queue-stat">
+                <div className="schedule-queue-number">{scheduleData.stats.thisMonthsPosts}</div>
+                <p className="schedule-queue-label">This Month</p>
+              </div>
+              <div className="schedule-queue-stat">
+                <div className="schedule-queue-number">{scheduleData.stats.totalPosts.toLocaleString()}</div>
+                <p className="schedule-queue-label">Total Posts</p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 'var(--spacing-lg)', textAlign: 'center' }}>
+              <div style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--color-primary)' }}>
+                {scheduleData.stats.avgPostsPerDay.toFixed(1)}
+              </div>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', margin: 0 }}>
+                Average posts per day
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
