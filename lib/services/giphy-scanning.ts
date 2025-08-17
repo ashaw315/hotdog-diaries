@@ -3,6 +3,10 @@ import { ContentProcessor } from './content-processor'
 import { DuplicateDetectionService } from './duplicate-detection'
 import { db, logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { loadEnv } from '@/lib/env'
+
+// Ensure environment variables are loaded
+loadEnv()
 
 export interface GiphyGif {
   id: string

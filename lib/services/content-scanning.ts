@@ -1,5 +1,9 @@
 import { db, logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { loadEnv } from '@/lib/env'
+
+// Ensure environment variables are loaded for all platform services
+loadEnv()
 import { redditScanningService } from './reddit-scanning'
 import { blueskyService } from './bluesky-scanning'
 import { youtubeScanningService } from './youtube-scanning'

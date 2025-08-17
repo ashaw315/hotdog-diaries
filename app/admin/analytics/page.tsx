@@ -107,7 +107,7 @@ export default function AnalyticsPage() {
   }
 
   const getPatternTypeColor = (type: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       spam: 'bg-red-100 text-red-800',
       inappropriate: 'bg-orange-100 text-orange-800',
       unrelated: 'bg-yellow-100 text-yellow-800',

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { contentScanningService } from '@/lib/services/content-scanning'
 import { ScanScheduler } from '@/lib/services/scan-scheduler'
+import { scanningScheduler } from '@/lib/services/scanning-scheduler'
+import { queueManager } from '@/lib/services/queue-manager'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
@@ -27,38 +29,76 @@ export async function POST(request: NextRequest) {
 
     // Use smart scheduling unless manual or forced
     if (!manual && !force) {
-      const decision = await ScanScheduler.shouldScan()
+      // Get queue statistics first
+      const queueStats = await queueManager.getQueueStats()
       
-      if (!decision.shouldScan) {
-        await logToDatabase(
-          LogLevel.INFO,
-          'Smart scheduler skipped scan',
-          'ContentScanCronAPI',
-          decision
-        )
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Scan skipped by smart scheduler',
-          reason: decision.reason,
-          bufferStatus: decision.bufferStatus,
-          nextScheduledScan: 'Next cron trigger or when buffer gets low'
-        })
-      }
+      await logToDatabase(
+        LogLevel.INFO,
+        'Smart scheduling cron triggered',
+        'ContentScanCronAPI',
+        {
+          currentQueue: queueStats.totalApproved,
+          daysOfContent: queueStats.daysOfContent,
+          needsScanning: queueStats.needsScanning
+        }
+      )
+
+      // Execute smart daily scans
+      const summary = await scanningScheduler.executeDailyScans()
       
-      // Use scheduler's platform recommendations
-      const targetPlatforms = platforms || decision.platformsToScan
-      const result = await contentScanningService.runScheduledScan(targetPlatforms)
+      await logToDatabase(
+        LogLevel.INFO,
+        'Smart scanning completed',
+        'ContentScanCronAPI',
+        {
+          totalScans: summary.totalScans,
+          successfulScans: summary.successfulScans,
+          itemsFound: summary.totalItemsFound,
+          itemsApproved: summary.totalItemsApproved,
+          skippedScans: summary.skippedScans,
+          apiCallsSaved: summary.apiCallsSaved,
+          queueGrowth: summary.queueStatsAfter.totalApproved - summary.queueStatsBefore.totalApproved
+        }
+      )
       
       return NextResponse.json({
         success: true,
-        message: 'Smart scan completed',
-        scanDecision: decision,
-        scanResults: result
+        message: 'Smart scanning completed',
+        summary
       })
     }
 
-    // Manual or forced scan - use existing logic
+    // Manual or forced scan
+    if (force && platforms && platforms.length > 0) {
+      // Force scan specific platforms
+      const results = await scanningScheduler.forceScanPlatforms(platforms, manual ? 'Manual trigger' : 'Forced scan')
+      
+      const totalFound = results.reduce((sum, r) => sum + r.itemsFound, 0)
+      const totalApproved = results.reduce((sum, r) => sum + r.itemsApproved, 0)
+      
+      await logToDatabase(
+        LogLevel.INFO,
+        'Forced platform scan completed',
+        'ContentScanCronAPI',
+        {
+          platforms,
+          totalFound,
+          totalApproved,
+          successful: results.filter(r => r.success).length,
+          manual
+        }
+      )
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Forced scan completed',
+        results,
+        totalFound,
+        totalApproved
+      })
+    }
+
+    // Fallback to existing logic for compatibility
     const result = await contentScanningService.runScheduledScan(platforms)
 
     await logToDatabase(

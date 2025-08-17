@@ -138,7 +138,7 @@ export interface DatabaseHealthCheck {
   error?: string
 }
 
-export interface EnhancedHealthResponse extends HealthCheckResponse {
+export interface EnhancedHealthResponse extends Omit<HealthCheckResponse, 'checks'> {
   checks: {
     database: DatabaseHealthCheck
     socialMediaScanner?: string

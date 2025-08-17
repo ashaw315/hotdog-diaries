@@ -371,6 +371,116 @@ export class MetricsService {
   }
 
   /**
+   * Record content processing metrics for platforms
+   */
+  async recordContentProcessingMetric(data: {
+    platform: string
+    success: boolean
+    processingTime: number
+    contentType: string
+    itemCount: number
+    errorMessage?: string
+  }): Promise<void> {
+    try {
+      // Create or update metrics record in appropriate table
+      const metricsQuery = dbAdapter.isPostgreSQL ? `
+        INSERT INTO platform_metrics (
+          platform,
+          success,
+          processing_time_ms,
+          content_type,
+          item_count,
+          error_message,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ` : `
+        INSERT INTO platform_metrics (
+          platform,
+          success,
+          processing_time_ms,
+          content_type,
+          item_count,
+          error_message,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `
+
+      // Execute the query - handle table not existing gracefully
+      try {
+        await executeQuery(metricsQuery, [
+          data.platform,
+          data.success ? 1 : 0,
+          data.processingTime,
+          data.contentType,
+          data.itemCount,
+          data.errorMessage || null
+        ])
+      } catch (error: any) {
+        // If table doesn't exist, create it first
+        if (error.message?.includes('no such table') || error.message?.includes('does not exist')) {
+          await this.createPlatformMetricsTable()
+          // Retry the insert
+          await executeQuery(metricsQuery, [
+            data.platform,
+            data.success ? 1 : 0,
+            data.processingTime,
+            data.contentType,
+            data.itemCount,
+            data.errorMessage || null
+          ])
+        } else {
+          throw error
+        }
+      }
+
+      // Log the metric for monitoring
+      await loggingService.logInfo('MetricsService', `Content processing metric recorded for ${data.platform}`, {
+        platform: data.platform,
+        success: data.success,
+        itemCount: data.itemCount,
+        processingTime: data.processingTime
+      })
+    } catch (error) {
+      // Don't throw error to avoid breaking content processing
+      await loggingService.logError('MetricsService', 'Failed to record content processing metric', {
+        platform: data.platform,
+        error: error.message
+      }, error as Error)
+    }
+  }
+
+  /**
+   * Create platform metrics table if it doesn't exist
+   */
+  private async createPlatformMetricsTable(): Promise<void> {
+    const createTableQuery = dbAdapter.isPostgreSQL ? `
+      CREATE TABLE IF NOT EXISTS platform_metrics (
+        id SERIAL PRIMARY KEY,
+        platform VARCHAR(50) NOT NULL,
+        success BOOLEAN NOT NULL,
+        processing_time_ms INTEGER,
+        content_type VARCHAR(50),
+        item_count INTEGER,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    ` : `
+      CREATE TABLE IF NOT EXISTS platform_metrics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        platform TEXT NOT NULL,
+        success INTEGER NOT NULL,
+        processing_time_ms INTEGER,
+        content_type TEXT,
+        item_count INTEGER,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+
+    await executeQuery(createTableQuery)
+  }
+
+  /**
    * Get platform performance for a specific time period
    */
   async getPlatformPerformance(platform: string, days = 7): Promise<any> {

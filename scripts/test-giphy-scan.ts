@@ -10,7 +10,7 @@ async function testGiphyScan() {
     // Force SQLite mode for testing by removing PostgreSQL env vars
     delete process.env.USE_POSTGRES_IN_DEV
     delete process.env.DATABASE_URL
-    process.env.NODE_ENV = 'development'
+    // process.env.NODE_ENV = 'development' // Read-only in TypeScript
     await db.connect()
     
     // Get count before

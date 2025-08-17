@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       },
 
       // Time-based trends
-      contentTrends: contentTrends.map(trend => ({
+      contentTrends: contentTrends.map((trend: any) => ({
         date: trend.date,
         totalContent: trend.totalContent,
         approvedContent: trend.approvedContent,

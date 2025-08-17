@@ -318,7 +318,7 @@ export class DuplicateDetectionService {
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
        WHERE cq.content_hash = $1 
-       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
+       AND ($2 IS NULL OR cq.id != $2)
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [hash, excludeId]
@@ -332,11 +332,12 @@ export class DuplicateDetectionService {
       return this.findExactMatch(hash, excludeId)
     }
 
+    const daysBack = Math.floor(repostInterval / (1000 * 60 * 60 * 24))
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
        WHERE cq.content_hash = $1 
-       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
-       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       AND ($2 IS NULL OR cq.id != $2)
+       AND cq.scraped_at > datetime('now', '-${daysBack} days')
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [hash, excludeId]
@@ -350,11 +351,12 @@ export class DuplicateDetectionService {
       return this.findUrlMatch(this.generateUrlHash({ original_url: url }), excludeId)
     }
 
+    const daysBack = Math.floor(repostInterval / (1000 * 60 * 60 * 24))
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
        WHERE cq.original_url = $1
-       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
-       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       AND ($2 IS NULL OR cq.id != $2)
+       AND cq.scraped_at > datetime('now', '-${daysBack} days')
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [url, excludeId]
@@ -368,12 +370,13 @@ export class DuplicateDetectionService {
       return this.findImageMatch(imageHash, excludeId)
     }
 
+    const daysBack = Math.floor(repostInterval / (1000 * 60 * 60 * 24))
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
-       WHERE MD5(cq.content_image_url) = $1 
+       WHERE LOWER(HEX(cq.content_image_url)) = LOWER($1) 
        AND cq.content_image_url IS NOT NULL
-       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
-       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       AND ($2 IS NULL OR cq.id != $2)
+       AND cq.scraped_at > datetime('now', '-${daysBack} days')
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [imageHash, excludeId]
@@ -387,12 +390,13 @@ export class DuplicateDetectionService {
       return this.findVideoMatch(videoHash, excludeId)
     }
 
+    const daysBack = Math.floor(repostInterval / (1000 * 60 * 60 * 24))
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
-       WHERE MD5(cq.content_video_url) = $1 
+       WHERE LOWER(HEX(cq.content_video_url)) = LOWER($1) 
        AND cq.content_video_url IS NOT NULL
-       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
-       AND cq.scraped_at > NOW() - INTERVAL '${Math.floor(repostInterval / (1000 * 60 * 60 * 24))} days'
+       AND ($2 IS NULL OR cq.id != $2)
+       AND cq.scraped_at > datetime('now', '-${daysBack} days')
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [videoHash, excludeId]
@@ -404,8 +408,8 @@ export class DuplicateDetectionService {
   private async findUrlMatch(urlHash: string, excludeId?: number): Promise<any> {
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
-       WHERE MD5(cq.original_url) = $1 
-       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
+       WHERE LOWER(HEX(cq.original_url)) = LOWER($1) 
+       AND ($2 IS NULL OR cq.id != $2)
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [urlHash, excludeId]
@@ -417,9 +421,9 @@ export class DuplicateDetectionService {
   private async findImageMatch(imageHash: string, excludeId?: number): Promise<any> {
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
-       WHERE MD5(cq.content_image_url) = $1 
+       WHERE LOWER(HEX(cq.content_image_url)) = LOWER($1) 
        AND cq.content_image_url IS NOT NULL
-       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
+       AND ($2 IS NULL OR cq.id != $2)
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [imageHash, excludeId]
@@ -431,9 +435,9 @@ export class DuplicateDetectionService {
   private async findVideoMatch(videoHash: string, excludeId?: number): Promise<any> {
     const result = await db.query(
       `SELECT cq.* FROM content_queue cq
-       WHERE MD5(cq.content_video_url) = $1 
+       WHERE LOWER(HEX(cq.content_video_url)) = LOWER($1) 
        AND cq.content_video_url IS NOT NULL
-       AND ($2::INTEGER IS NULL OR cq.id != $2::INTEGER)
+       AND ($2 IS NULL OR cq.id != $2)
        ORDER BY cq.created_at ASC
        LIMIT 1`,
       [videoHash, excludeId]

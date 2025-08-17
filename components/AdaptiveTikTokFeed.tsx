@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { ContentType, SourcePlatform } from '@/types'
+import MobileVideoPlayer from '@/components/video/MobileVideoPlayer'
+import MobileYouTubePlayer from '@/components/video/MobileYouTubePlayer'
+import FeedErrorBoundary from '@/components/error/FeedErrorBoundary'
+import CardErrorBoundary from '@/components/error/CardErrorBoundary'
+import { useComponentErrorHandler } from '@/hooks/useClientErrorHandler'
 
 interface Post {
   id: number
@@ -59,6 +64,7 @@ export default function AdaptiveTikTokFeed() {
   const [isMobile, setIsMobile] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const videosRef = useRef<{ [key: number]: HTMLVideoElement }>({})
+  const { handleAsyncError, safeExecute } = useComponentErrorHandler('AdaptiveTikTokFeed')
 
   useEffect(() => {
     fetchPosts()
@@ -276,45 +282,59 @@ export default function AdaptiveTikTokFeed() {
   }, [currentIndex, posts.length])
 
   const fetchPosts = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/content?limit=50')
-      
-      if (!response.ok) {
-        throw new Error('Failed to load content')
-      }
-      
-      const data = await response.json()
-      
-      // Add welcome card
-      const welcomeCard: Post = {
-        id: -999,
-        content_text: "Welcome to Hotdog Diaries! Swipe up to see the best hotdog content from around the internet.",
-        content_type: 'text' as ContentType,
-        source_platform: 'reddit' as SourcePlatform,
-        original_url: '',
-        original_author: 'Hotdog Diaries',
-        scraped_at: new Date(),
-        is_posted: false,
-        is_approved: true
-      }
-      
-      // Transform API response to match Post interface
-      const transformedContent = data.data.content.map((item: any) => ({
-        ...item,
-        is_posted: !!item.is_posted,
-        is_approved: !!item.is_approved,
-        scraped_at: new Date(item.scraped_at),
-        posted_at: item.posted_at ? new Date(item.posted_at) : undefined
-      }))
-      
-      setPosts([welcomeCard, ...transformedContent])
-      console.log(`✅ Loaded ${transformedContent.length} posts with minimum height system applied`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load content')
-    } finally {
-      setLoading(false)
+    setLoading(true)
+    setError(null)
+
+    const result = await safeExecute(
+      async () => {
+        const response = await fetch('/api/content?limit=50')
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load content: ${response.status} ${response.statusText}`)
+        }
+        
+        const data = await response.json()
+        
+        if (!data.success || !data.data?.content) {
+          throw new Error('Invalid response format from content API')
+        }
+
+        // Add welcome card
+        const welcomeCard: Post = {
+          id: -999,
+          content_text: "Welcome to Hotdog Diaries! Swipe up to see the best hotdog content from around the internet.",
+          content_type: 'text' as ContentType,
+          source_platform: 'reddit' as SourcePlatform,
+          original_url: '',
+          original_author: 'Hotdog Diaries',
+          scraped_at: new Date(),
+          is_posted: false,
+          is_approved: true
+        }
+        
+        // Transform API response to match Post interface
+        const transformedContent = data.data.content.map((item: any) => ({
+          ...item,
+          is_posted: !!item.is_posted,
+          is_approved: !!item.is_approved,
+          scraped_at: new Date(item.scraped_at),
+          posted_at: item.posted_at ? new Date(item.posted_at) : undefined
+        }))
+        
+        console.log(`✅ Loaded ${transformedContent.length} posts with minimum height system applied`)
+        return [welcomeCard, ...transformedContent]
+      },
+      [] as Post[], // fallback value
+      'fetchPosts'
+    )
+
+    if (result.length === 0 && !error) {
+      setError('No content available. Please check your connection and try again.')
+    } else {
+      setPosts(result)
     }
+
+    setLoading(false)
   }
 
   const handleScroll = () => {
@@ -529,141 +549,147 @@ export default function AdaptiveTikTokFeed() {
   }
 
   return (
-    <div className="page-container">
-      {/* Fixed header */}
-      <div className="header-title">
-        <span className="hotdog-icon">🌭</span>
-        <span className="title-text">Hotdog Diaries</span>
-      </div>
-      
-      {/* Admin login button */}
-      <div className="admin-controls" style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        zIndex: 100
-      }}>
-        <button 
-          onClick={() => window.location.href = '/admin/login'}
-          style={{
-            background: 'rgba(255, 255, 255, 0.95)',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            padding: '8px 16px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#333',
-            cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            (e.target as HTMLElement).style.background = 'rgba(255, 255, 255, 1)';
-            (e.target as HTMLElement).style.transform = 'translateY(-1px)';
-            (e.target as HTMLElement).style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-          }}
-          onMouseLeave={(e) => {
-            (e.target as HTMLElement).style.background = 'rgba(255, 255, 255, 0.95)';
-            (e.target as HTMLElement).style.transform = 'translateY(0)';
-            (e.target as HTMLElement).style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
-          }}
-        >
-          Admin
-        </button>
-      </div>
-      
-      {/* Feed container */}
-      <div 
-        ref={containerRef}
-        className="feed-container"
-        onScroll={handleScroll}
-      >
-        {posts.map((post, index) => (
-          <div 
-            key={post.id} 
-            className="card-wrapper"
-            data-card-id={post.id}
-            data-card-index={index}
+    <FeedErrorBoundary name="AdaptiveTikTokFeed">
+      <div className="page-container">
+        {/* Fixed header */}
+        <div className="header-title">
+          <span className="hotdog-icon">🌭</span>
+          <span className="title-text">Hotdog Diaries</span>
+        </div>
+        
+        {/* Admin login button */}
+        <div className="admin-controls" style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 100
+        }}>
+          <button 
+            onClick={() => window.location.href = '/admin/login'}
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#333',
+              cursor: 'pointer',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.background = 'rgba(255, 255, 255, 1)';
+              (e.target as HTMLElement).style.transform = 'translateY(-1px)';
+              (e.target as HTMLElement).style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.background = 'rgba(255, 255, 255, 0.95)';
+              (e.target as HTMLElement).style.transform = 'translateY(0)';
+              (e.target as HTMLElement).style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+            }}
           >
-            <div 
-              className={`content-card ${getCardClass(post)}`}
-              onMouseEnter={() => {
-                const cardElement = document.querySelector(`[data-card-id="${post.id}"] .caption-overlay`) as HTMLElement;
-                if (cardElement && post.content_text && typeof window !== 'undefined' && !('ontouchstart' in window)) {
-                  cardElement.style.opacity = '1';
-                  cardElement.style.transform = 'translateY(0)';
-                }
-              }}
-              onMouseLeave={() => {
-                const cardElement = document.querySelector(`[data-card-id="${post.id}"] .caption-overlay`) as HTMLElement;
-                if (cardElement) {
-                  cardElement.style.opacity = '0';
-                  cardElement.style.transform = 'translateY(10px)';
-                }
-              }}
+            Admin
+          </button>
+        </div>
+        
+        {/* Feed container */}
+        <div 
+          ref={containerRef}
+          className="feed-container"
+          onScroll={handleScroll}
+        >
+          {posts.map((post, index) => (
+            <CardErrorBoundary
+              key={post.id}
+              cardId={post.id}
+              platform={post.source_platform}
             >
-              <PostContent 
-                post={post} 
-                isActive={index === currentIndex}
-                videoRef={(el) => {
-                  if (el) videosRef.current[index] = el
-                }}
-                getPlatformIcon={getPlatformIcon}
-              />
-              
-              {/* Caption overlay - only show for media content, not text-only cards */}
-              {post.content_text && (post.content_image_url || post.content_video_url) && (
+              <div 
+                className="card-wrapper"
+                data-card-id={post.id}
+                data-card-index={index}
+              >
                 <div 
-                  className="caption-overlay"
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    padding: '12px 16px',
-                    fontSize: '13px',
-                    lineHeight: '1.4',
-                    color: 'white',
-                    maxWidth: '80%',
-                    opacity: 0,
-                    transition: 'opacity 0.2s ease, transform 0.2s ease',
-                    transform: 'translateY(10px)',
-                    pointerEvents: 'none',
-                    zIndex: 10,
-                    background: 'linear-gradient(to top, rgba(197, 123, 39, 0.9), transparent)',
-                    display: typeof window !== 'undefined' && 'ontouchstart' in window ? 'none' : 'block'
+                  className={`content-card ${getCardClass(post)}`}
+                  onMouseEnter={() => {
+                    const cardElement = document.querySelector(`[data-card-id="${post.id}"] .caption-overlay`) as HTMLElement;
+                    if (cardElement && post.content_text && typeof window !== 'undefined' && !('ontouchstart' in window)) {
+                      cardElement.style.opacity = '1';
+                      cardElement.style.transform = 'translateY(0)';
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    const cardElement = document.querySelector(`[data-card-id="${post.id}"] .caption-overlay`) as HTMLElement;
+                    if (cardElement) {
+                      cardElement.style.opacity = '0';
+                      cardElement.style.transform = 'translateY(10px)';
+                    }
                   }}
                 >
-                  {post.content_text.length > 120 
-                    ? post.content_text.substring(0, 120).trim() + '...'
-                    : post.content_text
-                  }
+                  <PostContent 
+                    post={post} 
+                    isActive={index === currentIndex}
+                    videoRef={(el) => {
+                      if (el) videosRef.current[index] = el
+                    }}
+                    getPlatformIcon={getPlatformIcon}
+                  />
+                  
+                  {/* Caption overlay - only show for media content, not text-only cards */}
+                  {post.content_text && (post.content_image_url || post.content_video_url) && (
+                    <div 
+                      className="caption-overlay"
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        padding: '12px 16px',
+                        fontSize: '13px',
+                        lineHeight: '1.4',
+                        color: 'white',
+                        maxWidth: '80%',
+                        opacity: 0,
+                        transition: 'opacity 0.2s ease, transform 0.2s ease',
+                        transform: 'translateY(10px)',
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                        background: 'linear-gradient(to top, rgba(197, 123, 39, 0.9), transparent)',
+                        display: typeof window !== 'undefined' && 'ontouchstart' in window ? 'none' : 'block'
+                      }}
+                    >
+                      {post.content_text.length > 120 
+                        ? post.content_text.substring(0, 120).trim() + '...'
+                        : post.content_text
+                      }
+                    </div>
+                  )}
+                  
+                  {/* Hidden author metadata for accessibility */}
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      width: '1px',
+                      height: '1px',
+                      padding: 0,
+                      margin: '-1px',
+                      overflow: 'hidden',
+                      clip: 'rect(0,0,0,0)',
+                      whiteSpace: 'nowrap',
+                      border: 0
+                    }}
+                  >
+                    Posted by {post.original_author} on {post.source_platform}
+                  </div>
                 </div>
-              )}
-              
-              {/* Hidden author metadata for accessibility */}
-              <div 
-                style={{
-                  position: 'absolute',
-                  width: '1px',
-                  height: '1px',
-                  padding: 0,
-                  margin: '-1px',
-                  overflow: 'hidden',
-                  clip: 'rect(0,0,0,0)',
-                  whiteSpace: 'nowrap',
-                  border: 0
-                }}
-              >
-                Posted by {post.original_author} on {post.source_platform}
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            </CardErrorBoundary>
+          ))}
+        </div>
 
-      {/* Navigation Buttons */}
-      <NavigationButtons />
+        {/* Navigation Buttons */}
+        <NavigationButtons />
 
       <style jsx>{`
         .page-container {
@@ -1106,6 +1132,7 @@ export default function AdaptiveTikTokFeed() {
         }
       `}</style>
     </div>
+    </FeedErrorBoundary>
   )
 }
 
@@ -1389,7 +1416,7 @@ function PostContent({
       });
     }
 
-    // YouTube videos - STRICT iframe containment (no expansion allowed)
+    // YouTube videos with enhanced mobile controls
     if (post.source_platform === 'youtube' && post.content_video_url && !videoError) {
       const videoId = post.content_video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]
       console.log(`🎥 YouTube rendering: ID=${post.id}, videoId=${videoId}, isActive=${isActive}`)
@@ -1397,17 +1424,18 @@ function PostContent({
       if (videoId) {
         return (
           <div className="youtube-container" data-youtube-id={videoId}>
-            <iframe
-              src={`https://www.youtube.com/embed/${videoId}?autoplay=0&mute=1&rel=0&modestbranding=1&playsinline=1&controls=1&showinfo=0&iv_load_policy=3`}
-              frameBorder="0"
-              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen={false}
-              sandbox="allow-scripts allow-same-origin allow-presentation"
-              onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
+            <MobileYouTubePlayer
+              videoId={videoId}
+              isActive={isActive}
+              onPlayerRef={(el) => {
+                if (el) {
+                  // Apply scaling to the iframe container
+                  setTimeout(() => scalePlatformContent(el, post), 100)
+                }
+              }}
               style={{
-                border: 'none',
-                pointerEvents: 'all',
-                display: 'block'
+                width: '100%',
+                height: '100%'
               }}
             />
           </div>
@@ -1417,21 +1445,25 @@ function PostContent({
 
     // Mixed content removed - Reddit, Tumblr, and Lemmy now show media only (no captions)
 
-    // Giphy content - preserve aspect ratio
+    // Giphy content with enhanced mobile controls
     if (post.source_platform === 'giphy') {
       if (post.content_video_url && !videoError) {
         return (
           <div className="giphy-container">
-            <video
-              ref={videoRef}
+            <MobileVideoPlayer
               src={post.content_video_url}
-              autoPlay={isActive}
-              loop
-              muted
-              playsInline
               poster={post.content_image_url}
-              onLoadedMetadata={(e) => scalePlatformContent(e.target as HTMLElement, post)}
-              onError={() => setVideoError(true)}
+              isActive={isActive}
+              onVideoRef={(el) => {
+                if (videoRef && el) videoRef(el)
+                if (el) {
+                  setTimeout(() => scalePlatformContent(el, post), 100)
+                }
+              }}
+              style={{
+                width: '100%',
+                height: '100%'
+              }}
             />
           </div>
         )
@@ -1449,21 +1481,24 @@ function PostContent({
       }
     }
 
-    // Direct videos
+    // Direct videos with enhanced mobile controls
     if (post.content_video_url && !videoError) {
       return (
         <div className="video-container">
-          <video
-            ref={videoRef}
+          <MobileVideoPlayer
             src={post.content_video_url}
-            autoPlay={isActive}
-            loop
-            muted
-            playsInline
-            controls={false}
             poster={post.content_image_url}
-            onLoadedMetadata={(e) => scalePlatformContent(e.target as HTMLElement, post)}
-            onError={() => setVideoError(true)}
+            isActive={isActive}
+            onVideoRef={(el) => {
+              if (videoRef && el) videoRef(el)
+              if (el) {
+                setTimeout(() => scalePlatformContent(el, post), 100)
+              }
+            }}
+            style={{
+              width: '100%',
+              height: '100%'
+            }}
           />
         </div>
       )
@@ -1892,6 +1927,6 @@ function PostContent({
           }
         }
       `}</style>
-    </div>
-  )
+      </div>
+    )
 }

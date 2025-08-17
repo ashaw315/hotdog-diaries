@@ -3,6 +3,9 @@
 import { ContentType, SourcePlatform } from '@/types'
 import { formatDistanceToNow } from 'date-fns'
 import { useState } from 'react'
+import MobileVideoPlayer from '@/components/video/MobileVideoPlayer'
+import MobileYouTubePlayer from '@/components/video/MobileYouTubePlayer'
+import { useComponentErrorHandler } from '@/hooks/useClientErrorHandler'
 
 export interface ContentCardProps {
   id: number
@@ -48,6 +51,7 @@ export default function ContentCard({
   const [imageError, setImageError] = useState(false)
   const [imageLoading, setImageLoading] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
+  const { handleError, safeExecute } = useComponentErrorHandler(`ContentCard_${id}`)
 
   // Detect touch device
   const isTouchDevice = typeof window !== 'undefined' && 'ontouchstart' in window
@@ -145,12 +149,23 @@ export default function ContentCard({
   }
 
   const handleImageLoad = () => {
-    setImageLoading(false)
+    try {
+      setImageLoading(false)
+    } catch (error) {
+      handleError(error as Error, 'handleImageLoad')
+    }
   }
 
-  const handleImageError = () => {
-    setImageError(true)
-    setImageLoading(false)
+  const handleImageError = (error?: Error) => {
+    try {
+      setImageError(true)
+      setImageLoading(false)
+      if (error) {
+        handleError(error, 'Image loading failed')
+      }
+    } catch (err) {
+      handleError(err as Error, 'handleImageError')
+    }
   }
 
   const renderHiddenMeta = () => (
@@ -253,45 +268,39 @@ export default function ContentCard({
         )}
 
         {content_video_url && (
-          <div className="mb-sm" style={{ position: 'relative' }}>
-            {/* YouTube embed */}
+          <div className="mb-sm" style={{ position: 'relative', minHeight: '200px' }}>
+            {/* YouTube embed with mobile controls */}
             {content_video_url.includes('youtube.com/watch') ? (
               (() => {
                 const videoId = content_video_url.split('v=')[1]?.split('&')[0]
                 if (videoId) {
-                  <iframe
-        src={`https://www.youtube.com/embed/${videoId}?controls=1&rel=0`}
-        // NO autoplay - user must click play
-        className="absolute inset-0 w-full h-full"
-        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
+                  return (
+                    <MobileYouTubePlayer
+                      videoId={videoId}
+                      isActive={true}
+                      style={{ 
+                        width: '100%', 
+                        maxWidth: '480px',
+                        height: '270px'
+                      }}
+                    />
+                  )
                 }
                 return null
               })()
             ) : 
-            /* Direct video files (MP4, etc.) */
+            /* Direct video files with mobile controls */
             content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
-              <video 
-                controls 
-                loop 
-                autoPlay 
-                muted
+              <MobileVideoPlayer
+                src={content_video_url}
+                poster={content_image_url}
+                isActive={true}
                 style={{ 
                   width: '100%', 
                   maxWidth: '480px',
-                  maxHeight: '300px',
-                  objectFit: 'contain'
+                  height: '300px'
                 }}
-              >
-                <source src={content_video_url} type="video/mp4" />
-                <p>
-                  Your browser doesn't support video playback. 
-                  <a href={content_video_url} target="_blank" rel="noopener noreferrer">
-                    View video directly
-                  </a>
-                </p>
-              </video>
+              />
             ) : 
             /* Fallback for other video URLs */
             (

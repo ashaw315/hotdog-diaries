@@ -1,6 +1,7 @@
 import { YouTubeService, ProcessedYouTubeVideo, YouTubeSearchOptions } from './youtube'
 import { FilteringService } from './filtering'
 import { ContentProcessor } from './content-processor'
+import { contentProcessorFixed } from './content-processor-fixed'
 import { DuplicateDetectionService } from './duplicate-detection'
 import { query, insert } from '@/lib/db-query-builder'
 import { logToDatabase } from '@/lib/db'
@@ -39,7 +40,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_1',
     title: 'The Ultimate Chicago Hot Dog Taste Test',
     description: 'We visit 5 famous Chicago hot dog stands to find the ultimate Chicago-style dog! From Vienna Beef to local favorites, see which one comes out on top.',
-    url: 'https://via.placeholder.com/1280x720/FF0000/FFFFFF?text=YouTube+Chicago+Hotdog',
     thumbnailUrl: 'https://via.placeholder.com/480x360/FF0000/FFFFFF?text=Chicago+Test',
     videoUrl: 'https://via.placeholder.com/1280x720/FF0000/FFFFFF?text=YouTube+Chicago+Hotdog',
     channelTitle: 'Food Quest Chicago',
@@ -59,7 +59,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_2',
     title: 'Grilling Perfect Bratwurst - BBQ Technique',
     description: 'Learn the secrets to grilling perfect bratwurst every time! Temperature control, timing, and the best toppings for your summer BBQ.',
-    url: 'https://via.placeholder.com/1280x720/00AA00/FFFFFF?text=BBQ+Bratwurst+Guide',
     thumbnailUrl: 'https://via.placeholder.com/480x360/00AA00/FFFFFF?text=BBQ+Guide',
     videoUrl: 'https://via.placeholder.com/1280x720/00AA00/FFFFFF?text=BBQ+Bratwurst+Guide',
     channelTitle: 'Grill Master Academy',
@@ -79,7 +78,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_3',
     title: 'Stadium Hot Dog Vendors - Behind the Scenes',
     description: 'Ever wonder how baseball stadium hot dog vendors prepare for game day? Go behind the scenes at Yankee Stadium to see the operation!',
-    url: 'https://via.placeholder.com/1280x720/0088FF/FFFFFF?text=Stadium+Vendors',
     thumbnailUrl: 'https://via.placeholder.com/480x360/0088FF/FFFFFF?text=Stadium',
     videoUrl: 'https://via.placeholder.com/1280x720/0088FF/FFFFFF?text=Stadium+Vendors',
     channelTitle: 'Baseball Insider',
@@ -99,7 +97,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_4',
     title: 'German Currywurst Recipe - Street Food at Home',
     description: 'Recreate authentic Berlin currywurst at home! Traditional recipe with homemade curry ketchup sauce and the perfect bratwurst.',
-    url: 'https://via.placeholder.com/1280x720/FFAA00/FFFFFF?text=Currywurst+Recipe',
     thumbnailUrl: 'https://via.placeholder.com/480x360/FFAA00/FFFFFF?text=Currywurst',
     videoUrl: 'https://via.placeholder.com/1280x720/FFAA00/FFFFFF?text=Currywurst+Recipe',
     channelTitle: 'European Street Food',
@@ -119,7 +116,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_5',
     title: 'NYC Hot Dog Cart Tour - Best Street Dogs',
     description: 'Touring the best hot dog carts in New York City! From classic dirty water dogs to gourmet toppings, we try them all.',
-    url: 'https://via.placeholder.com/1280x720/AA00AA/FFFFFF?text=NYC+Cart+Tour',
     thumbnailUrl: 'https://via.placeholder.com/480x360/AA00AA/FFFFFF?text=NYC+Tour',
     videoUrl: 'https://via.placeholder.com/1280x720/AA00AA/FFFFFF?text=NYC+Cart+Tour',
     channelTitle: 'Street Eats NYC',
@@ -139,7 +135,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_6',
     title: 'Hot Dog Eating Contest Training',
     description: 'Professional competitive eater shows training techniques for hot dog eating contests. Preparation for Nathan\'s Famous contest.',
-    url: 'https://via.placeholder.com/1280x720/00AAAA/FFFFFF?text=Eating+Training',
     thumbnailUrl: 'https://via.placeholder.com/480x360/00AAAA/FFFFFF?text=Training',
     videoUrl: 'https://via.placeholder.com/1280x720/00AAAA/FFFFFF?text=Eating+Training',
     channelTitle: 'Competitive Eating Pro',
@@ -159,7 +154,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_7',
     title: 'Homemade Hot Dog Sausages from Scratch',
     description: 'Making hot dog sausages completely from scratch! Grinding meat, seasoning, stuffing casings, and the final cooking process.',
-    url: 'https://via.placeholder.com/1280x720/AA5500/FFFFFF?text=Homemade+Sausage',
     thumbnailUrl: 'https://via.placeholder.com/480x360/AA5500/FFFFFF?text=Homemade',
     videoUrl: 'https://via.placeholder.com/1280x720/AA5500/FFFFFF?text=Homemade+Sausage',
     channelTitle: 'Artisan Butcher',
@@ -179,7 +173,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_8',
     title: 'Korean Corn Dog Street Food Review',
     description: 'Trying Korean-style corn dogs with mozzarella cheese, rice puffs, and unique coatings! Are they better than American corn dogs?',
-    url: 'https://via.placeholder.com/1280x720/FF5500/FFFFFF?text=Korean+Corn+Dog',
     thumbnailUrl: 'https://via.placeholder.com/480x360/FF5500/FFFFFF?text=Korean',
     videoUrl: 'https://via.placeholder.com/1280x720/FF5500/FFFFFF?text=Korean+Corn+Dog',
     channelTitle: 'Asian Street Food Explorer',
@@ -199,7 +192,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_9',
     title: 'Chili Cheese Dog Challenge - 5 Pound Monster',
     description: 'Attempting to eat a 5-pound chili cheese dog in under 30 minutes! This massive creation has 2 pounds of chili and a full pound of cheese.',
-    url: 'https://via.placeholder.com/1280x720/AA0055/FFFFFF?text=Chili+Challenge',
     thumbnailUrl: 'https://via.placeholder.com/480x360/AA0055/FFFFFF?text=Challenge',
     videoUrl: 'https://via.placeholder.com/1280x720/AA0055/FFFFFF?text=Chili+Challenge',
     channelTitle: 'Food Challenge King',
@@ -219,7 +211,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_10',
     title: 'Gourmet Hot Dog Recipes - 5 Upscale Variations',
     description: 'Elevating the humble hot dog with gourmet ingredients! Truffle aioli, craft beer braised onions, and artisan sausages.',
-    url: 'https://via.placeholder.com/1280x720/5500AA/FFFFFF?text=Gourmet+Recipes',
     thumbnailUrl: 'https://via.placeholder.com/480x360/5500AA/FFFFFF?text=Gourmet',
     videoUrl: 'https://via.placeholder.com/1280x720/5500AA/FFFFFF?text=Gourmet+Recipes',
     channelTitle: 'Chef\'s Table Home',
@@ -239,7 +230,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_11',
     title: 'Polish Kielbasa Festival - Traditional Cooking',
     description: 'Visiting a traditional Polish kielbasa festival where families share recipes passed down for generations. Authentic preparation methods.',
-    url: 'https://via.placeholder.com/1280x720/0055AA/FFFFFF?text=Polish+Festival',
     thumbnailUrl: 'https://via.placeholder.com/480x360/0055AA/FFFFFF?text=Polish',
     videoUrl: 'https://via.placeholder.com/1280x720/0055AA/FFFFFF?text=Polish+Festival',
     channelTitle: 'Cultural Food Journey',
@@ -259,7 +249,6 @@ const MOCK_YOUTUBE_VIDEOS: ProcessedYouTubeVideo[] = [
     id: 'mock_youtube_12',
     title: 'Hot Dog Science - Food Lab Experiment',
     description: 'The science behind the perfect hot dog! Testing different cooking methods, temperatures, and casings to find the optimal preparation.',
-    url: 'https://via.placeholder.com/1280x720/AA5555/FFFFFF?text=Food+Science',
     thumbnailUrl: 'https://via.placeholder.com/480x360/AA5555/FFFFFF?text=Science',
     videoUrl: 'https://via.placeholder.com/1280x720/AA5555/FFFFFF?text=Food+Science',
     channelTitle: 'Food Science Lab',
@@ -423,9 +412,8 @@ export class YouTubeScanningService {
         // Check for duplicates
         const duplicateResult = await this.duplicateDetection.checkForDuplicates({
           platform: 'youtube',
-          url: video.url,
           title: video.title,
-          content_hash: await this.contentProcessor.generateContentHash(video.url)
+          content_hash: await this.contentProcessor.generateContentHash(video.videoUrl)
         })
 
         if (duplicateResult.isDuplicate) {
@@ -436,7 +424,6 @@ export class YouTubeScanningService {
         // Apply content filtering
         const contentAnalysis = await this.filteringService.isValidHotdogContent({
           text: `${video.title} ${video.description}`,
-          url: video.url,
           metadata: {
             tags: video.tags,
             viewCount: video.viewCount,
@@ -449,26 +436,30 @@ export class YouTubeScanningService {
           continue
         }
 
-        // Store the content first
-        const contentId = await this.saveVideoToQueue(video)
+        // Use fixed processor for mock videos too
+        const videoData = {
+          content_text: video.title,
+          content_image_url: video.thumbnailUrl,
+          content_video_url: video.videoUrl,
+          content_type: 'video',
+          source_platform: 'youtube',
+          original_url: video.videoUrl,
+          original_author: video.channelTitle,
+          confidence_score: 0.85 // Good confidence for mock videos
+        }
         
-        if (contentId) {
-          // Process with content processor using the ID
-          const processingResult = await this.contentProcessor.processContent(contentId, {
-            autoApprovalThreshold: 0.5, // Slightly lower threshold for YouTube videos
-            autoRejectionThreshold: 0.2,
-            enableDuplicateDetection: true
-          })
-
+        const processingResult = await contentProcessorFixed.processContentQuick(videoData)
+        
+        if (processingResult.success) {
           if (processingResult.action === 'approved') {
             result.approved++
           } else {
             result.rejected++
           }
+          result.processed++
         } else {
-          result.errors.push(`Failed to save YouTube video: ${video.title}`)
+          result.errors.push(`Failed to process mock video: ${video.title} (${processingResult.reason})`)
         }
-        result.processed++
 
       } catch (videoError) {
         result.errors.push(`Mock video processing error: ${videoError.message}`)
@@ -515,9 +506,8 @@ export class YouTubeScanningService {
         }
 
         const searchOptions: YouTubeSearchOptions = {
-          q: searchTerm,
+          query: searchTerm,
           maxResults: 5, // Fixed number for testing
-          type: 'video',
           order: 'relevance'
           // Removed date restriction and videoDuration to test
         }
@@ -542,9 +532,8 @@ export class YouTubeScanningService {
             // Check for duplicates
             const duplicateResult = await this.duplicateDetection.checkForDuplicates({
               platform: 'youtube',
-              url: video.url,
               title: video.title,
-              content_hash: await this.contentProcessor.generateContentHash(video.url)
+              content_hash: await this.contentProcessor.generateContentHash(video.videoUrl)
             })
 
             if (duplicateResult.isDuplicate) {
@@ -557,7 +546,6 @@ export class YouTubeScanningService {
             
             const contentAnalysis = await this.filteringService.isValidHotdogContent({
               text: `${video.title} ${video.description}`,
-              url: video.url,
               metadata: {
                 tags: video.tags,
                 viewCount: video.viewCount,
@@ -579,38 +567,32 @@ export class YouTubeScanningService {
               continue
             }
 
-            // Process and store the content
-            const processedContent = await this.contentProcessor.processContent({
-              platform: 'youtube',
-              type: 'video',
-              title: video.title,
-              content: video.description,
-              url: video.url,
-              videoUrl: video.videoUrl,
-              thumbnailUrl: video.thumbnailUrl,
-              author: video.channelTitle,
-              authorUrl: video.channelUrl,
-              publishedAt: video.publishedAt,
-              metadata: {
-                originalId: video.id,
-                channelId: video.channelId,
-                viewCount: video.viewCount,
-                likeCount: video.likeCount,
-                commentCount: video.commentCount,
-                duration: video.duration,
-                tags: video.tags,
-                definition: video.definition,
-                caption: video.caption,
-                categoryId: video.categoryId
-              }
-            })
-
-            if (processedContent.isApproved) {
-              result.approved++
-            } else {
-              result.rejected++
+            // Use fixed processor that handles both processing and saving
+            const videoData = {
+              content_text: video.title,
+              content_image_url: video.thumbnailUrl,
+              content_video_url: video.videoUrl,
+              content_type: 'video',
+              source_platform: 'youtube',
+              original_url: video.videoUrl,
+              original_author: video.channelTitle,
+              confidence_score: 0.9 // High confidence for YouTube videos
             }
-            result.processed++
+            
+            const processingResult = await contentProcessorFixed.processContentQuick(videoData)
+            
+            if (processingResult.success) {
+              if (processingResult.action === 'approved') {
+                result.approved++
+              } else if (processingResult.action === 'duplicate') {
+                result.duplicates++
+              } else {
+                result.rejected++
+              }
+              result.processed++
+            } else {
+              result.errors.push(`Failed to process YouTube video: ${video.title} (${processingResult.reason})`)
+            }
 
           } catch (videoError) {
             result.errors.push(`Video processing error: ${videoError.message}`)
@@ -666,9 +648,8 @@ export class YouTubeScanningService {
 
       // Try a simple search to test the connection
       const testVideos = await this.youtubeService.searchVideos({
-        q: 'hotdog',
-        maxResults: 1,
-        type: 'video'
+        query: 'hotdog',
+        maxResults: 1
       })
       this.incrementRequestCount(100)
 
@@ -806,14 +787,14 @@ export class YouTubeScanningService {
    */
   private async saveVideoToQueue(video: ProcessedYouTubeVideo): Promise<number | null> {
     try {
-      const contentHash = this.generateContentHash(video.url, video.title)
+      const contentHash = this.generateContentHash(video.videoUrl, video.title)
       
       const result = await db.query(
         `INSERT INTO content_queue (
           content_text, content_image_url, content_video_url, content_type, 
           source_platform, original_url, original_author, content_hash, 
-          content_metadata, scraped_at, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), NOW()) 
+          scraped_at, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, datetime('now'), datetime('now'), datetime('now')) 
         RETURNING id`,
         [
           video.title,
@@ -821,24 +802,9 @@ export class YouTubeScanningService {
           video.videoUrl,
           'video',
           'youtube',
-          video.url,
+          video.videoUrl,
           video.channelTitle,
-          contentHash,
-          JSON.stringify({
-            originalId: video.id,
-            channelId: video.channelId,
-            channelUrl: video.channelUrl,
-            description: video.description,
-            publishedAt: video.publishedAt,
-            viewCount: video.viewCount,
-            likeCount: video.likeCount,
-            commentCount: video.commentCount,
-            duration: video.duration,
-            tags: video.tags,
-            definition: video.definition,
-            caption: video.caption,
-            categoryId: video.categoryId
-          })
+          contentHash
         ]
       )
 

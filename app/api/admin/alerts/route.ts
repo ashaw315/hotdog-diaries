@@ -25,7 +25,7 @@ export const GET = errorHandler.withErrorHandling(async (request: NextRequest) =
   return NextResponse.json(alertHistory)
 })
 
-export const POST = errorHandler.withErrorHandling(async (request: NextRequest) => {
+export const POST = errorHandler.withErrorHandling<{ success?: boolean; error?: string; message?: string }>(async (request: NextRequest) => {
   const body = await request.json()
   const { action, alertId, title, message, type, severity, metadata } = body
 

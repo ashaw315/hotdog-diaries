@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-process.env.NODE_ENV = 'development'
+// process.env.NODE_ENV = 'development' // Read-only in TypeScript
 import { db } from '../lib/db'
 
 async function checkLemmyPost() {

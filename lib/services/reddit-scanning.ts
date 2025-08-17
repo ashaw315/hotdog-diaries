@@ -6,6 +6,10 @@ import { redditMonitoringService } from './reddit-monitoring'
 import { query, insert } from '@/lib/db-query-builder'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { loadEnv } from '@/lib/env'
+
+// Ensure environment variables are loaded
+loadEnv()
 
 export interface RedditScanConfig {
   isEnabled: boolean

@@ -65,7 +65,7 @@ export default function PostedContentPage() {
         throw new Error('Failed to load posted content')
       }
 
-      if (statsResponse.status === 'fulfilled' && statsResponse.value.ok) {
+      if (statsResponse.status === 'fulfilled' && statsResponse.value.ok && 'json' in statsResponse.value) {
         const statsData = await statsResponse.value.json()
         setStats(statsData.data)
       }

@@ -1,6 +1,10 @@
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 import { youtubeMonitoringService } from './youtube-monitoring'
+import { loadEnv } from '@/lib/env'
+
+// Ensure environment variables are loaded
+loadEnv()
 
 export interface YouTubeSearchOptions {
   query: string

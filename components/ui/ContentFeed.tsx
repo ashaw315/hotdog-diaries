@@ -20,7 +20,7 @@ interface ContentItem {
 }
 
 interface ContentFeedProps {
-  type?: 'all' | 'pending' | 'posted' | 'approved'
+  type?: 'all' | 'pending' | 'posted' | 'approved' | 'rejected'
   limit?: number
   showActions?: boolean
   onEdit?: (id: number) => void
