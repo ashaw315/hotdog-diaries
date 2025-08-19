@@ -56,12 +56,21 @@ export default function HotdogBounceLoader({ showControls = false }: HotdogBounc
   );
 
   const containerClasses = showControls 
-    ? "min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-6"
-    : "fixed inset-0 bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-6" 
+    ? "min-h-screen text-neutral-100 flex flex-col items-center justify-center p-6"
+    : "fixed inset-0 text-neutral-100 flex flex-col items-center justify-center p-6" 
     + " z-[99999]"; // Very high z-index to ensure it shows above everything
 
   return (
-    <div className={containerClasses}>
+    <div 
+      className={containerClasses}
+      style={{
+        backgroundImage: "url('/hotdog-tile.jpg')",
+        backgroundRepeat: 'repeat',
+        backgroundSize: '100px 100px',
+        backgroundPosition: '0 0', // Start from top-left corner, same as feed
+        height: '100vh',
+      }}
+    >
       <style>{`
         /* --- Motion Path version --- */
         @supports (offset-path: path("M0 0 L10 10")) {
@@ -117,15 +126,21 @@ export default function HotdogBounceLoader({ showControls = false }: HotdogBounc
         }
       `}</style>
 
-      <div className="relative w-full max-w-4xl h-[360px] grid grid-cols-3 items-end gap-12">
-        {delays.map((d, i) => (
-          <HotdogSlot key={i} i={i} delay={d} pathStr={pathStr} vars={vars} />
-        ))}
+      {/* Hotdog animation container */}
+      <div className="absolute top-1/2 left-1/2" style={{ transform: 'translate(-33%, -18%)' }}>
+        <div className="relative max-w-4xl h-[360px] flex items-center justify-center gap-12">
+          {delays.map((d, i) => (
+            <HotdogSlot key={i} i={i} delay={d} pathStr={pathStr} vars={vars} />
+          ))}
+        </div>
       </div>
 
-      <div className="mt-8 text-center">
-        <h2 className="text-2xl font-bold text-yellow-400 mb-2">🌭 Loading Hotdog Content...</h2>
-        <p className="text-neutral-400">Finding the best hotdog content for you</p>
+      {/* Loading text container - positioned independently */}
+      <div className="absolute top-1/2 left-1/2" style={{ transform: 'translate(-50%, 120px)' }}>
+        <div className="text-center bg-black/70 px-8 py-4 rounded-xl backdrop-blur-sm">
+          <h2 className="text-2xl font-bold text-yellow-400 mb-2">🌭 Loading Hotdog Content...</h2>
+          <p className="text-neutral-300">Finding the best hotdog content for you</p>
+        </div>
       </div>
 
       {showControls && (
@@ -147,9 +162,9 @@ export default function HotdogBounceLoader({ showControls = false }: HotdogBounc
 
 function HotdogSlot({ i, delay, pathStr, vars }: { i: number; delay: number; pathStr: string; vars: Record<string, string> }) {
   return (
-    <div className="relative w-full h-full grid place-items-end" data-i={i}>
+    <div className="relative w-[300px] h-full flex items-center justify-center" data-i={i}>
       <div
-        className="pointer-events-none absolute bottom-14 left-1/2 -translate-x-1/2 h-8 rounded-full"
+        className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 h-8 rounded-full"
         style={{
           width: "var(--shadowBase)",
           background:
