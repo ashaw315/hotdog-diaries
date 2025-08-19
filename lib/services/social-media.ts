@@ -212,6 +212,131 @@ export class SocialMediaService {
       }
     }
   }
+
+  async performCoordinatedScan(options = { maxPosts: 20 }) {
+    const scanId = `scan_${Date.now()}`;
+    const startTime = new Date();
+    const platforms = [];
+    let totalPostsFound = 0;
+    let totalPostsApproved = 0;
+    let successfulPlatforms = 0;
+    let failedPlatforms = 0;
+
+    try {
+      // Scan Reddit
+      try {
+        const redditResult = await this.scanningServices.reddit.performScan({ maxPosts: options.maxPosts });
+        platforms.push({
+          platform: 'reddit',
+          success: true,
+          postsFound: redditResult.processed || 0,
+          postsApproved: redditResult.approved || 0,
+          message: 'Scan completed successfully'
+        });
+        totalPostsFound += redditResult.processed || 0;
+        totalPostsApproved += redditResult.approved || 0;
+        successfulPlatforms++;
+      } catch (error) {
+        platforms.push({
+          platform: 'reddit',
+          success: false,
+          postsFound: 0,
+          postsApproved: 0,
+          error: error.message
+        });
+        failedPlatforms++;
+      }
+
+      // Scan YouTube
+      try {
+        const youtubeResult = await this.scanningServices.youtube.performScan({ maxPosts: options.maxPosts });
+        platforms.push({
+          platform: 'youtube',
+          success: true,
+          postsFound: youtubeResult.processed || 0,
+          postsApproved: youtubeResult.approved || 0,
+          message: 'Scan completed successfully'
+        });
+        totalPostsFound += youtubeResult.processed || 0;
+        totalPostsApproved += youtubeResult.approved || 0;
+        successfulPlatforms++;
+      } catch (error) {
+        platforms.push({
+          platform: 'youtube',
+          success: false,
+          postsFound: 0,
+          postsApproved: 0,
+          error: error.message
+        });
+        failedPlatforms++;
+      }
+
+      // Scan Bluesky
+      try {
+        const blueskyResult = await this.scanningServices.bluesky.performScan({ maxPosts: options.maxPosts });
+        platforms.push({
+          platform: 'bluesky',
+          success: true,
+          postsFound: blueskyResult.processed || 0,
+          postsApproved: blueskyResult.approved || 0,
+          message: 'Scan completed successfully'
+        });
+        totalPostsFound += blueskyResult.processed || 0;
+        totalPostsApproved += blueskyResult.approved || 0;
+        successfulPlatforms++;
+      } catch (error) {
+        platforms.push({
+          platform: 'bluesky',
+          success: false,
+          postsFound: 0,
+          postsApproved: 0,
+          error: error.message
+        });
+        failedPlatforms++;
+      }
+
+      // Scan Giphy
+      try {
+        const giphyResult = await this.scanningServices.giphy.performScan({ maxPosts: options.maxPosts });
+        platforms.push({
+          platform: 'giphy',
+          success: true,
+          postsFound: giphyResult.processed || 0,
+          postsApproved: giphyResult.approved || 0,
+          message: 'Scan completed successfully'
+        });
+        totalPostsFound += giphyResult.processed || 0;
+        totalPostsApproved += giphyResult.approved || 0;
+        successfulPlatforms++;
+      } catch (error) {
+        platforms.push({
+          platform: 'giphy',
+          success: false,
+          postsFound: 0,
+          postsApproved: 0,
+          error: error.message
+        });
+        failedPlatforms++;
+      }
+
+      const endTime = new Date();
+
+      return {
+        scanId,
+        startTime,
+        endTime,
+        platforms,
+        totalPostsFound,
+        totalPostsApproved,
+        successfulPlatforms,
+        failedPlatforms,
+        duration: endTime.getTime() - startTime.getTime()
+      };
+
+    } catch (error) {
+      throw new Error(`Coordinated scan failed: ${error.message}`);
+    }
+  }
 }
 
 export const socialMediaService = new SocialMediaService()

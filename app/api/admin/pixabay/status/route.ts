@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const clientId = process.env.IMGUR_CLIENT_ID;
+  const apiKey = process.env.PIXABAY_API_KEY;
   
   return NextResponse.json({
     success: true,
-    platform: 'imgur',
+    platform: 'pixabay',
     status: 'active',
-    authentication: clientId ? 'connected' : 'disconnected',
+    authentication: apiKey ? 'connected' : 'disconnected',
     health: 'healthy',
     lastScan: null,
     contentFound: 0,
