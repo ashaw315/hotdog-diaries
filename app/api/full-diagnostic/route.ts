@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { createSimpleClient } from '@/utils/supabase/server';
 
 export async function GET() {
   console.log('🔍 Running complete production diagnostic...\n');
@@ -48,26 +48,27 @@ export async function GET() {
   // 1. CHECK DATABASE CONNECTION
   try {
     console.log('Checking database connection...');
-    const testQuery = await sql`SELECT 1 as test`;
-    diagnostic.database.connected = true;
+    const supabase = createSimpleClient();
     
-    // Detect database type
-    if (process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres')) {
-      diagnostic.database.type = 'PostgreSQL (Vercel)';
-    } else {
-      diagnostic.database.type = 'Unknown';
-    }
+    // Test connection with a simple query
+    const { data, error } = await supabase.from('content_queue').select('count', { count: 'exact', head: true });
+    if (error) throw error;
+    
+    diagnostic.database.connected = true;
+    diagnostic.database.type = 'Supabase PostgreSQL';
     
     // Check tables
     try {
       const tables = ['admin_users', 'content_queue', 'posted_content', 'system_logs'];
       for (const table of tables) {
         try {
-          const count = await sql.query(`SELECT COUNT(*) as count FROM ${table}`);
+          const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+          if (error) throw error;
+          
           diagnostic.database.tables.push({
             name: table,
             exists: true,
-            rowCount: count.rows[0]?.count || 0
+            rowCount: count || 0
           });
         } catch (e) {
           diagnostic.database.tables.push({
@@ -90,34 +91,40 @@ export async function GET() {
   if (diagnostic.database.connected) {
     try {
       console.log('Checking content status...');
-      const contentStats = await sql`
-        SELECT 
-          COUNT(*) as total,
-          SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) as approved,
-          SUM(CASE WHEN is_posted = true THEN 1 ELSE 0 END) as posted,
-          SUM(CASE WHEN is_approved = true AND is_posted = false THEN 1 ELSE 0 END) as ready
-        FROM content_queue
-      `;
+      const supabase = createSimpleClient();
       
-      const stats = contentStats.rows[0];
+      // Get content stats
+      const { data: allContent, error: allError } = await supabase.from('content_queue').select('is_approved, is_posted');
+      if (allError) throw allError;
+      
+      const total = allContent?.length || 0;
+      const approved = allContent?.filter(c => c.is_approved).length || 0;
+      const posted = allContent?.filter(c => c.is_posted).length || 0;
+      const ready = allContent?.filter(c => c.is_approved && !c.is_posted).length || 0;
+      
       diagnostic.content = {
-        total: parseInt(stats?.total) || 0,
-        approved: parseInt(stats?.approved) || 0,
-        posted: parseInt(stats?.posted) || 0,
-        readyToPost: parseInt(stats?.ready) || 0,
+        total,
+        approved,
+        posted,
+        readyToPost: ready,
         platforms: {}
       };
       
       // Get platform breakdown
-      const platforms = await sql`
-        SELECT source_platform, COUNT(*) as count
-        FROM content_queue
-        GROUP BY source_platform
-      `;
+      const { data: platformData, error: platformError } = await supabase
+        .from('content_queue')
+        .select('source_platform')
+        .then(result => {
+          if (result.error) throw result.error;
+          const platforms: Record<string, number> = {};
+          result.data?.forEach(p => {
+            platforms[p.source_platform] = (platforms[p.source_platform] || 0) + 1;
+          });
+          return { data: platforms, error: null };
+        });
       
-      platforms.rows?.forEach(p => {
-        diagnostic.content.platforms[p.source_platform] = parseInt(p.count);
-      });
+      if (platformError) throw platformError;
+      diagnostic.content.platforms = platformData || {};
       
       if (diagnostic.content.total === 0) {
         diagnostic.criticalIssues.push('❌ No content in database');
@@ -179,14 +186,22 @@ export async function GET() {
   // Check scanning status
   try {
     if (diagnostic.database.connected) {
-      const lastScan = await sql`
-        SELECT * FROM system_logs 
-        WHERE component = 'UNIFIED_SCAN_API_SUCCESS' 
-        ORDER BY created_at DESC 
-        LIMIT 1
-      `;
-      diagnostic.features.scanning.lastRun = lastScan.rows[0]?.created_at || 'never';
-      diagnostic.features.scanning.status = lastScan.rows[0] ? 'working' : 'unknown';
+      const supabase = createSimpleClient();
+      const { data: lastScan, error } = await supabase
+        .from('system_logs')
+        .select('*')
+        .eq('component', 'UNIFIED_SCAN_API_SUCCESS')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (!error && lastScan) {
+        diagnostic.features.scanning.lastRun = lastScan.created_at;
+        diagnostic.features.scanning.status = 'working';
+      } else {
+        diagnostic.features.scanning.lastRun = 'never';
+        diagnostic.features.scanning.status = 'unknown';
+      }
     }
   } catch (error) {
     diagnostic.features.scanning.status = 'unknown';
@@ -195,13 +210,21 @@ export async function GET() {
   // Check posting status
   try {
     if (diagnostic.database.connected) {
-      const lastPost = await sql`
-        SELECT * FROM posted_content 
-        ORDER BY posted_at DESC 
-        LIMIT 1
-      `;
-      diagnostic.features.posting.lastPost = lastPost.rows[0]?.posted_at || 'never';
-      diagnostic.features.posting.status = lastPost.rows[0] ? 'working' : 'never_posted';
+      const supabase = createSimpleClient();
+      const { data: lastPost, error } = await supabase
+        .from('posted_content')
+        .select('*')
+        .order('posted_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (!error && lastPost) {
+        diagnostic.features.posting.lastPost = lastPost.posted_at;
+        diagnostic.features.posting.status = 'working';
+      } else {
+        diagnostic.features.posting.lastPost = 'never';
+        diagnostic.features.posting.status = 'never_posted';
+      }
     }
   } catch (error) {
     diagnostic.features.posting.status = 'unknown';
