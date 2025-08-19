@@ -20,8 +20,19 @@ export async function GET() {
   
   if (hasDatabase) {
     try {
-      const { sql } = await import('@vercel/postgres');
-      const result = await sql`SELECT 1 as test`;
+      const { Pool } = await import('pg');
+      const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+      
+      const pool = new Pool({
+        connectionString,
+        ssl: {
+          rejectUnauthorized: false
+        }
+      });
+      
+      const result = await pool.query('SELECT 1 as test');
+      await pool.end();
+      
       connectionTest = { 
         success: true, 
         message: 'Database connected successfully',

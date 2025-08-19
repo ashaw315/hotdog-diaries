@@ -1,31 +1,50 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
 import bcrypt from 'bcryptjs';
+import { Pool } from 'pg';
 
 export async function GET() {
   const steps = [];
   
+  // Create a direct PostgreSQL connection for Supabase
+  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  
+  if (!connectionString) {
+    return NextResponse.json({
+      success: false,
+      error: 'No database connection string found',
+      message: 'Please ensure POSTGRES_URL or DATABASE_URL is set in environment variables'
+    }, { status: 500 });
+  }
+
+  // Create pool with SSL for Supabase
+  const pool = new Pool({
+    connectionString,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  });
+  
   try {
     console.log('🚀 Starting production setup...');
     
-    // Step 1: Initialize database directly (no HTTP call)
+    // Step 1: Initialize database directly
     console.log('Step 1: Initializing database...');
     try {
       // Test connection
-      const testResult = await sql`SELECT 1 as test`;
+      const testResult = await pool.query('SELECT 1 as test');
       console.log('✅ Database connected');
 
       // Create all tables
-      await sql`CREATE TABLE IF NOT EXISTS system_logs (
+      await pool.query(`CREATE TABLE IF NOT EXISTS system_logs (
         id SERIAL PRIMARY KEY,
         log_level VARCHAR(20) NOT NULL CHECK (log_level IN ('debug', 'info', 'warning', 'error')),
         component VARCHAR(255) NOT NULL,
         message TEXT NOT NULL,
         metadata JSONB,
         created_at TIMESTAMP DEFAULT NOW()
-      )`;
+      )`);
 
-      await sql`CREATE TABLE IF NOT EXISTS system_alerts (
+      await pool.query(`CREATE TABLE IF NOT EXISTS system_alerts (
         id SERIAL PRIMARY KEY,
         type VARCHAR(50) NOT NULL,
         severity VARCHAR(20) NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
@@ -37,9 +56,9 @@ export async function GET() {
         acknowledged BOOLEAN DEFAULT FALSE,
         acknowledged_at TIMESTAMP,
         acknowledged_by VARCHAR(255)
-      )`;
+      )`);
 
-      await sql`CREATE TABLE IF NOT EXISTS admin_users (
+      await pool.query(`CREATE TABLE IF NOT EXISTS admin_users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
@@ -49,9 +68,9 @@ export async function GET() {
         last_login TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
-      )`;
+      )`);
 
-      await sql`CREATE TABLE IF NOT EXISTS content_queue (
+      await pool.query(`CREATE TABLE IF NOT EXISTS content_queue (
         id SERIAL PRIMARY KEY,
         content_text TEXT,
         content_image_url TEXT,
@@ -72,18 +91,18 @@ export async function GET() {
         scraped_at TIMESTAMP DEFAULT NOW(),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
-      )`;
+      )`);
 
-      await sql`CREATE TABLE IF NOT EXISTS content_analysis (
+      await pool.query(`CREATE TABLE IF NOT EXISTS content_analysis (
         id SERIAL PRIMARY KEY,
         content_queue_id INTEGER REFERENCES content_queue(id) ON DELETE CASCADE,
         confidence_score DECIMAL(3,2) NOT NULL,
         flagged_patterns JSONB,
         analysis_metadata JSONB,
         created_at TIMESTAMP DEFAULT NOW()
-      )`;
+      )`);
 
-      await sql`CREATE TABLE IF NOT EXISTS posted_content (
+      await pool.query(`CREATE TABLE IF NOT EXISTS posted_content (
         id SERIAL PRIMARY KEY,
         content_queue_id INTEGER REFERENCES content_queue(id) ON DELETE CASCADE,
         platform VARCHAR(50) NOT NULL,
@@ -91,27 +110,30 @@ export async function GET() {
         posted_at TIMESTAMP DEFAULT NOW(),
         engagement_data JSONB,
         created_at TIMESTAMP DEFAULT NOW()
-      )`;
+      )`);
 
       console.log('✅ Tables created');
 
       // Check if admin exists and create if not
-      const adminCheck = await sql`SELECT id FROM admin_users WHERE username = 'admin'`;
+      const adminCheck = await pool.query(`SELECT id FROM admin_users WHERE username = 'admin'`);
       let adminCreated = false;
 
       if (adminCheck.rows.length === 0) {
         const hashedPassword = await bcrypt.hash('StrongAdminPass123!', 10);
-        await sql`INSERT INTO admin_users (username, password_hash, email, full_name) 
-                  VALUES ('admin', ${hashedPassword}, 'admin@hotdogdiaries.com', 'Administrator')`;
+        await pool.query(
+          `INSERT INTO admin_users (username, password_hash, email, full_name) 
+           VALUES ($1, $2, $3, $4)`,
+          ['admin', hashedPassword, 'admin@hotdogdiaries.com', 'Administrator']
+        );
         adminCreated = true;
         console.log('✅ Admin user created');
       }
 
       // Get stats
-      const statsResult = await sql`SELECT 
+      const statsResult = await pool.query(`SELECT 
         (SELECT COUNT(*) FROM content_queue) as total_content,
         (SELECT COUNT(*) FROM admin_users) as admin_count
-      `;
+      `);
       const stats = statsResult.rows[0];
 
       steps.push({
@@ -138,7 +160,7 @@ export async function GET() {
     // Step 2: Content check and seeding
     console.log('Step 2: Checking and seeding content...');
     try {
-      const contentCheck = await sql`SELECT COUNT(*) as count FROM content_queue`;
+      const contentCheck = await pool.query(`SELECT COUNT(*) as count FROM content_queue`);
       let contentCount = parseInt(contentCheck.rows[0]?.count || '0');
       
       if (contentCount === 0) {
@@ -152,16 +174,24 @@ export async function GET() {
         ];
         
         for (let i = 0; i < demoContent.length; i++) {
-          await sql`INSERT INTO content_queue (
-            content_text, content_type, source_platform, original_author,
-            original_url, content_hash, is_approved, content_status,
-            scraped_at, confidence_score
-          ) VALUES (
-            ${demoContent[i]}, 'text', 'demo', 'hotdog_lover',
-            ${'https://example.com/demo' + (i+1)}, 
-            ${'demo_' + Date.now() + '_' + i},
-            true, 'approved', NOW(), 0.95
-          )`;
+          await pool.query(
+            `INSERT INTO content_queue (
+              content_text, content_type, source_platform, original_author,
+              original_url, content_hash, is_approved, content_status,
+              scraped_at, confidence_score
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)`,
+            [
+              demoContent[i], 
+              'text', 
+              'demo', 
+              'hotdog_lover',
+              'https://example.com/demo' + (i+1), 
+              'demo_' + Date.now() + '_' + i,
+              true, 
+              'approved', 
+              0.95
+            ]
+          );
         }
         contentCount = demoContent.length;
         
@@ -241,5 +271,8 @@ export async function GET() {
       partialSetup: steps.length > 0,
       timestamp: new Date().toISOString()
     }, { status: 500 });
+  } finally {
+    // Close the database connection
+    await pool.end();
   }
 }
