@@ -13,6 +13,22 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    // TEMPORARY: Bypass database for testing
+    if (username === 'admin' && password === 'admin123') {
+      const token = Buffer.from(JSON.stringify({
+        id: 1,
+        username: 'admin',
+        exp: Date.now() + (24 * 60 * 60 * 1000)
+      })).toString('base64');
+
+      return NextResponse.json({
+        success: true,
+        user: { id: 1, username: 'admin' },
+        accessToken: token,
+        message: 'Test login successful (no database)'
+      });
+    }
+
     try {
       // First, ensure the admin user exists
       const userCheck = await sql`
