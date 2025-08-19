@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
-export async function POST() {
+export async function GET() {
   try {
-    console.log('Creating database tables...');
+    console.log('🔧 Initializing database tables...');
+    
+    // Log environment info for debugging
+    console.log('Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      POSTGRES_URL_EXISTS: !!process.env.POSTGRES_URL,
+      DATABASE_URL_EXISTS: !!process.env.DATABASE_URL
+    });
 
     // Create system_logs table
     await sql`
@@ -99,20 +107,33 @@ export async function POST() {
       )
     `;
 
-    console.log('Database tables created successfully');
+    console.log('✅ Database tables created successfully');
 
     return NextResponse.json({
       success: true,
       message: 'Database initialized successfully',
+      tablesCreated: [
+        'system_logs',
+        'system_alerts', 
+        'admin_users',
+        'content_queue',
+        'content_analysis',
+        'posted_content'
+      ],
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Database initialization error:', error);
+    console.error('❌ Database initialization error:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     }, { status: 500 });
   }
+}
+
+// Also support POST for backwards compatibility
+export async function POST() {
+  return GET();
 }
