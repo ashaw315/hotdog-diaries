@@ -535,80 +535,17 @@ export class RedditScanningService {
    * Get current scan configuration
    */
   async getScanConfig(): Promise<RedditScanConfig> {
-    try {
-      const config = await query('reddit_scan_config')
-        .select('*')
-        .first()
-
-      if (!config) {
-        // Return default configuration with Reddit ENABLED
-        return {
-          isEnabled: true, // ✅ ENABLED - Reddit was performing at 100% approval
-          scanInterval: 30, // 30 minutes
-          maxPostsPerScan: 25,
-          targetSubreddits: this.redditService.getHotdogSubreddits(),
-          searchTerms: this.redditService.getHotdogSearchTerms(),
-          minScore: 10,
-          sortBy: 'hot',
-          timeRange: 'week',
-          includeNSFW: false
-        }
-      }
-
-      // Parse JSON fields that might be stored as strings
-      let targetSubreddits = this.redditService.getHotdogSubreddits()
-      let searchTerms = this.redditService.getHotdogSearchTerms()
-      
-      try {
-        if (config.target_subreddits) {
-          if (Array.isArray(config.target_subreddits)) {
-            targetSubreddits = config.target_subreddits
-          } else if (typeof config.target_subreddits === 'string') {
-            targetSubreddits = JSON.parse(config.target_subreddits)
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to parse target_subreddits, using defaults:', error)
-      }
-      
-      try {
-        if (config.search_terms) {
-          if (Array.isArray(config.search_terms)) {
-            searchTerms = config.search_terms
-          } else if (typeof config.search_terms === 'string') {
-            searchTerms = JSON.parse(config.search_terms)
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to parse search_terms, using defaults:', error)
-      }
-
-      return {
-        isEnabled: config.is_enabled,
-        scanInterval: config.scan_interval,
-        maxPostsPerScan: config.max_posts_per_scan,
-        targetSubreddits,
-        searchTerms,
-        minScore: config.min_score,
-        sortBy: config.sort_by,
-        timeRange: config.time_range,
-        includeNSFW: config.include_nsfw,
-        lastScanId: config.last_scan_id,
-        lastScanTime: config.last_scan_time ? new Date(config.last_scan_time) : undefined
-      }
-    } catch (error) {
-      // If table doesn't exist, return defaults with Reddit ENABLED
-      return {
-        isEnabled: true, // ✅ ENABLED - Reddit was performing at 100% approval
-        scanInterval: 30,
-        maxPostsPerScan: 25,
-        targetSubreddits: this.redditService.getHotdogSubreddits(),
-        searchTerms: this.redditService.getHotdogSearchTerms(),
-        minScore: 10,
-        sortBy: 'hot',
-        timeRange: 'week',
-        includeNSFW: false
-      }
+    // Bypass database entirely for now, use hardcoded defaults
+    return {
+      isEnabled: true, // ✅ ENABLED - Reddit was performing at 100% approval
+      scanInterval: 30,
+      maxPostsPerScan: 25,
+      targetSubreddits: ['food', 'FoodPorn', 'shittyfoodporn', 'hotdogs'],
+      searchTerms: ['hot dog', 'hotdog'],
+      minScore: 5, // Lower threshold for testing
+      sortBy: 'hot',
+      timeRange: 'week',
+      includeNSFW: false
     }
   }
 
@@ -616,42 +553,13 @@ export class RedditScanningService {
    * Update scan configuration
    */
   async updateScanConfig(config: Partial<RedditScanConfig>): Promise<void> {
-    try {
-      const existing = await this.getScanConfig()
-      const updated = { ...existing, ...config }
-
-      await query('reddit_scan_config')
-        .upsert({
-          is_enabled: updated.isEnabled,
-          scan_interval: updated.scanInterval,
-          max_posts_per_scan: updated.maxPostsPerScan,
-          target_subreddits: JSON.stringify(updated.targetSubreddits),
-          search_terms: JSON.stringify(updated.searchTerms),
-          min_score: updated.minScore,
-          sort_by: updated.sortBy,
-          time_range: updated.timeRange,
-          include_nsfw: updated.includeNSFW,
-          last_scan_id: updated.lastScanId,
-          last_scan_time: updated.lastScanTime,
-          updated_at: new Date()
-        })
-
-      await logToDatabase(
-        LogLevel.INFO,
-        'REDDIT_CONFIG_UPDATED',
-        'Reddit scan configuration updated',
-        { config: updated }
-      )
-
-    } catch (error) {
-      await logToDatabase(
-        LogLevel.ERROR,
-        'REDDIT_CONFIG_UPDATE_ERROR',
-        `Failed to update Reddit configuration: ${error.message}`,
-        { config, error: error.message }
-      )
-      throw error
-    }
+    // Bypass database operations for now
+    await logToDatabase(
+      LogLevel.INFO,
+      'REDDIT_CONFIG_UPDATE_BYPASSED',
+      'Reddit scan configuration update bypassed (no database)',
+      { config }
+    )
   }
 
   /**
@@ -667,94 +575,38 @@ export class RedditScanningService {
    * Record scan result for analytics
    */
   private async recordScanResult(result: RedditScanResult): Promise<void> {
-    try {
-      await insert('reddit_scan_results')
-        .values({
-          scan_id: result.scanId,
-          start_time: result.startTime,
-          end_time: result.endTime,
-          posts_found: result.postsFound,
-          posts_processed: result.postsProcessed,
-          posts_approved: result.postsApproved,
-          posts_rejected: result.postsRejected,
-          posts_flagged: result.postsFlagged,
-          duplicates_found: result.duplicatesFound,
-          subreddits_scanned: result.subredditsScanned,
-          highest_score: result.highestScoredPost?.score || 0,
-          errors: result.errors,
-          rate_limit_hit: result.rateLimitHit,
-          created_at: new Date()
-        })
-
-    } catch (error) {
-      // Don't throw error here, just log it
-      await logToDatabase(
-        LogLevel.WARNING,
-        'REDDIT_SCAN_RESULT_RECORD_ERROR',
-        `Failed to record Reddit scan result: ${error.message}`,
-        { scanId: result.scanId, error: error.message }
-      )
-    }
+    // Bypass database operations for now, just log the result
+    await logToDatabase(
+      LogLevel.INFO,
+      'REDDIT_SCAN_RESULT_BYPASSED',
+      `Reddit scan result bypassed (no database): ${result.postsProcessed} processed, ${result.postsApproved} approved`,
+      { 
+        scanId: result.scanId,
+        postsFound: result.postsFound,
+        postsProcessed: result.postsProcessed,
+        postsApproved: result.postsApproved,
+        duration: result.endTime.getTime() - result.startTime.getTime()
+      }
+    )
   }
 
   /**
    * Get Reddit scanning statistics
    */
   async getScanStats(): Promise<RedditScanStats> {
-    try {
-      // Get basic stats from scan results
-      const scanResults = await query('reddit_scan_results')
-        .select([
-          'COUNT(*) as total_scans',
-          'SUM(posts_found) as total_posts_found',
-          'SUM(posts_processed) as total_posts_processed',
-          'SUM(posts_approved) as total_posts_approved',
-          'AVG(highest_score) as average_score',
-          'MAX(end_time) as last_scan_time'
-        ])
-        .first()
-
-      // Get scan configuration for frequency and next scan time
-      const config = await this.getScanConfig()
-      const nextScanTime = config.lastScanTime 
-        ? new Date(config.lastScanTime.getTime() + config.scanInterval * 60 * 1000)
-        : undefined
-
-      // Calculate success rate
-      const totalScans = parseInt(scanResults?.total_scans || '0')
-      const totalProcessed = parseInt(scanResults?.total_posts_processed || '0')
-      const totalApproved = parseInt(scanResults?.total_posts_approved || '0')
-      const successRate = totalProcessed > 0 ? (totalApproved / totalProcessed) * 100 : 0
-
-      return {
-        totalScans,
-        totalPostsFound: parseInt(scanResults?.total_posts_found || '0'),
-        totalPostsProcessed: totalProcessed,
-        totalPostsApproved: totalApproved,
-        averageScore: parseFloat(scanResults?.average_score || '0'),
-        topSubreddits: [], // Placeholder - would need more complex query
-        topAuthors: [], // Placeholder - would need author analysis
-        scanFrequency: config.scanInterval,
-        lastScanTime: scanResults?.last_scan_time ? new Date(scanResults.last_scan_time) : undefined,
-        nextScanTime,
-        successRate
-      }
-
-    } catch (error) {
-      // Return default stats if tables don't exist
-      return {
-        totalScans: 0,
-        totalPostsFound: 0,
-        totalPostsProcessed: 0,
-        totalPostsApproved: 0,
-        averageScore: 0,
-        topSubreddits: [],
-        topAuthors: [],
-        scanFrequency: 30,
-        lastScanTime: undefined,
-        nextScanTime: undefined,
-        successRate: 0
-      }
+    // Return default stats (no database operations)
+    return {
+      totalScans: 0,
+      totalPostsFound: 0,
+      totalPostsProcessed: 0,
+      totalPostsApproved: 0,
+      averageScore: 0,
+      topSubreddits: [],
+      topAuthors: [],
+      scanFrequency: 30,
+      lastScanTime: undefined,
+      nextScanTime: undefined,
+      successRate: 0
     }
   }
 
