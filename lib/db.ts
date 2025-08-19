@@ -25,11 +25,25 @@ class DatabaseConnection {
   private isSqlite: boolean = false
 
   constructor() {
-    // Production deployment detection: Prefer Vercel Postgres URLs
-    this.isVercel = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres')) && process.env.NODE_ENV === 'production'
-    this.isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV && !process.env.DATABASE_URL?.includes('postgres')
+    // Enhanced Vercel environment detection
+    const hasVercelEnv = !!(process.env.VERCEL || process.env.VERCEL_ENV)
+    const hasPostgresUrl = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres'))
+    
+    // Vercel deployment detection: Use Vercel Postgres in production or when Vercel env vars exist
+    this.isVercel = (hasVercelEnv && hasPostgresUrl) || (process.env.NODE_ENV === 'production' && hasPostgresUrl)
+    this.isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV && !hasPostgresUrl
     
     console.log(`🗄️ Database Mode: ${this.isVercel ? 'Vercel Postgres' : this.isSqlite ? 'SQLite' : 'PostgreSQL Pool'}`)
+    
+    // Debug environment variables in production
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔍 Production DB Config:', {
+        hasVercelEnv,
+        hasPostgresUrl,
+        isVercel: this.isVercel,
+        nodeEnv: process.env.NODE_ENV
+      })
+    }
   }
 
   private getConfig(): DatabaseConfig {

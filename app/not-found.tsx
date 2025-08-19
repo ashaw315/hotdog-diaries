@@ -1,16 +1,29 @@
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
-        <h2 className="text-2xl font-semibold text-gray-600 mb-4">Page Not Found</h2>
-        <p className="text-gray-500 mb-8">The page you're looking for doesn't exist.</p>
-        <a 
-          href="/" 
-          className="inline-block px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-        >
-          Go Home
-        </a>
+    <div className="min-h-screen flex items-center justify-center bg-orange-50">
+      <div className="text-center max-w-md mx-auto p-6">
+        <div className="mb-6">
+          <div className="text-8xl mb-4">🌭</div>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">404</h1>
+          <p className="text-xl text-gray-600 mb-4">Page not found</p>
+          <p className="text-gray-500">This hotdog wandered off somewhere else</p>
+        </div>
+        
+        <div className="space-y-3">
+          <a
+            href="/"
+            className="block bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition-colors"
+          >
+            Back to Hotdog Feed
+          </a>
+          
+          <a
+            href="/admin"
+            className="block text-orange-600 hover:text-orange-700 text-sm underline"
+          >
+            Admin Dashboard
+          </a>
+        </div>
       </div>
     </div>
   );

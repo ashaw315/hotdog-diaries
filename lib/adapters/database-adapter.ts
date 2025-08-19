@@ -195,10 +195,14 @@ class SQLiteAdapter implements DatabaseAdapter {
 // Database type detection
 function detectDatabaseType(): DatabaseAdapter {
   const databaseUrl = process.env.DATABASE_URL
-  const isVercel = !!process.env.POSTGRES_URL && process.env.NODE_ENV !== 'development'
+  const hasVercelEnv = !!(process.env.VERCEL || process.env.VERCEL_ENV)
+  const hasPostgresUrl = !!(process.env.POSTGRES_URL || databaseUrl?.includes('postgres'))
+  
+  // Use PostgreSQL adapter if we have postgres URL or in Vercel environment
+  const isVercel = (hasVercelEnv && hasPostgresUrl) || (process.env.NODE_ENV === 'production' && hasPostgresUrl)
   const usePostgres = process.env.USE_POSTGRES_IN_DEV === 'true'
   
-  if (databaseUrl?.includes('postgres') || isVercel || usePostgres) {
+  if (hasPostgresUrl || isVercel || usePostgres) {
     return new PostgreSQLAdapter()
   }
   

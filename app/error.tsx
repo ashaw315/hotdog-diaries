@@ -29,17 +29,25 @@ export default function Error({ error, reset }: ErrorProps) {
         <div className="space-y-3">
           <button
             onClick={reset}
-            className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:opacity-80 transition-opacity"
+            className="w-full px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
           >
             Try Again
           </button>
           
           <button
             onClick={() => window.location.href = '/'}
-            className="w-full px-6 py-3 border border-border text-text rounded-lg hover:bg-gray-50 transition-colors"
+            className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Go to Homepage
           </button>
+          
+          <a
+            href="/api/simple-health"
+            target="_blank"
+            className="block text-gray-500 hover:text-gray-600 text-xs underline"
+          >
+            Check System Status
+          </a>
         </div>
         
         {process.env.NODE_ENV === 'development' && (
