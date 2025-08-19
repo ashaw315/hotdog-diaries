@@ -229,12 +229,12 @@ export class SocialMediaService {
         platforms.push({
           platform: 'reddit',
           success: true,
-          postsFound: redditResult.processed || 0,
-          postsApproved: redditResult.approved || 0,
+          postsFound: redditResult.postsProcessed || 0,
+          postsApproved: redditResult.postsApproved || 0,
           message: 'Scan completed successfully'
         });
-        totalPostsFound += redditResult.processed || 0;
-        totalPostsApproved += redditResult.approved || 0;
+        totalPostsFound += redditResult.postsProcessed || 0;
+        totalPostsApproved += redditResult.postsApproved || 0;
         successfulPlatforms++;
       } catch (error) {
         platforms.push({

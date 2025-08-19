@@ -146,7 +146,7 @@ export class RedditScanningService {
   /**
    * Perform a single Reddit scan
    */
-  async performScan(): Promise<RedditScanResult> {
+  async performScan(options: { maxPosts?: number } = {}): Promise<RedditScanResult> {
     if (this.isScanning) {
       throw new Error('Scan already in progress')
     }
