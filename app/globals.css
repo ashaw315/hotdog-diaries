@@ -3,6 +3,35 @@
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Dancing+Script:wght@400;700&family=Bungee&display=swap');
 
+/* Fix for frozen/disabled input fields */
+input:not([disabled]) {
+  cursor: text !important;
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-color: transparent;
+}
+
+/* Fix for mobile Safari input zoom */
+input {
+  font-size: 16px !important;
+  transform: scale(1) !important;
+}
+
+/* Ensure form elements are interactive */
+input, textarea, select, button {
+  touch-action: manipulation !important;
+}
+
 /* Animated Title Styles */
 @keyframes fadeInFeed {
   from {
