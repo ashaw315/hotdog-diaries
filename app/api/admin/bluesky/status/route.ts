@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { blueskyService } from '@/lib/services/bluesky-scanning'
+import { ServiceStatus } from '@/types'
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     console.log('📊 Getting Bluesky status...')
     
@@ -11,7 +12,10 @@ export async function GET(request: NextRequest) {
       blueskyService.testConnection()
     ])
 
-    const status = {
+    const healthStatus = connectionTest.success ? 
+      (stats.successRate > 0.5 ? 'healthy' : 'warning') : 'error'
+
+    const status: ServiceStatus = {
       platform: 'bluesky',
       isEnabled: config.isEnabled,
       isAuthenticated: connectionTest.success,
@@ -23,29 +27,22 @@ export async function GET(request: NextRequest) {
       searchTerms: config.searchTerms,
       lastScanTime: config.lastScanTime?.toISOString(),
       nextScanTime: config.nextScanTime?.toISOString(),
+      healthStatus,
       
       // Statistics
       stats: {
-        totalPostsFound: stats.totalPostsFound,
-        postsProcessed: stats.postsProcessed,
-        postsApproved: stats.postsApproved,
-        postsRejected: stats.postsRejected,
-        successRate: Math.round(stats.successRate * 100),
-        
-        // Health indicators
-        healthStatus: connectionTest.success ? 
-          (stats.successRate > 0.5 ? 'healthy' : 'warning') : 'error',
-        errorRate: Math.round((1 - stats.successRate) * 100)
+        totalScanned: stats.totalPostsFound,
+        totalApproved: stats.postsApproved,
+        totalRejected: stats.postsRejected,
+        successRate: Math.round(stats.successRate * 100)
       },
 
       // Platform capabilities
       capabilities: {
-        requiresAuthentication: false,
-        supportsSearch: true,
-        supportsImages: true,
-        supportsVideos: true,
-        supportsMixedContent: true,
-        apiEndpoint: 'https://public.api.bsky.app'
+        canSchedule: true,
+        canPost: true,
+        supportsVideo: true,
+        supportsImages: true
       }
     }
 

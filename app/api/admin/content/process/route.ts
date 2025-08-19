@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ContentProcessor } from '@/lib/services/content-processor'
+import { ContentProcessingResult } from '@/types'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const contentProcessor = new ContentProcessor()
     
     const { batchSize = 10, contentId } = await request.json()
     
     if (contentId) {
-      const result = await contentProcessor.processContent(contentId)
+      const result: ContentProcessingResult = await contentProcessor.processContent(contentId)
       
       return NextResponse.json({
         success: true,
@@ -18,15 +19,20 @@ export async function POST(request: NextRequest) {
         analysisResult: result.analysisResult
       })
     } else {
-      const result = await contentProcessor.processBatch(batchSize)
+      const results: ContentProcessingResult[] = await contentProcessor.processBatch(batchSize)
+      
+      // Aggregate results from the batch
+      const summary = {
+        processed: results.length,
+        approved: results.filter(r => r.status === 'approved').length,
+        rejected: results.filter(r => r.status === 'rejected').length,
+        flagged: results.filter(r => r.status === 'flagged').length,
+        errors: results.filter(r => r.status === 'error').map(r => r.analysisResult?.reasons || []).flat()
+      }
       
       return NextResponse.json({
         success: true,
-        processed: result.processed,
-        approved: result.approved,
-        rejected: result.rejected,
-        flagged: result.flagged,
-        errors: result.errors
+        ...summary
       })
     }
   } catch (error) {
@@ -38,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
 
     // Get current processing statistics using SQLite syntax
@@ -96,9 +102,15 @@ export async function GET(request: NextRequest) {
     `
 
     const recentActivityResult = await db.query(recentActivityQuery)
-    const recentActivity = recentActivityResult.rows.map((row: any) => ({
+    interface RecentActivityRow {
+      status: string
+      count: string | number
+      hour: string
+    }
+    
+    const recentActivity = recentActivityResult.rows.map((row: RecentActivityRow) => ({
       status: row.status,
-      count: parseInt(row.count) || 0,
+      count: parseInt(String(row.count)) || 0,
       hour: row.hour
     }))
 

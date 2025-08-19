@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { blueskyService } from '@/lib/services/bluesky-scanning'
 import { db } from '@/lib/db'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('📈 Getting Bluesky statistics...')
     

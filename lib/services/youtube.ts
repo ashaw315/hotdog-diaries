@@ -156,25 +156,26 @@ export class YouTubeService {
     } catch (error) {
       // Record failed request for monitoring
       const requestTime = Date.now() - startTime
-      const errorType = error.message.includes('quota') ? 'quota_limit' : 
-                       error.message.includes('key') ? 'auth_error' : 'api_error'
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorType = errorMessage.includes('quota') ? 'quota_limit' : 
+                       errorMessage.includes('key') ? 'auth_error' : 'api_error'
       await youtubeMonitoringService.recordApiRequest(false, requestTime, errorType)
 
-      if (error.message.includes('quota')) {
+      if (errorMessage.includes('quota')) {
         await youtubeMonitoringService.recordQuotaLimitHit(this.quotaTracker.resetTime)
       }
 
       await logToDatabase(
         LogLevel.ERROR,
         'YOUTUBE_SEARCH_ERROR',
-        `YouTube search failed: ${error.message}`,
+        `YouTube search failed: ${errorMessage}`,
         { 
           query: options.query,
-          error: error.message
+          error: errorMessage
         }
       )
       
-      throw new Error(`YouTube search failed: ${error.message}`)
+      throw new Error(`YouTube search failed: ${errorMessage}`)
     }
   }
 
@@ -278,18 +279,19 @@ export class YouTubeService {
       }
 
       // Prefer videos with good engagement and reasonable duration
-      const hasGoodEngagement = video.viewCount > 1000 || video.likeCount > 10
+      const hasGoodEngagement = video.viewCount > 1000 || (video.likeCount && video.likeCount > 10)
       const hasReasonableDuration = !video.duration.includes('PT0S') // Not zero duration
       const isNotLive = !video.isLiveBroadcast // Skip live streams
 
       return hasGoodEngagement && hasReasonableDuration && isNotLive
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       await logToDatabase(
         LogLevel.ERROR,
         'YOUTUBE_VALIDATION_ERROR',
-        `YouTube content validation failed: ${error.message}`,
-        { videoId: video.id, error: error.message }
+        `YouTube content validation failed: ${errorMessage}`,
+        { videoId: video.id, error: errorMessage }
       )
       return false
     }
@@ -357,12 +359,13 @@ export class YouTubeService {
       }
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       return {
         isAuthenticated: false,
         quotaUsed: this.quotaTracker.used,
         quotaRemaining: this.quotaTracker.remaining,
         quotaResetTime: this.quotaTracker.resetTime,
-        lastError: error.message,
+        lastError: errorMessage,
         lastRequest: new Date()
       }
     }

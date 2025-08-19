@@ -401,7 +401,7 @@ export default function UnsplashAdminPage() {
             </div>
             <div className="card-body">
               <div className="grid gap-sm">
-                {recentScans.map((scan, index) => (
+                {recentScans.map((scan) => (
                   <div key={scan.scanId} className="card">
                     <div className="card-body">
                       <div className="flex justify-between align-center">

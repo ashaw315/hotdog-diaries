@@ -198,12 +198,12 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Today's Posts */}
+          {/* Today&apos;s Posts */}
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
               <div className="text-3xl text-green-500 mr-4">📱</div>
               <div>
-                <p className="text-sm text-gray-600">Today's Posts</p>
+                <p className="text-sm text-gray-600">Today&apos;s Posts</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {data?.postingSchedule.todaysPosts || 0}/6
                 </p>
@@ -299,9 +299,9 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Today's Posting Schedule */}
+          {/* Today&apos;s Posting Schedule */}
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Today's Schedule</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Today&apos;s Schedule</h3>
             <div className="space-y-3">
               {data?.postingSchedule.upcomingPosts?.slice(0, 6).map((post, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

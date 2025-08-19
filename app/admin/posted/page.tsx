@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface PostedContent {
   id: number
@@ -39,9 +39,9 @@ export default function PostedContentPage() {
 
   useEffect(() => {
     loadPostedContent()
-  }, [page])
+  }, [page, loadPostedContent])
 
-  const loadPostedContent = async () => {
+  const loadPostedContent = useCallback(async () => {
     try {
       setError(null)
 
@@ -76,7 +76,7 @@ export default function PostedContentPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, itemsPerPage])
 
   const loadMore = () => {
     if (!loading && hasMore) {

@@ -39,8 +39,11 @@ export async function GET(request: NextRequest) {
       archived: 0
     }
     
-    statusCountsResult.rows.forEach(row => {
-      statusCounts[row.content_status] = parseInt(row.count)
+    statusCountsResult.rows.forEach((row: any) => {
+      const status = row.content_status as keyof typeof statusCounts
+      if (status in statusCounts) {
+        statusCounts[status] = parseInt(row.count)
+      }
     })
 
     // Get flow metrics for today

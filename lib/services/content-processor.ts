@@ -8,10 +8,22 @@ import { errorHandler } from '@/lib/middleware/error-handler'
 import crypto from 'crypto'
 
 export interface ContentProcessingResult {
-  success: boolean
-  contentId: number
-  action: 'approved' | 'rejected' | 'flagged' | 'duplicate'
-  analysis: ContentAnalysis
+  id?: number
+  status: 'processed' | 'approved' | 'rejected' | 'flagged' | 'error'
+  analysisResult?: {
+    score: number
+    confidence: number
+    reasons: string[]
+  }
+  processed?: number
+  approved?: number
+  rejected?: number
+  flagged?: number
+  errors?: string[]
+  success?: boolean
+  contentId?: number
+  action?: 'approved' | 'rejected' | 'flagged' | 'duplicate'
+  analysis?: ContentAnalysis
   reason?: string
   duplicateOf?: number
 }

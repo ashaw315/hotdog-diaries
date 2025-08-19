@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { metricsService } from '@/lib/services/metrics-service'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get comprehensive analytics using our metrics service
     const dashboardMetrics = await metricsService.getDashboardMetrics()
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
         try {
           const performance = await metricsService.getPlatformPerformance(platform, 7)
           return { platform, performance }
-        } catch (error) {
+        } catch {
           return { platform, performance: [] }
         }
       })

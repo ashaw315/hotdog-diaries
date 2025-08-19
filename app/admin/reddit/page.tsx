@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ApiResponse } from '@/types'
 import { RedditScanConfig, RedditScanStats, RedditScanResult } from '@/lib/services/reddit-scanning'
 import './reddit-admin.css'
@@ -32,9 +32,9 @@ export default function RedditSettingsPage() {
   // Load initial data
   useEffect(() => {
     loadData()
-  }, [])
+  }, [loadData])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       await Promise.all([
@@ -49,7 +49,7 @@ export default function RedditSettingsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   const loadConfig = async () => {
     try {
@@ -117,7 +117,7 @@ export default function RedditSettingsPage() {
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to save configuration' })
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to save configuration' })
     } finally {
       setIsSaving(false)
@@ -136,7 +136,7 @@ export default function RedditSettingsPage() {
       } else {
         setMessage({ type: 'error', text: data.error || 'Connection test failed' })
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Connection test failed' })
     } finally {
       setIsTestingConnection(false)
@@ -158,14 +158,14 @@ export default function RedditSettingsPage() {
       } else {
         setMessage({ type: 'error', text: data.error || 'Manual scan failed' })
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Manual scan failed' })
     } finally {
       setIsRunningManualScan(false)
     }
   }
 
-  const updateConfig = (field: keyof RedditScanConfig, value: any) => {
+  const updateConfig = (field: keyof RedditScanConfig, value: string | number | boolean | string[]) => {
     if (!config) return
     setConfig({ ...config, [field]: value })
   }

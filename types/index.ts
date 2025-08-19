@@ -113,6 +113,7 @@ export enum LogLevel {
   DEBUG = 'debug',
   INFO = 'info',
   WARN = 'warn',
+  WARNING = 'warning',
   ERROR = 'error',
   FATAL = 'fatal'
 }
@@ -144,4 +145,98 @@ export interface EnhancedHealthResponse extends Omit<HealthCheckResponse, 'check
     socialMediaScanner?: string
     contentScheduler?: string
   }
+}
+
+// Content Processing Types
+export interface ContentProcessingResult {
+  id?: number
+  status: 'processed' | 'approved' | 'rejected' | 'flagged' | 'error'
+  analysisResult?: {
+    score: number
+    confidence: number
+    reasons: string[]
+  }
+  processed?: number
+  approved?: number
+  rejected?: number
+  flagged?: number
+  errors?: string[]
+}
+
+// Extended AdminUser type with optional fields
+export interface AdminUserWithDetails extends AdminUser {
+  email?: string
+  full_name?: string
+  is_active?: boolean
+}
+
+// Content creation types
+export interface ContentItem {
+  id?: number
+  content_text: string
+  content_image_url?: string
+  content_video_url?: string
+  content_type: string
+  source_platform: string
+  original_url?: string
+  original_author?: string
+  posted_at?: Date | string
+  scraped_at?: Date | string
+  is_posted?: boolean
+  is_approved?: boolean
+  content_status?: string
+  [key: string]: any // Allow additional properties
+}
+
+// API Error types
+export interface ApiError {
+  message: string
+  code?: string
+  status?: number
+}
+
+// YouTube API types
+export interface YouTubeVideoItem {
+  id: string
+  title: string
+  channelTitle: string
+  description?: string
+  thumbnailUrl?: string
+  publishedAt?: string
+  likeCount?: number
+  viewCount?: number
+  duration?: string
+}
+
+// Service status types
+export interface ServiceStatus {
+  platform: string
+  isEnabled: boolean
+  isAuthenticated: boolean
+  connectionStatus: string
+  connectionMessage: string
+  scanInterval: number
+  searchTerms: string[]
+  lastScanTime?: string
+  nextScanTime?: string
+  healthStatus?: string
+  stats: {
+    totalScanned: number
+    totalApproved: number
+    totalRejected: number
+    successRate: number
+  }
+  capabilities: {
+    canSchedule: boolean
+    canPost: boolean
+    supportsVideo: boolean
+    supportsImages: boolean
+  }
+}
+
+// Database connection pool types
+export interface ConnectionPoolStats {
+  total: number
+  idle: number
+  active: number
 }

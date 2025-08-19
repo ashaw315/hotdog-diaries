@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
              updated_at = NOW()
          WHERE id = $3
          RETURNING id, scheduled_for`,
-        [scheduledFor, authResult.user.username, contentId]
+        [scheduledFor, authResult.user?.username, contentId]
       )
 
       return result.rows[0]

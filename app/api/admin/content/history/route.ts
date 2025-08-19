@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { NextAuthUtils } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const authResult = await NextAuthUtils.verifyRequestAuth(request)
     if (!authResult.isValid || !authResult.user) {
@@ -125,10 +125,10 @@ export async function GET(request: NextRequest) {
       FROM content 
       ${whereClause}
       ${orderClause}
-      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+      LIMIT $${(queryParams.length + 1).toString()} OFFSET $${(queryParams.length + 2).toString()}
     `
     
-    queryParams.push(limit, offset)
+    queryParams.push(limit.toString(), offset.toString())
     const contentResult = await db.query(contentQuery, queryParams)
 
     // Transform the data
