@@ -26,7 +26,6 @@ export async function POST(request: Request) {
     const pool = new Pool({
       connectionString,
       ssl: process.env.NODE_ENV === 'production' ? {
-        require: true,
         rejectUnauthorized: false
       } : false
     });
