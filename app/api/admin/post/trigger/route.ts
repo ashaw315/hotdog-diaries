@@ -73,7 +73,7 @@ export async function POST() {
     }, 'Content posted successfully');
     
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { method: 'POST' } as any, '/api/admin/post/trigger');
   } finally {
     await db.disconnect();
   }

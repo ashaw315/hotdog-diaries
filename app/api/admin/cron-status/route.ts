@@ -65,7 +65,7 @@ export async function GET() {
     });
     
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { method: 'GET' } as any, '/api/admin/cron-status');
   } finally {
     await db.disconnect();
   }

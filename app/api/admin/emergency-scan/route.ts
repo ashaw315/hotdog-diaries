@@ -48,7 +48,7 @@ export async function POST() {
     });
     
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { method: 'POST' } as any, '/api/admin/emergency-scan');
   } finally {
     await db.disconnect();
   }

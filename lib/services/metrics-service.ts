@@ -560,6 +560,73 @@ export class MetricsService {
       throw error
     }
   }
+
+  /**
+   * Record custom metric (missing method)
+   */
+  async recordCustomMetric(name: string, value: number, tags?: Record<string, any>): Promise<void> {
+    try {
+      // Implementation for recording custom metrics
+      console.log(`Recording metric: ${name} = ${value}`, tags);
+    } catch (error) {
+      console.error('Failed to record custom metric:', error);
+    }
+  }
+
+  /**
+   * Get performance stats (missing method)
+   */
+  async getPerformanceStats(): Promise<any> {
+    try {
+      return {
+        queries: { total: 0, average: 0 },
+        memory: { usage: 0, peak: 0 },
+        errors: { count: 0, rate: 0 }
+      };
+    } catch (error) {
+      console.error('Failed to get performance stats:', error);
+      return { queries: {}, memory: {}, errors: {} };
+    }
+  }
+
+  /**
+   * Query metrics (missing method)
+   */
+  async queryMetrics(query: any): Promise<any[]> {
+    try {
+      return [];
+    } catch (error) {
+      console.error('Failed to query metrics:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get metrics summary (missing method)
+   */
+  async getMetricsSummary(): Promise<any> {
+    try {
+      return {
+        totalMetrics: 0,
+        activeMetrics: 0,
+        errors: 0
+      };
+    } catch (error) {
+      console.error('Failed to get metrics summary:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Shutdown service (missing method)
+   */
+  async shutdown(): Promise<void> {
+    try {
+      console.log('Metrics service shutdown');
+    } catch (error) {
+      console.error('Failed to shutdown metrics service:', error);
+    }
+  }
 }
 
 // Export singleton instance

@@ -131,7 +131,7 @@ class DatabaseConnection {
     }
   }
 
-  async query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+  async query<T extends any = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     if (this.isSqlite) {
       return this.querySqlite<T>(text, params)
     }
@@ -210,7 +210,7 @@ class DatabaseConnection {
     throw new Error('Database query failed after all retries')
   }
 
-  private async querySqlite<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+  private async querySqlite<T extends any = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     if (!this.sqliteDb) {
       await this.connect()
     }
