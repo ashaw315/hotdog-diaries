@@ -7,6 +7,7 @@ import MobileYouTubePlayer from '@/components/video/MobileYouTubePlayer'
 import FeedErrorBoundary from '@/components/error/FeedErrorBoundary'
 import CardErrorBoundary from '@/components/error/CardErrorBoundary'
 import { useComponentErrorHandler } from '@/hooks/useClientErrorHandler'
+import HotdogBounceLoader from '@/components/HotdogBounceLoader'
 
 interface Post {
   id: number
@@ -60,6 +61,23 @@ export default function AdaptiveTikTokFeed() {
   const [posts, setPosts] = useState<Post[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  
+  // Debug: log loading state changes
+  useEffect(() => {
+    if (loading) {
+      console.log('🌭 Loading hotdog content... (loading=true)')
+      console.log('🔍 Component should show HotdogBounceLoader now')
+    } else {
+      console.log('🌭 Hotdog content loaded! (loading=false)')
+      console.log('🔍 Component should show feed content now')
+    }
+  }, [loading])
+
+  // Debug: log posts changes
+  useEffect(() => {
+    console.log(`📝 Posts updated: ${posts.length} posts available`)
+  }, [posts])
   const [error, setError] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -67,7 +85,38 @@ export default function AdaptiveTikTokFeed() {
   const { handleAsyncError, safeExecute } = useComponentErrorHandler('AdaptiveTikTokFeed')
 
   useEffect(() => {
-    fetchPosts()
+    // SAFETY: Always hide loader after 8 seconds, no matter what
+    const safetyTimeout = setTimeout(() => {
+      // Use setState callback to get current posts value to avoid stale closure
+      setPosts(currentPosts => {
+        console.log(`⏱️ SAFETY: Force hiding loader after 8 seconds - posts.length: ${currentPosts.length}`)
+        setLoading(false)
+        
+        // Show fallback content ONLY if no posts loaded
+        if (currentPosts.length === 0) {
+          console.log('⏱️ SAFETY: No posts found, creating fallback content')
+          const fallbackPost: Post = {
+            id: -1,
+            content_text: "Welcome to Hotdog Diaries! 🌭 Loading delicious hotdog content...",
+            content_type: 'text' as ContentType,
+            source_platform: 'reddit' as SourcePlatform,
+            original_url: '',
+            original_author: 'Hotdog Diaries',
+            scraped_at: new Date(),
+            is_posted: false,
+            is_approved: true
+          }
+          return [fallbackPost]
+        } else {
+          console.log(`⏱️ SAFETY: Posts already loaded (${currentPosts.length}), keeping existing content`)
+          return currentPosts // Keep existing posts
+        }
+      })
+    }, 8000)
+
+    fetchInitialPost() // Load just first post
+
+    return () => clearTimeout(safetyTimeout)
   }, [])
 
 
@@ -281,8 +330,184 @@ export default function AdaptiveTikTokFeed() {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [currentIndex, posts.length])
 
+  const fetchInitialPost = async () => {
+    console.log('⏱️ fetchInitialPost: Starting...')
+    console.log('🔄 setLoading(true) - Loading should be visible now')
+    setLoading(true)
+    const startTime = Date.now()
+    setError(null)
+    
+    // Small delay to let API routes compile on fresh page load
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    const result = await safeExecute(
+      async () => {
+        const fetchStart = Date.now()
+        console.log('⏱️ fetchInitialPost: Making API call...')
+        
+        // Add timeout to prevent hanging
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+        
+        let response: Response
+        let retries = 0
+        const maxRetries = 5 // More retries for slow API compilation
+        
+        // Retry mechanism for development HMR 404 issues
+        while (retries <= maxRetries) {
+          try {
+            response = await fetch('/api/content?limit=1', { 
+              signal: controller.signal 
+            })
+            
+            if (response.status === 404 && retries < maxRetries) {
+              console.log(`🔄 fetchInitialPost: Got 404, retrying... (attempt ${retries + 1}/${maxRetries + 1})`)
+              retries++
+              // Wait longer on each retry to give API time to compile
+              const waitTime = 1500 * (retries) // 1.5s, 3s, 4.5s
+              console.log(`⏳ Waiting ${waitTime}ms before retry...`)
+              await new Promise(resolve => setTimeout(resolve, waitTime))
+              continue
+            }
+            
+            break // Success or final attempt
+          } catch (error) {
+            if (retries < maxRetries) {
+              console.log(`🔄 fetchInitialPost: Network error, retrying... (attempt ${retries + 1}/${maxRetries + 1})`)
+              retries++
+              await new Promise(resolve => setTimeout(resolve, 1000))
+              continue
+            }
+            throw error // Final attempt failed
+          }
+        }
+        
+        clearTimeout(timeoutId)
+        const fetchEnd = Date.now()
+        console.log(`⏱️ fetchInitialPost: API call took ${fetchEnd - fetchStart}ms (retries: ${retries})`)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load content: ${response.status} ${response.statusText}`)
+        }
+        
+        const parseStart = Date.now()
+        const data = await response.json()
+        const parseEnd = Date.now()
+        console.log(`⏱️ fetchInitialPost: JSON parsing took ${parseEnd - parseStart}ms`)
+        
+        if (!data.success || !data.data?.content) {
+          throw new Error('Invalid response format from content API')
+        }
+
+        // Add welcome card + first real post
+        const welcomeCard: Post = {
+          id: -999,
+          content_text: "Welcome to Hotdog Diaries! Swipe up to see the best hotdog content from around the internet.",
+          content_type: 'text' as ContentType,
+          source_platform: 'reddit' as SourcePlatform,
+          original_url: '',
+          original_author: 'Hotdog Diaries',
+          scraped_at: new Date(),
+          is_posted: false,
+          is_approved: true
+        }
+        
+        const transformedContent = data.data.content.map((item: any) => ({
+          ...item,
+          is_posted: !!item.is_posted,
+          is_approved: !!item.is_approved,
+          scraped_at: new Date(item.scraped_at),
+          posted_at: item.posted_at ? new Date(item.posted_at) : undefined
+        }))
+        
+        console.log(`✅ fetchInitialPost: Loaded first post for quick display - total posts: ${transformedContent.length + 1}`)
+        return [welcomeCard, ...transformedContent]
+      },
+      [] as Post[],
+      'fetchInitialPost'
+    )
+
+    const endTime = Date.now()
+    const totalTime = endTime - startTime
+    console.log(`⏱️ fetchInitialPost: Total processing time: ${totalTime}ms`)
+
+    if (result.length === 0) {
+      console.log('⏱️ fetchInitialPost: No content from API, creating fallback post')
+      // Create a fallback welcome post when API fails or returns no content
+      const fallbackPost: Post = {
+        id: -1,
+        content_text: "Welcome to Hotdog Diaries! 🌭 Loading delicious hotdog content...",
+        content_type: 'text' as ContentType,
+        source_platform: 'reddit' as SourcePlatform,
+        original_url: '',
+        original_author: 'Hotdog Diaries',
+        scraped_at: new Date(),
+        is_posted: false,
+        is_approved: true
+      }
+      setPosts([fallbackPost])
+    } else {
+      console.log(`⏱️ fetchInitialPost: Setting ${result.length} posts`)
+      setPosts(result)
+      
+      // Start loading the rest after a short delay
+      setTimeout(() => fetchRemainingPosts(), 1000)
+    }
+
+    // Force minimum loading time to ensure animation is visible
+    const minLoadingTime = 4000 // Force 4 seconds minimum
+    const remainingTime = Math.max(minLoadingTime - totalTime, 0)
+    console.log(`⏱️ fetchInitialPost: Will show loading for ${remainingTime}ms more (total: ${totalTime + remainingTime}ms)`)
+    
+    setTimeout(() => {
+      console.log('⏱️ fetchInitialPost: Hiding loading animation now')
+      console.log('🔄 setLoading(false) - Loading should be hidden now')
+      setLoading(false)
+    }, remainingTime)
+
+    // Note: Main safety timeout in useEffect handles fallback content creation
+  }
+
+  const fetchRemainingPosts = async () => {
+    setLoadingMore(true)
+
+    const result = await safeExecute(
+      async () => {
+        const response = await fetch('/api/content?limit=49&page=1') // Get the rest (skip first)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load remaining content: ${response.status} ${response.statusText}`)
+        }
+        
+        const data = await response.json()
+        
+        if (!data.success || !data.data?.content) {
+          return []
+        }
+
+        const transformedContent = data.data.content.slice(1).map((item: any) => ({ // Skip first post we already have
+          ...item,
+          is_posted: !!item.is_posted,
+          is_approved: !!item.is_approved,
+          scraped_at: new Date(item.scraped_at),
+          posted_at: item.posted_at ? new Date(item.posted_at) : undefined
+        }))
+        
+        console.log(`✅ Loaded remaining ${transformedContent.length} posts`)
+        return transformedContent
+      },
+      [] as Post[],
+      'fetchRemainingPosts'
+    )
+
+    // Add remaining posts to existing ones
+    setPosts(prevPosts => [...prevPosts, ...result])
+    setLoadingMore(false)
+  }
+
   const fetchPosts = async () => {
     setLoading(true)
+    const startTime = Date.now()
     setError(null)
 
     const result = await safeExecute(
@@ -334,7 +559,8 @@ export default function AdaptiveTikTokFeed() {
       setPosts(result)
     }
 
-    setLoading(false)
+    // Add a minimum loading time so users can enjoy the hotdog animation
+    setTimeout(() => setLoading(false), Math.max(3000 - (Date.now() - startTime), 0))
   }
 
   const handleScroll = () => {
@@ -491,37 +717,12 @@ export default function AdaptiveTikTokFeed() {
   };
 
   if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-content">
-          <div className="spinner">🌭</div>
-          <p>Loading hotdog content...</p>
-        </div>
-        <style jsx>{`
-          .loading-container {
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f0f0f0;
-          }
-          .loading-content {
-            text-align: center;
-          }
-          .spinner {
-            font-size: 48px;
-            animation: spin 1s linear infinite;
-          }
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    )
+    console.log('🎬 Rendering HotdogBounceLoader - posts:', posts.length, 'loading:', loading)
+    return <HotdogBounceLoader />
   }
 
   if (error) {
+    console.log('❌ Rendering error state:', error)
     return (
       <div className="error-container">
         <p>Error: {error}</p>
@@ -548,14 +749,12 @@ export default function AdaptiveTikTokFeed() {
     )
   }
 
+  console.log('🍕 Rendering feed content - posts:', posts.length, 'currentIndex:', currentIndex, 'loading:', loading)
+  
   return (
     <FeedErrorBoundary name="AdaptiveTikTokFeed">
-      <div className="page-container">
-        {/* Fixed header */}
-        <div className="header-title">
-          <span className="hotdog-icon">🌭</span>
-          <span className="title-text">Hotdog Diaries</span>
-        </div>
+      <div className="page-container feed-container">
+        {/* Header title is now handled by AnimatedTitle component */}
         
         {/* Admin login button */}
         <div className="admin-controls" style={{
@@ -630,6 +829,7 @@ export default function AdaptiveTikTokFeed() {
                 >
                   <PostContent 
                     post={post} 
+                    index={index}
                     isActive={index === currentIndex}
                     videoRef={(el) => {
                       if (el) videosRef.current[index] = el
@@ -690,6 +890,34 @@ export default function AdaptiveTikTokFeed() {
 
         {/* Navigation Buttons */}
         <NavigationButtons />
+
+        {/* Loading more indicator */}
+        {loadingMore && (
+          <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            background: 'rgba(0, 0, 0, 0.8)',
+            color: 'white',
+            padding: '8px 16px',
+            borderRadius: '20px',
+            fontSize: '14px',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <div style={{
+              width: '16px',
+              height: '16px',
+              border: '2px solid rgba(255, 255, 255, 0.3)',
+              borderTop: '2px solid white',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+            Loading more content...
+          </div>
+        )}
 
       <style jsx>{`
         .page-container {
@@ -1138,11 +1366,13 @@ export default function AdaptiveTikTokFeed() {
 
 function PostContent({ 
   post, 
+  index,
   isActive, 
   videoRef,
   getPlatformIcon
 }: { 
   post: Post
+  index: number
   isActive: boolean
   videoRef?: (el: HTMLVideoElement | null) => void
   getPlatformIcon: (platform: SourcePlatform) => string
@@ -1481,38 +1711,62 @@ function PostContent({
       }
     }
 
-    // Direct videos with enhanced mobile controls
+    // Direct videos with enhanced mobile controls (exclude YouTube URLs)
     if (post.content_video_url && !videoError) {
-      return (
-        <div className="video-container">
-          <MobileVideoPlayer
-            src={post.content_video_url}
-            poster={post.content_image_url}
-            isActive={isActive}
-            onVideoRef={(el) => {
-              if (videoRef && el) videoRef(el)
-              if (el) {
-                setTimeout(() => scalePlatformContent(el, post), 100)
-              }
-            }}
-            style={{
-              width: '100%',
-              height: '100%'
-            }}
-          />
-        </div>
-      )
+      // Skip YouTube URLs - these should be handled by YouTube player above
+      const isYouTubeUrl = post.content_video_url.includes('youtube.com') || 
+                          post.content_video_url.includes('youtu.be')
+      
+      // Only use MobileVideoPlayer for actual video files (not GIFs)
+      const isDirectVideo = post.content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)
+      
+      // GIFs should be handled as images, not videos
+      const isGifFile = post.content_video_url.match(/\.gif(\?|$)/i)
+      
+      if (!isYouTubeUrl && isDirectVideo) {
+        return (
+          <div className="video-container">
+            <MobileVideoPlayer
+              src={post.content_video_url}
+              poster={post.content_image_url}
+              isActive={isActive}
+              onVideoRef={(el) => {
+                if (videoRef && el) videoRef(el)
+                if (el) {
+                  setTimeout(() => scalePlatformContent(el, post), 100)
+                }
+              }}
+              style={{
+                width: '100%',
+                height: '100%'
+              }}
+            />
+          </div>
+        )
+      } else if (isYouTubeUrl) {
+        // Log that this should have been caught by YouTube handler above
+        console.warn(`⚠️ YouTube URL ${post.content_video_url} reached direct video handler - this should be handled by YouTube player`)
+      } else if (isGifFile) {
+        // GIFs should be treated as images, not videos - fall through to image handling
+        console.log(`📸 GIF file detected, will be handled as image: ${post.content_video_url}`)
+      } else {
+        // Unsupported video URL format
+        console.warn(`⚠️ Unsupported video URL format: ${post.content_video_url}`)
+        setVideoError(true)
+      }
     }
 
-    // Images - handle both pure image posts and mixed content
-    if (post.content_image_url && !imageError) {
-      let imageSrc = post.content_image_url
+    // Images - handle both pure image posts, mixed content, and GIFs stored as video URLs
+    if ((post.content_image_url || (post.content_video_url && post.content_video_url.match(/\.gif(\?|$)/i))) && !imageError) {
+      // Use GIF URL if no image URL but video URL is a GIF
+      let imageSrc = post.content_image_url || 
+                    (post.content_video_url && post.content_video_url.match(/\.gif(\?|$)/i) ? post.content_video_url : '')
       
       // Apply proxy for platforms that need it
-      if (post.source_platform === 'pixabay') {
+      if (post.source_platform === 'pixabay' && post.content_image_url) {
         const pageUrl = post.original_url
         imageSrc = `/api/proxy/pixabay-image?url=${encodeURIComponent(post.content_image_url)}&page=${encodeURIComponent(pageUrl)}`
-      } else if (post.source_platform === 'bluesky') {
+      } else if (post.source_platform === 'bluesky' && post.content_image_url) {
         imageSrc = `/api/proxy/bluesky-image?url=${encodeURIComponent(post.content_image_url)}`
       }
       

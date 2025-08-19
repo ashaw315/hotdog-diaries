@@ -1,0 +1,54 @@
+# Development files
+*.test.ts
+*.test.tsx
+*.spec.ts
+__tests__
+test-*
+mock-*
+scripts/dev
+
+# Documentation
+*.md
+docs/
+!README.md
+
+# Development database
+*.db
+*.sqlite
+hotdog_diaries_dev.db
+
+# Source control
+.git
+.gitignore
+
+# Development configs
+.env.local
+.env.development
+.env.example
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Development scripts
+scripts/test-*.ts
+scripts/debug-*.ts
+scripts/emergency-*.ts
+scripts/check-*.ts

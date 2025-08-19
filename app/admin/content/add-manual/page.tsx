@@ -38,7 +38,7 @@ export default function AddManualContent() {
       } else {
         setError(data.error || 'Failed to add video')
       }
-    } catch (err) {
+    } catch {
       setError('Network error while adding video')
     } finally {
       setLoading(false)
@@ -69,7 +69,7 @@ export default function AddManualContent() {
       } else {
         setError(data.error || 'Failed to search GIFs')
       }
-    } catch (err) {
+    } catch {
       setError('Network error while searching GIFs')
     } finally {
       setLoading(false)
@@ -100,7 +100,7 @@ export default function AddManualContent() {
       } else {
         setError(data.error || 'Failed to add GIF')
       }
-    } catch (err) {
+    } catch {
       setError('Network error while adding GIF')
     } finally {
       setLoading(false)
@@ -133,7 +133,7 @@ export default function AddManualContent() {
       } else {
         setError(data.error || 'Failed to import URLs')
       }
-    } catch (err) {
+    } catch {
       setError('Network error during bulk import')
     } finally {
       setLoading(false)
@@ -155,7 +155,7 @@ export default function AddManualContent() {
       } else {
         setError(data.error || `Failed to import ${action}`)
       }
-    } catch (err) {
+    } catch {
       setError('Network error during quick action')
     } finally {
       setLoading(false)
@@ -382,7 +382,7 @@ https://youtube.com/watch?v=video2`}
             <li>• Focus on adding <strong>videos first</strong> - currently at 0% (need 30%)</li>
             <li>• Add <strong>GIFs second</strong> - currently at 2.6% (need 25%)</li>
             <li>• Popular YouTube channels: Tasty, Food Network, Bon Appétit</li>
-            <li>• Good Giphy search terms: "hotdog", "sausage", "cooking", "grilling"</li>
+            <li>• Good Giphy search terms: &quot;hotdog&quot;, &quot;sausage&quot;, &quot;cooking&quot;, &quot;grilling&quot;</li>
             <li>• Manually added content gets high confidence scores and auto-approval</li>
             <li>• Each post type should represent quality hotdog content</li>
           </ul>

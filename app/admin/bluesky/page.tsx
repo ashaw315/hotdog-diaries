@@ -120,7 +120,7 @@ export default function BlueskyAdminPage() {
     setTesting(true)
     try {
       const response = await fetch('/api/admin/bluesky/test')
-      const result = await response.json()
+      await response.json() // Remove unused 'result' variable
       await loadStatus()
     } catch (error) {
       console.error('Error testing Bluesky connection:', error)

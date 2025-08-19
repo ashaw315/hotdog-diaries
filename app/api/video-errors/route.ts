@@ -5,12 +5,12 @@ import { db } from '@/lib/db'
 async function ensureVideoErrorsTable() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS video_playback_errors (
-      id SERIAL PRIMARY KEY,
-      platform VARCHAR(50) NOT NULL,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
       url TEXT NOT NULL,
-      error_type VARCHAR(100) NOT NULL,
+      error_type TEXT NOT NULL,
       user_agent TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
   
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
     // Log to database without auth
     await db.query(`
       INSERT INTO video_playback_errors (platform, url, error_type, user_agent, created_at)
-      VALUES ($1, $2, $3, $4, NOW())
-    `, [body.platform, body.url, body.error, userAgent])
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `, [body.platform || 'unknown', body.url, body.errorType, userAgent])
     
     return NextResponse.json({ success: true })
     

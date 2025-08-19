@@ -533,3 +533,6 @@ export class BlueskyService {
 }
 
 export const blueskyService = new BlueskyService()
+
+// Export as BlueskyScanningService for compatibility with scanning-scheduler
+export { BlueskyService as BlueskyScanningService }

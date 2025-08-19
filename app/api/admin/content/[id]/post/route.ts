@@ -7,11 +7,12 @@ import {
 } from '@/lib/api-middleware'
 import { db } from '@/lib/db'
 
-async function postContentHandler(request: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+async function postContentHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   validateRequestMethod(request, ['POST'])
 
   try {
-    const contentId = parseInt(params.id)
+    const resolvedParams = await params
+    const contentId = parseInt(resolvedParams.id)
 
     if (isNaN(contentId)) {
       throw createApiError('Invalid content ID', 400, 'INVALID_CONTENT_ID')
@@ -71,10 +72,11 @@ async function postContentHandler(request: NextRequest, { params }: { params: { 
   }
 }
 
-export async function POST(request: NextRequest, context: { params: { id: string } }): Promise<NextResponse> {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   try {
     return await postContentHandler(request, context)
   } catch (error) {
-    return await handleApiError(error, request, `/api/admin/content/${context.params.id}/post`)
+    const resolvedParams = await context.params
+    return await handleApiError(error, request, `/api/admin/content/${resolvedParams.id}/post`)
   }
 }

@@ -53,25 +53,26 @@ export default function ContentManagementPage() {
     }
   }
 
-  const handleBulkAction = async (action: string, contentIds: number[]) => {
-    try {
-      setError(null)
-      const response = await fetch('/api/admin/content/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, contentIds })
-      })
+  // Commented out unused function to fix build errors
+  // const handleBulkAction = async (action: string, contentIds: number[]) => {
+  //   try {
+  //     setError(null)
+  //     const response = await fetch('/api/admin/content/bulk', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ action, contentIds })
+  //     })
 
-      if (response.ok) {
-        await loadContentStats()
-      } else {
-        throw new Error(`Failed to perform bulk ${action}`)
-      }
-    } catch (err) {
-      setError(`Failed to perform bulk ${action}`)
-      console.error(`Bulk ${action} error:`, err)
-    }
-  }
+  //     if (response.ok) {
+  //       await loadContentStats()
+  //     } else {
+  //       throw new Error(`Failed to perform bulk ${action}`)
+  //     }
+  //   } catch (err) {
+  //     setError(`Failed to perform bulk ${action}`)
+  //     console.error(`Bulk ${action} error:`, err)
+  //   }
+  // }
 
   const getPlatformIcon = (platform: string) => {
     switch (platform.toLowerCase()) {

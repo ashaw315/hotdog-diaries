@@ -30,6 +30,31 @@ export default function MobileVideoPlayer({
   const [lastTouchTime, setLastTouchTime] = useState(0)
   const [touchStartY, setTouchStartY] = useState(0)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
+  const [hasError, setHasError] = useState(false)
+
+  // Validate video URL format on component mount
+  useEffect(() => {
+    const isValidVideoUrl = (url: string): boolean => {
+      // Check if it's a direct video file
+      if (url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) return true
+      
+      // Check if it's from supported video hosts
+      if (url.includes('imgur.com') || url.includes('i.redd.it')) return true
+      
+      // Block YouTube URLs - these should use YouTube player
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        console.warn('⚠️ YouTube URL passed to MobileVideoPlayer - should use MobileYouTubePlayer instead:', url)
+        return false
+      }
+      
+      return false
+    }
+    
+    if (!isValidVideoUrl(src)) {
+      setHasError(true)
+      console.error('Invalid video URL format for MobileVideoPlayer:', src)
+    }
+  }, [src])
 
   // Intersection observer for autoplay
   const { isIntersecting } = useIntersectionObserver(containerRef, {
@@ -83,9 +108,46 @@ export default function MobileVideoPlayer({
     }
   }
 
-  const handleVideoError = () => {
+  const handleVideoError = (error: Event) => {
     setIsLoading(false)
-    console.error('Video failed to load:', src)
+    setHasError(true)
+    
+    // Provide more detailed error information
+    const videoElement = error.target as HTMLVideoElement
+    const errorCode = videoElement?.error?.code
+    const errorMessage = videoElement?.error?.message
+    
+    console.error('Video failed to load:', {
+      src,
+      errorCode,
+      errorMessage,
+      error: videoElement?.error
+    })
+    
+    // Report error to API for monitoring
+    if (typeof window !== 'undefined') {
+      fetch('/api/video-errors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: src,
+          errorType: getErrorType(errorCode),
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        })
+      }).catch(err => console.warn('Failed to report video error:', err))
+    }
+  }
+  
+  // Helper to convert error codes to readable types
+  const getErrorType = (code?: number): string => {
+    switch (code) {
+      case 1: return 'MEDIA_ERR_ABORTED'
+      case 2: return 'MEDIA_ERR_NETWORK' 
+      case 3: return 'MEDIA_ERR_DECODE'
+      case 4: return 'MEDIA_ERR_SRC_NOT_SUPPORTED'
+      default: return 'UNKNOWN_ERROR'
+    }
   }
 
   const handlePlayPause = useCallback(async () => {
@@ -183,6 +245,37 @@ export default function MobileVideoPlayer({
     
     handlePlayPause()
   }, [isTouchDevice, handlePlayPause])
+
+  // Show error state if video URL is invalid or failed to load
+  if (hasError) {
+    return (
+      <div
+        ref={containerRef}
+        className={`mobile-video-player error-state ${className}`}
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#1a1a1a',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          color: '#fff',
+          textAlign: 'center',
+          padding: '20px',
+          ...style
+        }}
+      >
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+        <div style={{ fontSize: '16px', marginBottom: '8px' }}>Video Unavailable</div>
+        <div style={{ fontSize: '14px', opacity: 0.7, maxWidth: '80%' }}>
+          This video format is not supported or the source is unavailable.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

@@ -1,12 +1,53 @@
 {
+  "framework": "nextjs",
+  "buildCommand": "npm run build:prod",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "functions": {
+    "app/api/cron/scan-content/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/post-content/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/admin/*/route.ts": {
+      "maxDuration": 30
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/scan-content",
       "schedule": "0 */4 * * *"
     },
     {
-      "path": "/api/cron/automated-post",
-      "schedule": "0 7,12,15,18,20,22 * * *"
+      "path": "/api/cron/post-content",
+      "schedule": "0 7,10,13,16,19,22 * * *"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
     }
   ]
 }

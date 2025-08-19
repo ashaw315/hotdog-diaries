@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Loading Fix Test</title>
+    <script>
+        console.log('🔧 Testing video loading fixes...');
+        
+        // Test the validation logic
+        function testVideoUrlValidation() {
+            const testUrls = [
+                'https://www.youtube.com/watch?v=9JanuR1lNhg', // Should be blocked
+                'https://i.imgur.com/n1gySf0.mp4', // Should be allowed
+                'https://i.imgur.com/pjsxay7.gif', // Should be allowed  
+                'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4' // Should be allowed
+            ];
+            
+            testUrls.forEach(url => {
+                const isYouTubeUrl = url.includes('youtube.com') || url.includes('youtu.be');
+                const isDirectVideo = url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ||
+                                     url.includes('imgur.com') ||
+                                     url.includes('i.redd.it');
+                
+                const shouldUseDirectPlayer = !isYouTubeUrl && isDirectVideo;
+                
+                console.log(`🎬 ${url}`);
+                console.log(`   - YouTube URL: ${isYouTubeUrl}`);
+                console.log(`   - Direct Video: ${isDirectVideo}`);
+                console.log(`   - Should use MobileVideoPlayer: ${shouldUseDirectPlayer}`);
+                console.log('   ---');
+            });
+        }
+        
+        testVideoUrlValidation();
+    </script>
+</head>
+<body>
+    <h1>Video Loading Fix Test</h1>
+    <p>Check the browser console for test results.</p>
+</body>
+</html>
