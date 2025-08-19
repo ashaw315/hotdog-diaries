@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hotdog Diaries - Test Page</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px; 
+            background: linear-gradient(135deg, #ff9a56, #ffad56);
+            color: white;
+        }
+        .container { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 10px; }
+        .hotdog { font-size: 100px; margin: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hotdog">🌭</div>
+        <h1>Hotdog Diaries Test</h1>
+        <p>If you can see this page, static files are working!</p>
+        <p>Timestamp: <script>document.write(new Date().toISOString())</script></p>
+        
+        <div style="margin-top: 30px;">
+            <p>Next steps:</p>
+            <ol style="text-align: left; display: inline-block;">
+                <li>Visit <code>/api/public-health</code> to test API access</li>
+                <li>If APIs work, visit <code>/api/init-db</code> to initialize database</li>
+                <li>Then visit <code>/</code> to see the main app</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>

@@ -2,7 +2,6 @@
   "framework": "nextjs",
   "buildCommand": "npm run build:prod",
   "outputDirectory": ".next",
-  "regions": ["iad1"],
   "functions": {
     "app/api/cron/scan-content/route.ts": {
       "maxDuration": 60
@@ -27,9 +26,6 @@
     "env": {
       "NODE_ENV": "production"
     }
-  },
-  "protections": {
-    "password": false
   },
   "headers": [
     {
