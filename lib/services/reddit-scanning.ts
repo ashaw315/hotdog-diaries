@@ -1,4 +1,5 @@
 import { RedditService, ProcessedRedditPost, RedditSearchOptions } from './reddit'
+import { redditHttpService, RedditPost } from './reddit-http'
 import { FilteringService } from './filtering'
 import { ContentProcessor } from './content-processor'
 import { DuplicateDetectionService } from './duplicate-detection'
@@ -178,41 +179,43 @@ export class RedditScanningService {
       let allPosts: ProcessedRedditPost[] = []
       result.subredditsScanned = config.targetSubreddits
 
-      // Search each target subreddit with configured search terms
+      // Search each target subreddit with configured search terms using HTTP service
       for (const searchTerm of config.searchTerms) {
-        try {
-          const searchOptions: RedditSearchOptions = {
-            query: searchTerm,
-            subreddits: config.targetSubreddits,
-            sort: config.sortBy,
-            time: config.timeRange,
-            limit: Math.floor(config.maxPostsPerScan / config.searchTerms.length),
-            minScore: config.minScore
+        for (const subreddit of config.targetSubreddits) {
+          try {
+            const limit = Math.floor(config.maxPostsPerScan / (config.searchTerms.length * config.targetSubreddits.length))
+            
+            // Use HTTP service instead of Snoowrap to avoid blocking
+            const rawPosts = await redditHttpService.searchSubreddit(subreddit, searchTerm, limit)
+            
+            // Convert to ProcessedRedditPost format
+            const posts = rawPosts
+              .filter(post => post.score >= config.minScore)
+              .map(post => this.convertToProcessedPost(post))
+            
+            allPosts = allPosts.concat(posts)
+
+            await logToDatabase(
+              LogLevel.INFO,
+              'REDDIT_SEARCH_SUCCESS',
+              `Found ${posts.length} posts for "${searchTerm}" in r/${subreddit}`,
+              { scanId, searchTerm, subreddit, postsFound: posts.length }
+            )
+
+          } catch (error) {
+            result.errors.push(`Search "${searchTerm}" in r/${subreddit} failed: ${error.message}`)
+            
+            if (error.message.includes('rate limit')) {
+              result.rateLimitHit = true
+            }
+
+            await logToDatabase(
+              LogLevel.ERROR,
+              'REDDIT_SEARCH_ERROR',
+              `Search failed: "${searchTerm}" in r/${subreddit} - ${error.message}`,
+              { scanId, searchTerm, subreddit, error: error.message }
+            )
           }
-
-          const posts = await this.redditService.searchSubreddits(searchOptions)
-          allPosts = allPosts.concat(posts)
-
-          await logToDatabase(
-            LogLevel.INFO,
-            'REDDIT_SEARCH_TERM_SUCCESS',
-            `Found ${posts.length} posts for search term: ${searchTerm}`,
-            { scanId, searchTerm, postsFound: posts.length }
-          )
-
-        } catch (error) {
-          result.errors.push(`Search term "${searchTerm}" failed: ${error.message}`)
-          
-          if (error.message.includes('rate limit')) {
-            result.rateLimitHit = true
-          }
-
-          await logToDatabase(
-            LogLevel.ERROR,
-            'REDDIT_SEARCH_TERM_ERROR',
-            `Search term failed: ${searchTerm} - ${error.message}`,
-            { scanId, searchTerm, error: error.message }
-          )
         }
       }
 
@@ -760,21 +763,9 @@ export class RedditScanningService {
    */
   async testConnection(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
-      const status = await this.redditService.getApiStatus()
-      
-      if (status.isConnected) {
-        return {
-          success: true,
-          message: 'Reddit API connection successful',
-          details: status
-        }
-      } else {
-        return {
-          success: false,
-          message: status.lastError || 'Failed to connect to Reddit API',
-          details: status
-        }
-      }
+      // Use HTTP service for testing connection
+      const result = await redditHttpService.testConnection()
+      return result
 
     } catch (error) {
       return {
@@ -782,6 +773,56 @@ export class RedditScanningService {
         message: `Connection test failed: ${error.message}`,
         details: { error: error.message }
       }
+    }
+  }
+
+  /**
+   * Convert Reddit HTTP API post to ProcessedRedditPost format
+   */
+  private convertToProcessedPost(post: RedditPost): ProcessedRedditPost {
+    // Extract media URLs
+    const imageUrls: string[] = []
+    const videoUrls: string[] = []
+
+    if (post.url) {
+      const url = post.url.toString()
+      
+      // Direct image links
+      if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+        imageUrls.push(url)
+      }
+      // Reddit hosted images
+      else if (url.includes('i.redd.it')) {
+        imageUrls.push(url)
+      }
+      // Reddit hosted videos
+      else if (url.includes('v.redd.it')) {
+        videoUrls.push(url)
+      }
+    }
+
+    return {
+      id: post.id,
+      title: post.title || '',
+      selftext: post.selftext || '',
+      subreddit: post.subreddit,
+      author: post.author || '[deleted]',
+      createdAt: new Date(post.created_utc * 1000),
+      score: post.score || 0,
+      upvoteRatio: post.upvote_ratio || 0,
+      numComments: post.num_comments || 0,
+      permalink: `https://reddit.com${post.permalink}`,
+      url: post.url?.toString() || '',
+      imageUrls,
+      videoUrls,
+      mediaUrls: [...imageUrls, ...videoUrls],
+      isNSFW: post.over_18 || false,
+      isSpoiler: false, // Not available in HTTP API
+      isStickied: post.stickied || false,
+      flair: undefined, // Not available in basic HTTP API
+      isGallery: false, // Would need additional parsing
+      isCrosspost: false, // Would need additional parsing
+      crosspostOrigin: undefined
     }
   }
 }
