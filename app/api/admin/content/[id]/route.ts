@@ -7,7 +7,7 @@ import {
 } from '@/lib/api-middleware'
 import { db } from '@/lib/db'
 
-async function deleteContentHandler(request: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+async function deleteContentHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   validateRequestMethod(request, ['DELETE'])
 
   try {

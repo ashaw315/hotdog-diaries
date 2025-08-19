@@ -25,22 +25,26 @@ class DatabaseConnection {
   private isSqlite: boolean = false
 
   constructor() {
-    this.isVercel = !!process.env.POSTGRES_URL && process.env.NODE_ENV !== 'development'
-    this.isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV
+    // Production deployment detection: Prefer Vercel Postgres URLs
+    this.isVercel = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres')) && process.env.NODE_ENV === 'production'
+    this.isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV && !process.env.DATABASE_URL?.includes('postgres')
+    
+    console.log(`🗄️ Database Mode: ${this.isVercel ? 'Vercel Postgres' : this.isSqlite ? 'SQLite' : 'PostgreSQL Pool'}`)
   }
 
   private getConfig(): DatabaseConfig {
     if (this.isVercel) {
+      // Vercel Postgres configuration - uses environment variables set by Vercel
       return {
         host: process.env.POSTGRES_HOST!,
-        port: 5432,
+        port: parseInt(process.env.POSTGRES_PORT || '5432'),
         database: process.env.POSTGRES_DATABASE!,
         user: process.env.POSTGRES_USER!,
         password: process.env.POSTGRES_PASSWORD!,
         ssl: true,
-        max: 20,
+        max: 10, // Vercel Postgres has connection limits
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 2000,
+        connectionTimeoutMillis: 5000, // Increased timeout for Vercel
       }
     }
 
@@ -134,9 +138,25 @@ class DatabaseConnection {
 
     if (this.isVercel) {
       try {
-        return await sql.query(text, params || []) as QueryResult<T>
-      } catch (error) {
-        console.error('Vercel SQL query error:', error)
+        const start = Date.now()
+        const result = await sql.query(text, params || []) as QueryResult<T>
+        const duration = Date.now() - start
+        
+        // Log slow queries in production
+        if (duration > 1000) {
+          console.warn(`Slow query detected: ${duration}ms`, { 
+            query: text.substring(0, 100),
+            duration 
+          })
+        }
+        
+        return result
+      } catch (error: any) {
+        console.error('Vercel Postgres query error:', {
+          error: error.message,
+          code: error.code,
+          query: text.substring(0, 100)
+        })
         throw error
       }
     }

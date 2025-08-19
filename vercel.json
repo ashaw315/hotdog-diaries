@@ -16,16 +16,17 @@
   },
   "crons": [
     {
-      "path": "/api/cron/scan-content",
-      "schedule": "0 */4 * * *"
-    },
-    {
-      "path": "/api/cron/post-content",
-      "schedule": "0 7,10,13,16,19,22 * * *"
+      "path": "/api/cron/daily",
+      "schedule": "0 10 * * *"
     }
   ],
   "env": {
     "NODE_ENV": "production"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
   },
   "headers": [
     {

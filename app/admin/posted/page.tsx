@@ -37,10 +37,6 @@ export default function PostedContentPage() {
 
   const itemsPerPage = 20
 
-  useEffect(() => {
-    loadPostedContent()
-  }, [page, loadPostedContent])
-
   const loadPostedContent = useCallback(async () => {
     try {
       setError(null)
@@ -77,6 +73,10 @@ export default function PostedContentPage() {
       setLoading(false)
     }
   }, [page, itemsPerPage])
+
+  useEffect(() => {
+    loadPostedContent()
+  }, [page, loadPostedContent])
 
   const loadMore = () => {
     if (!loading && hasMore) {

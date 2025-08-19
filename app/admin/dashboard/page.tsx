@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { DailyCronStatus } from '@/components/admin/DailyCronStatus'
 
 interface ContentItem {
   id: number
@@ -374,6 +375,11 @@ export default function AdminDashboard() {
               <div className="text-xs text-gray-500">When queue reaches 14 days</div>
             </div>
           </div>
+        </div>
+
+        {/* Daily Cron Status */}
+        <div className="mt-8">
+          <DailyCronStatus />
         </div>
 
         {/* Quick Actions */}

@@ -29,11 +29,6 @@ export default function RedditSettingsPage() {
   const [isRunningManualScan, setIsRunningManualScan] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  // Load initial data
-  useEffect(() => {
-    loadData()
-  }, [loadData])
-
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -50,6 +45,11 @@ export default function RedditSettingsPage() {
       setIsLoading(false)
     }
   }, [])
+
+  // Load initial data
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const loadConfig = async () => {
     try {
