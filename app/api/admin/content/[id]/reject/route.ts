@@ -55,10 +55,12 @@ async function rejectContentHandler(request: NextRequest, { params }: { params: 
   }
 }
 
-export async function POST(request: NextRequest, context: { params: { id: string } }): Promise<NextResponse> {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   try {
-    return await rejectContentHandler(request, context)
+    const resolvedParams = await context.params
+    return await rejectContentHandler(request, { params: resolvedParams })
   } catch (error) {
-    return await handleApiError(error, request, `/api/admin/content/${context.params.id}/reject`)
+    const resolvedParams = await context.params
+    return await handleApiError(error, request, `/api/admin/content/${resolvedParams.id}/reject`)
   }
 }

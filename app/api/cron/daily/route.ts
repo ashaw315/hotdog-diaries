@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // 1. CHECK QUEUE STATUS FIRST
     console.log('📊 Checking queue status...');
-    const queueStats = await checkQueueStatus();
+    let queueStats = await checkQueueStatus();
     results.queueStatus = queueStats;
     
     // 2. SCAN FOR NEW CONTENT - CRITICAL LOGIC
@@ -134,6 +134,10 @@ async function performDailyScanning() {
       
       // Call the platform-specific scan endpoint with emergency params
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      
       const response = await fetch(`${baseUrl}/api/admin/${platform}/scan`, {
         method: 'POST',
         headers: {
@@ -144,8 +148,10 @@ async function performDailyScanning() {
           emergency: true, // Flag for more aggressive scanning
           limit: 50 // Get more items when queue is low
         }),
-        timeout: 45000 // Longer timeout for emergency scans
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const result = await response.json();
@@ -295,7 +301,7 @@ async function publishContent(timeSlot: string): Promise<boolean> {
     const result = await db.query(`
       SELECT * FROM content_queue
       WHERE is_approved = ? AND is_posted = ?
-      ORDER BY confidence_score DESC
+      ORDER BY id DESC
       LIMIT 1
     `, [1, 0]);
     
@@ -359,7 +365,7 @@ async function emergencyApproveContent() {
         AND id IN (SELECT id FROM content_queue WHERE is_approved = ? AND content_type IN ('video', 'gif') ORDER BY id DESC LIMIT 15)
     `, [1, 'Auto-approved by emergency scan (video/gif)', new Date().toISOString(), 0, 0]);
     
-    console.log(`  ✅ Emergency approved ${videoResult.changes || 0} video/gif items`);
+    console.log(`  ✅ Emergency approved ${videoResult.rowCount || 0} video/gif items`);
     
     // Auto-approve image content
     const imageResult = await db.query(`
@@ -372,7 +378,7 @@ async function emergencyApproveContent() {
         AND id IN (SELECT id FROM content_queue WHERE is_approved = ? AND content_type = 'image' ORDER BY id DESC LIMIT 15)
     `, [1, 'Auto-approved by emergency scan (image)', new Date().toISOString(), 0, 0]);
     
-    console.log(`  ✅ Emergency approved ${imageResult.changes || 0} image items`);
+    console.log(`  ✅ Emergency approved ${imageResult.rowCount || 0} image items`);
     
     // If we still need more, approve text content
     const textResult = await db.query(`
@@ -385,14 +391,14 @@ async function emergencyApproveContent() {
         AND id IN (SELECT id FROM content_queue WHERE is_approved = ? AND (content_type = 'text' OR content_type IS NULL) ORDER BY id DESC LIMIT 10)
     `, [1, 'Auto-approved by emergency scan (text)', new Date().toISOString(), 0, 0]);
     
-    console.log(`  ✅ Emergency approved ${textResult.changes || 0} text items`);
+    console.log(`  ✅ Emergency approved ${textResult.rowCount || 0} text items`);
     
-    const total = (videoResult.changes || 0) + (imageResult.changes || 0) + (textResult.changes || 0);
+    const total = (videoResult.rowCount || 0) + (imageResult.rowCount || 0) + (textResult.rowCount || 0);
     
     return {
-      videoGif: videoResult.changes || 0,
-      image: imageResult.changes || 0,
-      text: textResult.changes || 0,
+      videoGif: videoResult.rowCount || 0,
+      image: imageResult.rowCount || 0,
+      text: textResult.rowCount || 0,
       total: total
     };
   } catch (error) {

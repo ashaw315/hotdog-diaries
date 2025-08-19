@@ -11,7 +11,8 @@ async function deleteContentHandler(request: NextRequest, { params }: { params: 
   validateRequestMethod(request, ['DELETE'])
 
   try {
-    const contentId = parseInt(params.id)
+    const resolvedParams = await params
+    const contentId = parseInt(resolvedParams.id)
 
     if (isNaN(contentId)) {
       throw createApiError('Invalid content ID', 400, 'INVALID_CONTENT_ID')
@@ -48,11 +49,12 @@ async function deleteContentHandler(request: NextRequest, { params }: { params: 
   }
 }
 
-async function updateContentHandler(request: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+async function updateContentHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   validateRequestMethod(request, ['PUT', 'PATCH'])
 
   try {
-    const contentId = parseInt(params.id)
+    const resolvedParams = await params
+    const contentId = parseInt(resolvedParams.id)
     
     if (isNaN(contentId)) {
       throw createApiError('Invalid content ID', 400, 'INVALID_CONTENT_ID')
@@ -126,26 +128,29 @@ async function updateContentHandler(request: NextRequest, { params }: { params: 
   }
 }
 
-export async function DELETE(request: NextRequest, context: { params: { id: string } }): Promise<NextResponse> {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   try {
     return await deleteContentHandler(request, context)
   } catch (error) {
-    return await handleApiError(error, request, `/api/admin/content/${context.params.id}`)
+    const resolvedParams = await context.params
+    return await handleApiError(error, request, `/api/admin/content/${resolvedParams.id}`)
   }
 }
 
-export async function PUT(request: NextRequest, context: { params: { id: string } }): Promise<NextResponse> {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   try {
     return await updateContentHandler(request, context)
   } catch (error) {
-    return await handleApiError(error, request, `/api/admin/content/${context.params.id}`)
+    const resolvedParams = await context.params
+    return await handleApiError(error, request, `/api/admin/content/${resolvedParams.id}`)
   }
 }
 
-export async function PATCH(request: NextRequest, context: { params: { id: string } }): Promise<NextResponse> {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   try {
     return await updateContentHandler(request, context)
   } catch (error) {
-    return await handleApiError(error, request, `/api/admin/content/${context.params.id}`)
+    const resolvedParams = await context.params
+    return await handleApiError(error, request, `/api/admin/content/${resolvedParams.id}`)
   }
 }

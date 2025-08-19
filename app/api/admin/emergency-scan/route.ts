@@ -154,14 +154,14 @@ async function emergencyApproveContent() {
         AND id IN (SELECT id FROM content_queue WHERE is_approved = ? AND (content_type = 'text' OR content_type IS NULL) ORDER BY id DESC LIMIT 15)
     `, [1, 'Auto-approved by emergency scan (text)', new Date().toISOString(), 0, 0]);
     
-    const total = (videoResult.changes || 0) + (imageResult.changes || 0) + (textResult.changes || 0);
+    const total = (videoResult.rowCount || 0) + (imageResult.rowCount || 0) + (textResult.rowCount || 0);
     
-    console.log(`  🚑 Emergency approved: ${videoResult.changes || 0} video/gif, ${imageResult.changes || 0} image, ${textResult.changes || 0} text items`);
+    console.log(`  🚑 Emergency approved: ${videoResult.rowCount || 0} video/gif, ${imageResult.rowCount || 0} image, ${textResult.rowCount || 0} text items`);
     
     return {
-      videoGif: videoResult.changes || 0,
-      image: imageResult.changes || 0,
-      text: textResult.changes || 0,
+      videoGif: videoResult.rowCount || 0,
+      image: imageResult.rowCount || 0,
+      text: textResult.rowCount || 0,
       total: total
     };
   } catch (error) {

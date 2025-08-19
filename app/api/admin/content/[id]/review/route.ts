@@ -3,10 +3,11 @@ import { query } from '@/lib/db'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contentId = params.id
+    const resolvedParams = await params
+    const contentId = resolvedParams.id
     const { action, reason, notes } = await request.json()
 
     if (!contentId) {
