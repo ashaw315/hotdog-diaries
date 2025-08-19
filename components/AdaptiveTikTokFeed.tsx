@@ -356,7 +356,7 @@ export default function AdaptiveTikTokFeed() {
         // Retry mechanism for development HMR 404 issues
         while (retries <= maxRetries) {
           try {
-            response = await fetch('/api/content?limit=1', { 
+            response = await fetch('/api/temp-content/get', { 
               signal: controller.signal 
             })
             
@@ -395,8 +395,8 @@ export default function AdaptiveTikTokFeed() {
         const parseEnd = Date.now()
         console.log(`⏱️ fetchInitialPost: JSON parsing took ${parseEnd - parseStart}ms`)
         
-        if (!data.success || !data.data?.content) {
-          throw new Error('Invalid response format from content API')
+        if (!data.success || !data.content) {
+          throw new Error('Invalid response format from temp content API')
         }
 
         // Add welcome card + first real post
@@ -412,12 +412,18 @@ export default function AdaptiveTikTokFeed() {
           is_approved: true
         }
         
-        const transformedContent = data.data.content.map((item: any) => ({
-          ...item,
-          is_posted: !!item.is_posted,
-          is_approved: !!item.is_approved,
-          scraped_at: new Date(item.scraped_at),
-          posted_at: item.posted_at ? new Date(item.posted_at) : undefined
+        const transformedContent = data.content.map((item: any) => ({
+          id: parseInt(item.id.replace(/[^0-9]/g, '')) || Math.floor(Math.random() * 1000),
+          content_text: item.content || item.title,
+          content_type: item.videoUrl ? 'video' : item.imageUrl ? 'image' : 'text',
+          source_platform: item.platform || 'temp',
+          original_url: item.url || '#',
+          original_author: 'Content Scanner',
+          content_image_url: item.imageUrl,
+          content_video_url: item.videoUrl,
+          scraped_at: new Date(item.timestamp),
+          is_posted: false,
+          is_approved: true
         }))
         
         console.log(`✅ fetchInitialPost: Loaded first post for quick display - total posts: ${transformedContent.length + 1}`)
@@ -473,7 +479,7 @@ export default function AdaptiveTikTokFeed() {
 
     const result = await safeExecute(
       async () => {
-        const response = await fetch('/api/content?limit=49&page=1') // Get the rest (skip first)
+        const response = await fetch('/api/temp-content/get') // Get temp content
         
         if (!response.ok) {
           throw new Error(`Failed to load remaining content: ${response.status} ${response.statusText}`)
@@ -481,11 +487,11 @@ export default function AdaptiveTikTokFeed() {
         
         const data = await response.json()
         
-        if (!data.success || !data.data?.content) {
+        if (!data.success || !data.content) {
           return []
         }
 
-        const transformedContent = data.data.content.slice(1).map((item: any) => ({ // Skip first post we already have
+        const transformedContent = data.content.map((item: any) => ({
           ...item,
           is_posted: !!item.is_posted,
           is_approved: !!item.is_approved,
@@ -512,7 +518,7 @@ export default function AdaptiveTikTokFeed() {
 
     const result = await safeExecute(
       async () => {
-        const response = await fetch('/api/content?limit=50')
+        const response = await fetch('/api/temp-content/get')
         
         if (!response.ok) {
           throw new Error(`Failed to load content: ${response.status} ${response.statusText}`)
@@ -520,8 +526,8 @@ export default function AdaptiveTikTokFeed() {
         
         const data = await response.json()
         
-        if (!data.success || !data.data?.content) {
-          throw new Error('Invalid response format from content API')
+        if (!data.success || !data.content) {
+          throw new Error('Invalid response format from temp content API')
         }
 
         // Add welcome card
@@ -538,12 +544,18 @@ export default function AdaptiveTikTokFeed() {
         }
         
         // Transform API response to match Post interface
-        const transformedContent = data.data.content.map((item: any) => ({
-          ...item,
-          is_posted: !!item.is_posted,
-          is_approved: !!item.is_approved,
-          scraped_at: new Date(item.scraped_at),
-          posted_at: item.posted_at ? new Date(item.posted_at) : undefined
+        const transformedContent = data.content.map((item: any) => ({
+          id: parseInt(item.id.replace(/[^0-9]/g, '')) || Math.floor(Math.random() * 1000),
+          content_text: item.content || item.title,
+          content_type: item.videoUrl ? 'video' : item.imageUrl ? 'image' : 'text',
+          source_platform: item.platform || 'temp',
+          original_url: item.url || '#',
+          original_author: 'Content Scanner',
+          content_image_url: item.imageUrl,
+          content_video_url: item.videoUrl,
+          scraped_at: new Date(item.timestamp),
+          is_posted: false,
+          is_approved: true
         }))
         
         console.log(`✅ Loaded ${transformedContent.length} posts with minimum height system applied`)
