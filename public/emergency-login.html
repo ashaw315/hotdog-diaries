@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Admin Login - Hotdog Diaries</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .hotdog {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        input {
+            width: 100% !important;
+            padding: 15px !important;
+            border: 2px solid #ddd !important;
+            border-radius: 5px !important;
+            font-size: 16px !important;
+            box-sizing: border-box !important;
+            background: white !important;
+            color: #333 !important;
+            outline: none !important;
+            pointer-events: auto !important;
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            cursor: text !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+        }
+        
+        input:focus {
+            border-color: #667eea !important;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3) !important;
+        }
+        
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #fecaca;
+        }
+        
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .demo-info {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">
+            <div class="hotdog">🌭</div>
+            <h1>Emergency Admin Login</h1>
+            <p>Bare HTML - No frameworks</p>
+        </div>
+        
+        <div id="message"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    required 
+                    autocomplete="username"
+                    placeholder="Type 'admin' here"
+                    tabindex="1"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required 
+                    autocomplete="current-password"
+                    placeholder="Type password here"
+                    tabindex="2"
+                >
+            </div>
+            
+            <button type="submit" id="submitBtn" tabindex="3">
+                Login
+            </button>
+        </form>
+        
+        <div class="demo-info">
+            <strong>Demo Credentials:</strong><br>
+            Username: <code>admin</code><br>
+            Password: <code>StrongAdminPass123!</code>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔧 Emergency login script loaded');
+        
+        // Test input functionality immediately
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 DOM loaded, testing inputs...');
+            
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const messageDiv = document.getElementById('message');
+            
+            // Test if inputs are interactive
+            usernameInput.addEventListener('focus', function() {
+                console.log('✅ Username input focused - inputs are working!');
+            });
+            
+            passwordInput.addEventListener('focus', function() {
+                console.log('✅ Password input focused - inputs are working!');
+            });
+            
+            // Auto-fill demo credentials for testing
+            setTimeout(() => {
+                usernameInput.value = 'admin';
+                passwordInput.value = 'StrongAdminPass123!';
+                console.log('🔧 Demo credentials pre-filled');
+            }, 1000);
+        });
+        
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log('🔐 Form submitted');
+            
+            const messageDiv = document.getElementById('message');
+            const submitBtn = document.getElementById('submitBtn');
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+            messageDiv.innerHTML = '<div class="loading">Authenticating...</div>';
+            
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+                
+                const data = await response.json();
+                console.log('🔐 Login response:', data);
+                
+                if (response.ok && data.success) {
+                    messageDiv.innerHTML = '<div class="success">✅ Login successful! Redirecting...</div>';
+                    
+                    // Store token if provided
+                    if (data.accessToken) {
+                        localStorage.setItem('adminToken', data.accessToken);
+                        console.log('🔐 Token stored');
+                    }
+                    
+                    // Redirect after success
+                    setTimeout(() => {
+                        window.location.href = '/admin/dashboard';
+                    }, 1500);
+                    
+                } else {
+                    messageDiv.innerHTML = '<div class="error">❌ ' + (data.error || 'Login failed') + '</div>';
+                }
+                
+            } catch (error) {
+                console.error('🔐 Login error:', error);
+                messageDiv.innerHTML = '<div class="error">❌ Network error: ' + error.message + '</div>';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
+            }
+        });
+        
+        // Focus first input
+        setTimeout(() => {
+            document.getElementById('username').focus();
+        }, 500);
+    </script>
+</body>
+</html>
