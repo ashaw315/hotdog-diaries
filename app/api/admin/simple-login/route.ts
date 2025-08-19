@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { sql } from '@vercel/postgres';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
@@ -13,29 +13,11 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Create database connection
-    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
-    
-    if (!connectionString) {
-      return NextResponse.json({
-        success: false,
-        error: 'Database not configured'
-      }, { status: 500 });
-    }
-
-    const pool = new Pool({
-      connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? {
-        rejectUnauthorized: false
-      } : false
-    });
-
     try {
       // First, ensure the admin user exists
-      const userCheck = await pool.query(
-        'SELECT id, username, password_hash FROM admin_users WHERE username = $1',
-        [username]
-      );
+      const userCheck = await sql`
+        SELECT id, username, password_hash FROM admin_users WHERE username = ${username}
+      `;
 
       let user = userCheck.rows[0];
 
@@ -44,7 +26,7 @@ export async function POST(request: Request) {
         console.log('🔧 Admin user not found, creating...');
         
         // Create admin_users table if it doesn't exist
-        await pool.query(`
+        await sql`
           CREATE TABLE IF NOT EXISTS admin_users (
             id SERIAL PRIMARY KEY,
             username VARCHAR(255) UNIQUE NOT NULL,
@@ -56,14 +38,15 @@ export async function POST(request: Request) {
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
           )
-        `);
+        `;
 
         // Create the admin user
         const hashedPassword = await bcrypt.hash('StrongAdminPass123!', 10);
-        const createResult = await pool.query(
-          'INSERT INTO admin_users (username, password_hash, email, full_name) VALUES ($1, $2, $3, $4) RETURNING id, username, password_hash',
-          ['admin', hashedPassword, 'admin@hotdogdiaries.com', 'Administrator']
-        );
+        const createResult = await sql`
+          INSERT INTO admin_users (username, password_hash, email, full_name) 
+          VALUES (${username}, ${hashedPassword}, ${'admin@hotdogdiaries.com'}, ${'Administrator'}) 
+          RETURNING id, username, password_hash
+        `;
         
         user = createResult.rows[0];
         console.log('✅ Admin user created');
@@ -87,10 +70,9 @@ export async function POST(request: Request) {
       }
 
       // Update last login
-      await pool.query(
-        'UPDATE admin_users SET last_login = NOW() WHERE id = $1',
-        [user.id]
-      );
+      await sql`
+        UPDATE admin_users SET last_login = NOW() WHERE id = ${user.id}
+      `;
 
       // Simple token (in production, use proper JWT)
       const token = Buffer.from(JSON.stringify({
@@ -109,8 +91,9 @@ export async function POST(request: Request) {
         message: 'Login successful'
       });
 
-    } finally {
-      await pool.end();
+    } catch (dbError) {
+      console.error('❌ Database error:', dbError);
+      throw dbError;
     }
 
   } catch (error) {
