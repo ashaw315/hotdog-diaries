@@ -16,12 +16,13 @@ export async function GET() {
     }, { status: 500 });
   }
 
-  // Create pool with SSL for Supabase
+  // Create pool with SSL for Supabase - requires specific SSL mode
   const pool = new Pool({
     connectionString,
-    ssl: {
+    ssl: process.env.NODE_ENV === 'production' ? {
+      require: true,
       rejectUnauthorized: false
-    }
+    } : false
   });
   
   try {

@@ -25,9 +25,10 @@ export async function GET() {
       
       const pool = new Pool({
         connectionString,
-        ssl: {
+        ssl: process.env.NODE_ENV === 'production' ? {
+          require: true,
           rejectUnauthorized: false
-        }
+        } : false
       });
       
       const result = await pool.query('SELECT 1 as test');
