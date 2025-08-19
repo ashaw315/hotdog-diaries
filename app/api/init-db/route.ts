@@ -133,12 +133,71 @@ export async function GET() {
       console.log('✅ Admin user already exists');
     }
 
+    // Create Reddit tables
+    await sql`
+      CREATE TABLE IF NOT EXISTS reddit_scan_config (
+        id SERIAL PRIMARY KEY,
+        is_enabled BOOLEAN DEFAULT true,
+        scan_interval INTEGER DEFAULT 30,
+        max_posts_per_scan INTEGER DEFAULT 25,
+        target_subreddits TEXT[] DEFAULT ARRAY['hotdogs', 'food', 'FoodPorn', 'recipes', 'sausages', 'grilling', 'bbq'],
+        search_terms TEXT[] DEFAULT ARRAY['hotdog', 'hot dog', 'hot-dog', 'frankfurter', 'wiener', 'bratwurst', 'sausage'],
+        min_score INTEGER DEFAULT 10,
+        sort_by VARCHAR(20) DEFAULT 'hot' CHECK (sort_by IN ('hot', 'new', 'top', 'relevance')),
+        time_range VARCHAR(20) DEFAULT 'week' CHECK (time_range IN ('hour', 'day', 'week', 'month', 'year', 'all')),
+        include_nsfw BOOLEAN DEFAULT false,
+        last_scan_id VARCHAR(255),
+        last_scan_time TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS reddit_scan_results (
+        id SERIAL PRIMARY KEY,
+        scan_id VARCHAR(255) NOT NULL,
+        start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+        end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+        posts_found INTEGER DEFAULT 0,
+        posts_processed INTEGER DEFAULT 0,
+        posts_approved INTEGER DEFAULT 0,
+        posts_rejected INTEGER DEFAULT 0,
+        posts_flagged INTEGER DEFAULT 0,
+        duplicates_found INTEGER DEFAULT 0,
+        subreddits_scanned TEXT[] DEFAULT ARRAY[]::TEXT[],
+        highest_score INTEGER DEFAULT 0,
+        errors TEXT[] DEFAULT ARRAY[]::TEXT[],
+        rate_limit_hit BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Insert default Reddit configuration
+    await sql`
+      INSERT INTO reddit_scan_config (
+        is_enabled, 
+        target_subreddits, 
+        search_terms,
+        max_posts_per_scan
+      ) VALUES (
+        true, 
+        ARRAY['hotdogs', 'food', 'FoodPorn', 'recipes', 'sausages', 'grilling', 'bbq'],
+        ARRAY['hotdog', 'hot dog', 'hot-dog', 'frankfurter', 'wiener', 'bratwurst', 'sausage'],
+        25
+      ) ON CONFLICT DO NOTHING
+    `;
+
+    console.log('✅ Reddit tables and config created');
+
     // Create indexes for better performance
     const indexes = [
       `CREATE INDEX IF NOT EXISTS idx_content_queue_platform ON content_queue(source_platform)`,
       `CREATE INDEX IF NOT EXISTS idx_content_queue_approved ON content_queue(is_approved)`,
       `CREATE INDEX IF NOT EXISTS idx_content_queue_posted ON content_queue(is_posted)`,
-      `CREATE INDEX IF NOT EXISTS idx_content_queue_status ON content_queue(content_status)`
+      `CREATE INDEX IF NOT EXISTS idx_content_queue_status ON content_queue(content_status)`,
+      `CREATE INDEX IF NOT EXISTS idx_reddit_scan_results_scan_id ON reddit_scan_results (scan_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_reddit_scan_results_start_time ON reddit_scan_results (start_time)`
     ];
 
     for (const indexSql of indexes) {
@@ -177,7 +236,9 @@ export async function GET() {
         'admin_users',
         'content_queue',
         'content_analysis',
-        'posted_content'
+        'posted_content',
+        'reddit_scan_config',
+        'reddit_scan_results'
       ],
       timestamp: new Date().toISOString()
     });
