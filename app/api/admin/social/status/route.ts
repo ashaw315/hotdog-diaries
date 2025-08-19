@@ -6,16 +6,16 @@ import { LogLevel } from '@/types'
 export async function GET(request: NextRequest) {
   try {
     // Get status of all social media platforms
-    const platformStatuses = await socialMediaService.getPlatformStatuses()
+    const platformData = await socialMediaService.getAllPlatformStatus()
 
     const responseData = {
-      platforms: platformStatuses,
+      platforms: platformData.platformStats,
       summary: {
-        totalPlatforms: platformStatuses.length,
-        enabledPlatforms: platformStatuses.filter(p => p.isEnabled).length,
-        authenticatedPlatforms: platformStatuses.filter(p => p.isAuthenticated).length,
-        healthyPlatforms: platformStatuses.filter(p => p.rateLimitStatus === 'healthy').length,
-        criticalPlatforms: platformStatuses.filter(p => p.rateLimitStatus === 'critical').length
+        totalPlatforms: platformData.totalPlatforms,
+        activePlatforms: platformData.activePlatforms,
+        totalContentScanned: platformData.totalContentScanned,
+        totalContentApproved: platformData.totalContentApproved,
+        overallHealthScore: platformData.overallHealthScore
       },
       lastUpdated: new Date().toISOString()
     }
