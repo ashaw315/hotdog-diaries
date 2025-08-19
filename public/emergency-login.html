@@ -222,7 +222,7 @@
             messageDiv.innerHTML = '<div class="loading">Authenticating...</div>';
             
             try {
-                const response = await fetch('/api/admin/login', {
+                const response = await fetch('/api/admin/simple-login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
