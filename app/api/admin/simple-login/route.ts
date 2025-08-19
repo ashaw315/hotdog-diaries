@@ -40,8 +40,8 @@ export async function POST(request: Request) {
           )
         `;
 
-        // Create the admin user
-        const hashedPassword = await bcrypt.hash('StrongAdminPass123!', 10);
+        // Create the admin user  
+        const hashedPassword = await bcrypt.hash('admin123', 10);
         const createResult = await sql`
           INSERT INTO admin_users (username, password_hash, email, full_name) 
           VALUES (${username}, ${hashedPassword}, ${'admin@hotdogdiaries.com'}, ${'Administrator'}) 

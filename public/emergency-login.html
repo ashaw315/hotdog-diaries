@@ -176,7 +176,7 @@
         <div class="demo-info">
             <strong>Demo Credentials:</strong><br>
             Username: <code>admin</code><br>
-            Password: <code>StrongAdminPass123!</code>
+            Password: <code>admin123</code>
         </div>
     </div>
 
@@ -203,7 +203,7 @@
             // Auto-fill demo credentials for testing
             setTimeout(() => {
                 usernameInput.value = 'admin';
-                passwordInput.value = 'StrongAdminPass123!';
+                passwordInput.value = 'admin123';
                 console.log('🔧 Demo credentials pre-filled');
             }, 1000);
         });
@@ -222,7 +222,7 @@
             messageDiv.innerHTML = '<div class="loading">Authenticating...</div>';
             
             try {
-                const response = await fetch('/api/admin/simple-login', {
+                const response = await fetch('/api/admin/test-login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
