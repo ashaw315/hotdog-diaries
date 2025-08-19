@@ -54,9 +54,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       console.log('🌐 [AuthContext] Fetching from URL:', fullUrl)
       
+      // Get token from localStorage for Authorization header
+      const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(fullUrl, {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
+        headers
       })
 
       console.log('🌐 [AuthContext] /api/admin/me response status:', response.status)
