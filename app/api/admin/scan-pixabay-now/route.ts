@@ -173,9 +173,45 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Generate content hash for duplicate detection
+        // Generate content hash for duplicate detection  
         const hashInput = `pixabay_${hit.id}_${hit.tags}`
-        const contentHash = require('crypto').createHash('md5').update(hashInput).digest('hex')
+        let contentHash = require('crypto').createHash('md5').update(hashInput).digest('hex')
+        
+        console.log(`🔍 Processing Pixabay image ${hit.id}: "${hit.tags}"`)
+        console.log(`🔍 Generated hash: ${contentHash.substring(0, 12)}... from: ${hashInput.substring(0, 50)}...`)
+        
+        // CHECK: Is this hash already in the database? 
+        const { data: existingItem, error: checkError } = await supabase
+          .from('content_queue')
+          .select('id, source_platform, content_text')
+          .eq('content_hash', contentHash)
+          .limit(1)
+        
+        if (checkError) {
+          console.error('❌ Error checking for duplicates:', checkError)
+          errors.push(`Error checking duplicates for "${hit.tags}": ${checkError.message}`)
+          continue
+        }
+        
+        if (existingItem && existingItem.length > 0) {
+          const existing = existingItem[0]
+          console.log(`⚠️ Hash collision detected! Hash ${contentHash.substring(0, 12)}... already exists:`)
+          console.log(`   Existing: ${existing.source_platform} - "${existing.content_text}"`)
+          console.log(`   New: pixabay - "${hit.tags}"`)
+          
+          // Skip if it's actually the same Pixabay item
+          if (existing.source_platform === 'pixabay') {
+            console.log(`⚠️ True duplicate Pixabay image skipped: "${hit.tags}"`)
+            errors.push(`duplicate: ${hit.tags}`)
+            continue
+          } else {
+            // Hash collision with different platform - make hash more unique
+            console.log(`🔄 Hash collision with ${existing.source_platform}, generating new unique hash...`)
+            const uniqueHashInput = `pixabay_${hit.id}_${hit.pageURL}_${hit.webformatURL}`
+            contentHash = require('crypto').createHash('md5').update(uniqueHashInput).digest('hex')
+            console.log(`🔍 New unique hash: ${contentHash.substring(0, 12)}...`)
+          }
+        }
 
         const imageData = {
           content_text: hit.tags || 'Hotdog Photo',
