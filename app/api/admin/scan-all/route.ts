@@ -34,13 +34,15 @@ export async function POST(request: NextRequest) {
     console.log('✅ Authentication successful for scan-all')
 
     // Get the base URL for internal API calls
-    const baseUrl = process.env.NEXTAUTH_URL || request.headers.get('host') 
-      ? `https://${request.headers.get('host')}` 
-      : 'https://hotdog-diaries.vercel.app'
+    const host = request.headers.get('host')
+    const baseUrl = process.env.NODE_ENV === 'development' && host?.includes('localhost')
+      ? `http://${host}`
+      : process.env.NEXTAUTH_URL || `https://${host}` || 'https://hotdog-diaries.vercel.app'
 
     const results = {
       giphy: 0,
       youtube: 0,
+      pixabay: 0,
       total: 0,
       errors: []
     }
@@ -95,10 +97,35 @@ export async function POST(request: NextRequest) {
       console.error('❌ YouTube scan error:', youtubeError)
     }
 
-    // Calculate total
-    results.total = results.giphy + results.youtube
+    // Call Pixabay scan endpoint
+    console.log('📡 Scanning Pixabay...')
+    try {
+      const pixabayResponse = await fetch(`${baseUrl}/api/admin/scan-pixabay-now`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader || '',
+          'Content-Type': 'application/json'
+        }
+      })
 
-    console.log(`📊 Scan complete: ${results.total} total items added (${results.giphy} GIFs + ${results.youtube} videos)`)
+      if (pixabayResponse.ok) {
+        const pixabayData = await pixabayResponse.json()
+        results.pixabay = pixabayData.images_added || 0
+        console.log(`✅ Pixabay scan: ${results.pixabay} images added`)
+      } else {
+        const errorText = await pixabayResponse.text()
+        results.errors.push(`Pixabay scan failed: ${pixabayResponse.status} ${errorText}`)
+        console.error('❌ Pixabay scan failed:', pixabayResponse.status)
+      }
+    } catch (pixabayError) {
+      results.errors.push(`Pixabay scan error: ${pixabayError.message}`)
+      console.error('❌ Pixabay scan error:', pixabayError)
+    }
+
+    // Calculate total
+    results.total = results.giphy + results.youtube + results.pixabay
+
+    console.log(`📊 Scan complete: ${results.total} total items added (${results.giphy} GIFs + ${results.youtube} videos + ${results.pixabay} images)`)
 
     return NextResponse.json({
       success: true,
@@ -107,6 +134,7 @@ export async function POST(request: NextRequest) {
       summary: {
         giphy: results.giphy,
         youtube: results.youtube,
+        pixabay: results.pixabay,
         total: results.total
       }
     })
@@ -119,6 +147,7 @@ export async function POST(request: NextRequest) {
       results: {
         giphy: 0,
         youtube: 0,
+        pixabay: 0,
         total: 0,
         errors: [error instanceof Error ? error.message : 'Unknown error']
       }
