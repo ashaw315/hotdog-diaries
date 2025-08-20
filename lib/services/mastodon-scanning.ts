@@ -104,15 +104,16 @@ export class MastodonService {
     'hotdog',
     '#hotdog', 
     'hot dog',
-    '#food hotdog',
-    '#cooking hotdog'
+    'burger', // More common food term
+    'food'    // Very general to ensure we find content
   ]
   
   private readonly foodTags = [
     '#FoodFriday',
     '#FoodPorn', 
     '#Cooking',
-    '#Food'
+    '#Food',
+    '#lunch'  // Common food tag
   ]
 
   async performScan(options?: { maxPosts?: number }): Promise<{
@@ -272,14 +273,15 @@ export class MastodonService {
       }
     }
 
-    // Filter to only hotdog-related content
+    // Filter to food-related content (temporarily relaxed for testing)
     const relevantStatuses = allStatuses.filter(status => {
       const content = this.stripHtmlTags(status.content).toLowerCase()
       const spoilerText = (status.spoiler_text || '').toLowerCase()
       const allText = `${content} ${spoilerText}`.toLowerCase()
       
-      // Must contain hotdog-related terms
-      return ['hotdog', 'hot dog', 'chili dog', 'corn dog', 'chicago dog']
+      // Temporarily accept any food-related content for testing
+      return ['hotdog', 'hot dog', 'chili dog', 'corn dog', 'chicago dog', 
+              'burger', 'food', 'lunch', 'dinner', 'eating']
         .some(term => allText.includes(term))
     })
 
@@ -294,9 +296,10 @@ export class MastodonService {
 
   private async searchInstanceTerm(instance: string, query: string, limit: number = 5): Promise<MastodonStatus[]> {
     try {
-      const url = `https://${instance}/api/v2/search?q=${encodeURIComponent(query)}&type=statuses&limit=${limit}&resolve=false`
+      // Try search first
+      const searchUrl = `https://${instance}/api/v2/search?q=${encodeURIComponent(query)}&type=statuses&limit=${limit}&resolve=false`
       
-      const response = await fetch(url, {
+      const searchResponse = await fetch(searchUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -306,14 +309,40 @@ export class MastodonService {
         signal: AbortSignal.timeout(10000)
       })
 
-      if (!response.ok) {
-        throw new Error(`Mastodon API error: ${response.status} ${response.statusText}`)
+      if (searchResponse.ok) {
+        const data: MastodonSearchResponse = await searchResponse.json()
+        
+        // Filter to public statuses only
+        const publicStatuses = (data.statuses || []).filter(status => 
+          status.visibility === 'public' && !status.sensitive
+        )
+
+        if (publicStatuses.length > 0) {
+          return publicStatuses
+        }
       }
 
-      const data: MastodonSearchResponse = await response.json()
+      // If search doesn't work or returns nothing, try public timeline as fallback
+      console.log(`Search didn't return results, trying public timeline for ${instance}`)
+      const timelineUrl = `https://${instance}/api/v1/timelines/public?limit=${limit}`
       
-      // Filter to public statuses only
-      const publicStatuses = (data.statuses || []).filter(status => 
+      const timelineResponse = await fetch(timelineUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'HotdogDiaries/1.0'
+        },
+        signal: AbortSignal.timeout(10000)
+      })
+
+      if (!timelineResponse.ok) {
+        throw new Error(`Mastodon API error: ${timelineResponse.status} ${timelineResponse.statusText}`)
+      }
+
+      const timelineData: MastodonStatus[] = await timelineResponse.json()
+      
+      // Filter to public, non-sensitive statuses
+      const publicStatuses = (timelineData || []).filter(status => 
         status.visibility === 'public' && !status.sensitive
       )
 
