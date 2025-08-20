@@ -192,70 +192,137 @@ export async function GET(request: NextRequest) {
 
     // Use Supabase for the query
     const supabase = createSimpleClient()
+    console.log('🔧 [AdminQueue] Starting database query...')
     
-    // Build the query
-    let query = supabase
-      .from('content_queue')
-      .select(`
-        *,
-        content_analysis!left (
-          confidence_score,
-          is_spam,
-          is_inappropriate,
-          is_unrelated,
-          is_valid_hotdog
-        )
-      `, { count: 'exact' })
-
-    // Apply filters
-    if (status !== 'all') {
-      query = query.eq('content_status', status)
-    }
-
-    if (platform !== 'all') {
-      query = query.eq('source_platform', platform)
-    }
-
-    // Apply sorting
-    const validSortFields = ['created_at', 'updated_at', 'scraped_at', 'content_status', 'confidence_score']
-    const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at'
-    const ascending = order === 'asc'
-    
-    query = query.order(sortField, { ascending })
-
-    // Apply pagination
-    query = query.range(offset, offset + limit - 1)
-
-    const { data, error, count } = await query
-
-    if (error) {
-      throw new Error(`Database query failed: ${error.message}`)
-    }
-
-    const total = count || 0
-
-    await logToDatabase(
-      LogLevel.INFO,
-      'Content queue fetched',
-      'AdminAPI',
-      { 
-        status, 
-        platform, 
-        count: data?.length || 0,
-        total,
-        user: username 
+    try {
+      // Start with the simplest possible query
+      console.log('🔍 [AdminQueue] Testing basic table access...')
+      
+      // Test 1: Check if table exists at all
+      const { data: tableTest, error: tableError } = await supabase
+        .from('content_queue')
+        .select('id')
+        .limit(1)
+      
+      if (tableError) {
+        console.error('❌ [AdminQueue] Table access failed:', tableError)
+        
+        // Try alternative table names
+        const tableNames = ['posts', 'content', 'queued_content', 'hotdog_content']
+        for (const tableName of tableNames) {
+          console.log(`🔍 [AdminQueue] Trying table: ${tableName}`)
+          const { data: altData, error: altError } = await supabase
+            .from(tableName)
+            .select('id')
+            .limit(1)
+          
+          if (!altError) {
+            console.log(`✅ [AdminQueue] Found working table: ${tableName}`)
+            return NextResponse.json({
+              error: `Table 'content_queue' not found, but '${tableName}' exists`,
+              suggestion: `Update your code to use table '${tableName}' instead`,
+              availableTable: tableName
+            }, { status: 500 })
+          }
+        }
+        
+        return NextResponse.json({
+          error: 'No content tables found',
+          details: {
+            message: tableError.message,
+            hint: tableError.hint,
+            code: tableError.code
+          },
+          suggestion: 'Check Supabase dashboard for table structure'
+        }, { status: 500 })
       }
-    )
+      
+      console.log('✅ [AdminQueue] Table exists, building query...')
+      
+      let query = supabase
+        .from('content_queue')
+        .select('*', { count: 'exact' })
 
-    return NextResponse.json({
-      content: data || [],
-      pagination: {
-        total,
-        limit,
-        offset,
-        hasMore: offset + limit < total
+      // Apply filters
+      if (status !== 'all') {
+        query = query.eq('content_status', status)
       }
-    })
+
+      if (platform !== 'all') {
+        query = query.eq('source_platform', platform)
+      }
+
+      // Apply sorting
+      const validSortFields = ['created_at', 'updated_at', 'scraped_at', 'content_status', 'confidence_score']
+      const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at'
+      const ascending = order === 'asc'
+      
+      query = query.order(sortField, { ascending })
+
+      // Apply pagination
+      query = query.range(offset, offset + limit - 1)
+
+      const { data, error, count } = await query
+      
+      if (error) {
+        console.error('❌ [AdminQueue] Database error:', error)
+        console.error('❌ [AdminQueue] Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        
+        return NextResponse.json({
+          error: 'Database query failed',
+          details: {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          }
+        }, { status: 500 })
+      }
+      
+      console.log('✅ [AdminQueue] Query successful, found:', data?.length || 0, 'items')
+      
+      // Log sample data structure if we have items
+      if (data && data.length > 0) {
+        console.log('📊 [AdminQueue] Sample item keys:', Object.keys(data[0]))
+      }
+      
+      const total = count || 0
+
+      await logToDatabase(
+        LogLevel.INFO,
+        'Content queue fetched',
+        'AdminAPI',
+        { 
+          status, 
+          platform, 
+          count: data?.length || 0,
+          total,
+          user: username 
+        }
+      )
+
+      return NextResponse.json({
+        content: data || [],
+        pagination: {
+          total,
+          limit,
+          offset,
+          hasMore: offset + limit < total
+        }
+      })
+      
+    } catch (queryError) {
+      console.error('❌ [AdminQueue] Query execution error:', queryError)
+      return NextResponse.json({
+        error: 'Query execution failed',
+        details: queryError instanceof Error ? queryError.message : String(queryError)
+      }, { status: 500 })
+    }
 
   } catch (error) {
     await logToDatabase(
