@@ -47,16 +47,23 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Giphy API key found')
 
-    // Search for hotdog GIFs
+    // Search for hotdog GIFs with variety to avoid duplicates
+    const searchTerms = ['hotdog', 'hot dog', 'chicago hotdog', 'hotdog recipe', 'frankfurter']
+    const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)]
+    const randomOffset = Math.floor(Math.random() * 50) // Random offset up to 50
+    
     const searchUrl = 'https://api.giphy.com/v1/gifs/search'
     const params = new URLSearchParams({
       api_key: apiKey,
-      q: 'hotdog',
+      q: randomTerm,
       limit: '10',
-      offset: '0',
+      offset: randomOffset.toString(),
       rating: 'g',
-      lang: 'en'
+      lang: 'en',
+      random: Date.now().toString() // Avoid caching
     })
+    
+    console.log(`🎯 Searching Giphy with term: "${randomTerm}", offset: ${randomOffset}`)
 
     console.log('🔍 Fetching GIFs from Giphy API...')
     const response = await fetch(`${searchUrl}?${params}`)
@@ -84,14 +91,20 @@ export async function POST(request: NextRequest) {
     // Connect to Supabase
     const supabase = createSimpleClient()
     let addedCount = 0
+    let duplicateCount = 0
+    let processedCount = 0
     const errors = []
 
     // Process each GIF
     for (const gif of giphyData.data) {
       try {
+        processedCount++
+        
         // Generate content hash for duplicate detection
         const hashInput = `giphy_${gif.id}_${gif.title}`
         const contentHash = require('crypto').createHash('md5').update(hashInput).digest('hex')
+        
+        console.log(`📝 Processing GIF ${processedCount}/${giphyData.data.length}: "${gif.title}" (ID: ${gif.id})`)
 
         const gifData = {
           content_text: gif.title || 'Hotdog GIF',
@@ -121,8 +134,9 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (error) {
-          if (error.message?.includes('duplicate')) {
-            console.log(`⚠️ Duplicate GIF skipped: "${gif.title}"`)
+          if (error.message?.includes('duplicate') || error.code === '23505') {
+            console.log(`⚠️ Duplicate GIF skipped: "${gif.title}" (hash: ${contentHash.substring(0, 8)}...)`)
+            duplicateCount++
           } else {
             console.error(`❌ Error saving GIF "${gif.title}":`, error)
             errors.push(`Failed to save "${gif.title}": ${error.message}`)
@@ -138,14 +152,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`📊 Giphy scan complete: ${addedCount} GIFs added, ${errors.length} errors`)
+    console.log(`📊 Giphy scan complete: ${addedCount} GIFs added, ${duplicateCount} duplicates, ${errors.length} errors`)
+
+    // Return failure if no content was added
+    if (addedCount === 0) {
+      return NextResponse.json({
+        success: false,
+        error: "No new content added - all items were duplicates or failed processing",
+        details: {
+          searchTerm: randomTerm,
+          searchOffset: randomOffset,
+          apiReturned: giphyData.data.length,
+          processed: processedCount,
+          added: addedCount,
+          duplicates: duplicateCount,
+          errors: errors
+        }
+      }, { status: 400 })
+    }
 
     return NextResponse.json({
       success: true,
       message: `Successfully added ${addedCount} hotdog GIFs from Giphy`,
       gifs_added: addedCount,
-      total_found: giphyData.data.length,
-      errors: errors.length > 0 ? errors : undefined
+      stats: {
+        searchTerm: randomTerm,
+        searchOffset: randomOffset,
+        apiReturned: giphyData.data.length,
+        processed: processedCount,
+        added: addedCount,
+        duplicates: duplicateCount,
+        errors: errors
+      }
     })
 
   } catch (error) {

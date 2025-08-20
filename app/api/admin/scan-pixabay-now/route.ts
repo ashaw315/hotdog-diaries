@@ -205,8 +205,9 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (error) {
-          if (error.message?.includes('duplicate')) {
-            console.log(`⚠️ Duplicate image skipped: "${hit.tags}"`)
+          if (error.message?.includes('duplicate') || error.code === '23505') {
+            console.log(`⚠️ Duplicate image skipped: "${hit.tags}" (hash: ${contentHash.substring(0, 8)}...)`)
+            errors.push(`duplicate: ${hit.tags}`)
           } else {
             console.error(`❌ Error saving image "${hit.tags}":`, error)
             errors.push(`Failed to save "${hit.tags}": ${error.message}`)
@@ -222,16 +223,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`📊 Pixabay scan complete: ${addedCount} images added, ${errors.length} errors`)
+    const duplicateCount = errors.filter(e => e.includes('duplicate')).length
+    const qualityRejected = pixabayData.hits.length - (addedCount + duplicateCount + errors.length)
+    
+    console.log(`📊 Pixabay scan complete: ${addedCount} images added, ${duplicateCount} duplicates, ${qualityRejected} quality-filtered, ${errors.length} errors`)
+
+    // Return failure if no content was added
+    if (addedCount === 0) {
+      return NextResponse.json({
+        success: false,
+        error: "No new content added - all items were duplicates, low quality, or failed processing",
+        details: {
+          apiReturned: pixabayData.hits.length,
+          qualityFiltered: qualityRejected,
+          processed: addedCount + duplicateCount,
+          added: addedCount,
+          duplicates: duplicateCount,
+          errors: errors
+        }
+      }, { status: 400 })
+    }
 
     return NextResponse.json({
       success: true,
       message: `Successfully added ${addedCount} hotdog images from Pixabay`,
       images_added: addedCount,
-      total_found: pixabayData.hits.length,
-      total_after_quality_filter: addedCount + errors.length,
-      errors: errors.length > 0 ? errors : undefined,
-      note: addedCount === 0 && errors.length === 0 ? 'All images were duplicates or low quality' : undefined
+      stats: {
+        apiReturned: pixabayData.hits.length,
+        qualityFiltered: qualityRejected,
+        processed: addedCount + duplicateCount,
+        added: addedCount,
+        duplicates: duplicateCount,
+        errors: errors
+      }
     })
 
   } catch (error) {
