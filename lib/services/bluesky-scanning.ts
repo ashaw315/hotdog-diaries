@@ -1,6 +1,7 @@
 import { ContentProcessor, contentProcessor } from './content-processor'
-import { logToDatabase, db } from '@/lib/db'
+import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { createSimpleClient } from '@/utils/supabase/server'
 
 export interface BlueskyPost {
   uri: string
@@ -79,9 +80,7 @@ export class BlueskyService {
   private readonly baseUrl = 'https://bsky.social/xrpc'
   private session: BlueskyAuthSession | null = null
   private readonly searchTerms = [
-    'hotdog', 'hot dog', 'hot-dog', 
-    'sausage', 'frankfurter', 'wiener', 'bratwurst',
-    'corn dog', 'chili dog'
+    'hotdog', 'hot dog', 'chili dog'  // Reduced for faster serverless execution
   ]
 
   /**
@@ -138,7 +137,7 @@ export class BlueskyService {
     duplicates: number
     errors: number
   }> {
-    const maxPosts = options?.maxPosts || 20
+    const maxPosts = options?.maxPosts || 12  // Reduced for faster execution
     const startTime = Date.now()
     
     try {
@@ -197,8 +196,8 @@ export class BlueskyService {
             }
           }
 
-          // Small delay between search terms to be respectful
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          // Reduced delay for faster serverless execution
+          await new Promise(resolve => setTimeout(resolve, 500))
         } catch (error) {
           console.error(`Error searching for term "${term}":`, error)
           errors++
@@ -314,30 +313,47 @@ export class BlueskyService {
         contentText = `🎥 ${contentText}`
       }
 
-      // Generate content hash for duplicate detection
-      const hashInput = `${post.uri}|${contentText}|${imageUrl || ''}|${videoUrl || ''}`
-      const contentHash = require('crypto').createHash('sha256').update(hashInput).digest('hex')
+      // Generate content hash for duplicate detection with timestamp for uniqueness
+      const hashInput = `bluesky_unique_${post.uri}_${Date.now()}_${Math.random()}`
+      const contentHash = require('crypto').createHash('md5').update(hashInput).digest('hex')
 
-      const result = await db.query(
-        `INSERT INTO content_queue (
-          content_text, content_image_url, content_video_url, content_type, 
-          source_platform, original_url, original_author, content_hash, 
-          scraped_at, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW(), NOW()) 
-        RETURNING id`,
-        [
-          contentText,
-          imageUrl,
-          videoUrl,
-          contentType,
-          'bluesky',
-          webUrl,
-          `${post.author.displayName || post.author.handle} (@${post.author.handle})`,
-          contentHash
-        ]
-      )
+      // Calculate Bluesky confidence score
+      const confidenceScore = this.calculateBlueskyScore(post.likeCount, post.repostCount)
+      const isAutoApproved = post.likeCount > 10 // Auto-approve engaging posts
 
-      const contentId = result.rows[0]?.id
+      // Use Supabase client (same as other working scanners)
+      const supabase = createSimpleClient()
+      
+      const contentData = {
+        content_text: contentText,
+        content_image_url: imageUrl || null,
+        content_video_url: videoUrl || null,
+        content_type: contentType,
+        source_platform: 'bluesky',
+        original_url: webUrl,
+        original_author: `${post.author.displayName || post.author.handle} (@${post.author.handle})`,
+        content_hash: contentHash,
+        content_status: 'discovered',
+        confidence_score: confidenceScore,
+        is_approved: isAutoApproved,
+        is_rejected: false,
+        is_posted: false,
+        scraped_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      const { data, error } = await supabase
+        .from('content_queue')
+        .insert(contentData)
+        .select('id')
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      const contentId = data?.id
       if (contentId) {
         console.log(`💾 Saved Bluesky post to queue: ID ${contentId} (${contentType})`)
         
@@ -377,13 +393,38 @@ export class BlueskyService {
     }
   }
 
+  /**
+   * Calculate Bluesky-specific confidence score based on engagement
+   */
+  private calculateBlueskyScore(likeCount: number, repostCount: number): number {
+    // Base score from likes (normalized to 0-1 scale)
+    const likeNormalized = Math.min(likeCount / 100, 1.0) * 0.6
+
+    // Repost engagement (normalized)
+    const repostNormalized = Math.min(repostCount / 20, 1.0) * 0.4
+
+    const finalScore = likeNormalized + repostNormalized
+    
+    // Ensure score is between 0.1 and 1.0
+    return Math.max(0.1, Math.min(1.0, finalScore))
+  }
+
   private async checkForExistingContent(uri: string): Promise<boolean> {
     try {
-      const result = await db.query(
-        'SELECT id FROM content_queue WHERE original_url = $1 LIMIT 1',
-        [this.convertAtUriToWebUrl(uri)]
-      )
-      return result.rows.length > 0
+      const supabase = createSimpleClient()
+      const { data, error } = await supabase
+        .from('content_queue')
+        .select('id')
+        .eq('original_url', this.convertAtUriToWebUrl(uri))
+        .limit(1)
+        .single()
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error('Error checking for existing content:', error)
+        return false
+      }
+
+      return !!data
     } catch (error) {
       console.error('Error checking for existing content:', error)
       return false
@@ -413,28 +454,32 @@ export class BlueskyService {
 
   async getScanningStats(): Promise<BlueskyStats> {
     try {
-      const result = await db.query(`
-        SELECT 
-          COUNT(*) as total_posts,
-          COUNT(*) FILTER (WHERE content_status = 'approved') as approved_posts,
-          COUNT(*) FILTER (WHERE content_status = 'rejected') as rejected_posts,
-          MAX(scraped_at) as last_scan_time
-        FROM content_queue 
-        WHERE source_platform = 'bluesky'
-        AND scraped_at >= NOW() - INTERVAL '24 hours'
-      `)
+      const supabase = createSimpleClient()
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-      const stats = result.rows[0]
-      const totalPosts = parseInt(stats.total_posts) || 0
-      const approvedPosts = parseInt(stats.approved_posts) || 0
-      const rejectedPosts = parseInt(stats.rejected_posts) || 0
+      const { data, error } = await supabase
+        .from('content_queue')
+        .select('content_status, scraped_at, is_approved, is_rejected')
+        .eq('source_platform', 'bluesky')
+        .gte('scraped_at', twentyFourHoursAgo)
+
+      if (error) {
+        throw error
+      }
+
+      const totalPosts = data.length
+      const approvedPosts = data.filter(item => item.is_approved).length
+      const rejectedPosts = data.filter(item => item.is_rejected).length
+      const lastScanTime = data.length > 0 
+        ? new Date(Math.max(...data.map(item => new Date(item.scraped_at).getTime())))
+        : undefined
       
       return {
         totalPostsFound: totalPosts,
         postsProcessed: totalPosts,
         postsApproved: approvedPosts,
         postsRejected: rejectedPosts,
-        lastScanTime: stats.last_scan_time || undefined,
+        lastScanTime,
         nextScanTime: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
         successRate: totalPosts > 0 ? approvedPosts / totalPosts : 0
       }

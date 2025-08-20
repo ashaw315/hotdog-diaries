@@ -108,16 +108,24 @@ export async function POST(request: NextRequest) {
 
     // Search for hotdog images
     const searchUrl = 'https://pixabay.com/api/'
+    // Use randomization to get different images each time
+    const searchTerms = ['hotdog', 'hot dog', 'sausage', 'frankfurter', 'bratwurst']
+    const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)]
+    const randomOffset = Math.floor(Math.random() * 20) // Random offset to get different images
+    
     const params = new URLSearchParams({
       key: apiKey,
-      q: 'hotdog',
+      q: randomTerm,
       image_type: 'photo',
-      per_page: '3', // Get 3 high-quality images (valid range: 3-200)
+      per_page: '10', // Get more images to increase variety
+      offset: randomOffset.toString(),
       safesearch: 'true',
       order: 'popular', // Get popular/high-quality images
       min_width: '640', // Ensure decent resolution
       category: 'food'
     })
+    
+    console.log(`🎯 Searching Pixabay with term: "${randomTerm}", offset: ${randomOffset}`)
 
     console.log('🔍 Fetching hotdog images from Pixabay API...')
     const response = await fetch(`${searchUrl}?${params}`)
@@ -159,7 +167,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Connect to Supabase (same as Giphy scanner)
+    // Connect to Supabase (same as other working scanners)
     const supabase = createSimpleClient()
     let addedCount = 0
     const errors = []

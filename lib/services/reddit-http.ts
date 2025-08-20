@@ -27,28 +27,89 @@ export interface RedditSearchResponse {
 }
 
 export class RedditHttpService {
-  private readonly userAgent = 'HotdogDiaries/1.0.0 (contact: admin@hotdogdiaries.com)'
-  private readonly baseUrl = 'https://www.reddit.com'
+  private readonly userAgent = 'HotdogDiaries/1.0.0'
+  private readonly baseUrl = 'https://oauth.reddit.com'
+  private readonly authUrl = 'https://www.reddit.com/api/v1/access_token'
+  private accessToken: string | null = null
+  private tokenExpiresAt: Date | null = null
+
+  /**
+   * Authenticate with Reddit OAuth2 API
+   */
+  private async authenticate(): Promise<string> {
+    // Check if we have a valid token
+    if (this.accessToken && this.tokenExpiresAt && this.tokenExpiresAt > new Date()) {
+      return this.accessToken
+    }
+
+    const clientId = process.env.REDDIT_CLIENT_ID
+    const clientSecret = process.env.REDDIT_CLIENT_SECRET
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Reddit API credentials not configured')
+    }
+
+    try {
+      const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+      
+      const response = await fetch(this.authUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': this.userAgent
+        },
+        body: 'grant_type=client_credentials'
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Reddit OAuth failed: ${response.status} - ${errorText}`)
+      }
+
+      const tokenData = await response.json()
+      
+      if (!tokenData.access_token) {
+        throw new Error('No access token received from Reddit')
+      }
+
+      this.accessToken = tokenData.access_token
+      // Reddit tokens typically expire in 1 hour, set expiry to 50 minutes to be safe
+      this.tokenExpiresAt = new Date(Date.now() + 50 * 60 * 1000)
+
+      await logToDatabase(
+        LogLevel.INFO,
+        'REDDIT_AUTH_SUCCESS',
+        'Successfully authenticated with Reddit OAuth2 API',
+        { expiresAt: this.tokenExpiresAt }
+      )
+
+      return this.accessToken
+
+    } catch (error) {
+      await logToDatabase(
+        LogLevel.ERROR,
+        'REDDIT_AUTH_ERROR',
+        `Reddit authentication failed: ${error.message}`,
+        { error: error.message }
+      )
+      throw error
+    }
+  }
 
   async searchSubreddit(subreddit: string, query: string, limit: number = 10): Promise<RedditPost[]> {
     try {
-      // Use the public JSON API endpoint
-      const searchUrl = `${this.baseUrl}/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&restrict_sr=1&limit=${limit}&sort=hot`
+      // Get OAuth access token
+      const accessToken = await this.authenticate()
+      
+      // Use OAuth API endpoint for better rate limits and access
+      const searchUrl = `${this.baseUrl}/r/${subreddit}/search?q=${encodeURIComponent(query)}&restrict_sr=1&limit=${limit}&sort=hot&raw_json=1`
       
       const response = await fetch(searchUrl, {
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'User-Agent': this.userAgent,
-          'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'DNT': '1',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'empty',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Site': 'cross-site',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Accept': 'application/json'
         },
         method: 'GET'
       })
@@ -120,20 +181,16 @@ export class RedditHttpService {
 
   async getHotPosts(subreddit: string, limit: number = 10): Promise<RedditPost[]> {
     try {
-      const hotUrl = `${this.baseUrl}/r/${subreddit}/hot.json?limit=${limit}`
+      // Get OAuth access token
+      const accessToken = await this.authenticate()
+      
+      const hotUrl = `${this.baseUrl}/r/${subreddit}/hot?limit=${limit}&raw_json=1`
       
       const response = await fetch(hotUrl, {
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'User-Agent': this.userAgent,
-          'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'DNT': '1',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'empty',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Site': 'cross-site'
+          'Accept': 'application/json'
         },
         method: 'GET'
       })

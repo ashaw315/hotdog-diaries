@@ -378,6 +378,10 @@ export class RedditScanningService {
         { postId: post.id, contentType }
       )
 
+      // Calculate Reddit-specific confidence score
+      const confidenceScore = this.calculateRedditScore(post.score, post.numComments, post.upvoteRatio)
+      const isAutoApproved = post.score > 100 // Auto-approve popular posts
+
       // Add to content queue
       const contentData = {
         content_text: contentText,
@@ -386,10 +390,12 @@ export class RedditScanningService {
         content_type: contentType,
         source_platform: 'reddit' as const,
         original_url: post.permalink,
-        original_author: `u/${post.author} (via r/${post.subreddit})`,
+        original_author: `u/${post.author}`,
         scraped_at: new Date(),
         content_hash: shortHash,  // Modified hash to allow multiple test runs
-        content_status: 'discovered'
+        content_status: 'discovered',
+        confidence_score: confidenceScore,
+        is_approved: isAutoApproved
       }
 
       // Debug: Log content data before insertion
@@ -523,6 +529,25 @@ export class RedditScanningService {
   }
 
   /**
+   * Calculate Reddit-specific confidence score based on engagement
+   */
+  private calculateRedditScore(score: number, numComments: number, upvoteRatio: number): number {
+    // Base score from upvotes (normalized to 0-1 scale)
+    const scoreNormalized = Math.min(score / 1000, 1.0) * 0.4
+
+    // Comment engagement (normalized)
+    const commentNormalized = Math.min(numComments / 100, 1.0) * 0.3
+
+    // Upvote ratio contribution
+    const ratioNormalized = (upvoteRatio || 0.5) * 0.3
+
+    const finalScore = scoreNormalized + commentNormalized + ratioNormalized
+    
+    // Ensure score is between 0.1 and 1.0
+    return Math.max(0.1, Math.min(1.0, finalScore))
+  }
+
+  /**
    * Determine content type based on Reddit post media
    */
   private determineContentType(post: ProcessedRedditPost): 'text' | 'image' | 'video' | 'mixed' {
@@ -556,14 +581,14 @@ export class RedditScanningService {
    * Get current scan configuration
    */
   async getScanConfig(): Promise<RedditScanConfig> {
-    // Bypass database entirely for now, use hardcoded defaults
+    // Optimized configuration for faster scanning (production serverless limits)
     return {
-      isEnabled: true, // ✅ ENABLED - Reddit was performing at 100% approval
+      isEnabled: true,
       scanInterval: 30,
-      maxPostsPerScan: 25,
-      targetSubreddits: ['food', 'FoodPorn', 'shittyfoodporn', 'hotdogs'],
-      searchTerms: ['hot dog', 'hotdog'],
-      minScore: 5, // Lower threshold for testing
+      maxPostsPerScan: 15, // Reduced for faster processing
+      targetSubreddits: ['hotdogs', 'food', 'FoodPorn'], // Start with top 3 subreddits
+      searchTerms: ['hotdog', 'hot dog'], // Reduce search terms for speed
+      minScore: 50, // Lower threshold for more content
       sortBy: 'hot',
       timeRange: 'week',
       includeNSFW: false
@@ -653,7 +678,7 @@ export class RedditScanningService {
    * Convert Reddit HTTP API post to ProcessedRedditPost format
    */
   private convertToProcessedPost(post: RedditPost): ProcessedRedditPost {
-    // Extract media URLs
+    // Extract media URLs with enhanced support
     const imageUrls: string[] = []
     const videoUrls: string[] = []
 
@@ -671,6 +696,23 @@ export class RedditScanningService {
       // Reddit hosted videos
       else if (url.includes('v.redd.it')) {
         videoUrls.push(url)
+      }
+      // Imgur links
+      else if (url.includes('imgur.com')) {
+        // Convert imgur links to direct image URLs
+        const imgurId = url.match(/imgur\.com\/([a-zA-Z0-9]+)/)?.[1]
+        if (imgurId) {
+          imageUrls.push(`https://i.imgur.com/${imgurId}.jpg`)
+        }
+      }
+      // Gfycat links
+      else if (url.includes('gfycat.com')) {
+        videoUrls.push(url) // Gfycat provides both GIF and MP4
+      }
+      // Reddit galleries (basic support)
+      else if (url.includes('/gallery/')) {
+        // Would need additional API call to get gallery images
+        imageUrls.push(url) // Keep gallery URL for now
       }
     }
 
