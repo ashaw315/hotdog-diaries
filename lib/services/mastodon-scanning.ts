@@ -246,49 +246,38 @@ export class MastodonService {
   }
 
   private async searchInstance(instance: string, limit: number = 20): Promise<MastodonStatus[]> {
-    const allStatuses: MastodonStatus[] = []
+    // TEMPORARY: Just use public timeline directly for testing
+    try {
+      console.log(`📡 Fetching public timeline from ${instance}`)
+      const timelineUrl = `https://${instance}/api/v1/timelines/public?limit=${limit}`
+      
+      const response = await fetch(timelineUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'HotdogDiaries/1.0'
+        }
+      })
 
-    // Search regular terms
-    for (const term of this.searchTerms.slice(0, 3)) { // Limit to avoid rate limits
-      try {
-        const statuses = await this.searchInstanceTerm(instance, term, Math.ceil(limit / 6))
-        allStatuses.push(...statuses)
-        
-        // Small delay between searches
-        await new Promise(resolve => setTimeout(resolve, 100))
-      } catch (error) {
-        console.error(`Error searching ${instance} for "${term}":`, error)
+      if (!response.ok) {
+        throw new Error(`Timeline API error: ${response.status} ${response.statusText}`)
       }
+
+      const allStatuses: MastodonStatus[] = await response.json()
+      console.log(`✅ Retrieved ${allStatuses.length} statuses from ${instance} public timeline`)
+      
+      // TEMPORARY: Filter and return public, non-sensitive content
+      const relevantStatuses = allStatuses.filter(status => {
+        return !status.sensitive && status.visibility === 'public'
+      })
+      
+      console.log(`⚠️  TESTING MODE: Returning ${relevantStatuses.length} public statuses for database testing`)
+      return relevantStatuses.slice(0, limit)
+      
+    } catch (error) {
+      console.error(`Error fetching timeline from ${instance}:`, error)
+      return []
     }
-
-    // Search food tags
-    for (const tag of this.foodTags.slice(0, 2)) { // Limit food tags
-      try {
-        const statuses = await this.searchInstanceTerm(instance, tag, Math.ceil(limit / 6))
-        allStatuses.push(...statuses)
-        
-        await new Promise(resolve => setTimeout(resolve, 100))
-      } catch (error) {
-        console.error(`Error searching ${instance} for "${tag}":`, error)
-      }
-    }
-
-    // TEMPORARY: Accept ALL content for database testing
-    // This ensures we can verify database saving works
-    const relevantStatuses = allStatuses.filter(status => {
-      // For testing, just filter out sensitive content
-      return !status.sensitive && status.visibility === 'public'
-    })
-    
-    console.log(`⚠️  TESTING MODE: Accepting all public content to verify database saving`)
-
-    // Deduplicate by ID within instance
-    const uniqueStatuses = Array.from(
-      new Map(relevantStatuses.map(status => [status.id, status])).values()
-    )
-
-    console.log(`🔍 Found ${uniqueStatuses.length} relevant statuses on ${instance} out of ${allStatuses.length} searched`)
-    return uniqueStatuses.slice(0, limit)
   }
 
   private async searchInstanceTerm(instance: string, query: string, limit: number = 5): Promise<MastodonStatus[]> {
