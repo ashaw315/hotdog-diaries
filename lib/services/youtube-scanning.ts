@@ -3,7 +3,7 @@ import { FilteringService } from './filtering'
 import { ContentProcessor } from './content-processor'
 import { contentProcessorFixed } from './content-processor-fixed'
 import { DuplicateDetectionService } from './duplicate-detection'
-import { query, insert } from '@/lib/db-query-builder'
+import { createSimpleClient } from '@/utils/supabase/server'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
@@ -448,17 +448,37 @@ export class YouTubeScanningService {
           confidence_score: 0.85 // Good confidence for mock videos
         }
         
-        const processingResult = await contentProcessorFixed.processContentQuick(videoData)
+        // Save mock data directly to Supabase
+        const supabase = createSimpleClient()
         
-        if (processingResult.success) {
-          if (processingResult.action === 'approved') {
-            result.approved++
+        const supabaseData = {
+          ...videoData,
+          content_hash: `youtube_mock_${video.id}_${Date.now()}`,
+          content_status: 'discovered',
+          confidence_score: 0.9,
+          is_approved: true, // Auto-approve mock content for testing
+          is_rejected: false,
+          is_posted: false,
+          scraped_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        
+        const { data, error } = await supabase
+          .from('content_queue')
+          .insert(supabaseData)
+          .select('id')
+          .single()
+        
+        if (error) {
+          if (error.message?.includes('duplicate')) {
+            result.duplicates++
           } else {
-            result.rejected++
+            result.errors.push(`Failed to save mock video: ${video.title} (${error.message})`)
           }
-          result.processed++
         } else {
-          result.errors.push(`Failed to process mock video: ${video.title} (${processingResult.reason})`)
+          result.approved++
+          result.processed++
         }
 
       } catch (videoError) {
@@ -567,7 +587,9 @@ export class YouTubeScanningService {
               continue
             }
 
-            // Use fixed processor that handles both processing and saving
+            // Save directly to Supabase
+            const supabase = createSimpleClient()
+            
             const videoData = {
               content_text: video.title,
               content_image_url: video.thumbnailUrl,
@@ -576,22 +598,34 @@ export class YouTubeScanningService {
               source_platform: 'youtube',
               original_url: video.videoUrl,
               original_author: video.channelTitle,
-              confidence_score: 0.9 // High confidence for YouTube videos
+              content_hash: `youtube_${video.id}_${Date.now()}`,
+              content_status: 'discovered',
+              confidence_score: 0.9,
+              is_approved: true, // Auto-approve YouTube content
+              is_rejected: false,
+              is_posted: false,
+              scraped_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
             }
             
-            const processingResult = await contentProcessorFixed.processContentQuick(videoData)
+            const { data, error } = await supabase
+              .from('content_queue')
+              .insert(videoData)
+              .select('id')
+              .single()
             
-            if (processingResult.success) {
-              if (processingResult.action === 'approved') {
-                result.approved++
-              } else if (processingResult.action === 'duplicate') {
+            if (error) {
+              if (error.message?.includes('duplicate')) {
                 result.duplicates++
+                result.errors.push(`DEBUG: Video "${video.title}" is a duplicate`)
               } else {
-                result.rejected++
+                result.errors.push(`Failed to save YouTube video: ${video.title} (${error.message})`)
               }
-              result.processed++
             } else {
-              result.errors.push(`Failed to process YouTube video: ${video.title} (${processingResult.reason})`)
+              result.approved++
+              result.processed++
+              result.errors.push(`DEBUG: Successfully saved video "${video.title}" to database with ID ${data.id}`)
             }
 
           } catch (videoError) {
