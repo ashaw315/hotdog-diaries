@@ -208,11 +208,19 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (error) {
+          console.error(`❌ Supabase INSERT error for "${hit.tags}":`, error)
+          console.error(`❌ Error details:`, {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          console.error(`❌ Data being inserted:`, imageData)
+          
           if (error.message?.includes('duplicate') || error.code === '23505') {
-            console.log(`⚠️ Duplicate image skipped: "${hit.tags}" (hash: ${contentHash.substring(0, 8)}...)`)
+            console.log(`⚠️ Duplicate constraint violation: "${hit.tags}" (hash: ${contentHash.substring(0, 8)}...)`)
             errors.push(`duplicate: ${hit.tags}`)
           } else {
-            console.error(`❌ Error saving image "${hit.tags}":`, error)
             errors.push(`Failed to save "${hit.tags}": ${error.message}`)
           }
         } else {
