@@ -4,7 +4,7 @@ import { FilteringService } from './filtering'
 import { ContentProcessor } from './content-processor'
 import { DuplicateDetectionService } from './duplicate-detection'
 import { redditMonitoringService } from './reddit-monitoring'
-import { query, insert } from '@/lib/db-query-builder'
+import { createSimpleClient } from '@/utils/supabase/server'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 import { loadEnv } from '@/lib/env'
@@ -405,10 +405,31 @@ export class RedditScanningService {
 
       let insertedContent
       try {
-        insertedContent = await insert('content_queue')
-          .values(contentData)
-          .returning(['id'])
-          .first()
+        // Use Supabase client for database operations
+        const supabase = createSimpleClient()
+        
+        // Add timestamp fields for Supabase
+        const supabaseData = {
+          ...contentData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_approved: false,
+          is_rejected: false,
+          is_posted: false
+        }
+
+        const { data, error } = await supabase
+          .from('content_queue')
+          .insert(supabaseData)
+          .select('id')
+          .single()
+        
+        if (error) {
+          throw error
+        }
+        
+        insertedContent = data
+        
       } catch (insertError) {
         await logToDatabase(
           LogLevel.ERROR,

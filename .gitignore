@@ -27,3 +27,4 @@ tsconfig.tsbuildinfo
 # Test results
 test-results.json
 backups/
+.vercel
