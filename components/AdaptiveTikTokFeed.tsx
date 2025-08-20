@@ -356,7 +356,7 @@ export default function AdaptiveTikTokFeed() {
         // Retry mechanism for development HMR 404 issues
         while (retries <= maxRetries) {
           try {
-            response = await fetch('/api/temp-content/get', { 
+            response = await fetch('/api/feed', { 
               signal: controller.signal 
             })
             
@@ -479,7 +479,7 @@ export default function AdaptiveTikTokFeed() {
 
     const result = await safeExecute(
       async () => {
-        const response = await fetch('/api/temp-content/get') // Get temp content
+        const response = await fetch('/api/feed') // Get posted content from automation system
         
         if (!response.ok) {
           throw new Error(`Failed to load remaining content: ${response.status} ${response.statusText}`)
@@ -518,7 +518,7 @@ export default function AdaptiveTikTokFeed() {
 
     const result = await safeExecute(
       async () => {
-        const response = await fetch('/api/temp-content/get')
+        const response = await fetch('/api/feed')
         
         if (!response.ok) {
           throw new Error(`Failed to load content: ${response.status} ${response.statusText}`)
