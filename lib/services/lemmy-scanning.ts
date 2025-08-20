@@ -1,6 +1,6 @@
+import { ContentProcessor, contentProcessor } from './content-processor'
 import { FilteringService } from './filtering'
-import { ContentProcessor } from './content-processor'
-import { db, logToDatabase } from '@/lib/db'
+import { logToDatabase, db } from '@/lib/db'
 import { LogLevel } from '@/types'
 
 export interface LemmyPostData {
@@ -198,7 +198,7 @@ export class LemmyScanningService {
             content_hash: this.contentProcessor.generateContentHash(contentForHash)
           }
 
-          // Insert into database
+          // Insert into database using the shared db abstraction
           const insertQuery = `
             INSERT INTO content_queue (
               content_text, content_image_url, content_video_url, content_type,
