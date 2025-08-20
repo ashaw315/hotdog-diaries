@@ -41,14 +41,30 @@ export default function PostedContentPage() {
     try {
       setError(null)
 
+      // Get auth token for API calls
+      const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const [contentResponse, statsResponse] = await Promise.allSettled([
-        fetch(`/api/admin/content/posted?limit=${itemsPerPage}&offset=${(page - 1) * itemsPerPage}`),
-        page === 1 ? fetch('/api/admin/posting/stats') : Promise.resolve({ ok: false })
+        fetch(`/api/admin/content/posted?limit=${itemsPerPage}&offset=${(page - 1) * itemsPerPage}`, {
+          headers,
+          credentials: 'include'
+        }),
+        page === 1 ? fetch('/api/admin/posting/stats', {
+          headers,
+          credentials: 'include'
+        }) : Promise.resolve({ ok: false })
       ])
 
       if (contentResponse.status === 'fulfilled' && contentResponse.value.ok) {
         const contentData = await contentResponse.value.json()
-        const newContent = contentData.data || []
+        const newContent = contentData.content || []
         
         if (page === 1) {
           setPostedContent(newContent)
