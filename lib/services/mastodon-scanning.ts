@@ -273,17 +273,14 @@ export class MastodonService {
       }
     }
 
-    // Filter to food-related content (temporarily relaxed for testing)
+    // TEMPORARY: Accept ALL content for database testing
+    // This ensures we can verify database saving works
     const relevantStatuses = allStatuses.filter(status => {
-      const content = this.stripHtmlTags(status.content).toLowerCase()
-      const spoilerText = (status.spoiler_text || '').toLowerCase()
-      const allText = `${content} ${spoilerText}`.toLowerCase()
-      
-      // Temporarily accept any food-related content for testing
-      return ['hotdog', 'hot dog', 'chili dog', 'corn dog', 'chicago dog', 
-              'burger', 'food', 'lunch', 'dinner', 'eating']
-        .some(term => allText.includes(term))
+      // For testing, just filter out sensitive content
+      return !status.sensitive && status.visibility === 'public'
     })
+    
+    console.log(`⚠️  TESTING MODE: Accepting all public content to verify database saving`)
 
     // Deduplicate by ID within instance
     const uniqueStatuses = Array.from(
