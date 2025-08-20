@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { BulkEditModal } from './BulkEditModal'
+import { authFetch } from '@/lib/auth-fetch'
 
 interface QueuedContent {
   id: number
@@ -53,7 +54,7 @@ export default function ContentQueue() {
         limit: '50'
       })
       
-      const response = await fetch(`/api/admin/content/queue?${params}`)
+      const response = await authFetch(`/api/admin/content/queue?${params}`)
       if (response.ok) {
         const data = await response.json()
         setQueuedContent(data.content || [])
@@ -93,11 +94,8 @@ export default function ContentQueue() {
         const content_status = action === 'approve' ? 'approved' : 'rejected'
         const rejection_reason = action === 'reject' ? 'Bulk rejection' : undefined
         
-        return fetch(`/api/admin/content/queue?id=${id}`, {
+        return authFetch(`/api/admin/content/queue?id=${id}`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify({
             content_status,
             rejection_reason
@@ -115,11 +113,8 @@ export default function ContentQueue() {
 
   const handleUpdateContent = async (id: number, updates: Partial<QueuedContent>) => {
     try {
-      const response = await fetch(`/api/admin/content/queue?id=${id}`, {
+      const response = await authFetch(`/api/admin/content/queue?id=${id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(updates)
       })
 
@@ -158,11 +153,8 @@ export default function ContentQueue() {
       if (changes.action === 'status') {
         // Handle status changes
         const updates = Array.from(selectedItems).map(async (id) => {
-          return fetch(`/api/admin/content/queue?id=${id}`, {
+          return authFetch(`/api/admin/content/queue?id=${id}`, {
             method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
               content_status: changes.content_status,
               rejection_reason: changes.rejection_reason
@@ -172,11 +164,8 @@ export default function ContentQueue() {
         await Promise.all(updates)
       } else if (changes.action === 'schedule') {
         // Handle bulk scheduling
-        const response = await fetch('/api/admin/content/bulk-schedule', {
+        const response = await authFetch('/api/admin/content/bulk-schedule', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify({
             contentIds: Array.from(selectedItems),
             scheduleType: changes.scheduleType,
@@ -208,11 +197,8 @@ export default function ContentQueue() {
               break
           }
           
-          return fetch(`/api/admin/content/queue?id=${item.id}`, {
+          return authFetch(`/api/admin/content/queue?id=${item.id}`, {
             method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
               content_text: newText
             })
