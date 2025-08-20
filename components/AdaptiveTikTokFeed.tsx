@@ -413,15 +413,15 @@ export default function AdaptiveTikTokFeed() {
         }
         
         const transformedContent = data.content.map((item: any) => ({
-          id: parseInt(item.id.replace(/[^0-9]/g, '')) || Math.floor(Math.random() * 1000),
-          content_text: item.content || item.title,
-          content_type: item.videoUrl ? 'video' : item.imageUrl ? 'image' : 'text',
-          source_platform: item.platform || 'temp',
-          original_url: item.url || '#',
-          original_author: 'Content Scanner',
-          content_image_url: item.imageUrl,
-          content_video_url: item.videoUrl,
-          scraped_at: new Date(item.timestamp),
+          id: item.id,
+          content_text: item.content_text,
+          content_type: item.content_type,
+          source_platform: item.source_platform,
+          original_url: item.original_url,
+          original_author: item.original_author,
+          content_image_url: item.content_image_url,
+          content_video_url: item.content_video_url,
+          scraped_at: new Date(item.scraped_at),
           is_posted: false,
           is_approved: true
         }))
@@ -545,15 +545,15 @@ export default function AdaptiveTikTokFeed() {
         
         // Transform API response to match Post interface
         const transformedContent = data.content.map((item: any) => ({
-          id: parseInt(item.id.replace(/[^0-9]/g, '')) || Math.floor(Math.random() * 1000),
-          content_text: item.content || item.title,
-          content_type: item.videoUrl ? 'video' : item.imageUrl ? 'image' : 'text',
-          source_platform: item.platform || 'temp',
-          original_url: item.url || '#',
-          original_author: 'Content Scanner',
-          content_image_url: item.imageUrl,
-          content_video_url: item.videoUrl,
-          scraped_at: new Date(item.timestamp),
+          id: item.id,
+          content_text: item.content_text,
+          content_type: item.content_type,
+          source_platform: item.source_platform,
+          original_url: item.original_url,
+          original_author: item.original_author,
+          content_image_url: item.content_image_url,
+          content_video_url: item.content_video_url,
+          scraped_at: new Date(item.scraped_at),
           is_posted: false,
           is_approved: true
         }))
