@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { createSimpleClient } from '@/utils/supabase/server'
 
 export async function POST(request: NextRequest) {
   console.log('📸 Starting Pixabay scan with enhanced diagnostics...')
@@ -159,8 +159,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Connect to database (SQLite for dev, PostgreSQL for production)
-    await db.connect()
+    // Connect to Supabase (same as Giphy scanner)
+    const supabase = createSimpleClient()
     let addedCount = 0
     const errors = []
 
@@ -177,51 +177,48 @@ export async function POST(request: NextRequest) {
         const hashInput = `pixabay_${hit.id}_${hit.tags}`
         const contentHash = require('crypto').createHash('md5').update(hashInput).digest('hex')
 
+        const imageData = {
+          content_text: hit.tags || 'Hotdog Photo',
+          content_image_url: hit.webformatURL, // Medium-quality image for display
+          content_video_url: null, // No video URL for images
+          content_type: 'image',
+          source_platform: 'pixabay',
+          original_url: hit.pageURL, // Link to Pixabay page
+          original_author: hit.user || 'Pixabay User',
+          content_hash: contentHash,
+          content_status: 'discovered',
+          confidence_score: 0.90, // High confidence for curated stock photos
+          is_approved: true, // Auto-approve Pixabay content
+          is_rejected: false,
+          is_posted: false,
+          scraped_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+
         console.log(`📝 Attempting to save image: "${hit.tags}" by ${hit.user}`)
 
-        // Use standard database query that works with both SQLite and PostgreSQL
-        const result = await db.query(
-          `INSERT INTO content_queue (
-            content_text, content_image_url, content_video_url, content_type,
-            source_platform, original_url, original_author, content_hash,
-            content_status, confidence_score, is_approved, is_rejected, is_posted,
-            scraped_at, created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
-          RETURNING id`,
-          [
-            hit.tags || 'Hotdog Photo',
-            hit.webformatURL, // Medium-quality image for display
-            null, // No video URL for images
-            'image',
-            'pixabay',
-            hit.pageURL, // Link to Pixabay page
-            hit.user || 'Pixabay User',
-            contentHash,
-            'discovered',
-            0.90, // High confidence for curated stock photos
-            true, // Auto-approve Pixabay content
-            false,
-            false,
-            new Date().toISOString(),
-            new Date().toISOString(),
-            new Date().toISOString()
-          ]
-        )
+        const { data, error } = await supabase
+          .from('content_queue')
+          .insert(imageData)
+          .select('id')
+          .single()
 
-        if (result.rows.length > 0) {
-          console.log(`✅ Successfully saved image with ID: ${result.rows[0].id}`)
-          addedCount++
+        if (error) {
+          if (error.message?.includes('duplicate')) {
+            console.log(`⚠️ Duplicate image skipped: "${hit.tags}"`)
+          } else {
+            console.error(`❌ Error saving image "${hit.tags}":`, error)
+            errors.push(`Failed to save "${hit.tags}": ${error.message}`)
+          }
         } else {
-          errors.push(`Failed to save "${hit.tags}": No ID returned`)
+          console.log(`✅ Successfully saved image with ID: ${data.id}`)
+          addedCount++
         }
 
       } catch (imageError) {
         console.error(`❌ Error processing image "${hit.tags}":`, imageError)
-        if (imageError.message?.includes('duplicate') || imageError.message?.includes('UNIQUE constraint')) {
-          console.log(`⚠️ Duplicate image skipped: "${hit.tags}"`)
-        } else {
-          errors.push(`Error processing "${hit.tags}": ${imageError.message}`)
-        }
+        errors.push(`Error processing "${hit.tags}": ${imageError.message}`)
       }
     }
 
