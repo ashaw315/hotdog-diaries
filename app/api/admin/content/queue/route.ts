@@ -239,6 +239,7 @@ export async function GET(request: NextRequest) {
       
       console.log('✅ [AdminQueue] Table exists, building query...')
       
+      // Use simple query without complex joins that might be causing issues
       let query = supabase
         .from('content_queue')
         .select('*', { count: 'exact' })
@@ -289,22 +290,31 @@ export async function GET(request: NextRequest) {
       // Log sample data structure if we have items
       if (data && data.length > 0) {
         console.log('📊 [AdminQueue] Sample item keys:', Object.keys(data[0]))
+      } else {
+        console.log('📭 [AdminQueue] No content found in database')
       }
       
       const total = count || 0
 
-      await logToDatabase(
-        LogLevel.INFO,
-        'Content queue fetched',
-        'AdminAPI',
-        { 
-          status, 
-          platform, 
-          count: data?.length || 0,
-          total,
-          user: username 
-        }
-      )
+      console.log('✅ [AdminQueue] Returning response with', data?.length || 0, 'items')
+
+      try {
+        await logToDatabase(
+          LogLevel.INFO,
+          'Content queue fetched',
+          'AdminAPI',
+          { 
+            status, 
+            platform, 
+            count: data?.length || 0,
+            total,
+            user: username 
+          }
+        )
+      } catch (logError) {
+        console.warn('⚠️ [AdminQueue] Logging failed:', logError)
+        // Don't fail the request just because logging failed
+      }
 
       return NextResponse.json({
         content: data || [],
@@ -313,6 +323,11 @@ export async function GET(request: NextRequest) {
           limit,
           offset,
           hasMore: offset + limit < total
+        },
+        debug: {
+          querySuccessful: true,
+          itemCount: data?.length || 0,
+          totalCount: total
         }
       })
       
