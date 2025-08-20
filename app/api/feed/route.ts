@@ -22,7 +22,6 @@ export async function GET() {
           original_author,
           content_image_url,
           content_video_url,
-          content_metadata,
           scraped_at
         )
       `)
@@ -53,7 +52,7 @@ export async function GET() {
         original_author: content.original_author,
         content_image_url: content.content_image_url,
         content_video_url: content.content_video_url,
-        content_metadata: content.content_metadata,
+        content_metadata: null,
         scraped_at: new Date(content.scraped_at),
         is_posted: true,
         is_approved: true,
