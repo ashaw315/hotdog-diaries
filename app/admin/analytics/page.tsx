@@ -9,6 +9,7 @@ interface AnalyticsData {
       total_processed: number
       auto_approved: number
       auto_rejected: number
+      posted: number
       flagged_for_review: number
       spam_detected: number
       inappropriate_detected: number
@@ -23,9 +24,9 @@ interface AnalyticsData {
       daily_processed: number
       daily_approved: number
       daily_rejected: number
-      daily_flagged: number
       daily_accuracy: number
     }>
+    platformBreakdown: Record<string, { total: number; approved: number; posted: number }>
     patternEffectiveness: Array<{
       pattern_type: string
       pattern: string
@@ -35,18 +36,29 @@ interface AnalyticsData {
     }>
   }
   processingStats: {
-    stats: {
+    queue: {
+      total: number
       pending: number
+      approved: number
+      posted: number
       processing: number
+    }
+    throughput: {
+      items_per_day: number
+      total_processed_today: number
+      avg_processing_time: string
+      success_rate: string
+    }
+    current_batch: {
+      size: number
+      progress: number
+      estimated_completion: string
+    }
+    daily_processing: Array<{
+      date: string
+      processed: number
       approved: number
       rejected: number
-      flagged: number
-      avg_processing_time: number
-    }
-    recentActivity: Array<{
-      status: string
-      count: number
-      hour: string
     }>
   }
 }
@@ -232,7 +244,7 @@ export default function AnalyticsPage() {
             <span className="analytics-metric-icon">⏱️</span>
           </div>
           <div className="analytics-metric-value">
-            {formatTime(data.processingStats.stats.avg_processing_time)}
+            {data.processingStats.throughput.avg_processing_time}
           </div>
           <p className="analytics-metric-description">Average processing duration</p>
         </div>
@@ -345,37 +357,37 @@ export default function AnalyticsPage() {
           <div className="analytics-pipeline-grid">
             <div className="analytics-pipeline-status bg-yellow-50 border-yellow-200">
               <div className="analytics-pipeline-value text-yellow-600">
-                {data.processingStats.stats.pending.toLocaleString()}
+                {data.processingStats.queue.pending.toLocaleString()}
               </div>
               <div className="analytics-pipeline-label text-yellow-800">Pending</div>
             </div>
 
             <div className="analytics-pipeline-status bg-blue-50 border-blue-200">
               <div className="analytics-pipeline-value text-blue-600">
-                {data.processingStats.stats.processing.toLocaleString()}
+                {data.processingStats.queue.processing.toLocaleString()}
               </div>
               <div className="analytics-pipeline-label text-blue-800">Processing</div>
             </div>
 
             <div className="analytics-pipeline-status bg-green-50 border-green-200">
               <div className="analytics-pipeline-value text-green-600">
-                {data.processingStats.stats.approved.toLocaleString()}
+                {data.processingStats.queue.approved.toLocaleString()}
               </div>
               <div className="analytics-pipeline-label text-green-800">Approved</div>
             </div>
 
             <div className="analytics-pipeline-status bg-red-50 border-red-200">
               <div className="analytics-pipeline-value text-red-600">
-                {data.processingStats.stats.rejected.toLocaleString()}
+                {(data.processingStats.queue.total - data.processingStats.queue.approved - data.processingStats.queue.posted).toLocaleString()}
               </div>
               <div className="analytics-pipeline-label text-red-800">Rejected</div>
             </div>
 
-            <div className="analytics-pipeline-status bg-orange-50 border-orange-200">
-              <div className="analytics-pipeline-value text-orange-600">
-                {data.processingStats.stats.flagged.toLocaleString()}
+            <div className="analytics-pipeline-status bg-purple-50 border-purple-200">
+              <div className="analytics-pipeline-value text-purple-600">
+                {data.processingStats.queue.posted.toLocaleString()}
               </div>
-              <div className="analytics-pipeline-label text-orange-800">Flagged</div>
+              <div className="analytics-pipeline-label text-purple-800">Posted</div>
             </div>
           </div>
         </div>
