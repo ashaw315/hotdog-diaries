@@ -25,12 +25,13 @@ export async function POST(request: NextRequest) {
       throw new Error(`Failed to select content: ${selectError.message}`)
     }
 
-    // 2. Group by content text/hash to find duplicates
+    // 2. Group by content text to find duplicates (ignore hash differences)
     const contentGroups = new Map()
     
     for (const content of allContent || []) {
-      const key = content.content_hash || content.content_text?.substring(0, 100)
-      if (!key) continue
+      // Use just the content text for grouping, normalize whitespace
+      const key = content.content_text?.trim()?.replace(/\s+/g, ' ')
+      if (!key || key.length < 10) continue // Skip very short content
       
       if (!contentGroups.has(key)) {
         contentGroups.set(key, [])
