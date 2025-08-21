@@ -26,7 +26,7 @@
     "db:init": "tsx scripts/init-sqlite.ts",
     "db:setup-vercel": "tsx scripts/setup-vercel-postgres.ts",
     "admin:create": "tsx scripts/seed-admin.ts",
-    "postbuild": "npm run db:setup-vercel || true"
+    "postbuild": "echo 'Skipping Vercel DB setup during build'"
   },
   "dependencies": {
     "@next/font": "^14.2.15",
