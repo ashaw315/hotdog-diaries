@@ -456,8 +456,9 @@ export default function AdaptiveTikTokFeed() {
       console.log(`⏱️ fetchInitialPost: Setting ${result.length} posts`)
       setPosts(result)
       
-      // Start loading the rest after a short delay
-      setTimeout(() => fetchRemainingPosts(), 1000)
+      // NOTE: fetchInitialPost already loads ALL content from /api/feed
+      // No need to call fetchRemainingPosts as it would duplicate the same content
+      console.log('⏱️ fetchInitialPost: All content loaded, skipping fetchRemainingPosts to prevent duplicates')
     }
 
     // Force minimum loading time to ensure animation is visible
