@@ -15,6 +15,7 @@ on:
           - approve-pending
           - system-health-check
           - clear-queue-test
+          - fix-duplicates
       
       count:
         description: 'Number of times (for catch-up posts)'
@@ -110,6 +111,14 @@ jobs:
                 -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 -d '{"removeTestContent": true, "removeDuplicates": true}' \
+                --fail --show-error
+              ;;
+              
+            "fix-duplicates")
+              echo "🔧 Fixing duplicate content to prevent reposting..."
+              curl -X POST "${{ secrets.SITE_URL }}/api/admin/fix-duplicate-content" \
+                -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+                -H "Content-Type: application/json" \
                 --fail --show-error
               ;;
               
