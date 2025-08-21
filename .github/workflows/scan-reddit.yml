@@ -1,0 +1,34 @@
+name: Scan Reddit for Content
+
+on:
+  schedule:
+    - cron: '0 2,10,18 * * *'  # 3 times daily (2 AM, 10 AM, 6 PM UTC)
+  workflow_dispatch:
+
+jobs:
+  scan-reddit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Reddit
+        run: |
+          echo "🤖 Scanning Reddit for hotdog content..."
+          
+          RESULT=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/reddit/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 20}' \
+            --silent --show-error --retry 2)
+          
+          if [ $? -eq 0 ]; then
+            FOUND=$(echo "$RESULT" | jq -r '.totalFound // 0')
+            PROCESSED=$(echo "$RESULT" | jq -r '.processed // 0')
+            echo "✅ Reddit scan successful: Found $FOUND, processed $PROCESSED"
+          else
+            echo "❌ Reddit scan failed"
+            exit 1
+          fi
+      
+      - name: Handle Scan Failure
+        if: failure()
+        run: |
+          echo "❌ Reddit scanning failed - will retry on next scheduled run"

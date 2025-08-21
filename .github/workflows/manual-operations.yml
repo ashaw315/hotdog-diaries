@@ -1,0 +1,131 @@
+name: Manual Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Operation to perform'
+        required: true
+        type: choice
+        options:
+          - post-now
+          - scan-all-emergency
+          - scan-all-normal
+          - catch-up-missed-posts
+          - approve-pending
+          - system-health-check
+          - clear-queue-test
+      
+      count:
+        description: 'Number of times (for catch-up posts)'
+        required: false
+        default: '1'
+        type: string
+      
+      platform:
+        description: 'Specific platform (for single platform scans)'
+        required: false
+        type: choice
+        options:
+          - all
+          - reddit
+          - youtube
+          - giphy
+          - pixabay
+          - bluesky
+          - imgur
+          - lemmy
+          - tumblr
+
+jobs:
+  execute-operation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute Operation
+        run: |
+          case "${{ github.event.inputs.operation }}" in
+            "post-now")
+              echo "🚀 Posting content immediately..."
+              curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
+                -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{"immediate": true}' \
+                --fail --show-error
+              ;;
+              
+            "catch-up-missed-posts")
+              echo "📅 Catching up ${{ github.event.inputs.count }} missed posts..."
+              for i in $(seq 1 ${{ github.event.inputs.count }}); do
+                echo "  Posting #$i..."
+                curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
+                  -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"catchUp": true, \"sequence\": $i}" \
+                  --fail --show-error
+                
+                if [ $i -lt ${{ github.event.inputs.count }} ]; then
+                  echo "  Waiting 10 seconds before next post..."
+                  sleep 10
+                fi
+              done
+              ;;
+              
+            "scan-all-emergency")
+              echo "🚨 EMERGENCY: Scanning all platforms with auto-approval..."
+              curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/emergency-scan" \
+                -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{"autoApprove": true, "maxItems": 100}' \
+                --fail --show-error
+              ;;
+              
+            "scan-all-normal")
+              echo "📡 Scanning all platforms (normal mode)..."
+              curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/scan-all" \
+                -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{"maxItems": 50}' \
+                --fail --show-error
+              ;;
+              
+            "approve-pending")
+              echo "✅ Auto-approving pending content..."
+              curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/auto-approve" \
+                -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{"maxItems": 30, "onlyHighConfidence": true}' \
+                --fail --show-error
+              ;;
+              
+            "system-health-check")
+              echo "🏥 Running system health check..."
+              curl -X GET "${{ secrets.SITE_URL }}/api/admin/health" \
+                -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+                --fail --show-error
+              ;;
+              
+            "clear-queue-test")
+              echo "🧹 Clearing test/duplicate content..."
+              curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/cleanup" \
+                -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{"removeTestContent": true, "removeDuplicates": true}' \
+                --fail --show-error
+              ;;
+              
+            *)
+              echo "❌ Unknown operation: ${{ github.event.inputs.operation }}"
+              exit 1
+              ;;
+          esac
+      
+      - name: Report Operation Results
+        if: always()
+        run: |
+          echo "📊 Operation completed: ${{ github.event.inputs.operation }}"
+          if [ "${{ github.event.inputs.count }}" != "1" ]; then
+            echo "Count: ${{ github.event.inputs.count }}"
+          fi
+          if [ "${{ github.event.inputs.platform }}" != "all" ]; then
+            echo "Platform: ${{ github.event.inputs.platform }}"
+          fi

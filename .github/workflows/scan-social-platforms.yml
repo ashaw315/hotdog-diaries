@@ -1,0 +1,67 @@
+name: Scan Social Platforms
+
+on:
+  schedule:
+    - cron: '0 1,9,17 * * *'  # 3 times daily (1 AM, 9 AM, 5 PM UTC)
+  workflow_dispatch:
+
+jobs:
+  scan-giphy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Giphy
+        run: |
+          echo "🎭 Scanning Giphy for hotdog GIFs..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/giphy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 15}' \
+            --fail --show-error --retry 2
+          
+          echo "✅ Giphy scan completed"
+
+  scan-bluesky:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Bluesky
+        run: |
+          echo "🦋 Scanning Bluesky for hotdog posts..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/bluesky/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 15}' \
+            --fail --show-error --retry 2
+          
+          echo "✅ Bluesky scan completed"
+
+  scan-imgur:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Imgur
+        run: |
+          echo "🖼️ Scanning Imgur for hotdog images..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/imgur/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 15}' \
+            --fail --show-error --retry 2
+          
+          echo "✅ Imgur scan completed"
+
+  scan-pixabay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Pixabay
+        run: |
+          echo "📸 Scanning Pixabay for hotdog images..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/pixabay/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 15}' \
+            --fail --show-error --retry 2
+          
+          echo "✅ Pixabay scan completed"

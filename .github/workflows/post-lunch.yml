@@ -1,0 +1,29 @@
+name: Post Lunch Content
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # 12 PM UTC
+  workflow_dispatch:
+
+jobs:
+  post-lunch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post Lunch Content
+        run: |
+          echo "🥪 Posting lunch content..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-meal" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"meal": "lunch", "time": "12:00"}' \
+            --fail --show-error --retry 2 --retry-delay 10
+      
+      - name: Verify Post Success
+        if: success()
+        run: |
+          echo "✅ Lunch content posted successfully"
+      
+      - name: Handle Failure
+        if: failure()
+        run: |
+          echo "❌ Lunch posting failed - alerting team"

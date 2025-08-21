@@ -1,0 +1,34 @@
+name: Scan YouTube for Content
+
+on:
+  schedule:
+    - cron: '0 4,16 * * *'  # Twice daily (4 AM, 4 PM UTC) - quota limits
+  workflow_dispatch:
+
+jobs:
+  scan-youtube:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan YouTube
+        run: |
+          echo "🎬 Scanning YouTube for hotdog content..."
+          
+          RESULT=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/youtube/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 10}' \
+            --silent --show-error --retry 2)
+          
+          if [ $? -eq 0 ]; then
+            FOUND=$(echo "$RESULT" | jq -r '.totalFound // 0')
+            PROCESSED=$(echo "$RESULT" | jq -r '.processed // 0')
+            echo "✅ YouTube scan successful: Found $FOUND, processed $PROCESSED"
+          else
+            echo "❌ YouTube scan failed (possibly quota exceeded)"
+          fi
+      
+      - name: Handle Quota Issues
+        if: failure()
+        run: |
+          echo "⚠️ YouTube scan failed - likely quota limit reached"
+          echo "Will retry on next scheduled run"

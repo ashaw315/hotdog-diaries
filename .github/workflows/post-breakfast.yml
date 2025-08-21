@@ -1,0 +1,31 @@
+name: Post Breakfast Content
+
+on:
+  schedule:
+    - cron: '0 7 * * *'  # 7 AM UTC
+  workflow_dispatch:
+
+jobs:
+  post-breakfast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post Breakfast Content
+        run: |
+          echo "🌅 Posting breakfast content..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-meal" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"meal": "breakfast", "time": "08:00"}' \
+            --fail --show-error --retry 2 --retry-delay 10
+      
+      - name: Verify Post Success
+        if: success()
+        run: |
+          echo "✅ Breakfast content posted successfully"
+          # Optional: Send success notification
+      
+      - name: Handle Failure
+        if: failure()
+        run: |
+          echo "❌ Breakfast posting failed - alerting team"
+          # Could integrate with Slack/Discord/email alerts here

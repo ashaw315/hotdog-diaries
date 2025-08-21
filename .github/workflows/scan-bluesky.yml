@@ -1,0 +1,27 @@
+name: Scan Bluesky for Content
+
+on:
+  schedule:
+    - cron: '0 1,9,17 * * *'  # 3 times daily (1 AM, 9 AM, 5 PM UTC)
+  workflow_dispatch:
+
+jobs:
+  scan-bluesky:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Bluesky
+        run: |
+          echo "🦋 Scanning Bluesky for hotdog posts..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/bluesky/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 15}' \
+            --fail --show-error --retry 2 --retry-delay 5
+          
+          echo "✅ Bluesky scan completed"
+      
+      - name: Handle Scan Failure
+        if: failure()
+        run: |
+          echo "❌ Bluesky scanning failed - will retry on next scheduled run"

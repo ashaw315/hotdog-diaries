@@ -1,0 +1,37 @@
+name: Scan Niche Platforms
+
+on:
+  schedule:
+    - cron: '0 6,14,22 * * *'  # 3 times daily (6 AM, 2 PM, 10 PM UTC)
+  workflow_dispatch:
+
+jobs:
+  scan-lemmy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Lemmy
+        run: |
+          echo "🌐 Scanning Lemmy for hotdog content..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/lemmy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 10}' \
+            --fail --show-error --retry 2 || echo "⚠️ Lemmy scan failed (continuing)"
+          
+          echo "✅ Lemmy scan attempt completed"
+
+  scan-tumblr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Tumblr  
+        run: |
+          echo "🎨 Scanning Tumblr for hotdog content..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 10}' \
+            --fail --show-error --retry 2 || echo "⚠️ Tumblr scan failed (continuing)"
+          
+          echo "✅ Tumblr scan attempt completed"

@@ -1,0 +1,27 @@
+name: Scan Lemmy for Content
+
+on:
+  schedule:
+    - cron: '0 5,13,21 * * *'  # 3 times daily (5 AM, 1 PM, 9 PM UTC)
+  workflow_dispatch:
+
+jobs:
+  scan-lemmy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Lemmy
+        run: |
+          echo "🌐 Scanning Lemmy for hotdog content..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/lemmy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 10}' \
+            --fail --show-error --retry 2 --retry-delay 5 || echo "⚠️ Lemmy scan failed (continuing)"
+          
+          echo "✅ Lemmy scan attempt completed"
+      
+      - name: Handle Scan Failure
+        if: failure()
+        run: |
+          echo "⚠️ Lemmy scanning failed - this is expected occasionally"

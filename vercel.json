@@ -13,12 +13,8 @@
       "maxDuration": 30
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/daily",
-      "schedule": "0 10 * * *"
-    }
-  ],
+  // Cron functionality moved to GitHub Actions for better reliability
+  // See .github/workflows/ for meal-time posting and platform scanning automation
   "env": {
     "NODE_ENV": "production"
   },

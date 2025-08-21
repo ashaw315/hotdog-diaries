@@ -1,0 +1,106 @@
+name: Monitor Queue Health & Scan if Needed
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # Every 3 hours
+  workflow_dispatch:
+
+jobs:
+  check-queue-health:
+    runs-on: ubuntu-latest
+    outputs:
+      needs_scan: ${{ steps.check.outputs.needs_scan }}
+      urgency: ${{ steps.check.outputs.urgency }}
+      days_left: ${{ steps.check.outputs.days_left }}
+      approved_count: ${{ steps.check.outputs.approved_count }}
+    
+    steps:
+      - name: Check Queue Status
+        id: check
+        run: |
+          echo "🔍 Checking queue health..."
+          
+          STATUS=$(curl -s "${{ secrets.SITE_URL }}/api/admin/schedule" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Accept: application/json")
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to fetch queue status"
+            echo "needs_scan=true" >> $GITHUB_OUTPUT
+            echo "urgency=critical" >> $GITHUB_OUTPUT
+            echo "days_left=0" >> $GITHUB_OUTPUT
+            echo "approved_count=0" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          APPROVED_COUNT=$(echo "$STATUS" | jq -r '.queueStatus.totalApproved // 0')
+          DAYS_OF_CONTENT=$(echo "scale=1; $APPROVED_COUNT / 6" | bc -l)
+          
+          echo "📊 Queue Status: $APPROVED_COUNT approved items = $DAYS_OF_CONTENT days"
+          echo "approved_count=$APPROVED_COUNT" >> $GITHUB_OUTPUT
+          echo "days_left=$DAYS_OF_CONTENT" >> $GITHUB_OUTPUT
+          
+          # Determine if we need to scan
+          if (( $(echo "$DAYS_OF_CONTENT < 1" | bc -l) )); then
+            echo "🚨 CRITICAL: Less than 1 day of content!"
+            echo "needs_scan=true" >> $GITHUB_OUTPUT
+            echo "urgency=critical" >> $GITHUB_OUTPUT
+          elif (( $(echo "$DAYS_OF_CONTENT < 3" | bc -l) )); then
+            echo "⚠️ WARNING: Less than 3 days of content"
+            echo "needs_scan=true" >> $GITHUB_OUTPUT
+            echo "urgency=high" >> $GITHUB_OUTPUT
+          elif (( $(echo "$DAYS_OF_CONTENT < 7" | bc -l) )); then
+            echo "📡 Normal scan needed (less than 7 days)"
+            echo "needs_scan=true" >> $GITHUB_OUTPUT
+            echo "urgency=normal" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Queue is healthy ($DAYS_OF_CONTENT days)"
+            echo "needs_scan=false" >> $GITHUB_OUTPUT
+            echo "urgency=none" >> $GITHUB_OUTPUT
+          fi
+
+  scan-platforms:
+    needs: check-queue-health
+    if: needs.check-queue-health.outputs.needs_scan == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Emergency Scan All Platforms
+        if: needs.check-queue-health.outputs.urgency == 'critical'
+        run: |
+          echo "🚨 EMERGENCY: Scanning all platforms with auto-approval"
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/emergency-scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"autoApprove": true, "maxItems": 100, "platforms": ["reddit", "youtube", "giphy", "pixabay", "bluesky", "imgur", "lemmy", "tumblr"]}' \
+            --fail --show-error --retry 2
+      
+      - name: High Priority Scan
+        if: needs.check-queue-health.outputs.urgency == 'high'
+        run: |
+          echo "⚠️ HIGH PRIORITY: Scanning top platforms"
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/priority-scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"platforms": ["reddit", "youtube", "giphy", "pixabay"], "maxItems": 50}' \
+            --fail --show-error --retry 2
+      
+      - name: Normal Scan
+        if: needs.check-queue-health.outputs.urgency == 'normal'
+        run: |
+          echo "📡 Normal scan of select platforms"
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/normal-scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"platforms": ["reddit", "giphy", "bluesky"], "maxItems": 25}' \
+            --fail --show-error --retry 2
+      
+      - name: Report Scan Results
+        if: always()
+        run: |
+          echo "📊 Scan completed for urgency level: ${{ needs.check-queue-health.outputs.urgency }}"
+          echo "Queue had ${{ needs.check-queue-health.outputs.approved_count }} approved items"
+          echo "Estimated ${{ needs.check-queue-health.outputs.days_left }} days of content"

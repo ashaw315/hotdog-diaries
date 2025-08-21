@@ -1,0 +1,29 @@
+name: Post Late Night Content
+
+on:
+  schedule:
+    - cron: '30 22 * * *'  # 10:30 PM UTC
+  workflow_dispatch:
+
+jobs:
+  post-late-night:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post Late Night Content
+        run: |
+          echo "🌃 Posting late night content..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-meal" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"meal": "late-night", "time": "23:30"}' \
+            --fail --show-error --retry 2 --retry-delay 10
+      
+      - name: Verify Post Success
+        if: success()
+        run: |
+          echo "✅ Late night content posted successfully"
+      
+      - name: Handle Failure
+        if: failure()
+        run: |
+          echo "❌ Late night posting failed - alerting team"

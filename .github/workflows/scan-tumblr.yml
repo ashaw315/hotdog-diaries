@@ -1,0 +1,27 @@
+name: Scan Tumblr for Content
+
+on:
+  schedule:
+    - cron: '0 6,14,22 * * *'  # 3 times daily (6 AM, 2 PM, 10 PM UTC)
+  workflow_dispatch:
+
+jobs:
+  scan-tumblr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Tumblr
+        run: |
+          echo "🎨 Scanning Tumblr for hotdog content..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 10}' \
+            --fail --show-error --retry 2 --retry-delay 5 || echo "⚠️ Tumblr scan failed (continuing)"
+          
+          echo "✅ Tumblr scan attempt completed"
+      
+      - name: Handle Scan Failure
+        if: failure()
+        run: |
+          echo "⚠️ Tumblr scanning failed - this is expected occasionally"

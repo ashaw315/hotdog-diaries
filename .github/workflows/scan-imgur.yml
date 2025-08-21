@@ -1,0 +1,27 @@
+name: Scan Imgur for Content
+
+on:
+  schedule:
+    - cron: '0 4,12,20 * * *'  # 3 times daily (4 AM, 12 PM, 8 PM UTC)
+  workflow_dispatch:
+
+jobs:
+  scan-imgur:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Imgur
+        run: |
+          echo "🖼️ Scanning Imgur for hotdog images..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/imgur/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 15}' \
+            --fail --show-error --retry 2 --retry-delay 5
+          
+          echo "✅ Imgur scan completed"
+      
+      - name: Handle Scan Failure
+        if: failure()
+        run: |
+          echo "❌ Imgur scanning failed - will retry on next scheduled run"

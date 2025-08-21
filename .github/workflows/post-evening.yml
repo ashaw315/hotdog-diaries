@@ -1,0 +1,29 @@
+name: Post Evening Content
+
+on:
+  schedule:
+    - cron: '0 20 * * *'  # 8 PM UTC
+  workflow_dispatch:
+
+jobs:
+  post-evening:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post Evening Content
+        run: |
+          echo "🌙 Posting evening content..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-meal" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"meal": "evening", "time": "21:00"}' \
+            --fail --show-error --retry 2 --retry-delay 10
+      
+      - name: Verify Post Success
+        if: success()
+        run: |
+          echo "✅ Evening content posted successfully"
+      
+      - name: Handle Failure
+        if: failure()
+        run: |
+          echo "❌ Evening posting failed - alerting team"

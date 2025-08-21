@@ -1,0 +1,27 @@
+name: Scan Pixabay for Content
+
+on:
+  schedule:
+    - cron: '0 3,11,19 * * *'  # 3 times daily (3 AM, 11 AM, 7 PM UTC)
+  workflow_dispatch:
+
+jobs:
+  scan-pixabay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Pixabay
+        run: |
+          echo "📸 Scanning Pixabay for hotdog images..."
+          
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/pixabay/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 15}' \
+            --fail --show-error --retry 2 --retry-delay 5
+          
+          echo "✅ Pixabay scan completed"
+      
+      - name: Handle Scan Failure
+        if: failure()
+        run: |
+          echo "❌ Pixabay scanning failed - will retry on next scheduled run"
