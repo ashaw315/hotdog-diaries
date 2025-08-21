@@ -60,9 +60,25 @@ export default function AnalyticsPage() {
     try {
       setLoading(true)
       
+      // Get auth token for API calls
+      const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
       const [filteringResponse, processingResponse] = await Promise.all([
-        fetch('/api/admin/filtering/stats', { credentials: 'include' }),
-        fetch('/api/admin/content/process', { credentials: 'include' })
+        fetch('/api/admin/filtering/stats', { 
+          credentials: 'include',
+          headers
+        }),
+        fetch('/api/admin/content/process', { 
+          credentials: 'include',
+          headers
+        })
       ])
 
       if (!filteringResponse.ok || !processingResponse.ok) {
