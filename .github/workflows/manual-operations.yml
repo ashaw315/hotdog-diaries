@@ -60,7 +60,7 @@ jobs:
                 curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
                   -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                   -H "Content-Type: application/json" \
-                  -d "{\"catchUp": true, \"sequence\": $i}" \
+                  -d "{\"catchUp\": true, \"sequence\": $i}" \
                   --fail --show-error
                 
                 if [ $i -lt ${{ github.event.inputs.count }} ]; then
