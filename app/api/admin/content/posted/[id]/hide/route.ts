@@ -52,72 +52,38 @@ export async function POST(
       }, { status: 404 })
     }
 
-    // First try to add the column if it doesn't exist (safe operation)
-    try {
-      await supabase.rpc('add_column_if_not_exists', {
-        table_name: 'posted_content',
-        column_name: 'is_hidden',
-        column_type: 'BOOLEAN DEFAULT FALSE'
-      })
-    } catch (columnError) {
-      // Ignore if function doesn't exist or column already exists
-      console.log('Column addition skipped (likely already exists)')
-    }
-
-    // Mark the posted content as hidden
-    const { error: hideError } = await supabase
+    // Since is_hidden/hidden_at columns don't exist, use delete approach
+    // Delete from posted_content table entirely (removes from public feed)
+    const { error: deleteError } = await supabase
       .from('posted_content')
-      .update({
-        is_hidden: true,
-        hidden_at: new Date().toISOString(),
-        hidden_reason: 'Admin removed - duplicate content'
-      })
+      .delete()
       .eq('id', postId)
 
-    if (hideError) {
-      console.error('Hide error:', hideError)
-      
-      // If is_hidden column doesn't exist, try alternative approach
-      if (hideError.message?.includes('column "is_hidden" does not exist')) {
-        // Delete from posted_content table entirely (soft delete alternative)
-        const { error: deleteError } = await supabase
-          .from('posted_content')
-          .delete()
-          .eq('id', postId)
+    if (deleteError) {
+      throw new Error(`Failed to remove posted content: ${deleteError.message}`)
+    }
 
-        if (deleteError) {
-          throw new Error(`Failed to remove posted content: ${deleteError.message}`)
-        }
+    // Reset the content_queue is_posted flag so it could potentially be posted again
+    const { error: resetError } = await supabase
+      .from('content_queue')
+      .update({
+        is_posted: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', postedContent.content_queue_id)
 
-        // Reset the content_queue is_posted flag so it could potentially be posted again
-        await supabase
-          .from('content_queue')
-          .update({
-            is_posted: false,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', postedContent.content_queue_id)
-
-        return NextResponse.json({
-          success: true,
-          message: 'Posted content removed from feed',
-          action: 'deleted',
-          postId,
-          contentId: postedContent.content_queue_id,
-          details: 'Content removed from posted_content table and can be posted again'
-        })
-      }
-      
-      throw new Error(`Failed to hide posted content: ${hideError.message}`)
+    if (resetError) {
+      console.warn('Warning: Failed to reset is_posted flag:', resetError.message)
+      // Don't fail the whole operation for this
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Posted content hidden from public feed',
-      action: 'hidden',
+      message: 'Posted content removed from public feed',
+      action: 'deleted',
       postId,
       contentId: postedContent.content_queue_id,
-      details: 'Content marked as hidden but preserved in database'
+      details: 'Content removed from posted_content table and marked as not posted in content_queue'
     })
 
   } catch (error) {
