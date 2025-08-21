@@ -1,10 +1,45 @@
 import { NextResponse } from 'next/server'
-import { postingService } from '@/lib/services/posting'
+import { createSimpleClient } from '@/utils/supabase/server'
 
 export async function GET() {
   try {
-    // Use the same posting service as the admin endpoints (which work in production)
-    const postedContent = await postingService.getPostingHistory(50)
+    // Use Supabase directly like other working production endpoints
+    const supabase = createSimpleClient()
+    
+    // Get posted content from Supabase (same as admin endpoints that work)
+    const { data: postedContent, error } = await supabase
+      .from('posted_content')
+      .select(`
+        id,
+        content_queue_id,
+        posted_at,
+        scheduled_time,
+        post_order,
+        created_at,
+        content_queue!inner (
+          id,
+          content_text,
+          content_type,
+          source_platform,
+          original_url,
+          original_author,
+          content_image_url,
+          content_video_url,
+          scraped_at
+        )
+      `)
+      .order('posted_at', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      console.error('❌ Supabase query error:', error)
+      return NextResponse.json({
+        success: false,
+        error: error.message,
+        content: [],
+        count: 0
+      }, { status: 500 })
+    }
 
     if (!postedContent || postedContent.length === 0) {
       return NextResponse.json({
@@ -17,16 +52,16 @@ export async function GET() {
 
     // Transform the data to match the expected format for the TikTok feed
     const transformedContent = postedContent.map(item => ({
-      id: item.content_queue_id,
-      content_text: item.content_text,
-      content_type: item.content_type,
-      source_platform: item.source_platform,
-      original_url: item.original_url,
-      original_author: item.original_author,
-      content_image_url: item.content_image_url,
-      content_video_url: item.content_video_url,
+      id: item.content_queue.id,
+      content_text: item.content_queue.content_text,
+      content_type: item.content_queue.content_type,
+      source_platform: item.content_queue.source_platform,
+      original_url: item.content_queue.original_url,
+      original_author: item.content_queue.original_author,
+      content_image_url: item.content_queue.content_image_url,
+      content_video_url: item.content_queue.content_video_url,
       content_metadata: null,
-      scraped_at: new Date(item.scraped_at || item.created_at),
+      scraped_at: new Date(item.content_queue.scraped_at || item.created_at),
       is_posted: true,
       is_approved: true,
       posted_at: new Date(item.posted_at),
