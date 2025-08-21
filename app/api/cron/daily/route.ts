@@ -297,11 +297,11 @@ async function checkIfAlreadyPosted(timeSlot: string): Promise<boolean> {
 // Publish content immediately
 async function publishContent(timeSlot: string): Promise<boolean> {
   try {
-    // Get next approved content
+    // Get BEST unposted approved content (fixed ordering)
     const result = await db.query(`
       SELECT * FROM content_queue
       WHERE is_approved = ? AND is_posted = ?
-      ORDER BY id DESC
+      ORDER BY confidence_score DESC, created_at ASC
       LIMIT 1
     `, [1, 0]);
     
@@ -312,20 +312,38 @@ async function publishContent(timeSlot: string): Promise<boolean> {
     
     const content = result.rows[0];
     
-    // Mark as posted
+    // CRITICAL FIX: Check if already posted (duplicate prevention)
+    const existingPost = await db.query(`
+      SELECT id FROM posted_content WHERE content_queue_id = ?
+    `, [content.id]);
+    
+    if (existingPost.rows && existingPost.rows.length > 0) {
+      console.log(`  🚫 Content ${content.id} already posted! Skipping and marking as posted.`);
+      // Mark as posted in content_queue to prevent future selection
+      await db.query(`
+        UPDATE content_queue 
+        SET is_posted = ?, posted_at = ? 
+        WHERE id = ?
+      `, [1, new Date().toISOString(), content.id]);
+      return false;
+    }
+    
+    const now = new Date().toISOString();
+    
+    // Mark as posted in content_queue FIRST
     await db.query(`
       UPDATE content_queue 
       SET is_posted = ?, posted_at = ? 
       WHERE id = ?
-    `, [1, new Date().toISOString(), content.id]);
+    `, [1, now, content.id]);
     
     // Record in posted_content table
     await db.query(`
-      INSERT INTO posted_content (content_queue_id, scheduled_time, posted_at)
-      VALUES (?, ?, ?)
-    `, [content.id, timeSlot, new Date().toISOString()]);
+      INSERT INTO posted_content (content_queue_id, scheduled_time, posted_at, post_order)
+      VALUES (?, ?, ?, ?)
+    `, [content.id, timeSlot, now, Math.floor(Date.now() / 1000)]);
     
-    console.log(`  ✅ Posted: ${content.content_text?.substring(0, 50)}...`);
+    console.log(`  ✅ Posted content ${content.id}: ${content.content_text?.substring(0, 50)}...`);
     return true;
   } catch (error) {
     console.error('Publishing failed:', error);
