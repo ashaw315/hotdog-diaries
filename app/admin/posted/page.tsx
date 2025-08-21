@@ -34,6 +34,7 @@ export default function PostedContentPage() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [hidingPost, setHidingPost] = useState<number | null>(null)
 
   const itemsPerPage = 20
 
@@ -97,6 +98,45 @@ export default function PostedContentPage() {
   const loadMore = () => {
     if (!loading && hasMore) {
       setPage(prev => prev + 1)
+    }
+  }
+
+  const hidePost = async (postId: number, contentText: string) => {
+    if (!confirm(`Are you sure you want to remove this post from the public feed?\n\n"${contentText.substring(0, 100)}..."`)) {
+      return
+    }
+
+    setHidingPost(postId)
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
+      const response = await fetch(`/api/admin/content/posted/${postId}/hide`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to hide post')
+      }
+
+      const result = await response.json()
+      console.log('Hide result:', result)
+
+      // Remove the post from the local state
+      setPostedContent(prev => prev.filter(post => post.id !== postId))
+      
+      // Show success message
+      alert(`✅ Post removed from public feed successfully!\n\nAction: ${result.action}\nDetails: ${result.details}`)
+
+    } catch (err) {
+      console.error('Error hiding post:', err)
+      alert(`❌ Failed to hide post: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setHidingPost(null)
     }
   }
 
@@ -227,6 +267,15 @@ export default function PostedContentPage() {
                         <div className="flex align-center gap-sm">
                           <span className="text-success">Posted</span>
                           <span className="text-muted">#{item.post_order}</span>
+                          <button
+                            onClick={() => hidePost(item.id, item.content_text)}
+                            disabled={hidingPost === item.id}
+                            className="btn btn-sm btn-danger"
+                            title="Remove this post from the public feed"
+                          >
+                            {hidingPost === item.id ? '⏳' : '🗑️'} 
+                            {hidingPost === item.id ? 'Removing...' : 'Remove'}
+                          </button>
                         </div>
                       </div>
                     </div>

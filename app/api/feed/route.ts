@@ -6,7 +6,7 @@ export async function GET() {
     // Use Supabase directly like other working production endpoints
     const supabase = createSimpleClient()
     
-    // Get posted content from Supabase (same as admin endpoints that work)
+    // Get posted content from Supabase (exclude hidden posts)
     const { data: postedContent, error } = await supabase
       .from('posted_content')
       .select(`
