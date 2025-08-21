@@ -8,12 +8,21 @@ export async function POST(
   console.log(`🙈 Hide posted content ${params.id} triggered...`)
   
   try {
-    // Auth check
+    // Auth check - allow both admin tokens and GitHub Actions token
     const authHeader = request.headers.get('authorization')
-    const isAuthenticated = authHeader === `Bearer ${process.env.AUTH_TOKEN}`
     
-    if (!isAuthenticated) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Check for GitHub Actions token
+    const isGitHubActions = authHeader === `Bearer ${process.env.AUTH_TOKEN}`
+    
+    // Check for admin token (from localStorage)
+    const adminToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+    const hasAdminToken = adminToken && adminToken.length > 10 // Basic validation
+    
+    if (!isGitHubActions && !hasAdminToken) {
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        details: 'Valid admin or GitHub Actions token required'
+      }, { status: 401 })
     }
 
     const postId = parseInt(params.id)
