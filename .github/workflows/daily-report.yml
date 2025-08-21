@@ -13,8 +13,8 @@ jobs:
         run: |
           echo "📊 Generating daily summary report..."
           
-          # Get comprehensive stats
-          STATS=$(curl -s "${{ secrets.SITE_URL }}/api/admin/daily-stats" \
+          # Get comprehensive stats from schedule endpoint
+          STATS=$(curl -s "${{ secrets.SITE_URL }}/api/admin/schedule" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Accept: application/json")
           
@@ -24,9 +24,9 @@ jobs:
           fi
           
           # Extract key metrics
-          POSTS_TODAY=$(echo "$STATS" | jq -r '.postsToday // 0')
-          QUEUE_SIZE=$(echo "$STATS" | jq -r '.queueSize // 0')
-          APPROVED=$(echo "$STATS" | jq -r '.approved // 0')
+          POSTS_TODAY=$(echo "$STATS" | jq -r '.stats.todaysPosts // 0')
+          QUEUE_SIZE=$(echo "$STATS" | jq -r '.queueStatus.totalPosted // 0')
+          APPROVED=$(echo "$STATS" | jq -r '.queueStatus.totalApproved // 0')
           DAYS_LEFT=$(echo "scale=1; $APPROVED / 6" | bc -l)
           
           # Get posting schedule status
@@ -73,10 +73,10 @@ jobs:
         run: |
           echo "🚨 Checking for critical issues..."
           
-          STATS=$(curl -s "${{ secrets.SITE_URL }}/api/admin/daily-stats" \
+          STATS=$(curl -s "${{ secrets.SITE_URL }}/api/admin/schedule" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}")
           
-          APPROVED=$(echo "$STATS" | jq -r '.approved // 0')
+          APPROVED=$(echo "$STATS" | jq -r '.queueStatus.totalApproved // 0')
           DAYS_LEFT=$(echo "scale=1; $APPROVED / 6" | bc -l)
           
           # Check if we need immediate action

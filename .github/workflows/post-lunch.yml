@@ -12,10 +12,10 @@ jobs:
       - name: Post Lunch Content
         run: |
           echo "🥪 Posting lunch content..."
-          curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-meal" \
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"meal": "lunch", "time": "12:00"}' \
+            -d '{"immediate": true}' \
             --fail --show-error --retry 2 --retry-delay 10
       
       - name: Verify Post Success
