@@ -5,30 +5,11 @@ export async function POST(request: NextRequest) {
   console.log('🚀 Manual post-now triggered...')
   
   try {
-    // Auth check
-    let userId: string | null = null
-    let username: string | null = null
-
+    // Auth check for GitHub Actions
     const authHeader = request.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7)
-      try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString())
-        if (decoded.username === 'admin' && decoded.id === 1) {
-          userId = '1'
-          username = 'admin'
-        }
-      } catch (e) {
-        // Fall through to normal auth
-      }
-    }
-
-    if (!userId) {
-      userId = request.headers.get('x-user-id')
-      username = request.headers.get('x-username')
-    }
-
-    if (!userId || !username) {
+    const isAuthenticated = authHeader === `Bearer ${process.env.AUTH_TOKEN}`
+    
+    if (!isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -193,25 +174,11 @@ export async function POST(request: NextRequest) {
 // GET endpoint for posting status and available content
 export async function GET(request: NextRequest) {
   try {
-    // Auth check
-    let userId: string | null = null
-    let username: string | null = null
-
+    // Auth check for GitHub Actions
     const authHeader = request.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7)
-      try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString())
-        if (decoded.username === 'admin' && decoded.id === 1) {
-          userId = '1'
-          username = 'admin'
-        }
-      } catch (e) {
-        // Fall through
-      }
-    }
-
-    if (!userId) {
+    const isAuthenticated = authHeader === `Bearer ${process.env.AUTH_TOKEN}`
+    
+    if (!isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
