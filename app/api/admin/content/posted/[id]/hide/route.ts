@@ -14,9 +14,12 @@ export async function POST(
     // Check for GitHub Actions token
     const isGitHubActions = authHeader === `Bearer ${process.env.AUTH_TOKEN}`
     
-    // Check for admin token (from localStorage)
+    // Check for admin token (from localStorage) - could be a JWT or simple token
     const adminToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
-    const hasAdminToken = adminToken && adminToken.length > 10 // Basic validation
+    const hasAdminToken = adminToken && (
+      adminToken.length > 10 || // Basic token
+      adminToken.includes('.') // JWT token
+    )
     
     if (!isGitHubActions && !hasAdminToken) {
       return NextResponse.json({ 
