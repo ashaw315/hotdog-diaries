@@ -1661,10 +1661,36 @@ function PostContent({
       });
     }
 
-    // YouTube videos with enhanced mobile controls
-    if (post.source_platform === 'youtube' && post.content_video_url && !videoError) {
-      const videoId = post.content_video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]
-      console.log(`🎥 YouTube rendering: ID=${post.id}, videoId=${videoId}, isActive=${isActive}`)
+    // Helper function to detect YouTube URLs
+    const isYouTubeUrl = (url: string): boolean => {
+      if (!url) return false
+      return url.includes('youtube.com/watch') || 
+             url.includes('youtu.be/') || 
+             url.includes('youtube.com/embed/')
+    }
+
+    // Helper function to extract YouTube video ID
+    const extractYouTubeId = (url: string): string | null => {
+      if (!url) return null
+      
+      const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+        /^([a-zA-Z0-9_-]{11})$/ // Direct video ID
+      ]
+      
+      for (const pattern of patterns) {
+        const match = url.match(pattern)
+        if (match) return match[1]
+      }
+      return null
+    }
+
+    // YouTube videos - Enhanced detection with multiple fallbacks
+    const isYouTube = post.source_platform === 'youtube' || isYouTubeUrl(post.content_video_url)
+    
+    if (isYouTube && post.content_video_url && !videoError) {
+      const videoId = extractYouTubeId(post.content_video_url)
+      console.log(`🎥 YouTube rendering: ID=${post.id}, videoId=${videoId}, isActive=${isActive}, platform=${post.source_platform}`)
       
       if (videoId) {
         return (
@@ -1695,6 +1721,14 @@ function PostContent({
                 height: '100%'
               }}
             />
+          </div>
+        )
+      } else {
+        // Invalid YouTube URL - show error
+        console.error(`❌ Invalid YouTube URL: ${post.content_video_url}`)
+        return (
+          <div className="youtube-error">
+            <p>Invalid YouTube video</p>
           </div>
         )
       }
@@ -1741,8 +1775,7 @@ function PostContent({
     // Direct videos with enhanced mobile controls (exclude YouTube URLs)
     if (post.content_video_url && !videoError) {
       // Skip YouTube URLs - these should be handled by YouTube player above
-      const isYouTubeUrl = post.content_video_url.includes('youtube.com') || 
-                          post.content_video_url.includes('youtu.be')
+      const isYouTubeVideoUrl = isYouTubeUrl(post.content_video_url)
       
       // Only use MobileVideoPlayer for actual video files (not GIFs)
       const isDirectVideo = post.content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)
@@ -1750,7 +1783,7 @@ function PostContent({
       // GIFs should be handled as images, not videos
       const isGifFile = post.content_video_url.match(/\.gif(\?|$)/i)
       
-      if (!isYouTubeUrl && isDirectVideo) {
+      if (!isYouTubeVideoUrl && isDirectVideo) {
         return (
           <div className="video-container">
             <MobileVideoPlayer
@@ -1770,7 +1803,7 @@ function PostContent({
             />
           </div>
         )
-      } else if (isYouTubeUrl) {
+      } else if (isYouTubeVideoUrl) {
         // Log that this should have been caught by YouTube handler above
         console.warn(`⚠️ YouTube URL ${post.content_video_url} reached direct video handler - this should be handled by YouTube player`)
       } else if (isGifFile) {
