@@ -1,4 +1,5 @@
 import { createSimpleClient } from '@/utils/supabase/server'
+import { db } from '@/lib/db'
 
 interface ContentCandidate {
   id: number
@@ -182,28 +183,48 @@ export async function verifyContentUniqueness(contentId: number): Promise<{
   reason?: string
   similarContentId?: number
 }> {
-  const supabase = createSimpleClient()
+  const isDevelopment = process.env.NODE_ENV === 'development'
   
-  // Get the content to verify
-  const { data: content, error: contentError } = await supabase
-    .from('content_queue')
-    .select('*')
-    .eq('id', contentId)
-    .single()
-  
-  if (contentError || !content) {
-    return { isUnique: false, reason: 'Content not found' }
-  }
-  
-  // Check if it's already been posted
-  const { data: alreadyPosted } = await supabase
-    .from('posted_content')
-    .select('id')
-    .eq('content_queue_id', contentId)
-    .single()
-  
-  if (alreadyPosted) {
-    return { isUnique: false, reason: 'Content already posted' }
+  if (isDevelopment) {
+    await db.connect()
+    
+    // Get the content to verify
+    const contentResult = await db.query('SELECT * FROM content_queue WHERE id = ?', [contentId])
+    
+    if (!contentResult.rows || contentResult.rows.length === 0) {
+      return { isUnique: false, reason: 'Content not found' }
+    }
+    
+    // Check if it's already been posted
+    const postedResult = await db.query('SELECT id FROM posted_content WHERE content_queue_id = ?', [contentId])
+    
+    if (postedResult.rows && postedResult.rows.length > 0) {
+      return { isUnique: false, reason: 'Content already posted' }
+    }
+  } else {
+    const supabase = createSimpleClient()
+    
+    // Get the content to verify
+    const { data: content, error: contentError } = await supabase
+      .from('content_queue')
+      .select('*')
+      .eq('id', contentId)
+      .single()
+    
+    if (contentError || !content) {
+      return { isUnique: false, reason: 'Content not found' }
+    }
+    
+    // Check if it's already been posted
+    const { data: alreadyPosted } = await supabase
+      .from('posted_content')
+      .select('id')
+      .eq('content_queue_id', contentId)
+      .single()
+    
+    if (alreadyPosted) {
+      return { isUnique: false, reason: 'Content already posted' }
+    }
   }
   
   // Use the unique selection logic
