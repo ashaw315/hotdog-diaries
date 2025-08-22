@@ -64,14 +64,19 @@ export default function HotdogBounceLoader({ showControls = false }: HotdogBounc
     <div 
       className={containerClasses}
       style={{
-        backgroundImage: "url('/hotdog-tile.jpg')",
-        backgroundRepeat: 'repeat',
-        backgroundSize: '100px 100px',
-        backgroundPosition: '0 0', // Start from top-left corner, same as feed
+        background: 'white',
         height: '100vh',
       }}
     >
       <style>{`
+        /* Hotdog color theme variables */
+        :root {
+          --ketchup: #CC2522;
+          --mustard: #E8AE02;
+          --bun: #F6D18B;
+          --relish: #4A7C59;
+        }
+        
         /* --- Motion Path version --- */
         @supports (offset-path: path("M0 0 L10 10")) {
           .hotdog {
@@ -124,6 +129,54 @@ export default function HotdogBounceLoader({ showControls = false }: HotdogBounc
           38% { transform: scale(0.6); opacity:0.22; filter:blur(1px); }
           70% { transform: scale(0.8); opacity:0.34; filter:blur(1.2px); }
         }
+        
+        /* Text bounce wave animation */
+        @keyframes textBounce {
+          0%, 100% { 
+            transform: translateY(0px); 
+          }
+          50% { 
+            transform: translateY(-4px); 
+          }
+        }
+        
+        .bounce-text {
+          display: inline-block;
+          animation: textBounce 1.2s ease-in-out infinite;
+        }
+        
+        /* Staggered delays for wave effect */
+        .bounce-text:nth-child(1) { animation-delay: 0ms; }
+        .bounce-text:nth-child(2) { animation-delay: 100ms; }
+        .bounce-text:nth-child(3) { animation-delay: 200ms; }
+        .bounce-text:nth-child(4) { animation-delay: 300ms; }
+        .bounce-text:nth-child(5) { animation-delay: 400ms; }
+        .bounce-text:nth-child(6) { animation-delay: 500ms; }
+        .bounce-text:nth-child(7) { animation-delay: 600ms; }
+        .bounce-text:nth-child(8) { animation-delay: 700ms; }
+        .bounce-text:nth-child(9) { animation-delay: 800ms; }
+        .bounce-text:nth-child(10) { animation-delay: 900ms; }
+        .bounce-text:nth-child(11) { animation-delay: 1000ms; }
+        .bounce-text:nth-child(12) { animation-delay: 1100ms; }
+        .bounce-text:nth-child(13) { animation-delay: 1200ms; }
+        .bounce-text:nth-child(14) { animation-delay: 1300ms; }
+        .bounce-text:nth-child(15) { animation-delay: 1400ms; }
+        .bounce-text:nth-child(16) { animation-delay: 1500ms; }
+        .bounce-text:nth-child(17) { animation-delay: 1600ms; }
+        .bounce-text:nth-child(18) { animation-delay: 1700ms; }
+        .bounce-text:nth-child(19) { animation-delay: 1800ms; }
+        .bounce-text:nth-child(20) { animation-delay: 1900ms; }
+        .bounce-text:nth-child(21) { animation-delay: 2000ms; }
+        .bounce-text:nth-child(22) { animation-delay: 2100ms; }
+        .bounce-text:nth-child(23) { animation-delay: 2200ms; }
+        .bounce-text:nth-child(24) { animation-delay: 2300ms; }
+        .bounce-text:nth-child(25) { animation-delay: 2400ms; }
+        
+        /* Hotdog color cycling for letters */
+        .color-ketchup { color: var(--ketchup); }
+        .color-mustard { color: var(--mustard); }
+        .color-bun { color: var(--bun); }
+        .color-relish { color: var(--relish); }
       `}</style>
 
       {/* Hotdog animation container */}
@@ -138,7 +191,9 @@ export default function HotdogBounceLoader({ showControls = false }: HotdogBounc
       {/* Loading text container - positioned independently */}
       <div className="absolute top-1/2 left-1/2" style={{ transform: 'translate(-50%, 120px)' }}>
         <div className="text-center bg-black/70 px-8 py-4 rounded-xl backdrop-blur-sm">
-          <h2 className="text-2xl font-bold text-yellow-400 mb-2">🌭 Loading Hotdog Content...</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            <AnimatedLoadingText />
+          </h2>
           <p className="text-neutral-300">Finding the best hotdog content for you</p>
         </div>
       </div>
@@ -157,6 +212,31 @@ export default function HotdogBounceLoader({ showControls = false }: HotdogBounc
         </>
       )}
     </div>
+  );
+}
+
+function AnimatedLoadingText() {
+  const text = "Loading Hot Dogs";
+  const colors = ['color-ketchup', 'color-mustard', 'color-bun', 'color-relish'];
+  
+  return (
+    <>
+      {text.split('').map((char, index) => {
+        const colorClass = colors[index % colors.length];
+        return (
+          <span 
+            key={index} 
+            className={`bounce-text ${colorClass}`}
+            style={{ 
+              display: char === ' ' ? 'inline' : 'inline-block',
+              width: char === ' ' ? '0.3em' : 'auto'
+            }}
+          >
+            {char === ' ' ? '\u00A0' : char}
+          </span>
+        );
+      })}
+    </>
   );
 }
 

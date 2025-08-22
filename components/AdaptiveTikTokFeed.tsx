@@ -936,9 +936,7 @@ export default function AdaptiveTikTokFeed() {
       <style jsx>{`
         .page-container {
           height: 100vh;
-          background: url('/hotdog-tile.jpg') repeat;
-          background-size: 100px 100px;
-          background-position: 0 0; /* Explicit top-left alignment */
+          background: white;
           /* position: relative; */
           overflow: hidden;
         }
