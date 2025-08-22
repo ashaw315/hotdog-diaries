@@ -9,6 +9,8 @@ interface MobileYouTubePlayerProps {
   onPlayerRef?: (el: HTMLIFrameElement | null) => void
   className?: string
   style?: React.CSSProperties
+  autoplayOnVisible?: boolean
+  onPlayStateChange?: (playing: boolean) => void
 }
 
 export default function MobileYouTubePlayer({
@@ -16,7 +18,9 @@ export default function MobileYouTubePlayer({
   isActive,
   onPlayerRef,
   className = '',
-  style = {}
+  style = {},
+  autoplayOnVisible = true,
+  onPlayStateChange
 }: MobileYouTubePlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -24,6 +28,9 @@ export default function MobileYouTubePlayer({
   const [showPlayButton, setShowPlayButton] = useState(true)
   const [hasUserInteracted, setHasUserInteracted] = useState(false)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [playerReady, setPlayerReady] = useState(false)
+  const [shouldAutoplay, setShouldAutoplay] = useState(false)
 
   // Intersection observer for visibility detection
   const { isIntersecting } = useIntersectionObserver(containerRef, {
@@ -33,7 +40,60 @@ export default function MobileYouTubePlayer({
 
   useEffect(() => {
     setIsTouchDevice('ontouchstart' in window)
-  }, [])
+    
+    // Add global touch/click handler for initial user interaction
+    const enableAutoplay = () => {
+      if (!hasUserInteracted) {
+        setHasUserInteracted(true)
+        console.log(`✋ User interaction detected - autoplay now enabled`)
+      }
+    }
+
+    // Listen for any user interaction globally
+    document.addEventListener('touchstart', enableAutoplay, { once: true })
+    document.addEventListener('click', enableAutoplay, { once: true })
+    
+    return () => {
+      document.removeEventListener('touchstart', enableAutoplay)
+      document.removeEventListener('click', enableAutoplay)  
+    }
+  }, [hasUserInteracted])
+
+  // Handle YouTube iframe API messages
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== 'https://www.youtube.com') return
+      
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+        
+        if (data.event === 'video-progress') {
+          // Player is ready and playing
+          if (!playerReady) {
+            setPlayerReady(true)
+            setIsLoading(false)
+          }
+        }
+        
+        if (data.event === 'onStateChange') {
+          const playerState = data.info
+          // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
+          const playing = playerState === 1
+          setIsPlaying(playing)
+          onPlayStateChange?.(playing)
+          
+          if (playing) {
+            setShowPlayButton(false)
+          }
+        }
+      } catch (error) {
+        // Ignore parsing errors from other iframe messages
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [playerReady, onPlayStateChange])
 
   // YouTube iframe ref callback
   useEffect(() => {
@@ -42,24 +102,93 @@ export default function MobileYouTubePlayer({
     }
   }, [onPlayerRef])
 
+  // Handle autoplay when video becomes visible and active
+  useEffect(() => {
+    if (!autoplayOnVisible || !playerReady || !iframeRef.current) return
+    
+    const shouldTryAutoplay = isIntersecting && isActive && hasUserInteracted
+    
+    if (shouldTryAutoplay && !isPlaying) {
+      console.log(`🎬 Attempting autoplay for video ${videoId}`)
+      // Send play command to YouTube iframe
+      iframeRef.current.contentWindow?.postMessage(
+        '{"event":"command","func":"playVideo","args":""}',
+        'https://www.youtube.com'
+      )
+      setShouldAutoplay(true)
+    } else if (!isIntersecting && isPlaying) {
+      console.log(`⏸️ Pausing video ${videoId} (no longer visible)`)
+      // Send pause command to YouTube iframe
+      iframeRef.current.contentWindow?.postMessage(
+        '{"event":"command","func":"pauseVideo","args":""}',
+        'https://www.youtube.com'
+      )
+      setShouldAutoplay(false)
+    } else if (!isActive && isPlaying) {
+      console.log(`⏸️ Pausing video ${videoId} (no longer active)`)
+      // Pause when another video becomes active
+      iframeRef.current.contentWindow?.postMessage(
+        '{"event":"command","func":"pauseVideo","args":""}',
+        'https://www.youtube.com'
+      )
+      setShouldAutoplay(false)
+    }
+  }, [isIntersecting, isActive, playerReady, hasUserInteracted, isPlaying, autoplayOnVisible, videoId])
+
+  // Add a way to programmatically pause this video from parent component
+  useEffect(() => {
+    const handleGlobalPause = (event: CustomEvent<{videoId: string}>) => {
+      if (event.detail.videoId !== videoId && isPlaying && iframeRef.current) {
+        console.log(`⏸️ Pausing video ${videoId} due to global pause event`)
+        iframeRef.current.contentWindow?.postMessage(
+          '{"event":"command","func":"pauseVideo","args":""}',
+          'https://www.youtube.com'
+        )
+      }
+    }
+
+    window.addEventListener('pauseOtherVideos', handleGlobalPause as EventListener)
+    return () => window.removeEventListener('pauseOtherVideos', handleGlobalPause as EventListener)
+  }, [videoId, isPlaying])
+
   const handleIframeLoad = useCallback(() => {
     setIsLoading(false)
-  }, [])
+    // Enable YouTube API listening after iframe loads
+    setTimeout(() => {
+      if (iframeRef.current) {
+        // Send listening command to enable API events
+        iframeRef.current.contentWindow?.postMessage(
+          '{"event":"listening","id":"' + videoId + '","channel":"widget"}',
+          'https://www.youtube.com'
+        )
+      }
+    }, 100)
+  }, [videoId])
 
   const handlePlayClick = useCallback(() => {
     const iframe = iframeRef.current
     if (!iframe) return
 
-    // Update iframe src to start playing
-    const currentSrc = iframe.src
-    const newSrc = currentSrc.includes('autoplay=1') 
-      ? currentSrc 
-      : currentSrc.replace('autoplay=0', 'autoplay=1')
-    
-    iframe.src = newSrc
-    setShowPlayButton(false)
     setHasUserInteracted(true)
-  }, [])
+    
+    if (playerReady) {
+      // Use iframe API to play if player is ready
+      iframe.contentWindow?.postMessage(
+        '{"event":"command","func":"playVideo","args":""}',
+        'https://www.youtube.com'
+      )
+    } else {
+      // Fallback: Update iframe src to start playing
+      const currentSrc = iframe.src
+      const newSrc = currentSrc.includes('autoplay=1') 
+        ? currentSrc 
+        : currentSrc.replace('autoplay=0', 'autoplay=1')
+      
+      iframe.src = newSrc
+    }
+    
+    setShowPlayButton(false)
+  }, [playerReady])
 
   const handleContainerClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!hasUserInteracted && showPlayButton) {
@@ -68,9 +197,9 @@ export default function MobileYouTubePlayer({
     }
   }, [hasUserInteracted, showPlayButton, handlePlayClick])
 
-  // Generate YouTube embed URL
+  // Generate YouTube embed URL with enhanced autoplay capabilities
   const embedUrl = `https://www.youtube.com/embed/${videoId}?${new URLSearchParams({
-    autoplay: hasUserInteracted ? '1' : '0',
+    autoplay: (hasUserInteracted && shouldAutoplay) ? '1' : '0',
     mute: '1',
     rel: '0',
     modestbranding: '1',
@@ -82,7 +211,9 @@ export default function MobileYouTubePlayer({
     origin: typeof window !== 'undefined' ? window.location.origin : '',
     // Disable related videos at end
     'end': '',
-    'loop': '0'
+    'loop': '0',
+    // Enable API events
+    'widget_referrer': typeof window !== 'undefined' ? window.location.origin : ''
   }).toString()}`
 
   return (

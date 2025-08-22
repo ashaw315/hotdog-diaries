@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Autoplay Test - Hotdog Diaries</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: white;
+        }
+        .test-info {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background: #ff6666;
+        }
+        .feed-container {
+            max-width: 400px;
+            margin: 0 auto;
+            border: 2px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #111;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h1>🌭 YouTube Autoplay Test</h1>
+        <p><strong>Testing the new autoplay functionality for YouTube videos in the TikTok-style feed.</strong></p>
+        
+        <h3>Expected Behavior:</h3>
+        <ul>
+            <li>✅ Videos should autoplay when >50% visible and active</li>
+            <li>✅ Only one video should play at a time</li>
+            <li>✅ Videos should pause when scrolled away</li>
+            <li>✅ First tap enables autoplay for mobile browsers</li>
+            <li>✅ Videos are muted by default for autoplay compliance</li>
+        </ul>
+
+        <h3>Test Controls:</h3>
+        <button class="test-button" onclick="openMainFeed()">🌭 Open Main Feed (Port 3001)</button>
+        <button class="test-button" onclick="simulateInteraction()">👆 Simulate User Interaction</button>
+        <button class="test-button" onclick="checkConsole()">🔍 Check Console Logs</button>
+    </div>
+
+    <div class="feed-container">
+        <iframe 
+            src="http://localhost:3001" 
+            width="100%" 
+            height="600"
+            style="border: none;"
+            title="Hotdog Diaries Feed">
+        </iframe>
+    </div>
+
+    <script>
+        function openMainFeed() {
+            window.open('http://localhost:3001', '_blank');
+        }
+
+        function simulateInteraction() {
+            // Dispatch touch and click events to enable autoplay
+            document.dispatchEvent(new Event('touchstart'));
+            document.dispatchEvent(new Event('click'));
+            alert('✅ User interaction simulated - autoplay should now be enabled!');
+        }
+
+        function checkConsole() {
+            alert('📝 Check the browser console for autoplay logs:\n\n• 🎬 Attempting autoplay for video...\n• ⏸️ Pausing video... (no longer visible)\n• ✋ User interaction detected\n• 🔧 YouTube API messages');
+        }
+
+        // Auto-simulate interaction after 2 seconds for testing
+        setTimeout(() => {
+            console.log('🧪 Test page: Auto-simulating user interaction for autoplay testing');
+            document.dispatchEvent(new Event('touchstart'));
+        }, 2000);
+    </script>
+</body>
+</html>

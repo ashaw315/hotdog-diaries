@@ -62,6 +62,7 @@ export default function AdaptiveTikTokFeed() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null)
   
   // Debug: log loading state changes
   useEffect(() => {
@@ -1671,10 +1672,22 @@ function PostContent({
             <MobileYouTubePlayer
               videoId={videoId}
               isActive={isActive}
+              autoplayOnVisible={true}
               onPlayerRef={(el) => {
                 if (el) {
                   // Apply scaling to the iframe container
                   setTimeout(() => scalePlatformContent(el, post), 100)
+                }
+              }}
+              onPlayStateChange={(playing) => {
+                if (playing) {
+                  // Pause all other videos when this one starts playing
+                  window.dispatchEvent(new CustomEvent('pauseOtherVideos', {
+                    detail: { videoId }
+                  }))
+                  setPlayingVideoId(videoId)
+                } else if (playingVideoId === videoId) {
+                  setPlayingVideoId(null)
                 }
               }}
               style={{
