@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSimpleClient } from '@/utils/supabase/server'
+import { selectUniqueContentToPost, verifyContentUniqueness } from '@/lib/utils/posting-deduplication'
 
 export async function POST(request: NextRequest) {
   console.log('🚀 Manual post-now triggered...')
@@ -26,43 +27,21 @@ export async function POST(request: NextRequest) {
       forcePost = false   // Override recent post checks
     } = body
 
-    // 1. Find the best approved content to post
-    let query = supabase
-      .from('content_queue')
-      .select(`
-        id, content_text, content_image_url, content_video_url, 
-        content_type, source_platform, original_url, original_author,
-        content_hash, confidence_score, created_at
-      `)
-      .eq('is_approved', true)
-      .eq('is_posted', false)
-      .order('confidence_score', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(maxPosts * 2) // Get extra in case some fail
-
-    // Apply filters if specified
-    if (contentType) {
-      query = query.eq('content_type', contentType)
-    }
-    if (platform) {
-      query = query.eq('source_platform', platform)
-    }
-
-    const { data: availableContent, error: selectError } = await query
-
-    if (selectError) {
-      console.error('❌ Error selecting content:', selectError)
+    // 1. Find unique approved content to post (with duplicate checking)
+    let availableContent
+    try {
+      availableContent = await selectUniqueContentToPost({
+        maxPosts: maxPosts * 2, // Get extra candidates
+        contentType,
+        platform,
+        forcePost
+      })
+    } catch (error) {
+      console.error('❌ Error selecting unique content:', error)
       return NextResponse.json({ 
         success: false, 
-        error: 'Failed to select content for posting' 
-      }, { status: 500 })
-    }
-
-    if (!availableContent || availableContent.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'No approved content available for posting',
-        suggestion: 'Run a content scan or manually approve some content first'
+        error: error instanceof Error ? error.message : 'Failed to select unique content for posting',
+        suggestion: 'Try running cleanup-duplicates or approve more content'
       }, { status: 404 })
     }
 
@@ -73,6 +52,13 @@ export async function POST(request: NextRequest) {
 
     for (const content of availableContent.slice(0, maxPosts)) {
       try {
+        // Double-check uniqueness before posting
+        const uniqueCheck = await verifyContentUniqueness(content.id)
+        if (!uniqueCheck.isUnique) {
+          console.log(`🔍 Skipping content ${content.id}: ${uniqueCheck.reason}`)
+          errors.push(`Content ${content.id} skipped: ${uniqueCheck.reason}`)
+          continue
+        }
         // Mark content as posted in content_queue
         const { error: updateError } = await supabase
           .from('content_queue')
