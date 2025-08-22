@@ -79,11 +79,22 @@ export default function MobileYouTubePlayer({
           const playerState = data.info
           // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
           const playing = playerState === 1
+          const paused = playerState === 2
+          const ended = playerState === 0
+          
+          console.log(`🎬 YouTube state change: ${videoId} - State: ${playerState} (${playing ? 'playing' : paused ? 'paused' : ended ? 'ended' : 'other'})`)
+          
           setIsPlaying(playing)
           onPlayStateChange?.(playing)
           
           if (playing) {
             setShowPlayButton(false)
+            setHasUserInteracted(true) // Mark as interacted when playing starts
+          } else if (paused || ended) {
+            // Don't show play button again after first interaction unless user wants manual control
+            if (!hasUserInteracted) {
+              setShowPlayButton(true)
+            }
           }
         }
       } catch (error) {
@@ -104,12 +115,19 @@ export default function MobileYouTubePlayer({
 
   // Handle autoplay when video becomes visible and active
   useEffect(() => {
-    if (!autoplayOnVisible || !playerReady || !iframeRef.current) return
+    if (!autoplayOnVisible || !iframeRef.current) return
     
-    const shouldTryAutoplay = isIntersecting && isActive && hasUserInteracted
+    // More aggressive autoplay logic - try autoplay when video is visible and active
+    const shouldTryAutoplay = isIntersecting && isActive
     
     if (shouldTryAutoplay && !isPlaying) {
-      console.log(`🎬 Attempting autoplay for video ${videoId}`)
+      console.log(`🎬 Attempting autoplay for video ${videoId} (intersection: ${isIntersecting}, active: ${isActive}, hasInteracted: ${hasUserInteracted})`)
+      
+      // Hide play button immediately when autoplay starts
+      if (showPlayButton) {
+        setShowPlayButton(false)
+      }
+      
       // Send play command to YouTube iframe
       iframeRef.current.contentWindow?.postMessage(
         '{"event":"command","func":"playVideo","args":""}',
@@ -133,7 +151,7 @@ export default function MobileYouTubePlayer({
       )
       setShouldAutoplay(false)
     }
-  }, [isIntersecting, isActive, playerReady, hasUserInteracted, isPlaying, autoplayOnVisible, videoId])
+  }, [isIntersecting, isActive, hasUserInteracted, isPlaying, autoplayOnVisible, videoId, showPlayButton])
 
   // Add a way to programmatically pause this video from parent component
   useEffect(() => {
@@ -199,7 +217,7 @@ export default function MobileYouTubePlayer({
 
   // Generate YouTube embed URL with enhanced autoplay capabilities
   const embedUrl = `https://www.youtube.com/embed/${videoId}?${new URLSearchParams({
-    autoplay: (hasUserInteracted && shouldAutoplay) ? '1' : '0',
+    autoplay: (isActive && isIntersecting) ? '1' : '0', // More aggressive autoplay based on visibility
     mute: '1',
     rel: '0',
     modestbranding: '1',
@@ -245,7 +263,7 @@ export default function MobileYouTubePlayer({
           height: '100%',
           border: 'none',
           display: 'block',
-          pointerEvents: hasUserInteracted ? 'auto' : 'none'
+          pointerEvents: 'auto'
         }}
         title={`YouTube video ${videoId}`}
       />
@@ -276,8 +294,8 @@ export default function MobileYouTubePlayer({
         </div>
       )}
 
-      {/* Custom play button overlay */}
-      {!isLoading && showPlayButton && (
+      {/* Custom play button overlay - only show when explicitly needed */}
+      {!isLoading && showPlayButton && !isPlaying && (
         <div
           style={{
             position: 'absolute',
@@ -289,8 +307,9 @@ export default function MobileYouTubePlayer({
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            zIndex: 15,
-            cursor: 'pointer'
+            zIndex: hasUserInteracted ? 5 : 15, // Lower z-index after interaction to allow iframe access
+            cursor: 'pointer',
+            pointerEvents: isPlaying ? 'none' : 'auto' // Disable overlay when video is playing
           }}
           onClick={handlePlayClick}
         >
