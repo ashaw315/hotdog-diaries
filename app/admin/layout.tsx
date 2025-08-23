@@ -109,6 +109,8 @@ function AdminHeader({ user, onLogout }: AdminHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const dropdownMenuRef = useRef<HTMLDivElement>(null)
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   const isActivePage = (href: string) => {
     if (href === '/admin') {
@@ -122,7 +124,7 @@ function AdminHeader({ user, onLogout }: AdminHeaderProps) {
   const contentSourcePages = ['/admin/reddit', '/admin/bluesky', '/admin/youtube', '/admin/social']
   const isContentSourceActive = contentSourcePages.some(page => pathname.startsWith(page))
   
-  const handleDropdownEnter = () => {
+  const handleDropdownClick = () => {
     if (dropdownRef.current) {
       const rect = dropdownRef.current.getBoundingClientRect()
       setDropdownPosition({
@@ -130,8 +132,26 @@ function AdminHeader({ user, onLogout }: AdminHeaderProps) {
         left: rect.left
       })
     }
-    setDropdownOpen(true)
+    setDropdownOpen(!dropdownOpen)
   }
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownOpen && 
+          dropdownRef.current && 
+          !dropdownRef.current.contains(event.target as Node) &&
+          dropdownMenuRef.current &&
+          !dropdownMenuRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [dropdownOpen])
 
   return (
     <>
@@ -187,16 +207,18 @@ function AdminHeader({ user, onLogout }: AdminHeaderProps) {
               <div 
                 ref={dropdownRef}
                 className="dropdown-container"
-                onMouseEnter={handleDropdownEnter}
-                onMouseLeave={() => setDropdownOpen(false)}
               >
-                <button className={`dropdown-trigger ${isContentSourceActive ? 'active' : ''}`}>
+                <button 
+                  className={`dropdown-trigger ${isContentSourceActive ? 'active' : ''}`}
+                  onClick={handleDropdownClick}
+                >
                   🔗 Content Sources
-                  <span className="dropdown-arrow">▼</span>
+                  <span className={`dropdown-arrow ${dropdownOpen ? 'rotated' : ''}`}>▼</span>
                 </button>
                 
                 <DropdownPortal isOpen={dropdownOpen}>
                   <div 
+                    ref={dropdownMenuRef}
                     className="dropdown-menu-portal"
                     style={{
                       position: 'absolute',
@@ -207,22 +229,37 @@ function AdminHeader({ user, onLogout }: AdminHeaderProps) {
                       borderRadius: '0.5rem',
                       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                       minWidth: '200px',
-                      marginTop: '0.5rem',
-                      padding: '0.5rem 0'
+                      marginTop: '4px',
+                      padding: '0.5rem 0',
+                      zIndex: 10000
                     }}
-                    onMouseEnter={() => setDropdownOpen(true)}
-                    onMouseLeave={() => setDropdownOpen(false)}
                   >
-                    <a href="/admin/reddit" className={`dropdown-item ${isActivePage('/admin/reddit') ? 'active' : ''}`}>
+                    <a 
+                      href="/admin/reddit" 
+                      className={`dropdown-item ${isActivePage('/admin/reddit') ? 'active' : ''}`}
+                      onClick={() => setDropdownOpen(false)}
+                    >
                       🤖 Reddit Settings
                     </a>
-                    <a href="/admin/bluesky" className={`dropdown-item ${isActivePage('/admin/bluesky') ? 'active' : ''}`}>
+                    <a 
+                      href="/admin/bluesky" 
+                      className={`dropdown-item ${isActivePage('/admin/bluesky') ? 'active' : ''}`}
+                      onClick={() => setDropdownOpen(false)}
+                    >
                       🦋 Bluesky Settings
                     </a>
-                    <a href="/admin/youtube" className={`dropdown-item ${isActivePage('/admin/youtube') ? 'active' : ''}`}>
+                    <a 
+                      href="/admin/youtube" 
+                      className={`dropdown-item ${isActivePage('/admin/youtube') ? 'active' : ''}`}
+                      onClick={() => setDropdownOpen(false)}
+                    >
                       📺 YouTube Settings
                     </a>
-                    <a href="/admin/social" className={`dropdown-item ${isActivePage('/admin/social') ? 'active' : ''}`}>
+                    <a 
+                      href="/admin/social" 
+                      className={`dropdown-item ${isActivePage('/admin/social') ? 'active' : ''}`}
+                      onClick={() => setDropdownOpen(false)}
+                    >
                       📱 Social Media
                     </a>
                   </div>
@@ -247,6 +284,8 @@ function AdminHeader({ user, onLogout }: AdminHeaderProps) {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
+  console.log('🏗️ [AdminLayout] Rendering AdminLayout at:', new Date().toISOString())
+  
   return (
     <AuthProvider>
       <Suspense fallback={

@@ -179,7 +179,7 @@
   display: inline-block;
 }
 
-.dropdown-container:hover .dropdown-arrow {
+.dropdown-arrow.rotated {
   transform: rotate(180deg);
 }
 
@@ -211,6 +211,11 @@
   font-size: 0.875rem;
   transition: background-color 0.2s ease-in-out;
   white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+  background: none;
 }
 
 .dropdown-item:hover {
@@ -223,6 +228,19 @@
   color: #2563eb;
   font-weight: 500;
 }
+
+/* Dropdown portal styles */
+.dropdown-menu-portal {
+  pointer-events: auto !important;
+  user-select: auto !important;
+}
+
+.dropdown-menu-portal .dropdown-item {
+  pointer-events: auto !important;
+  user-select: auto !important;
+}
+
+/* No bridge needed for click-based dropdown */
 
 /* Mobile Styles */
 @media (max-width: 768px) {

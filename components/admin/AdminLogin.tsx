@@ -183,6 +183,7 @@ export default function AdminLogin() {
               onChange={(e) => handleInputChange('username', e.target.value)}
               disabled={isLoading}
               placeholder="Enter username"
+              className="login-input"
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -193,16 +194,6 @@ export default function AdminLogin() {
                 transition: 'all 0.2s',
                 backgroundColor: '#f9fafb',
                 boxSizing: 'border-box'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#667eea';
-                e.target.style.backgroundColor = 'white';
-                e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e5e7eb';
-                e.target.style.backgroundColor = '#f9fafb';
-                e.target.style.boxShadow = 'none';
               }}
             />
           </div>
@@ -228,6 +219,7 @@ export default function AdminLogin() {
                 onChange={(e) => handleInputChange('password', e.target.value)}
                 disabled={isLoading}
                 placeholder="Enter password"
+                className="login-input"
                 style={{
                   width: '100%',
                   padding: '12px 16px',
@@ -239,16 +231,6 @@ export default function AdminLogin() {
                   transition: 'all 0.2s',
                   backgroundColor: '#f9fafb',
                   boxSizing: 'border-box'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#667eea';
-                  e.target.style.backgroundColor = 'white';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e5e7eb';
-                  e.target.style.backgroundColor = '#f9fafb';
-                  e.target.style.boxShadow = 'none';
                 }}
               />
               <button
@@ -306,6 +288,7 @@ export default function AdminLogin() {
           <button
             type="submit"
             disabled={isLoading}
+            className="login-submit-btn"
             style={{
               width: '100%',
               padding: '14px',
@@ -319,12 +302,6 @@ export default function AdminLogin() {
               opacity: isLoading ? 0.7 : 1,
               transition: 'all 0.2s',
               marginTop: '24px'
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoading) e.target.style.backgroundColor = '#5a67d8';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#667eea';
             }}
           >
             {isLoading ? (
@@ -375,6 +352,16 @@ export default function AdminLogin() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        
+        .login-input:focus {
+          border-color: #667eea !important;
+          background-color: white !important;
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+        }
+        
+        .login-submit-btn:hover:not(:disabled) {
+          background-color: #5a67d8 !important;
         }
         
         @media (max-width: 480px) {

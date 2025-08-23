@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import AdminLogin from '@/components/admin/AdminLogin'
+import AdminLoginHtmlStyle from '@/components/admin/AdminLoginHtmlStyle'
 
 function LoginLoadingFallback() {
   return (
@@ -12,7 +12,7 @@ function LoginLoadingFallback() {
 export default function LoginPage() {
   return (
     <Suspense fallback={<LoginLoadingFallback />}>
-      <AdminLogin />
+      <AdminLoginHtmlStyle />
     </Suspense>
   )
 }

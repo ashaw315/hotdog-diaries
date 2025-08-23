@@ -152,14 +152,38 @@ export class EdgeAuthUtils {
    * Get authentication token from request cookies or Authorization header
    */
   static getAuthTokenFromRequest(request: NextRequest): string | null {
+    console.log('🔍 [EdgeAuth] getAuthTokenFromRequest called')
+    console.log('🔍 [EdgeAuth] AUTH_COOKIE_NAME:', AUTH_COOKIE_NAME)
+    
+    // Log all cookies for debugging
+    const allCookies = request.cookies.getAll()
+    console.log('🔍 [EdgeAuth] All cookies in request:', allCookies.map(c => ({ name: c.name, hasValue: !!c.value, valueLength: c.value?.length || 0 })))
+    
     // First try Bearer token from Authorization header
     const authHeader = request.headers.get('authorization')
+    console.log('🔍 [EdgeAuth] Authorization header:', authHeader ? `Bearer ${authHeader.substring(0, 20)}...` : 'null')
+    
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      return authHeader.substring(7)
+      const token = authHeader.substring(7)
+      console.log('🔍 [EdgeAuth] Found Bearer token, length:', token.length)
+      return token
     }
     
     // Fallback to cookie
-    return request.cookies.get(AUTH_COOKIE_NAME)?.value || null
+    const cookieToken = request.cookies.get(AUTH_COOKIE_NAME)?.value || null
+    console.log('🔍 [EdgeAuth] Cookie token:', cookieToken ? `Found (${cookieToken.length} chars)` : 'null')
+    
+    if (!cookieToken) {
+      // Try alternative cookie names
+      const altToken1 = request.cookies.get('accessToken')?.value || null
+      const altToken2 = request.cookies.get('auth')?.value || null
+      console.log('🔍 [EdgeAuth] Alternative tokens:', { 
+        accessToken: altToken1 ? `Found (${altToken1.length} chars)` : 'null',
+        auth: altToken2 ? `Found (${altToken2.length} chars)` : 'null'
+      })
+    }
+    
+    return cookieToken
   }
 
   /**
@@ -177,22 +201,36 @@ export class EdgeAuthUtils {
     accessToken: string,
     refreshToken?: string
   ): void {
+    console.log('🍪 [EdgeAuth] setAuthCookies called with tokens:', {
+      accessTokenLength: accessToken.length,
+      refreshTokenLength: refreshToken?.length,
+      isDevelopment: process.env.NODE_ENV !== 'production'
+    })
+    
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Allow non-HTTPS in development
       sameSite: 'lax' as const,
       path: '/',
       maxAge: 24 * 60 * 60 // 24 hours
     }
+    
+    console.log('🍪 [EdgeAuth] Cookie options:', cookieOptions)
 
     response.cookies.set(AUTH_COOKIE_NAME, accessToken, cookieOptions)
+    console.log('🍪 [EdgeAuth] Set access token cookie:', AUTH_COOKIE_NAME)
 
     if (refreshToken) {
       response.cookies.set(REFRESH_COOKIE_NAME, refreshToken, {
         ...cookieOptions,
         maxAge: 7 * 24 * 60 * 60 // 7 days
       })
+      console.log('🍪 [EdgeAuth] Set refresh token cookie:', REFRESH_COOKIE_NAME)
     }
+    
+    // Log response headers to see what's actually being set
+    const setCookieHeaders = response.headers.getSetCookie?.() || []
+    console.log('🍪 [EdgeAuth] Set-Cookie headers being sent:', setCookieHeaders)
   }
 
   /**

@@ -11,42 +11,30 @@ async function getCurrentUserHandler(request: NextRequest): Promise<NextResponse
   validateRequestMethod(request, ['GET'])
 
   try {
-    // TEMPORARY: Check for test token in Authorization header
-    const authHeader = request.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7)
-      try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString())
-        if (decoded.username === 'admin' && decoded.id === 1) {
-          // Return test user profile
-          const testUserProfile = {
-            id: 1,
-            username: 'admin',
-            email: 'admin@hotdogdiaries.com',
-            full_name: 'Administrator',
-            is_active: true,
-            created_at: new Date().toISOString(),
-            last_login_at: new Date().toISOString(),
-            login_count: 1
-          }
-          return createSuccessResponse(testUserProfile, 'Test user profile retrieved successfully')
-        }
-      } catch (e) {
-        // Fall through to normal auth
-      }
+    // Use Edge-compatible auth utils to verify JWT from cookies
+    const { EdgeAuthUtils } = await import('@/lib/auth-edge')
+    
+    // Get and verify JWT token from cookies or Authorization header
+    const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+    
+    if (!token) {
+      throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
     }
 
-    // Get user info from middleware headers (middleware already verified auth)
-    const userId = request.headers.get('x-user-id')
-    const username = request.headers.get('x-username')
-    
-    if (!userId || !username) {
-      throw createApiError('Unauthorized', 401, 'UNAUTHORIZED')
+    // Verify the JWT token
+    let payload
+    try {
+      payload = await EdgeAuthUtils.verifyJWT(token)
+    } catch (error) {
+      throw createApiError('Invalid or expired token', 401, 'INVALID_TOKEN')
     }
+
+    const userId = payload.userId
+    const username = payload.username
 
     // Get full user profile from database
     const { AdminService } = await import('@/lib/services/admin')
-    const user = await AdminService.getAdminById(parseInt(userId))
+    const user = await AdminService.getAdminById(userId)
     
     if (!user) {
       throw createApiError('User not found', 404, 'USER_NOT_FOUND')
@@ -67,8 +55,16 @@ async function getCurrentUserHandler(request: NextRequest): Promise<NextResponse
     return createSuccessResponse(userProfile, 'User profile retrieved successfully')
 
   } catch (error) {
-    if (error instanceof Error && error.message.includes('Unauthorized')) {
-      throw error
+    // If it's already an auth error, re-throw it
+    if (error instanceof Error) {
+      if (error.message.includes('Unauthorized') || 
+          error.message.includes('No authentication token') || 
+          error.message.includes('Invalid or expired token')) {
+        throw error
+      }
+      
+      // Log the actual error for debugging
+      console.error('User profile retrieval error:', error.message)
     }
     
     throw createApiError('Failed to retrieve user profile', 500, 'PROFILE_ERROR')

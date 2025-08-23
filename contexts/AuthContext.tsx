@@ -45,6 +45,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Simple fetch current user
   const fetchCurrentUser = async (): Promise<User | null> => {
     console.log('🌐 [AuthContext] fetchCurrentUser called - making API request to /api/admin/me')
+    
+    // Log current cookies state
+    if (typeof window !== 'undefined') {
+      console.log('🍪 [AuthContext] Current browser cookies:', document.cookie)
+    }
+    
     try {
       // Use absolute URL for fetch to work in all contexts
       const baseUrl = typeof window !== 'undefined' 
@@ -54,14 +60,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       console.log('🌐 [AuthContext] Fetching from URL:', fullUrl)
       
-      // Get token from localStorage for Authorization header
-      const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
+      // Don't need Authorization header since we use httpOnly cookies
       const headers: HeadersInit = {
         'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
       }
 
       const response = await fetch(fullUrl, {
@@ -71,14 +72,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
 
       console.log('🌐 [AuthContext] /api/admin/me response status:', response.status)
+      console.log('🌐 [AuthContext] Response headers:', Object.fromEntries(response.headers.entries()))
 
       if (response.ok) {
         const result = await response.json()
         console.log('✅ [AuthContext] User data received:', result.data?.username || 'Unknown')
+        console.log('✅ [AuthContext] Full response data:', result)
         return result.data || null
       }
       
       console.log('❌ [AuthContext] /api/admin/me failed with status:', response.status)
+      
+      // Log response body for failed requests
+      try {
+        const errorData = await response.json()
+        console.log('❌ [AuthContext] Error response data:', errorData)
+      } catch (e) {
+        console.log('❌ [AuthContext] Could not parse error response')
+      }
+      
       return null
     } catch (error) {
       console.error('❌ [AuthContext] Failed to fetch user:', error)
@@ -92,7 +104,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsMounted(true)
   }, [])
 
-  // Initialize auth on client-side only, and re-run on route changes to admin paths
+  // Initialize auth on client-side only, with smart retry logic
   useEffect(() => {
     console.log('🔄 [AuthContext] Auth initialization useEffect triggered')
     console.log('🔄 [AuthContext] Current state:', { 
@@ -112,7 +124,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Skip initialization for non-admin paths
     if (!pathname.startsWith('/admin')) {
       console.log('🔄 [AuthContext] Not on admin path, skipping initialization')
-      // Reset state for non-admin paths
+      // Reset state for non-admin paths only if we're currently initialized
       if (initialized) {
         setInitialized(false)
         setUser(null)
@@ -121,20 +133,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return
     }
 
-    // If already initialized and we have a user, skip
-    if (initialized && user) {
-      console.log('🔄 [AuthContext] Already initialized with user, skipping')
+    // CRITICAL: If we already have a user, don't re-initialize EVER
+    if (user) {
+      console.log('🔄 [AuthContext] User already exists, skipping all initialization to prevent race condition')
+      setIsLoading(false) // Ensure loading is false
       return
     }
 
-    // For login page, only initialize if we don't have a user
-    const isLoginPage = pathname === '/admin/login'
-    if (isLoginPage && user) {
-      console.log('🔄 [AuthContext] On login page but user exists, skipping init')
+    // CRITICAL: If we're already in process of initializing, don't start again
+    if (initialized && isLoading) {
+      console.log('🔄 [AuthContext] Already initializing, skipping to prevent concurrent calls')
+      return
+    }
+
+    // SMART: Only skip re-initialization if we're not on login page and already tried
+    if (initialized && !user && !pathname.includes('/admin/login')) {
+      console.log('🔄 [AuthContext] Already initialized and no user found (not on login page), skipping re-initialization to prevent loops')
+      setIsLoading(false) // Ensure we're not stuck in loading state
       return
     }
     
-    console.log('🔄 [AuthContext] Starting auth initialization for', isLoginPage ? 'login page' : 'admin page')
+    console.log('🔄 [AuthContext] Starting auth initialization - fresh initialization needed')
     setInitialized(true)
     setIsLoading(true)
     
@@ -150,7 +169,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('🔄 [AuthContext] Error - State updated - isLoading set to false, isAuthenticated: false')
     })
     
-  }, [isMounted, pathname, initialized, user]) // Re-run when client mounts, route changes, initialization state, or user changes
+  }, [isMounted, pathname]) // CRITICAL: Only re-run on mount or pathname change
 
   // Login function
   const login = async (username: string, password: string): Promise<void> => {
@@ -174,19 +193,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       console.log('✅ [AuthContext] Login successful, user:', result.data.user.username)
       
-      // Update local state
+      // Update local state immediately
       setUser(result.data.user)
+      setInitialized(true) // Mark as initialized with user
+      setIsLoading(false) // Stop loading state
       
-      // Don't reset initialization - let the current auth state persist
-      // setInitialized(false)
-      
-      // Small delay to ensure state updates are processed
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // Redirect
+      // Get redirect URL from query params or default to /admin
       const redirectTo = searchParams.get('from') || '/admin'
       console.log('🔀 [AuthContext] About to redirect to:', redirectTo)
-      router.push(redirectTo)
+      
+      // Small delay to ensure state is updated before redirect
+      setTimeout(() => {
+        // Use replace instead of push to avoid back button issues
+        router.replace(redirectTo)
+      }, 100)
       
     } catch (error) {
       console.error('❌ [AuthContext] Login failed:', error)
@@ -196,6 +216,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Logout function
   const logout = async (): Promise<void> => {
+    console.log('🚪 [AuthContext] Logout function called')
     try {
       await fetch('/api/admin/logout', {
         method: 'POST',
@@ -204,8 +225,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error('Logout failed:', error)
     } finally {
+      console.log('🚪 [AuthContext] Clearing user state and resetting ALL flags for fresh login')
       setUser(null)
-      router.push('/admin/login')
+      setInitialized(false) // Reset initialization so auth can be re-initialized after logout
+      setIsLoading(false)
+      
+      // Force a clean state before redirect
+      setTimeout(() => {
+        router.push('/admin/login')
+      }, 100)
     }
   }
 
@@ -267,7 +295,8 @@ export function useRequireAuth(): AuthContextType {
     if (!auth.isLoading && !auth.isAuthenticated) {
       console.log('🛡️ [useRequireAuth] Not authenticated, redirecting to login')
       const currentPath = window.location.pathname
-      router.push(`/admin/login?from=${encodeURIComponent(currentPath)}`)
+      // Use replace instead of push to prevent back button issues
+      router.replace(`/admin/login?from=${encodeURIComponent(currentPath)}`)
     }
   }, [auth.isLoading, auth.isAuthenticated, router])
 
