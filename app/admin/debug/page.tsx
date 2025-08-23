@@ -96,7 +96,3 @@ export default function AdminDebugPage() {
   )
 }
 
-export const metadata = {
-  title: 'Admin Debug - Hotdog Diaries',
-  description: 'Authentication debugging tools'
-}
