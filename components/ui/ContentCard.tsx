@@ -373,9 +373,21 @@ export default function ContentCard({
               </button>
             )}
             
-            {onDelete && !is_posted && (
-              <button onClick={() => onDelete(id)} className="btn btn-danger">
-                Delete
+            {onDelete && (
+              <button 
+                onClick={() => {
+                  if (is_posted) {
+                    if (confirm('This content has been posted. Are you sure you want to delete it?')) {
+                      onDelete(id)
+                    }
+                  } else {
+                    onDelete(id)
+                  }
+                }} 
+                className="btn btn-danger"
+                title={is_posted ? 'Delete posted content' : 'Delete'}
+              >
+                Delete {is_posted && '(Posted)'}
               </button>
             )}
           </div>
