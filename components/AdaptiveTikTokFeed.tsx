@@ -1757,16 +1757,38 @@ function PostContent({
           </div>
         )
       } else if (post.content_image_url && !imageError) {
-        return (
-          <div className="giphy-container">
-            <img 
-              src={post.content_image_url}
-              alt={post.content_text || 'Giphy content'}
-              onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
-              onError={() => setImageError(true)}
-            />
-          </div>
-        )
+        // Check if the "image" URL is actually a video file
+        const isVideoFile = post.content_image_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)
+        
+        if (isVideoFile) {
+          // Render as video (Giphy MP4)
+          return (
+            <div className="giphy-container">
+              <MobileVideoPlayer
+                src={post.content_image_url}
+                poster={null}
+                isActive={isActive}
+                onVideoRef={videoRef}
+                style={{
+                  width: '100%',
+                  height: 'auto'
+                }}
+              />
+            </div>
+          )
+        } else {
+          // Regular GIF image
+          return (
+            <div className="giphy-container">
+              <img 
+                src={post.content_image_url}
+                alt={post.content_text || 'Giphy content'}
+                onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
+                onError={() => setImageError(true)}
+              />
+            </div>
+          )
+        }
       }
     }
 
@@ -1907,20 +1929,48 @@ function PostContent({
       }
       
       // Pure image post (no text)
-      return (
-        <div className="image-container">
-          <img 
-            src={imageSrc}
-            alt={post.content_text || 'Content image'}
-            loading="lazy"
-            onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
-            onError={() => {
-              console.log(`❌ Image failed to load: ${post.source_platform} ${post.id}`)
-              setImageError(true)
-            }}
-          />
-        </div>
-      )
+      // Check if the "image" URL is actually a video file (e.g., Imgur MP4s)
+      const isVideoFile = imageSrc.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)
+      
+      if (isVideoFile) {
+        // Render as video (like Imgur MP4 "GIFs")
+        console.log(`🎬 Rendering MP4 as video: ${post.source_platform} ${post.id} - ${imageSrc}`)
+        return (
+          <div className="video-container">
+            <MobileVideoPlayer
+              src={imageSrc}
+              poster={null}
+              isActive={isActive}
+              onVideoRef={(el) => {
+                if (videoRef && el) videoRef(el)
+                if (el) {
+                  setTimeout(() => scalePlatformContent(el, post), 100)
+                }
+              }}
+              style={{
+                width: '100%',
+                height: 'auto'
+              }}
+            />
+          </div>
+        )
+      } else {
+        // Regular image
+        return (
+          <div className="image-container">
+            <img 
+              src={imageSrc}
+              alt={post.content_text || 'Content image'}
+              loading="lazy"
+              onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
+              onError={() => {
+                console.log(`❌ Image failed to load: ${post.source_platform} ${post.id}`)
+                setImageError(true)
+              }}
+            />
+          </div>
+        )
+      }
     }
 
     // Text content - beautiful gradient cards with dynamic typography
