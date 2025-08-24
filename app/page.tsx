@@ -45,7 +45,7 @@ export default function Page() {
         {/* Feed loads immediately in background */}
         <main 
           className="min-h-screen transition-all duration-1000 feed-container opacity-100 scale-100"
-          style={{ zIndex: 1, border: '.5rem solid cornflowerblue' }}
+          style={{ zIndex: 1 }}
         >
           <ErrorBoundary>
             <AdaptiveTikTokFeed />

@@ -936,9 +936,12 @@ export default function AdaptiveTikTokFeed() {
       <style jsx>{`
         .page-container {
           height: 100vh;
+          width: 100%;
           background: white;
           /* position: relative; */
           overflow: hidden;
+          max-width: 100vw;
+          box-sizing: border-box;
         }
 
         .header-title {
@@ -969,11 +972,15 @@ export default function AdaptiveTikTokFeed() {
 
         .feed-container {
           height: 100vh;
+          width: 100%;
           overflow-y: scroll;
+          overflow-x: hidden;
           scroll-snap-type: y mandatory;
           scroll-behavior: smooth;
           scrollbar-width: none;
           -ms-overflow-style: none;
+          max-width: 100vw;
+          box-sizing: border-box;
         }
 
         .feed-container::-webkit-scrollbar {
@@ -981,7 +988,7 @@ export default function AdaptiveTikTokFeed() {
         }
 
         .card-wrapper {
-          width: 100vw;
+          width: 100%;
           min-height: 100vh;
           scroll-snap-align: start;
           scroll-snap-stop: always;

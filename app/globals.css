@@ -356,6 +356,9 @@ body {
   max-width: 100vw;
   overflow-x: hidden;
   overflow-y: hidden;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 /* CRITICAL: FORCE BLACK TEXT IN ALL FORM ELEMENTS */
