@@ -286,12 +286,26 @@ export default function PostedContentPage() {
                       )}
 
                       {item.content_image_url && (
-                        <img 
-                          src={item.content_image_url} 
-                          alt="Posted content" 
-                          style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'cover' }}
-                          className="mb-sm"
-                        />
+                        // Check if the "image" URL is actually a video file
+                        item.content_image_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
+                          <video 
+                            src={item.content_image_url}
+                            controls
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'cover' }}
+                            className="mb-sm"
+                          />
+                        ) : (
+                          <img 
+                            src={item.content_image_url} 
+                            alt="Posted content" 
+                            style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'cover' }}
+                            className="mb-sm"
+                          />
+                        )
                       )}
 
                       {item.content_video_url && (

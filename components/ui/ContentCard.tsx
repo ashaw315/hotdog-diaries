@@ -248,22 +248,41 @@ export default function ContentCard({
 
         {content_image_url && !imageError && (
           <div className="mb-sm" style={{ position: 'relative' }}>
-            {imageLoading && (
-              <div className="text-center p-md text-muted">
-                Loading image...
-              </div>
+            {/* Check if the "image" URL is actually a video file (e.g., Imgur MP4s) */}
+            {content_image_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
+              <video
+                src={content_image_url}
+                controls
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{ 
+                  width: '100%',
+                  maxHeight: '400px',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <>
+                {imageLoading && (
+                  <div className="text-center p-md text-muted">
+                    Loading image...
+                  </div>
+                )}
+                <img
+                  src={content_image_url}
+                  alt="Content image"
+                  style={{ 
+                    width: '100%', 
+                    objectFit: 'cover',
+                    display: imageLoading ? 'none' : 'block'
+                  }}
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
+                />
+              </>
             )}
-            <img
-              src={content_image_url}
-              alt="Content image"
-              style={{ 
-                width: '100%', 
-                objectFit: 'cover',
-                display: imageLoading ? 'none' : 'block'
-              }}
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-            />
           </div>
         )}
 
