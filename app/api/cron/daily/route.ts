@@ -44,19 +44,25 @@ export async function GET(request: NextRequest) {
       queueStats = await checkQueueStatus();
       results.queueStatus = queueStats;
       
-    } else if (queueStats.daysOfContent < 3) {
-      // CRITICAL: Less than 3 days left
-      console.log('🚨 CRITICAL: Only', queueStats.daysOfContent, 'days of content left! Scanning urgently...');
-      results.scanning = await performDailyScanning();
-      
-    } else if (queueStats.daysOfContent < 7) {
-      // WARNING: Less than a week left
-      console.log('⚠️ WARNING: Queue getting low (', queueStats.daysOfContent, 'days). Scanning for content...');
-      results.scanning = await performDailyScanning();
-      
     } else if (queueStats.daysOfContent < 14) {
-      // NORMAL: Scan to maintain buffer
-      console.log('📡 Maintaining queue buffer. Scanning for new content...');
+      // AUTOMATED MAINTENANCE: Auto-approve and scan to maintain 14-day buffer
+      console.log('🤖 AUTOMATED: Maintaining', queueStats.daysOfContent, 'days buffer. Auto-approving and scanning...');
+      
+      // First auto-approve existing content to reach 14-day buffer
+      const autoApprovalResult = await progressiveAutoApproval();
+      console.log('🔄 Auto-approval completed:', autoApprovalResult);
+      
+      // Then scan for new content
+      results.scanning = await performDailyScanning();
+      
+      // Re-check queue status after auto-approval and scanning
+      const updatedStats = await checkQueueStatus();
+      console.log('📊 Updated queue after automation:', updatedStats);
+      results.queueStatus = updatedStats;
+      
+    } else if (queueStats.daysOfContent < 21) {
+      // PREVENTIVE: Still scan to build bigger buffer
+      console.log('🔄 PREVENTIVE: Scanning to build larger buffer (', queueStats.daysOfContent, 'days available)');
       results.scanning = await performDailyScanning();
       
     } else {
@@ -367,7 +373,143 @@ async function scheduleForLater(timeSlot: string): Promise<void> {
   }
 }
 
-// Emergency approve content when queue is empty
+// Progressive auto-approval based on content age and quality
+async function progressiveAutoApproval() {
+  console.log('🤖 Progressive auto-approval initiated...');
+  
+  const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+  const threeDaysAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000);
+  
+  let totalApproved = 0;
+  const results = { immediate: 0, aged24h: 0, aged48h: 0, aged72h: 0, balanced: 0 };
+  
+  try {
+    // 1. Immediately approve high-quality content (confidence >= 0.8)
+    const immediateResult = await db.query(`
+      UPDATE content_queue 
+      SET is_approved = ?, 
+          admin_notes = ?,
+          updated_at = ?
+      WHERE is_approved = ? 
+        AND is_posted = ?
+        AND confidence_score >= ?
+    `, [1, 'Auto-approved - high quality (≥0.8)', now.toISOString(), 0, 0, 0.8]);
+    
+    results.immediate = immediateResult.rowCount || 0;
+    totalApproved += results.immediate;
+    console.log(`  ✅ Approved ${results.immediate} high-quality items immediately`);
+    
+    // 2. Approve medium-quality content after 24 hours (confidence >= 0.6)
+    const aged24Result = await db.query(`
+      UPDATE content_queue 
+      SET is_approved = ?, 
+          admin_notes = ?,
+          updated_at = ?
+      WHERE is_approved = ? 
+        AND is_posted = ?
+        AND confidence_score >= ?
+        AND created_at <= ?
+    `, [1, 'Auto-approved - aged 24h + medium quality (≥0.6)', now.toISOString(), 0, 0, 0.6, oneDayAgo.toISOString()]);
+    
+    results.aged24h = aged24Result.rowCount || 0;
+    totalApproved += results.aged24h;
+    console.log(`  ✅ Approved ${results.aged24h} medium-quality items aged 24+ hours`);
+    
+    // 3. Approve decent content after 48 hours (confidence >= 0.5)
+    const aged48Result = await db.query(`
+      UPDATE content_queue 
+      SET is_approved = ?, 
+          admin_notes = ?,
+          updated_at = ?
+      WHERE is_approved = ? 
+        AND is_posted = ?
+        AND confidence_score >= ?
+        AND created_at <= ?
+    `, [1, 'Auto-approved - aged 48h + decent quality (≥0.5)', now.toISOString(), 0, 0, 0.5, twoDaysAgo.toISOString()]);
+    
+    results.aged48h = aged48Result.rowCount || 0;
+    totalApproved += results.aged48h;
+    console.log(`  ✅ Approved ${results.aged48h} decent items aged 48+ hours`);
+    
+    // 4. Approve any non-spam content after 72 hours (confidence >= 0.4)
+    const aged72Result = await db.query(`
+      UPDATE content_queue 
+      SET is_approved = ?, 
+          admin_notes = ?,
+          updated_at = ?
+      WHERE is_approved = ? 
+        AND is_posted = ?
+        AND confidence_score >= ?
+        AND created_at <= ?
+    `, [1, 'Auto-approved - aged 72h + non-spam (≥0.4)', now.toISOString(), 0, 0, 0.4, threeDaysAgo.toISOString()]);
+    
+    results.aged72h = aged72Result.rowCount || 0;
+    totalApproved += results.aged72h;
+    console.log(`  ✅ Approved ${results.aged72h} non-spam items aged 72+ hours`);
+    
+    // 5. Platform-balanced approval to ensure no single platform dominates
+    const platformBalanceResult = await balancedPlatformApproval();
+    results.balanced = platformBalanceResult;
+    totalApproved += results.balanced;
+    console.log(`  ✅ Approved ${results.balanced} items for platform balance`);
+    
+    console.log(`🎉 Progressive approval complete: ${totalApproved} total items approved`);
+    
+    return {
+      ...results,
+      total: totalApproved
+    };
+    
+  } catch (error) {
+    console.error('Progressive approval failed:', error);
+    return { immediate: 0, aged24h: 0, aged48h: 0, aged72h: 0, balanced: 0, total: 0 };
+  }
+}
+
+// Balanced platform approval to maintain diversity
+async function balancedPlatformApproval() {
+  console.log('⚖️ Running balanced platform approval...');
+  
+  const platforms = ['youtube', 'reddit', 'giphy', 'imgur', 'bluesky', 'pixabay', 'lemmy', 'tumblr'];
+  let totalApproved = 0;
+  
+  for (const platform of platforms) {
+    try {
+      // Approve up to 15 items per platform with reasonable confidence
+      const result = await db.query(`
+        UPDATE content_queue 
+        SET is_approved = ?, 
+            admin_notes = ?,
+            updated_at = ?
+        WHERE is_approved = ? 
+          AND is_posted = ?
+          AND source_platform = ?
+          AND confidence_score >= ?
+          AND id IN (
+            SELECT id FROM content_queue 
+            WHERE is_approved = ? 
+              AND is_posted = ?
+              AND source_platform = ? 
+              AND confidence_score >= ?
+            ORDER BY confidence_score DESC 
+            LIMIT 15
+          )
+      `, [1, `Auto-approved for platform balance (${platform})`, new Date().toISOString(), 0, 0, platform, 0.5, 0, 0, platform, 0.5]);
+      
+      const approved = result.rowCount || 0;
+      totalApproved += approved;
+      console.log(`    ✅ ${platform}: approved ${approved} items`);
+    } catch (error) {
+      console.error(`    ❌ ${platform}: approval failed`, error);
+    }
+  }
+  
+  return totalApproved;
+}
+
+// Emergency approve content when queue is empty (fallback)
 async function emergencyApproveContent() {
   console.log('🚑 Emergency auto-approval initiated...');
   

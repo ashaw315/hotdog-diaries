@@ -58,14 +58,14 @@ export interface ProcessingQueue {
 
 export class ContentProcessor {
   private static readonly DEFAULT_CONFIG: ProcessingConfig = {
-    autoApprovalThreshold: 0.55,  // Lowered from 0.65 to approve more visual content
-    autoRejectionThreshold: 0.25, // Lowered from 0.3 to be less strict
-    requireManualReview: false,
+    autoApprovalThreshold: 0.45,  // AUTOMATED: Further lowered for full automation (was 0.55)
+    autoRejectionThreshold: 0.15, // AUTOMATED: More lenient to reduce false rejections (was 0.25)
+    requireManualReview: false,    // AUTOMATED: Keep false for full automation
     enableDuplicateDetection: true,
     enableSpamFilter: true,
     enableInappropriateFilter: true,
-    enableUnrelatedFilter: true,
-    enableRequiredTermsCheck: true
+    enableUnrelatedFilter: false,  // AUTOMATED: Disabled to allow more diverse content
+    enableRequiredTermsCheck: false // AUTOMATED: Disabled to rely on confidence scoring instead
   }
 
   private static readonly MAX_PROCESSING_ATTEMPTS = 3

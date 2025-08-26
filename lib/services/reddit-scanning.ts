@@ -532,19 +532,27 @@ export class RedditScanningService {
    * Calculate Reddit-specific confidence score based on engagement
    */
   private calculateRedditScore(score: number, numComments: number, upvoteRatio: number): number {
-    // Base score from upvotes (normalized to 0-1 scale)
-    const scoreNormalized = Math.min(score / 1000, 1.0) * 0.4
-
-    // Comment engagement (normalized)
-    const commentNormalized = Math.min(numComments / 100, 1.0) * 0.3
-
-    // Upvote ratio contribution
-    const ratioNormalized = (upvoteRatio || 0.5) * 0.3
-
-    const finalScore = scoreNormalized + commentNormalized + ratioNormalized
+    // AUTOMATED: More generous scoring for full automation
     
-    // Ensure score is between 0.1 and 1.0
-    return Math.max(0.1, Math.min(1.0, finalScore))
+    // Start with a higher base score (0.4 instead of 0.0)
+    let finalScore = 0.4
+    
+    // Base score from upvotes (more generous normalization)
+    const scoreNormalized = Math.min(score / 500, 1.0) * 0.3  // Lowered threshold from 1000 to 500
+
+    // Comment engagement (more generous normalization)
+    const commentNormalized = Math.min(numComments / 50, 1.0) * 0.2  // Lowered threshold from 100 to 50
+
+    // Upvote ratio contribution (boosted weight)
+    const ratioNormalized = (upvoteRatio || 0.6) * 0.3  // Default upvote ratio increased from 0.5 to 0.6
+
+    // Content existence bonus (for having images/videos)
+    const contentBonus = 0.1  // Always add small bonus for Reddit content
+    
+    finalScore += scoreNormalized + commentNormalized + ratioNormalized + contentBonus
+    
+    // AUTOMATED: Higher minimum score for automated approval (0.35 instead of 0.1)
+    return Math.max(0.35, Math.min(1.0, finalScore))
   }
 
   /**

@@ -1,0 +1,166 @@
+name: Auto-Approve Content
+
+on:
+  schedule:
+    # Run every 6 hours to maintain content buffer
+    - cron: '0 */6 * * *'  # At minute 0 past every 6th hour
+  
+  workflow_dispatch:
+    # Allow manual triggering with optional parameters
+    inputs:
+      force_approval:
+        description: 'Force approval of more content'
+        required: false
+        default: 'false'
+        type: boolean
+      max_items:
+        description: 'Maximum items to approve'
+        required: false
+        default: '200'
+        type: string
+      min_confidence:
+        description: 'Minimum confidence score'
+        required: false
+        default: '0.4'
+        type: string
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check Auto-Approval Status
+        id: check-status
+        run: |
+          echo "🔍 Checking auto-approval candidates..."
+          
+          response=$(curl -s -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/admin/auto-approve")
+          
+          http_code="${response: -3}"
+          body="${response%???}"
+          
+          if [ "$http_code" = "200" ]; then
+            echo "✅ Status check successful"
+            echo "$body" | jq -r '.estimation.recommendedAction // "No action needed"'
+            
+            # Extract candidate count for decision making
+            candidates=$(echo "$body" | jq -r '.totalCandidates // 0')
+            echo "candidates=$candidates" >> $GITHUB_OUTPUT
+            
+            echo "📊 Found $candidates approval candidates"
+          else
+            echo "❌ Status check failed with code $http_code"
+            echo "$body"
+            exit 1
+          fi
+
+      - name: Run Auto-Approval
+        if: steps.check-status.outputs.candidates > 20 || github.event_name == 'workflow_dispatch'
+        run: |
+          echo "🤖 Running auto-approval process..."
+          
+          # Set parameters from workflow inputs or defaults
+          FORCE_APPROVAL="${{ github.event.inputs.force_approval || 'false' }}"
+          MAX_ITEMS="${{ github.event.inputs.max_items || '200' }}"
+          MIN_CONFIDENCE="${{ github.event.inputs.min_confidence || '0.4' }}"
+          
+          echo "⚙️ Parameters: force=$FORCE_APPROVAL, max=$MAX_ITEMS, min_confidence=$MIN_CONFIDENCE"
+          
+          response=$(curl -s -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -d "{
+              \"forceApproval\": $FORCE_APPROVAL,
+              \"maxItems\": $MAX_ITEMS,
+              \"minConfidenceScore\": $MIN_CONFIDENCE
+            }" \
+            "${{ secrets.SITE_URL }}/api/admin/auto-approve")
+          
+          http_code="${response: -3}"
+          body="${response%???}"
+          
+          if [ "$http_code" = "200" ]; then
+            echo "✅ Auto-approval completed successfully"
+            echo "$body" | jq -r '.message'
+            
+            # Extract results for reporting
+            total_approved=$(echo "$body" | jq -r '.approvalResults.total // 0')
+            days_of_content=$(echo "$body" | jq -r '.updatedStats.daysOfContent // 0')
+            
+            echo "📊 Results:"
+            echo "  • Total approved: $total_approved items"
+            echo "  • Days of content remaining: $days_of_content days"
+            echo "  • Breakdown: $(echo "$body" | jq -c '.approvalResults')"
+            
+            # Check if we need alerts
+            if [ "$days_of_content" -lt 7 ]; then
+              echo "⚠️ WARNING: Only $days_of_content days of content remaining!"
+              echo "::warning title=Low Content Buffer::Only $days_of_content days of content remaining. Consider running emergency scan."
+            fi
+          else
+            echo "❌ Auto-approval failed with code $http_code"
+            echo "$body"
+            echo "::error title=Auto-Approval Failed::Auto-approval process failed with HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Skip Auto-Approval
+        if: steps.check-status.outputs.candidates <= 20 && github.event_name != 'workflow_dispatch'
+        run: |
+          echo "✅ Auto-approval not needed"
+          echo "📊 Only ${{ steps.check-status.outputs.candidates }} candidates found (threshold: 20)"
+          echo "🎯 System is healthy - maintaining current approval levels"
+
+      - name: Verify Content Pipeline Health
+        run: |
+          echo "🏥 Checking overall content pipeline health..."
+          
+          response=$(curl -s -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            "${{ secrets.SITE_URL }}/api/admin/automation-health")
+          
+          http_code="${response: -3}"
+          body="${response%???}"
+          
+          if [ "$http_code" = "200" ]; then
+            overall_health=$(echo "$body" | jq -r '.overallHealth // "unknown"')
+            days_remaining=$(echo "$body" | jq -r '.contentSummary.daysRemaining // 0')
+            
+            echo "📊 Overall Health: $overall_health"
+            echo "📅 Days Remaining: $days_remaining"
+            
+            # Set workflow status based on health
+            case "$overall_health" in
+              "critical")
+                echo "::error title=Critical Content Health::Content pipeline is in critical state"
+                ;;
+              "warning") 
+                echo "::warning title=Content Health Warning::Content pipeline needs attention"
+                ;;
+              "healthy")
+                echo "✅ Content pipeline is healthy"
+                ;;
+            esac
+            
+            # Output recommendations
+            recommendations=$(echo "$body" | jq -r '.recommendations[]?' 2>/dev/null || echo "No specific recommendations")
+            if [ "$recommendations" != "No specific recommendations" ]; then
+              echo "💡 Recommendations:"
+              echo "$body" | jq -r '.recommendations[]' | sed 's/^/  • /'
+            fi
+          else
+            echo "⚠️ Could not verify pipeline health (HTTP $http_code)"
+          fi
+
+      - name: Report Summary
+        run: |
+          echo "📋 Auto-Approval Workflow Summary"
+          echo "================================="
+          echo "⏰ Triggered: $(date -u)"
+          echo "🎯 Trigger: ${{ github.event_name }}"
+          echo "🏗️ Environment: $([ '${{ github.event_name }}' = 'workflow_dispatch' ] && echo 'Manual' || echo 'Scheduled')"
+          echo "📊 Candidates checked: ${{ steps.check-status.outputs.candidates || 'N/A' }}"
+          echo "✅ Workflow completed successfully"
