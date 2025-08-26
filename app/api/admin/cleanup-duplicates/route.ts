@@ -13,6 +13,19 @@ export async function POST(request: NextRequest) {
     if (!isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    // Parse request body for dry_run option
+    let dry_run = false
+    try {
+      const body = await request.json()
+      dry_run = body.dry_run || false
+    } catch {
+      // No body or invalid JSON, default to false
+    }
+    
+    if (dry_run) {
+      console.log('🔍 Running in DRY RUN mode - no changes will be made')
+    }
 
     const supabase = createSimpleClient()
     
@@ -101,39 +114,45 @@ export async function POST(request: NextRequest) {
     let updatedCount = 0
     const errors: string[] = []
 
-    // Remove duplicates in batches
-    const batchSize = 50
-    for (let i = 0; i < duplicatesToRemove.length; i += batchSize) {
-      const batch = duplicatesToRemove.slice(i, i + batchSize)
-      const { error: deleteError } = await supabase
-        .from('content_queue')
-        .delete()
-        .in('id', batch)
-
-      if (deleteError) {
-        errors.push(`Failed to delete batch ${i}-${i + batchSize}: ${deleteError.message}`)
-      } else {
-        removedCount += batch.length
-        console.log(`✅ Removed duplicate batch: ${batch.length} items`)
-      }
-    }
-
-    // Update content hashes in batches
-    for (let i = 0; i < hashUpdates.length; i += batchSize) {
-      const batch = hashUpdates.slice(i, i + batchSize)
-      
-      for (const update of batch) {
-        const { error: updateError } = await supabase
+    // If not dry run, actually remove duplicates
+    if (!dry_run) {
+      // Remove duplicates in batches
+      const batchSize = 50
+      for (let i = 0; i < duplicatesToRemove.length; i += batchSize) {
+        const batch = duplicatesToRemove.slice(i, i + batchSize)
+        const { error: deleteError } = await supabase
           .from('content_queue')
-          .update({ content_hash: update.hash })
-          .eq('id', update.id)
+          .delete()
+          .in('id', batch)
 
-        if (updateError) {
-          errors.push(`Failed to update hash for ID ${update.id}: ${updateError.message}`)
+        if (deleteError) {
+          errors.push(`Failed to delete batch ${i}-${i + batchSize}: ${deleteError.message}`)
         } else {
-          updatedCount++
+          removedCount += batch.length
+          console.log(`✅ Removed duplicate batch: ${batch.length} items`)
         }
       }
+
+      // Update content hashes in batches
+      for (let i = 0; i < hashUpdates.length; i += batchSize) {
+        const batch = hashUpdates.slice(i, i + batchSize)
+        
+        for (const update of batch) {
+          const { error: updateError } = await supabase
+            .from('content_queue')
+            .update({ content_hash: update.hash })
+            .eq('id', update.id)
+
+          if (updateError) {
+            errors.push(`Failed to update hash for ID ${update.id}: ${updateError.message}`)
+          } else {
+            updatedCount++
+          }
+        }
+      }
+    } else {
+      console.log(`🔍 DRY RUN: Would remove ${duplicatesToRemove.length} duplicates`)
+      console.log(`🔍 DRY RUN: Would update ${hashUpdates.length} hashes`)
     }
 
     // Update is_posted flags based on posted_content table
@@ -157,14 +176,17 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Cleanup complete: removed ${removedCount} duplicates, updated ${updatedCount} hashes`,
+      dry_run,
+      message: dry_run 
+        ? `DRY RUN: Would remove ${duplicatesToRemove.length} duplicates and update ${hashUpdates.length} hashes`
+        : `Cleanup complete: removed ${removedCount} duplicates, updated ${updatedCount} hashes`,
       stats,
       errors: errors.length > 0 ? errors : undefined,
       details: {
         originalCount: allContent.length,
         duplicatesFound: duplicatesToRemove.length,
-        duplicatesRemoved: removedCount,
-        hashesUpdated: updatedCount,
+        duplicatesRemoved: dry_run ? 0 : removedCount,
+        hashesUpdated: dry_run ? 0 : updatedCount,
         finalCount: stats.totalContent
       }
     })

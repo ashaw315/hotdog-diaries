@@ -14,13 +14,37 @@ export interface ContentItem {
  * Generate a truly unique content hash using all identifying information
  */
 export function generateContentHash(content: ContentItem): string {
-  const hashInput = [
-    content.source_platform?.toLowerCase(),
-    content.content_text?.toLowerCase().trim(),
-    content.content_image_url,
-    content.content_video_url,
-    content.original_url
-  ].filter(Boolean).join('|')
+  // Normalize text content - remove extra spaces, lowercase, trim
+  const normalizedText = content.content_text
+    ? content.content_text
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .replace(/[^\w\s]/g, '') // Remove special chars for consistency
+    : ''
+  
+  // Include ALL identifying information for truly unique hash
+  const hashComponents = [
+    content.source_platform?.toLowerCase() || '',
+    normalizedText,
+    content.content_image_url || '',
+    content.content_video_url || '',
+    content.original_url || '',
+    // Add author if available to distinguish same content from different sources
+    (content as any).original_author || ''
+  ]
+  
+  // Create a deterministic string representation
+  const hashInput = hashComponents
+    .map(component => component.trim())
+    .join('|')
+  
+  // If hash input is empty, use timestamp to ensure uniqueness
+  if (!hashInput || hashInput === '|||||') {
+    return crypto.createHash('sha256')
+      .update(`empty-${Date.now()}-${Math.random()}`)
+      .digest('hex')
+  }
   
   return crypto.createHash('sha256')
     .update(hashInput)

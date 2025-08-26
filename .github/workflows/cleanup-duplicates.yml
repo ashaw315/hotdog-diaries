@@ -1,0 +1,94 @@
+name: Database Cleanup
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+    inputs:
+      dry_run:
+        description: 'Dry run (no actual deletion)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  cleanup-duplicates:
+    runs-on: ubuntu-latest
+    name: Remove Duplicate Content
+    
+    steps:
+      - name: Cleanup Duplicates
+        run: |
+          echo "🧹 Starting duplicate cleanup..."
+          
+          # Call the cleanup API endpoint
+          response=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/cleanup/duplicates" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"dry_run": ${{ github.event.inputs.dry_run || false }}}' \
+            --fail-with-body \
+            -w "\n%{http_code}")
+          
+          # Extract HTTP status code
+          http_code=$(echo "$response" | tail -n 1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "Response: $body"
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Cleanup failed with status $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Cleanup completed successfully"
+      
+      - name: Check Duplicate Status
+        if: success()
+        run: |
+          echo "📊 Checking for remaining duplicates..."
+          
+          # Call the monitor endpoint
+          response=$(curl -X GET "${{ secrets.SITE_URL }}/api/admin/monitor/duplicates" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            --fail-with-body)
+          
+          echo "Duplicate status: $response"
+          
+          # Parse response and check if duplicates exist
+          if echo "$response" | grep -q '"duplicates_found":0'; then
+            echo "✅ No duplicates found"
+          else
+            echo "⚠️  Some duplicates may still exist"
+          fi
+      
+      - name: Send Notification on Failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Duplicate Cleanup Failed',
+              body: `The automated duplicate cleanup job failed at ${new Date().toISOString()}.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              labels: ['bug', 'automation']
+            })
+
+  sync-posted-flags:
+    runs-on: ubuntu-latest
+    name: Sync Posted Flags
+    needs: cleanup-duplicates
+    
+    steps:
+      - name: Sync is_posted Flags
+        run: |
+          echo "🔄 Syncing is_posted flags..."
+          
+          response=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/sync/posted-flags" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            --fail-with-body)
+          
+          echo "Sync response: $response"
+          echo "✅ Sync completed"
