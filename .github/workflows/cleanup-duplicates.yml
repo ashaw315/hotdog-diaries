@@ -13,6 +13,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
 jobs:
   cleanup-duplicates:
     runs-on: ubuntu-latest
@@ -24,7 +27,7 @@ jobs:
           echo "🧹 Starting duplicate cleanup..."
           
           # Call the cleanup API endpoint
-          response=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/cleanup/duplicates" \
+          response=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/cleanup-duplicates" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"dry_run": ${{ github.event.inputs.dry_run || false }}}' \
@@ -63,18 +66,12 @@ jobs:
             echo "⚠️  Some duplicates may still exist"
           fi
       
-      - name: Send Notification on Failure
+      - name: Log Failure Details
         if: failure()
-        uses: actions/github-script@v6
-        with:
-          script: |
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '🚨 Duplicate Cleanup Failed',
-              body: `The automated duplicate cleanup job failed at ${new Date().toISOString()}.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              labels: ['bug', 'automation']
-            })
+        run: |
+          echo "🚨 Duplicate cleanup job failed at $(date)"
+          echo "Check the workflow logs for details"
+          echo "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   sync-posted-flags:
     runs-on: ubuntu-latest
