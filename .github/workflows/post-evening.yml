@@ -12,7 +12,7 @@ jobs:
       - name: Post Evening Content
         run: |
           echo "🌙 Posting evening content..."
-          curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"immediate": true}' \

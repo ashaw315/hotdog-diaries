@@ -47,7 +47,7 @@ jobs:
           case "${{ github.event.inputs.operation }}" in
             "post-now")
               echo "🚀 Posting content immediately..."
-              curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
+              curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
                 -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 -d '{"immediate": true}' \
@@ -58,7 +58,7 @@ jobs:
               echo "📅 Catching up ${{ github.event.inputs.count }} missed posts..."
               for i in $(seq 1 ${{ github.event.inputs.count }}); do
                 echo "  Posting #$i..."
-                curl -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
+                curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/posting/post-now" \
                   -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                   -H "Content-Type: application/json" \
                   -d "{\"catchUp\": true, \"sequence\": $i}" \
@@ -73,7 +73,7 @@ jobs:
               
             "scan-all-emergency")
               echo "🚨 EMERGENCY: Scanning all platforms with auto-approval..."
-              curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/emergency-scan" \
+              curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/content/emergency-scan" \
                 -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 -d '{"autoApprove": true, "maxItems": 100}' \
@@ -82,7 +82,7 @@ jobs:
               
             "scan-all-normal")
               echo "📡 Scanning all platforms (normal mode)..."
-              curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/scan-all" \
+              curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/content/scan-all" \
                 -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 -d '{"maxItems": 50}' \
@@ -91,7 +91,7 @@ jobs:
               
             "approve-pending")
               echo "✅ Auto-approving pending content..."
-              curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/auto-approve" \
+              curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/content/auto-approve" \
                 -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 -d '{"maxItems": 30, "onlyHighConfidence": true}' \
@@ -100,14 +100,14 @@ jobs:
               
             "system-health-check")
               echo "🏥 Running system health check..."
-              curl -X GET "${{ secrets.SITE_URL }}/api/admin/health" \
+              curl -L -X GET "${{ secrets.SITE_URL }}/api/admin/health" \
                 -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                 --fail --show-error
               ;;
               
             "clear-queue-test")
               echo "🧹 Clearing test/duplicate content..."
-              curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/cleanup" \
+              curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/content/cleanup" \
                 -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 -d '{"removeTestContent": true, "removeDuplicates": true}' \
@@ -116,7 +116,7 @@ jobs:
               
             "fix-duplicates")
               echo "🔧 Fixing duplicate content to prevent reposting..."
-              curl -X POST "${{ secrets.SITE_URL }}/api/admin/fix-duplicate-content" \
+              curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/fix-duplicate-content" \
                 -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
                 -H "Content-Type: application/json" \
                 --fail --show-error

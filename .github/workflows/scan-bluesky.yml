@@ -13,7 +13,7 @@ jobs:
         run: |
           echo "🦋 Scanning Bluesky for hotdog posts..."
           
-          curl -X POST "${{ secrets.SITE_URL }}/api/admin/bluesky/scan" \
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/bluesky/scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"maxPosts": 15}' \

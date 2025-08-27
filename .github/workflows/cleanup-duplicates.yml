@@ -27,7 +27,7 @@ jobs:
           echo "🧹 Starting duplicate cleanup..."
           
           # Call the cleanup API endpoint
-          response=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/cleanup-duplicates" \
+          response=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/cleanup-duplicates" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"dry_run": ${{ github.event.inputs.dry_run || false }}}' \
@@ -53,7 +53,7 @@ jobs:
           echo "📊 Checking for remaining duplicates..."
           
           # Call the monitor endpoint
-          response=$(curl -X GET "${{ secrets.SITE_URL }}/api/admin/monitor/duplicates" \
+          response=$(curl -L -X GET "${{ secrets.SITE_URL }}/api/admin/monitor/duplicates" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             --fail-with-body)
           
@@ -83,7 +83,7 @@ jobs:
         run: |
           echo "🔄 Syncing is_posted flags..."
           
-          response=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/sync/posted-flags" \
+          response=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/sync/posted-flags" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             --fail-with-body)
           

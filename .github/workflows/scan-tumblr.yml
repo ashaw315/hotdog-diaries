@@ -13,7 +13,7 @@ jobs:
         run: |
           echo "🎨 Scanning Tumblr for hotdog content..."
           
-          curl -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"maxPosts": 10}' \

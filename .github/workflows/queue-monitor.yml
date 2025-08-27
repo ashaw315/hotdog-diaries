@@ -20,7 +20,7 @@ jobs:
         run: |
           echo "🔍 Checking queue health..."
           
-          STATUS=$(curl -s "${{ secrets.SITE_URL }}/api/admin/schedule" \
+          STATUS=$(curl -L -s "${{ secrets.SITE_URL }}/api/admin/schedule" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Accept: application/json")
           
@@ -70,7 +70,7 @@ jobs:
         run: |
           echo "🚨 EMERGENCY: Scanning all platforms with auto-approval"
           
-          curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/emergency-scan" \
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/content/emergency-scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"autoApprove": true, "maxItems": 100, "platforms": ["reddit", "youtube", "giphy", "pixabay", "bluesky", "imgur", "lemmy", "tumblr"]}' \
@@ -81,7 +81,7 @@ jobs:
         run: |
           echo "⚠️ HIGH PRIORITY: Scanning top platforms"
           
-          curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/priority-scan" \
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/content/priority-scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"platforms": ["reddit", "youtube", "giphy", "pixabay"], "maxItems": 50}' \
@@ -92,7 +92,7 @@ jobs:
         run: |
           echo "📡 Normal scan of select platforms"
           
-          curl -X POST "${{ secrets.SITE_URL }}/api/admin/content/normal-scan" \
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/content/normal-scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"platforms": ["reddit", "giphy", "bluesky"], "maxItems": 25}' \

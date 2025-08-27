@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "🔍 Checking auto-approval candidates..."
           
-          response=$(curl -s -w "%{http_code}" \
+          response=$(curl -L -s -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             "${{ secrets.SITE_URL }}/api/admin/auto-approve")
           
@@ -68,7 +68,7 @@ jobs:
           
           echo "⚙️ Parameters: force=$FORCE_APPROVAL, max=$MAX_ITEMS, min_confidence=$MIN_CONFIDENCE"
           
-          response=$(curl -s -w "%{http_code}" \
+          response=$(curl -L -s -w "%{http_code}" \
             -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
@@ -118,7 +118,7 @@ jobs:
         run: |
           echo "🏥 Checking overall content pipeline health..."
           
-          response=$(curl -s -w "%{http_code}" \
+          response=$(curl -L -s -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             "${{ secrets.SITE_URL }}/api/admin/automation-health")
           

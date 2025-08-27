@@ -13,7 +13,7 @@ jobs:
         run: |
           echo "🤖 Scanning Reddit for hotdog content..."
           
-          RESULT=$(curl -X POST "${{ secrets.SITE_URL }}/api/admin/reddit/scan" \
+          RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/reddit/scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"maxPosts": 20}' \
