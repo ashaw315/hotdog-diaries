@@ -3,8 +3,7 @@
 import { ContentType, SourcePlatform } from '@/types'
 import { formatDistanceToNow } from 'date-fns'
 import { useState } from 'react'
-import MobileVideoPlayer from '@/components/video/MobileVideoPlayer'
-import MobileYouTubePlayer from '@/components/video/MobileYouTubePlayer'
+import MediaRenderer from '@/components/media/MediaRenderer'
 import { useComponentErrorHandler } from '@/hooks/useClientErrorHandler'
 
 export interface ContentCardProps {
@@ -49,7 +48,7 @@ export default function ContentCard({
   onPost
 }: ContentCardProps) {
   const [imageError, setImageError] = useState(false)
-  const [imageLoading, setImageLoading] = useState(true)
+  const [imageLoading, setImageLoading] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const { handleError, safeExecute } = useComponentErrorHandler(`ContentCard_${id}`)
 
@@ -246,95 +245,56 @@ export default function ContentCard({
           </p>
         )}
 
-        {content_image_url && !imageError && (
+        {/* Media Rendering - handles all image/video/gif types */}
+        {(content_image_url || content_video_url) && (
           <div className="mb-sm" style={{ position: 'relative' }}>
-            {/* Check if the "image" URL is actually a video file (e.g., Imgur MP4s) */}
-            {content_image_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
-              <video
-                src={content_image_url}
-                controls
-                autoPlay
-                loop
-                muted
-                playsInline
-                style={{ 
-                  width: '100%',
-                  maxHeight: '400px',
-                  objectFit: 'cover'
-                }}
-              />
-            ) : (
-              <>
-                {imageLoading && (
-                  <div className="text-center p-md text-muted">
-                    Loading image...
-                  </div>
-                )}
-                <img
-                  src={content_image_url}
-                  alt="Content image"
-                  style={{ 
-                    width: '100%', 
-                    objectFit: 'cover',
-                    display: imageLoading ? 'none' : 'block'
-                  }}
-                  onLoad={handleImageLoad}
-                  onError={handleImageError}
-                />
-              </>
-            )}
+            <MediaRenderer
+              imageUrl={content_image_url}
+              videoUrl={content_video_url}
+              contentType={content_type}
+              platform={source_platform}
+              originalUrl={original_url}
+              alt={content_text || `${source_platform} content`}
+              showControls={true}
+              autoPlay={false}
+              muted={true}
+              onLoadStart={() => setImageLoading(true)}
+              onLoadEnd={() => {
+                setImageLoading(false)
+                setImageError(false)
+              }}
+              onError={(error) => {
+                handleError(error, 'Media loading failed')
+                setImageError(true)
+                setImageLoading(false)
+              }}
+              style={{
+                width: '100%',
+                maxHeight: '500px',
+                borderRadius: '8px'
+              }}
+            />
           </div>
         )}
-
-        {content_video_url && (
-          <div className="mb-sm" style={{ position: 'relative', minHeight: '200px' }}>
-            {/* YouTube embed with mobile controls */}
-            {content_video_url.includes('youtube.com/watch') ? (
-              (() => {
-                const videoId = content_video_url.split('v=')[1]?.split('&')[0]
-                if (videoId) {
-                  return (
-                    <MobileYouTubePlayer
-                      videoId={videoId}
-                      isActive={true}
-                      style={{ 
-                        width: '100%', 
-                        maxWidth: '480px',
-                        height: '270px'
-                      }}
-                    />
-                  )
-                }
-                return null
-              })()
-            ) : 
-            /* Direct video files with mobile controls */
-            content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
-              <MobileVideoPlayer
-                src={content_video_url}
-                poster={content_image_url}
-                isActive={true}
-                style={{ 
-                  width: '100%', 
-                  maxWidth: '480px',
-                  height: '300px'
-                }}
-              />
-            ) : 
-            /* Fallback for other video URLs */
-            (
-              <div>
-                <a
-                  href={content_video_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="nav-link flex align-center gap-xs"
-                >
-                  <span>🎥</span>
-                  <span>Watch Video</span>
-                </a>
-              </div>
-            )}
+        
+        {/* Fallback for missing media */}
+        {!content_image_url && !content_video_url && content_type !== ContentType.TEXT && (
+          <div className="mb-sm p-md text-center text-muted" style={{ 
+            backgroundColor: '#f9fafb', 
+            borderRadius: '8px',
+            border: '1px dashed #d1d5db'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📎</div>
+            <div>Media not available</div>
+            <a 
+              href={original_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="nav-link" 
+              style={{ marginTop: '0.5rem', display: 'inline-block' }}
+            >
+              View original post
+            </a>
           </div>
         )}
       </div>

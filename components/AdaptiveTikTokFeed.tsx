@@ -1666,34 +1666,214 @@ function PostContent({
       });
     }
 
-    // Helper function to detect YouTube URLs
-    const isYouTubeUrl = (url: string): boolean => {
-      if (!url) return false
-      return url.includes('youtube.com/watch') || 
-             url.includes('youtu.be/') || 
-             url.includes('youtube.com/embed/')
+    // URL Cleaning and Standardization Functions
+    const cleanImgurUrl = (url: string): string => {
+      if (!url) return url
+      
+      // Convert imgur.com/ID to i.imgur.com/ID.extension
+      const imgurIdMatch = url.match(/imgur\.com\/([a-zA-Z0-9]+)(?:\.[a-zA-Z]+)?$/i)
+      if (imgurIdMatch) {
+        const id = imgurIdMatch[1]
+        // Default to .gif, but check if it's likely a video
+        return url.includes('.gifv') || url.includes('.mp4') ? 
+          `https://i.imgur.com/${id}.mp4` : `https://i.imgur.com/${id}.gif`
+      }
+      
+      // Convert .gifv to .mp4 for better compatibility
+      if (url.includes('.gifv')) {
+        return url.replace('.gifv', '.mp4')
+      }
+      
+      return url
     }
 
-    // Helper function to extract YouTube video ID
+    const cleanGiphyUrl = (url: string): string => {
+      if (!url) return url
+      
+      // Convert giphy.com page URLs to direct media URLs
+      const giphyIdMatch = url.match(/giphy\.com\/gifs\/(?:[^\/]+\/)*([a-zA-Z0-9]+)/i)
+      if (giphyIdMatch) {
+        const id = giphyIdMatch[1]
+        // Prefer MP4 for better mobile compatibility
+        return `https://media.giphy.com/media/${id}/giphy.mp4`
+      }
+      
+      // Ensure we're using media URLs not page URLs
+      if (url.includes('giphy.com') && !url.includes('media.giphy.com')) {
+        console.warn(`🎭 Non-media Giphy URL detected: ${url}`)
+      }
+      
+      return url
+    }
+
+    // Enhanced YouTube URL detection
+    const isYouTubeUrl = (url: string): boolean => {
+      if (!url) return false
+      return /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/|m\.youtube\.com\/watch\?v=|youtube-nocookie\.com\/embed\/)/.test(url)
+    }
+
+    // Enhanced YouTube video ID extraction
     const extractYouTubeId = (url: string): string | null => {
       if (!url) return null
       
       const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-        /^([a-zA-Z0-9_-]{11})$/ // Direct video ID
+        // Standard youtube.com URLs
+        /(?:youtube\.com\/watch\?v=)([^&\n?#]+)/,
+        // Shortened youtu.be URLs
+        /(?:youtu\.be\/)([^&\n?#]+)/,
+        // Mobile youtube URLs
+        /(?:m\.youtube\.com\/watch\?v=)([^&\n?#]+)/,
+        // Embed URLs (including nocookie)
+        /(?:youtube(?:-nocookie)?\.com\/embed\/)([^&\n?#]+)/,
+        // Direct video ID (11 characters)
+        /^([a-zA-Z0-9_-]{11})$/
       ]
       
       for (const pattern of patterns) {
         const match = url.match(pattern)
-        if (match) return match[1]
+        if (match && match[1]) {
+          const videoId = match[1]
+          // Validate YouTube video ID format
+          if (/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+            return videoId
+          }
+        }
       }
       return null
     }
 
-    // YouTube videos - Enhanced detection with multiple fallbacks
-    const isYouTube = post.source_platform === 'youtube' || isYouTubeUrl(post.content_video_url)
+    // Centralized Media Type Detection
+    const getMediaType = (post: Post): 'youtube' | 'gif' | 'video' | 'image' | 'text' => {
+      // Priority 1: YouTube (highest priority)
+      if (post.source_platform === 'youtube' || 
+          (post.content_video_url && isYouTubeUrl(post.content_video_url))) {
+        return 'youtube'
+      }
+      
+      // Priority 2: GIF detection (including MP4 GIFs)
+      if (isGifContent(post)) {
+        return 'gif'
+      }
+      
+      // Priority 3: Video files
+      if (post.content_video_url && isVideoContent(post)) {
+        return 'video'
+      }
+      
+      // Priority 4: Images
+      if (post.content_image_url) {
+        return 'image'
+      }
+      
+      // Default: Text
+      return 'text'
+    }
+
+    const isGifContent = (post: Post): boolean => {
+      // Universal GIF detection - works for ANY platform
+      const videoUrl = post.content_video_url
+      const imageUrl = post.content_image_url
+      
+      // 1. Content type explicitly marked as GIF
+      if (post.content_type === 'gif') return true
+      
+      // 2. Platform known for GIF content
+      if (post.source_platform === 'giphy') return true
+      
+      // 3. URL-based detection for .gif extensions (universal)
+      if (videoUrl?.match(/\.gif(\?|$)/i) || imageUrl?.match(/\.gif(\?|$)/i)) return true
+      
+      // 4. MP4 GIFs from any platform - detect by common patterns
+      if (videoUrl) {
+        // Giphy MP4s (any platform can embed these)
+        if (videoUrl.includes('giphy.com') && videoUrl.includes('.mp4')) return true
+        
+        // Imgur GIFVs and MP4s (any platform can embed these)
+        if (videoUrl.includes('imgur.com') && videoUrl.match(/\.(mp4|gifv)(\?|$)/i)) return true
+        
+        // Reddit GIFs (any platform can embed these)
+        if (videoUrl.includes('v.redd.it')) return true
+        
+        // Tenor GIFs (any platform can embed these)
+        if (videoUrl.includes('tenor.com') && videoUrl.includes('.mp4')) return true
+        
+        // Generic MP4 GIF detection by filename patterns
+        if (videoUrl.match(/gif.*\.mp4/i) || videoUrl.match(/animated.*\.mp4/i)) return true
+      }
+      
+      // 5. Image URLs that are actually GIFs
+      if (imageUrl) {
+        // Giphy image URLs (any platform can embed these)
+        if (imageUrl.includes('giphy.com') && imageUrl.includes('giphy.gif')) return true
+        
+        // Tenor image URLs (any platform can embed these)
+        if (imageUrl.includes('tenor.com') && imageUrl.match(/\.(gif|mp4)/i)) return true
+      }
+      
+      return false
+    }
+
+    const isVideoContent = (post: Post): boolean => {
+      if (!post.content_video_url) return false
+      
+      // Don't treat GIFs as videos (universal GIF detection)
+      if (isGifContent(post)) return false
+      
+      // Don't treat YouTube as direct video (universal YouTube detection)
+      if (isYouTubeUrl(post.content_video_url)) return false
+      
+      // Universal video file detection - works for ANY platform
+      const videoUrl = post.content_video_url
+      
+      // Common video file extensions
+      if (/\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv|m4v)(\?|$)/i.test(videoUrl)) return true
+      
+      // Platform-agnostic streaming video URLs
+      if (videoUrl.includes('cloudfront.net') && videoUrl.includes('mp4')) return true
+      if (videoUrl.includes('amazonaws.com') && videoUrl.includes('mp4')) return true
+      if (videoUrl.includes('vimeo.com/') && !videoUrl.includes('player')) return true
+      
+      // Generic video indicators
+      if (videoUrl.includes('/video/') || videoUrl.includes('video.')) return true
+      
+      return false
+    }
+
+    // Use centralized media type detection
+    const mediaType = getMediaType(post)
     
-    if (isYouTube && post.content_video_url && !videoError) {
+    // Universal URL cleaning - works for ANY platform
+    const cleanedVideoUrl = post.content_video_url ? 
+      cleanAllUrlTypes(post.content_video_url) : undefined
+    
+    const cleanedImageUrl = post.content_image_url ?
+      cleanAllUrlTypes(post.content_image_url) : undefined
+      
+    // Universal URL cleaner function
+    function cleanAllUrlTypes(url: string): string {
+      if (!url) return url
+      
+      // Clean Imgur URLs (from any platform)
+      if (url.includes('imgur.com')) {
+        return cleanImgurUrl(url)
+      }
+      
+      // Clean Giphy URLs (from any platform)
+      if (url.includes('giphy.com')) {
+        return cleanGiphyUrl(url)
+      }
+      
+      // Add more universal cleaners as needed
+      // Tenor GIFs
+      if (url.includes('tenor.com') && url.includes('/view/')) {
+        return url.replace('/view/', '/media/') + '.mp4'
+      }
+      
+      return url
+    }
+    
+    // YouTube videos - Enhanced detection with multiple fallbacks
+    if (mediaType === 'youtube' && cleanedVideoUrl && !videoError) {
       const videoId = extractYouTubeId(post.content_video_url)
       console.log(`🎥 YouTube rendering: ID=${post.id}, videoId=${videoId}, isActive=${isActive}, platform=${post.source_platform}`)
       
@@ -1739,122 +1919,96 @@ function PostContent({
       }
     }
 
-    // Mixed content removed - Reddit, Tumblr, and Lemmy now show media only (no captions)
-
-    // Giphy content with enhanced mobile controls
-    if (post.source_platform === 'giphy') {
-      if (post.content_video_url && !videoError) {
+    // GIF content - Unified handling for all platforms
+    if (mediaType === 'gif' && !videoError && !imageError) {
+      const gifUrl = cleanedVideoUrl || cleanedImageUrl
+      const isMP4 = gifUrl?.match(/\.(mp4|webm)(\?|$)/i)
+      
+      console.log(`🎭 GIF rendering: ID=${post.id}, platform=${post.source_platform}, isMP4=${!!isMP4}, URL=${gifUrl}`)
+      
+      if (isMP4) {
+        // Render MP4 GIFs as auto-playing, looping videos
         return (
-          <div className="giphy-container">
-            <MobileVideoPlayer
-              src={post.content_video_url}
-              poster={post.content_image_url}
-              isActive={isActive}
-              onVideoRef={(el) => {
-                if (videoRef && el) videoRef(el)
-                if (el) {
-                  setTimeout(() => scalePlatformContent(el, post), 100)
-                }
-              }}
+          <div className="gif-container">
+            <video
+              src={gifUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              onLoadedData={(e) => scalePlatformContent(e.target as HTMLElement, post)}
+              onError={() => setVideoError(true)}
               style={{
                 width: '100%',
-                height: '100%'
+                height: '100%',
+                objectFit: 'cover'
               }}
             />
           </div>
         )
-      } else if (post.content_image_url && !imageError) {
-        // Check if the "image" URL is actually a video file
-        const isVideoFile = post.content_image_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)
-        
-        if (isVideoFile) {
-          // Render as video (Giphy MP4)
-          return (
-            <div className="giphy-container">
-              <MobileVideoPlayer
-                src={post.content_image_url}
-                poster={null}
-                isActive={isActive}
-                onVideoRef={videoRef}
-                style={{
-                  width: '100%',
-                  height: 'auto'
-                }}
-              />
-            </div>
-          )
-        } else {
-          // Regular GIF image
-          return (
-            <div className="giphy-container">
-              <img 
-                src={post.content_image_url}
-                alt={post.content_text || 'Giphy content'}
-                onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
-                onError={() => setImageError(true)}
-              />
-            </div>
-          )
-        }
-      }
-    }
-
-    // Direct videos with enhanced mobile controls (exclude YouTube URLs)
-    if (post.content_video_url && !videoError) {
-      // Skip YouTube URLs - these should be handled by YouTube player above
-      const isYouTubeVideoUrl = isYouTubeUrl(post.content_video_url)
-      
-      // Only use MobileVideoPlayer for actual video files (not GIFs)
-      const isDirectVideo = post.content_video_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)
-      
-      // GIFs should be handled as images, not videos
-      const isGifFile = post.content_video_url.match(/\.gif(\?|$)/i)
-      
-      if (!isYouTubeVideoUrl && isDirectVideo) {
-        return (
-          <div className="video-container">
-            <MobileVideoPlayer
-              src={post.content_video_url}
-              poster={post.content_image_url}
-              isActive={isActive}
-              onVideoRef={(el) => {
-                if (videoRef && el) videoRef(el)
-                if (el) {
-                  setTimeout(() => scalePlatformContent(el, post), 100)
-                }
-              }}
-              style={{
-                width: '100%',
-                height: '100%'
-              }}
-            />
-          </div>
-        )
-      } else if (isYouTubeVideoUrl) {
-        // Log that this should have been caught by YouTube handler above
-        console.warn(`⚠️ YouTube URL ${post.content_video_url} reached direct video handler - this should be handled by YouTube player`)
-      } else if (isGifFile) {
-        // GIFs should be treated as images, not videos - fall through to image handling
-        console.log(`📸 GIF file detected, will be handled as image: ${post.content_video_url}`)
       } else {
-        // Unsupported video URL format
-        console.warn(`⚠️ Unsupported video URL format: ${post.content_video_url}`)
-        setVideoError(true)
+        // Render actual GIF images
+        return (
+          <div className="gif-container">
+            <img 
+              src={gifUrl}
+              alt={post.content_text || 'GIF content'}
+              onLoad={(e) => scalePlatformContent(e.target as HTMLElement, post)}
+              onError={() => setImageError(true)}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+          </div>
+        )
       }
     }
 
-    // Images - handle both pure image posts, mixed content, and GIFs stored as video URLs
-    if ((post.content_image_url || (post.content_video_url && post.content_video_url.match(/\.gif(\?|$)/i))) && !imageError) {
-      // Use GIF URL if no image URL but video URL is a GIF
-      let imageSrc = post.content_image_url || 
-                    (post.content_video_url && post.content_video_url.match(/\.gif(\?|$)/i) ? post.content_video_url : '')
+    // Regular video content (not GIFs, not YouTube)
+    if (mediaType === 'video' && cleanedVideoUrl && !videoError) {
+      console.log(`📹 Video rendering: ID=${post.id}, platform=${post.source_platform}, URL=${cleanedVideoUrl}`)
       
-      // Apply proxy for platforms that need it
-      if (post.source_platform === 'pixabay' && post.content_image_url) {
-        const pageUrl = post.original_url
-        imageSrc = `/api/proxy/pixabay-image?url=${encodeURIComponent(post.content_image_url)}&page=${encodeURIComponent(pageUrl)}`
-      } else if (post.source_platform === 'bluesky' && post.content_image_url) {
-        imageSrc = `/api/proxy/bluesky-image?url=${encodeURIComponent(post.content_image_url)}`
+      return (
+        <div className="video-container">
+          <MobileVideoPlayer
+            src={cleanedVideoUrl}
+            poster={cleanedImageUrl}
+            isActive={isActive}
+            onVideoRef={(el) => {
+              if (videoRef && el) videoRef(el)
+              if (el) {
+                setTimeout(() => scalePlatformContent(el, post), 100)
+              }
+            }}
+            style={{
+              width: '100%',
+              height: '100%'
+            }}
+          />
+        </div>
+      )
+    }
+
+    // Image content - Only handle if media type is 'image'
+    if (mediaType === 'image' && cleanedImageUrl && !imageError) {
+      let imageSrc = cleanedImageUrl
+      
+      // Universal proxy logic - detect proxy needs by URL patterns, not platform
+      if (cleanedImageUrl) {
+        // Pixabay images need proxy (any platform can embed these)
+        if (cleanedImageUrl.includes('pixabay.com/get/') && post.original_url) {
+          imageSrc = `/api/proxy/pixabay-image?url=${encodeURIComponent(post.content_image_url)}&page=${encodeURIComponent(post.original_url)}`
+        }
+        // Bluesky images need proxy (any platform can embed these)
+        else if (cleanedImageUrl.includes('bsky.social') || cleanedImageUrl.includes('bsky.app')) {
+          imageSrc = `/api/proxy/bluesky-image?url=${encodeURIComponent(post.content_image_url)}`
+        }
+        // Add more universal proxy patterns as needed
+        else {
+          imageSrc = cleanedImageUrl
+        }
       }
       
       // For Bluesky with both text and image, show mixed content
@@ -2146,15 +2300,19 @@ function PostContent({
           overflow: hidden !important;
         }
 
-        /* Giphy container - dimensions set by scaling */
+        /* Universal GIF container - dimensions set by scaling */
+        .gif-container,
         .giphy-container {
           display: block;
           background: black;
           margin: 0;
           padding: 0;
+          overflow: hidden;
           /* Dimensions set by JavaScript */
         }
 
+        .gif-container video,
+        .gif-container img,
         .giphy-container video,
         .giphy-container img {
           display: block;
@@ -2162,7 +2320,9 @@ function PostContent({
           padding: 0;
           border: 0;
           outline: 0;
-          /* Dimensions set by JavaScript - no object-fit */
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
         }
 
         /* Video container - dimensions set by scaling */

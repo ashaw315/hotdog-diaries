@@ -28,3 +28,29 @@ tsconfig.tsbuildinfo
 test-results.json
 backups/
 .vercel
+
+# Environment variables (SECURITY)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+
+# Secrets and credentials
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files that might contain secrets
+*.tmp
+*.temp
+.DS_Store
