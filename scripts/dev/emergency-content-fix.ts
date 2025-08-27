@@ -75,7 +75,7 @@ async function addEmergencyContent() {
             content_text, content_video_url, content_image_url, content_type,
             source_platform, original_url, original_author, content_hash,
             is_approved, content_status, scraped_at, created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, datetime('now'), datetime('now'), datetime('now'))
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW(), NOW())
           RETURNING id
         `, [
           video.title,
@@ -161,7 +161,7 @@ async function addEmergencyContent() {
             content_text, content_image_url, content_type,
             source_platform, original_url, original_author, content_hash,
             is_approved, content_status, scraped_at, created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, datetime('now'), datetime('now'), datetime('now'))
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), NOW())
           RETURNING id
         `, [
           gif.title,
@@ -192,9 +192,9 @@ async function addEmergencyContent() {
       SELECT 
         content_type,
         COUNT(*) as count,
-        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM content_queue WHERE is_approved = 1), 2) as percentage
+        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM content_queue WHERE is_approved = true), 2) as percentage
       FROM content_queue 
-      WHERE is_approved = 1
+      WHERE is_approved = true
       GROUP BY content_type
       ORDER BY count DESC
     `)

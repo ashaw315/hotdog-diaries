@@ -123,9 +123,9 @@ export class QueueManager {
       const totalQuery = `
         SELECT 
           COUNT(*) as total_approved,
-          COUNT(CASE WHEN is_approved = 0 THEN 1 END) as total_pending
+          COUNT(CASE WHEN is_approved = false THEN 1 END) as total_pending
         FROM content_queue
-        WHERE is_posted = 0
+        WHERE is_posted = false
       `
       const totalResult = await db.query(totalQuery)
       const totals = totalResult.rows[0]
@@ -138,7 +138,7 @@ export class QueueManager {
           source_platform,
           COUNT(*) as count
         FROM content_queue
-        WHERE is_approved = 1 AND is_posted = 0 AND source_platform IS NOT NULL
+        WHERE is_approved = true AND is_posted = false AND source_platform IS NOT NULL
         GROUP BY source_platform
       `
       const platformResult = await db.query(platformQuery)
@@ -287,7 +287,7 @@ export class QueueManager {
           END as content_type,
           COUNT(*) as count
         FROM content_queue
-        WHERE is_approved = 1 AND is_posted = 0
+        WHERE is_approved = true AND is_posted = false
         GROUP BY content_type
       `
       

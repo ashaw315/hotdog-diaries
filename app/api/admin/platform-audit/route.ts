@@ -61,8 +61,8 @@ export async function GET() {
         content_type,
         COUNT(*) as count,
         ROUND(AVG(CASE WHEN confidence_score IS NOT NULL THEN confidence_score ELSE 0 END), 3) as avg_confidence,
-        SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_count,
-        SUM(CASE WHEN is_posted = 1 THEN 1 ELSE 0 END) as posted_count,
+        SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) as approved_count,
+        SUM(CASE WHEN is_posted = true THEN 1 ELSE 0 END) as posted_count,
         MAX(created_at) as latest_content
       FROM content_queue
       GROUP BY source_platform, content_type
@@ -79,7 +79,7 @@ export async function GET() {
         SUM(CASE WHEN content_type = 'gif' THEN 1 ELSE 0 END) as gifs,
         SUM(CASE WHEN content_type = 'image' THEN 1 ELSE 0 END) as images,
         SUM(CASE WHEN content_type = 'text' THEN 1 ELSE 0 END) as texts,
-        SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_total,
+        SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) as approved_total,
         MAX(created_at) as latest_activity
       FROM content_queue
       GROUP BY source_platform
@@ -196,8 +196,8 @@ export async function GET() {
         COUNT(*) as count,
         ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM content_queue), 2) as percentage,
         GROUP_CONCAT(DISTINCT source_platform) as platforms_providing,
-        SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_count,
-        ROUND(SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as approval_rate
+        SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) as approved_count,
+        ROUND(SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as approval_rate
       FROM content_queue
       GROUP BY content_type
       ORDER BY count DESC
@@ -235,8 +235,8 @@ export async function GET() {
     const totalStats = await db.query(`
       SELECT 
         COUNT(*) as total_content,
-        SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_content,
-        SUM(CASE WHEN is_posted = 1 THEN 1 ELSE 0 END) as posted_content,
+        SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) as approved_content,
+        SUM(CASE WHEN is_posted = true THEN 1 ELSE 0 END) as posted_content,
         SUM(CASE WHEN content_type = 'video' THEN 1 ELSE 0 END) as total_videos,
         SUM(CASE WHEN content_type = 'gif' THEN 1 ELSE 0 END) as total_gifs,
         SUM(CASE WHEN content_type = 'image' THEN 1 ELSE 0 END) as total_images,

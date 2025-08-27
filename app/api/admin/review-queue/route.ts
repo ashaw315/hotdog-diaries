@@ -34,9 +34,9 @@ export async function GET(request: NextRequest) {
         COUNT(*) FILTER (WHERE status = 'flagged') as total_flagged,
         COUNT(*) FILTER (WHERE status = 'flagged') as pending_review,
         COUNT(*) FILTER (WHERE status IN ('approved', 'rejected') AND updated_at::date = CURRENT_DATE) as reviewed_today,
-        AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) FILTER (WHERE status IN ('approved', 'rejected') AND updated_at > NOW() - INTERVAL '7 days') as avg_review_time,
-        COUNT(*) FILTER (WHERE status = 'approved' AND updated_at > NOW() - INTERVAL '7 days') / 
-        GREATEST(COUNT(*) FILTER (WHERE status IN ('approved', 'rejected') AND updated_at > NOW() - INTERVAL '7 days'), 1)::float as approval_rate
+        AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) FILTER (WHERE status IN ('approved', 'rejected') AND updated_at > NOW() - INTERVAL '$1 days') as avg_review_time,
+        COUNT(*) FILTER (WHERE status = 'approved' AND updated_at > NOW() - INTERVAL '$1 days') / 
+        GREATEST(COUNT(*) FILTER (WHERE status IN ('approved', 'rejected') AND updated_at > NOW() - INTERVAL '$1 days'), 1)::float as approval_rate
       FROM content
     `)
 

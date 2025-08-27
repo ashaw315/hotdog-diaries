@@ -61,9 +61,9 @@ async function finalContentBalanceCheck() {
       SELECT 
         content_type,
         COUNT(*) as count,
-        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM content_queue WHERE is_approved = 1), 2) as percentage
+        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM content_queue WHERE is_approved = true), 2) as percentage
       FROM content_queue
-      WHERE is_approved = 1
+      WHERE is_approved = true
       GROUP BY content_type
       ORDER BY count DESC
     `)

@@ -205,7 +205,7 @@ export async function selectDiverseContent(options: PlatformDiversityOptions = {
         content_type, source_platform, original_url, original_author,
         confidence_score, created_at
       FROM content_queue
-      WHERE is_approved = 1 AND is_posted = 0
+      WHERE is_approved = true AND is_posted = false
       ORDER BY confidence_score DESC
       LIMIT 100
     `)

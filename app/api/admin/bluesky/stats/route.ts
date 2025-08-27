@@ -25,7 +25,7 @@ export async function GET() {
         MAX(scraped_at) as last_post_time
       FROM content_queue 
       WHERE source_platform = 'bluesky'
-      AND scraped_at >= NOW() - INTERVAL '7 days'
+      AND scraped_at >= NOW() - INTERVAL '$1 days'
     `)
 
     // Get hourly breakdown for the last 24 hours

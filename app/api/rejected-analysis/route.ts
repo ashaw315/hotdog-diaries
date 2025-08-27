@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         cq.scraped_at
       FROM content_queue cq
       LEFT JOIN content_analysis ca ON ca.content_queue_id = cq.id
-      WHERE cq.is_approved = 0 OR ca.confidence_score < 0.6
+      WHERE cq.is_approved = false OR ca.confidence_score < 0.6
       ORDER BY cq.scraped_at DESC
       LIMIT 15
     `)
@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
       SELECT 
         cq.source_platform,
         COUNT(*) as total,
-        SUM(CASE WHEN cq.is_approved = 0 THEN 1 ELSE 0 END) as rejected,
-        SUM(CASE WHEN cq.is_approved = 1 THEN 1 ELSE 0 END) as approved,
+        SUM(CASE WHEN cq.is_approved = false THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN cq.is_approved = true THEN 1 ELSE 0 END) as approved,
         AVG(ca.confidence_score) as avg_confidence,
-        ROUND(100.0 * SUM(CASE WHEN cq.is_approved = 0 THEN 1 ELSE 0 END) / COUNT(*), 1) as rejection_rate
+        ROUND(100.0 * SUM(CASE WHEN cq.is_approved = false THEN 1 ELSE 0 END) / COUNT(*), 1) as rejection_rate
       FROM content_queue cq
       LEFT JOIN content_analysis ca ON ca.content_queue_id = cq.id
       GROUP BY cq.source_platform

@@ -102,8 +102,8 @@ export class MetricsService {
       const contentQuery = `
         SELECT 
           ${dbAdapter.count()} as total_content,
-          ${dbAdapter.sum(dbAdapter.caseWhen('is_approved = 1', '1', '0'))} as approved_content,
-          ${dbAdapter.sum(dbAdapter.caseWhen('is_posted = 1', '1', '0'))} as posted_content
+          ${dbAdapter.sum(dbAdapter.caseWhen('is_approved = true', '1', '0'))} as approved_content,
+          ${dbAdapter.sum(dbAdapter.caseWhen('is_posted = true', '1', '0'))} as posted_content
         FROM content_queue
       `
 
@@ -149,8 +149,8 @@ export class MetricsService {
         SELECT 
           cq.source_platform as platform,
           ${dbAdapter.count('cq.id')} as total_scanned,
-          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_approved = 1', '1', '0'))} as total_approved,
-          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_posted = 1', '1', '0'))} as total_posted,
+          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_approved = true', '1', '0'))} as total_approved,
+          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_posted = true', '1', '0'))} as total_posted,
           ${dbAdapter.avg('ca.confidence_score')} as avg_confidence_score,
           ${dbAdapter.max('cq.created_at')} as last_scan_date
         FROM content_queue cq
@@ -215,7 +215,7 @@ export class MetricsService {
           ca.confidence_score
         FROM content_queue cq
         LEFT JOIN content_analysis ca ON cq.id = ca.content_queue_id
-        WHERE cq.is_posted = 1 AND ca.confidence_score IS NOT NULL
+        WHERE cq.is_posted = true AND ca.confidence_score IS NOT NULL
         ORDER BY ca.confidence_score DESC
         ${dbAdapter.limitOffset(10)}
       `
@@ -315,7 +315,7 @@ export class MetricsService {
       const queueQuery = `
         SELECT ${dbAdapter.count()} as queue_size
         FROM content_queue
-        WHERE is_approved = 0 AND is_posted = 0
+        WHERE is_approved = false AND is_posted = false
       `
 
       const queueResult = await executeQuery(queueQuery)
@@ -334,7 +334,7 @@ export class MetricsService {
       const lastPostQuery = `
         SELECT ${dbAdapter.max('posted_at')} as last_post_time
         FROM content_queue
-        WHERE is_posted = 1 AND posted_at IS NOT NULL
+        WHERE is_posted = true AND posted_at IS NOT NULL
       `
 
       const lastPostResult = await executeQuery(lastPostQuery)
@@ -402,7 +402,7 @@ export class MetricsService {
           item_count,
           error_message,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, NOW())
       `
 
       // Execute the query - handle table not existing gracefully
@@ -491,7 +491,7 @@ export class MetricsService {
         SELECT 
           ${dbAdapter.dateFormat('cq.created_at')} as date,
           ${dbAdapter.count('cq.id')} as scanned,
-          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_approved = 1', '1', '0'))} as approved,
+          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_approved = true', '1', '0'))} as approved,
           ${dbAdapter.avg('ca.confidence_score')} as avg_confidence
         FROM content_queue cq
         LEFT JOIN content_analysis ca ON cq.id = ca.content_queue_id
@@ -531,8 +531,8 @@ export class MetricsService {
         SELECT 
           ${dbAdapter.dateFormat('cq.created_at')} as date,
           ${dbAdapter.count('cq.id')} as total_content,
-          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_approved = 1', '1', '0'))} as approved_content,
-          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_posted = 1', '1', '0'))} as posted_content,
+          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_approved = true', '1', '0'))} as approved_content,
+          ${dbAdapter.sum(dbAdapter.caseWhen('cq.is_posted = true', '1', '0'))} as posted_content,
           ${dbAdapter.avg('ca.confidence_score')} as avg_confidence
         FROM content_queue cq
         LEFT JOIN content_analysis ca ON cq.id = ca.content_queue_id

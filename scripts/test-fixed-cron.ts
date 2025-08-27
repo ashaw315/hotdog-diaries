@@ -49,9 +49,9 @@ async function testFixedCronLogic() {
         COUNT(CASE WHEN confidence_score >= 0.75 THEN 1 END) as high_confidence,
         COUNT(CASE WHEN confidence_score >= 0.65 AND confidence_score < 0.75 THEN 1 END) as medium_confidence,
         COUNT(CASE WHEN confidence_score >= 0.5 AND confidence_score < 0.65 THEN 1 END) as low_confidence,
-        COUNT(CASE WHEN is_approved = 0 THEN 1 END) as unapproved_total
+        COUNT(CASE WHEN is_approved = false THEN 1 END) as unapproved_total
       FROM content_queue
-      WHERE is_approved = 0
+      WHERE is_approved = false
     `);
     
     const confStats = confidenceStats.rows[0];

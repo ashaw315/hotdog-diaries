@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
         COUNT(*) as total_content,
         COUNT(DISTINCT content_hash) as unique_hashes,
         COUNT(DISTINCT content_text) as unique_texts,
-        COUNT(CASE WHEN is_posted = 1 THEN 1 END) as posted_items,
-        COUNT(CASE WHEN is_approved = 1 AND is_posted = 0 THEN 1 END) as ready_to_post
+        COUNT(CASE WHEN is_posted = true THEN 1 END) as posted_items,
+        COUNT(CASE WHEN is_approved = true AND is_posted = false THEN 1 END) as ready_to_post
       FROM content_queue
     `)
     

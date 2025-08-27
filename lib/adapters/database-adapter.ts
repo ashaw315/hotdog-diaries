@@ -112,7 +112,7 @@ class SQLiteAdapter implements DatabaseAdapter {
   isSQLite = true
   
   now(): string {
-    return "datetime('now')"
+    return "NOW()"
   }
   
   dateFormat(field: string): string {

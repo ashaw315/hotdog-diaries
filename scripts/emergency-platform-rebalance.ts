@@ -31,17 +31,17 @@ async function emergencyPlatformRebalance() {
       )
       
       const approvedResult = await db.query(
-        'SELECT COUNT(*) as count FROM content_queue WHERE source_platform = ? AND is_approved = 1', 
+        'SELECT COUNT(*) as count FROM content_queue WHERE source_platform = ? AND is_approved = true', 
         [platform]
       )
       
       const readyResult = await db.query(
-        'SELECT COUNT(*) as count FROM content_queue WHERE source_platform = ? AND is_approved = 1 AND is_posted = 0', 
+        'SELECT COUNT(*) as count FROM content_queue WHERE source_platform = ? AND is_approved = true AND is_posted = false', 
         [platform]
       )
       
       const postedResult = await db.query(
-        'SELECT COUNT(*) as count FROM content_queue WHERE source_platform = ? AND is_posted = 1', 
+        'SELECT COUNT(*) as count FROM content_queue WHERE source_platform = ? AND is_posted = true', 
         [platform]
       )
       

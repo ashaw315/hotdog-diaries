@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
         timeFilter = "AND scraped_at >= NOW() - INTERVAL '1 day'"
         break
       case '7d':
-        timeFilter = "AND scraped_at >= NOW() - INTERVAL '7 days'"
+        timeFilter = "AND scraped_at >= NOW() - INTERVAL '$1 days'"
         break
       case '30d':
-        timeFilter = "AND scraped_at >= NOW() - INTERVAL '30 days'"
+        timeFilter = "AND scraped_at >= NOW() - INTERVAL '$1 days'"
         break
       default:
         timeFilter = "AND scraped_at >= NOW() - INTERVAL '1 day'"

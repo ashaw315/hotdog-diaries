@@ -23,7 +23,7 @@ async function debugContentInsertion() {
           content_text, content_image_url, content_type,
           source_platform, original_url, original_author,
           scraped_at, content_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
       `, [
         'Debug test hotdog',
         'https://example.com/test.jpg',
@@ -154,7 +154,7 @@ async function debugContentInsertion() {
         ca.processing_notes
       FROM content_queue cq
       JOIN content_analysis ca ON ca.content_queue_id = cq.id
-      WHERE cq.is_approved = 0
+      WHERE cq.is_approved = false
       ORDER BY cq.id DESC
       LIMIT 5
     `)

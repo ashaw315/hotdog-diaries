@@ -180,7 +180,7 @@ export class ScanScheduler {
             ELSE 1 -- Text-based platforms
           END as visual_priority
         FROM content_queue
-        WHERE scraped_at > NOW() - INTERVAL '7 days'
+        WHERE scraped_at > NOW() - INTERVAL '$1 days'
         GROUP BY source_platform
       )
       SELECT 
@@ -218,7 +218,7 @@ export class ScanScheduler {
         MIN(scraped_at) as oldest_content,
         MAX(scraped_at) as newest_content
       FROM content_queue
-      WHERE scraped_at > NOW() - INTERVAL '7 days'
+      WHERE scraped_at > NOW() - INTERVAL '$1 days'
       GROUP BY source_platform, content_type
       ORDER BY source_platform, content_type
     `)

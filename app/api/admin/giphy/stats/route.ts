@@ -33,13 +33,13 @@ export async function GET(request: NextRequest) {
     // Get recent activity (last 7 days)
     const recentActivityQuery = `
       SELECT 
-        DATE(created_at) as date,
+        created_at::date as date,
         COUNT(*) as content_count,
         COUNT(CASE WHEN is_approved = true THEN 1 END) as approved_count
       FROM content_queue 
       WHERE source_platform = 'giphy' 
-        AND created_at > NOW() - INTERVAL '7 days'
-      GROUP BY DATE(created_at)
+        AND created_at > NOW() - INTERVAL '$1 days'
+      GROUP BY created_at::date
       ORDER BY date DESC
     `
 

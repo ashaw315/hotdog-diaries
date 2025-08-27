@@ -169,7 +169,7 @@ export class ContentProcessorFixed {
           content_text, content_image_url, content_video_url, content_type,
           source_platform, original_url, original_author, content_hash,
           scraped_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
         RETURNING id
       `
       
@@ -218,7 +218,7 @@ export class ContentProcessorFixed {
           content_text, content_image_url, content_video_url, content_type,
           source_platform, original_url, original_author, content_hash,
           is_approved, scraped_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'), datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW(), NOW())
         RETURNING id
       `
       
@@ -269,7 +269,7 @@ export class ContentProcessorFixed {
   private async approveContent(contentId: number): Promise<void> {
     try {
       await db.query(
-        'UPDATE content_queue SET is_approved = 1, content_status = ? WHERE id = ?',
+        'UPDATE content_queue SET is_approved = true, content_status = ? WHERE id = ?',
         ['approved', contentId]
       )
       console.log(`✅ Auto-approved content ID: ${contentId}`)

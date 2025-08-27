@@ -108,29 +108,29 @@ export async function GET(request: NextRequest) {
       
       const highQuality = await db.query(`
         SELECT COUNT(*) as count FROM content_queue 
-        WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= 0.8
+        WHERE is_approved = false AND is_posted = false AND confidence_score >= 0.8
       `)
       
       const mediumQuality = await db.query(`
         SELECT COUNT(*) as count FROM content_queue 
-        WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= 0.6 AND confidence_score < 0.8
+        WHERE is_approved = false AND is_posted = false AND confidence_score >= 0.6 AND confidence_score < 0.8
       `)
       
       const aged24h = await db.query(`
         SELECT COUNT(*) as count FROM content_queue 
-        WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= 0.6 
+        WHERE is_approved = false AND is_posted = false AND confidence_score >= 0.6 
         AND created_at <= datetime('now', '-1 day')
       `)
       
       const aged48h = await db.query(`
         SELECT COUNT(*) as count FROM content_queue 
-        WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= 0.5
+        WHERE is_approved = false AND is_posted = false AND confidence_score >= 0.5
         AND created_at <= datetime('now', '-2 day')
       `)
       
       const aged72h = await db.query(`
         SELECT COUNT(*) as count FROM content_queue 
-        WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= 0.4
+        WHERE is_approved = false AND is_posted = false AND confidence_score >= 0.4
         AND created_at <= datetime('now', '-3 day')
       `)
       
@@ -199,7 +199,7 @@ async function runProgressiveAutoApproval(maxItems: number, minConfidenceScore: 
       WHERE is_approved = ? 
         AND is_posted = ?
         AND confidence_score >= ?
-      ${!forceApproval ? `AND id IN (SELECT id FROM content_queue WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= 0.8 LIMIT ${Math.floor(maxItems * 0.3)})` : ''}
+      ${!forceApproval ? `AND id IN (SELECT id FROM content_queue WHERE is_approved = false AND is_posted = false AND confidence_score >= 0.8 LIMIT ${Math.floor(maxItems * 0.3)})` : ''}
     `, [1, 'Auto-approved - high quality (≥0.8)', now.toISOString(), 0, 0, 0.8])
     
     results.immediate = immediateResult.rowCount || 0
@@ -215,7 +215,7 @@ async function runProgressiveAutoApproval(maxItems: number, minConfidenceScore: 
         AND is_posted = ?
         AND confidence_score >= ?
         AND created_at <= ?
-      ${!forceApproval ? `AND id IN (SELECT id FROM content_queue WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= 0.6 AND created_at <= ? LIMIT ${Math.floor(maxItems * 0.25)})` : ''}
+      ${!forceApproval ? `AND id IN (SELECT id FROM content_queue WHERE is_approved = false AND is_posted = false AND confidence_score >= 0.6 AND created_at <= ? LIMIT ${Math.floor(maxItems * 0.25)})` : ''}
     `, [1, 'Auto-approved - aged 24h + medium quality (≥0.6)', now.toISOString(), 0, 0, 0.6, oneDayAgo.toISOString(), ...(forceApproval ? [] : [oneDayAgo.toISOString()])])
     
     results.aged24h = aged24Result.rowCount || 0
@@ -231,7 +231,7 @@ async function runProgressiveAutoApproval(maxItems: number, minConfidenceScore: 
         AND is_posted = ?
         AND confidence_score >= ?
         AND created_at <= ?
-      ${!forceApproval ? `AND id IN (SELECT id FROM content_queue WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= 0.5 AND created_at <= ? LIMIT ${Math.floor(maxItems * 0.25)})` : ''}
+      ${!forceApproval ? `AND id IN (SELECT id FROM content_queue WHERE is_approved = false AND is_posted = false AND confidence_score >= 0.5 AND created_at <= ? LIMIT ${Math.floor(maxItems * 0.25)})` : ''}
     `, [1, 'Auto-approved - aged 48h + decent quality (≥0.5)', now.toISOString(), 0, 0, 0.5, twoDaysAgo.toISOString(), ...(forceApproval ? [] : [twoDaysAgo.toISOString()])])
     
     results.aged48h = aged48Result.rowCount || 0
@@ -247,7 +247,7 @@ async function runProgressiveAutoApproval(maxItems: number, minConfidenceScore: 
         AND is_posted = ?
         AND confidence_score >= ?
         AND created_at <= ?
-      ${!forceApproval ? `AND id IN (SELECT id FROM content_queue WHERE is_approved = 0 AND is_posted = 0 AND confidence_score >= ${minConfidenceScore} AND created_at <= ? LIMIT ${Math.floor(maxItems * 0.2)})` : ''}
+      ${!forceApproval ? `AND id IN (SELECT id FROM content_queue WHERE is_approved = false AND is_posted = false AND confidence_score >= ${minConfidenceScore} AND created_at <= ? LIMIT ${Math.floor(maxItems * 0.2)})` : ''}
     `, [1, `Auto-approved - aged 72h + non-spam (≥${minConfidenceScore})`, now.toISOString(), 0, 0, minConfidenceScore, threeDaysAgo.toISOString(), ...(forceApproval ? [] : [threeDaysAgo.toISOString()])])
     
     results.aged72h = aged72Result.rowCount || 0

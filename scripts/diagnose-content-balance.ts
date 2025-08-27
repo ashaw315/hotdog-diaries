@@ -113,11 +113,11 @@ async function diagnoseContentBalance() {
       SELECT 
         source_platform,
         content_type,
-        DATE(created_at) as scan_date,
+        created_at::date as scan_date,
         COUNT(*) as items_added
       FROM content_queue 
-      WHERE created_at >= NOW() - INTERVAL '7 days'
-      GROUP BY source_platform, content_type, DATE(created_at)
+      WHERE created_at >= NOW() - INTERVAL '$1 days'
+      GROUP BY source_platform, content_type, created_at::date
       ORDER BY scan_date DESC, items_added DESC
       LIMIT 20
     `)

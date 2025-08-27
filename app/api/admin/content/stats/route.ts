@@ -67,7 +67,7 @@ async function getContentStatsHandler(request: NextRequest): Promise<NextRespons
         scraped_at as timestamp,
         CONCAT('Content from ', source_platform, ' - ', LEFT(content_text, 50), '...') as details
       FROM content_queue
-      WHERE scraped_at >= NOW() - INTERVAL '7 days'
+      WHERE scraped_at >= NOW() - INTERVAL '$1 days'
       ORDER BY scraped_at DESC
       LIMIT 20
     `)

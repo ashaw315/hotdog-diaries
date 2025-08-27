@@ -248,13 +248,13 @@ export async function GET(request: NextRequest) {
         
         const approvedResult = await db.query(`
           SELECT COUNT(*) as count FROM content_queue 
-          WHERE is_approved = 1 AND is_posted = 0
+          WHERE is_approved = true AND is_posted = false
         `)
         totalApproved = approvedResult.rows[0]?.count || 0
         
         const pendingResult = await db.query(`
           SELECT COUNT(*) as count FROM content_queue 
-          WHERE is_approved = 0
+          WHERE is_approved = false
         `)
         totalPending = pendingResult.rows[0]?.count || 0
         

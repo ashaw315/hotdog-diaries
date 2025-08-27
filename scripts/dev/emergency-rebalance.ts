@@ -80,8 +80,8 @@ async function emergencyRebalance() {
         WHERE id IN (
           SELECT id FROM content_queue 
           WHERE source_platform = 'pixabay' 
-          AND (is_posted = 0 OR is_posted IS NULL)
-          AND (is_approved IS NULL OR is_approved = 0)
+          AND (is_posted = false OR is_posted IS NULL)
+          AND (is_approved IS NULL OR is_approved = false)
           ORDER BY created_at ASC
           LIMIT ?
         )
@@ -184,7 +184,7 @@ async function emergencyYouTubeBoost() {
             source_platform, original_url, original_author, content_hash,
             is_approved, content_status, scraped_at, created_at, updated_at
           ) VALUES (?, ?, ?, 'video', 'youtube', ?, ?, ?, 1, 'approved', 
-                   datetime('now'), datetime('now'), datetime('now'))
+                   NOW(), NOW(), NOW())
         `, [
           video.title,
           video.image_url,
@@ -246,7 +246,7 @@ async function emergencyGiphyBoost() {
             source_platform, original_url, original_author, content_hash,
             is_approved, content_status, scraped_at, created_at, updated_at
           ) VALUES (?, ?, 'gif', 'giphy', ?, 'Emergency Content', ?, 1, 'approved',
-                   datetime('now'), datetime('now'), datetime('now'))
+                   NOW(), NOW(), NOW())
         `, [
           gif.title,
           gif.url,

@@ -31,7 +31,7 @@ async function updatePlatformQuotas() {
       SET enabled_platforms = ?, 
           max_posts_per_scan = ?, 
           scan_frequency_hours = ?,
-          updated_at = datetime('now')
+          updated_at = NOW()
       WHERE id = (SELECT id FROM scan_config ORDER BY created_at DESC LIMIT 1)
     `, [
       JSON.stringify(newConfig.enabled_platforms),
@@ -52,10 +52,10 @@ async function updatePlatformQuotas() {
         created_at,
         updated_at
       ) VALUES 
-        ('video', 0.5, 0.2, 0, datetime('now'), datetime('now')),
-        ('gif', 0.4, 0.2, 0, datetime('now'), datetime('now')),
-        ('image', 0.7, 0.3, 1, datetime('now'), datetime('now')),
-        ('text', 0.6, 0.3, 1, datetime('now'), datetime('now'))
+        ('video', 0.5, 0.2, 0, NOW(), NOW()),
+        ('gif', 0.4, 0.2, 0, NOW(), NOW()),
+        ('image', 0.7, 0.3, 1, NOW(), NOW()),
+        ('text', 0.6, 0.3, 1, NOW(), NOW())
     `)
     
     // 4. Update YouTube scan configuration for aggressive scanning
@@ -79,8 +79,8 @@ async function updatePlatformQuotas() {
         'any',
         90,
         500,
-        datetime('now'),
-        datetime('now')
+        NOW(),
+        NOW()
       )
     `, [JSON.stringify([
       'hotdog', 'hot dog', 'hot dogs', 'hotdogs',
@@ -111,9 +111,9 @@ async function updatePlatformQuotas() {
         ?,
         0,
         0,
-        datetime('now'),
-        datetime('now'),
-        datetime('now')
+        NOW(),
+        NOW(),
+        NOW()
       )
     `, [JSON.stringify([
       'hotdog', 'hot dog', 'hot dogs', 'hotdogs',

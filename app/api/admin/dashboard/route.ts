@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         cq.content_image_url,
         cq.content_video_url
       FROM content_queue cq
-      WHERE cq.is_approved = 1 AND cq.is_posted = 0
+      WHERE cq.is_approved = true AND cq.is_posted = false
       ORDER BY cq.confidence_score DESC
       LIMIT 6
     `)

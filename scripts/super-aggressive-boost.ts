@@ -26,8 +26,8 @@ async function superAggressiveBoost() {
       WHERE id IN (
         SELECT id FROM content_queue 
         WHERE source_platform = 'pixabay' 
-        AND (is_posted = 0 OR is_posted IS NULL)
-        AND (is_approved IS NULL OR is_approved = 0)
+        AND (is_posted = false OR is_posted IS NULL)
+        AND (is_approved IS NULL OR is_approved = false)
         ORDER BY created_at ASC
         LIMIT 100
       )
@@ -99,7 +99,7 @@ async function superAggressiveBoost() {
             source_platform, original_url, original_author, content_hash,
             is_approved, content_status, scraped_at, created_at, updated_at
           ) VALUES (?, ?, ?, 'video', 'youtube', ?, 'Hotdog Content Pro', ?, 1, 'approved', 
-                   datetime('now'), datetime('now'), datetime('now'))
+                   NOW(), NOW(), NOW())
         `, [
           title,
           `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
@@ -179,7 +179,7 @@ async function superAggressiveBoost() {
             source_platform, original_url, original_author, content_hash,
             is_approved, content_status, scraped_at, created_at, updated_at
           ) VALUES (?, ?, 'gif', 'giphy', ?, 'GIF Master Pro', ?, 1, 'approved',
-                   datetime('now'), datetime('now'), datetime('now'))
+                   NOW(), NOW(), NOW())
         `, [
           title,
           `https://media.giphy.com/media/${gifId}/giphy.gif`,

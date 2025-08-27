@@ -131,9 +131,9 @@ class SystemHealthMonitor {
       const result = await db.query(`
         SELECT 
           COUNT(*) as total_content,
-          SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_content,
-          SUM(CASE WHEN is_approved = 1 AND is_posted = 0 THEN 1 ELSE 0 END) as ready_to_post,
-          SUM(CASE WHEN is_posted = 1 THEN 1 ELSE 0 END) as posted_content
+          SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) as approved_content,
+          SUM(CASE WHEN is_approved = true AND is_posted = false THEN 1 ELSE 0 END) as ready_to_post,
+          SUM(CASE WHEN is_posted = true THEN 1 ELSE 0 END) as posted_content
         FROM content_queue
       `)
       
@@ -253,20 +253,16 @@ class SystemHealthMonitor {
       
       // Get platform distribution for recent posts (last 20 posts)
       const result = await db.query(`
+        WITH recent_posts AS (
+          SELECT id FROM posted_content ORDER BY posted_at DESC LIMIT 20
+        )
         SELECT 
           cq.source_platform,
           COUNT(*) as post_count,
-          ROUND(COUNT(*) * 100.0 / (
-            SELECT COUNT(*) 
-            FROM posted_content pc2 
-            ORDER BY pc2.posted_at DESC 
-            LIMIT 20
-          ), 1) as percentage
+          ROUND(COUNT(*) * 100.0 / 20.0, 1) as percentage
         FROM posted_content pc
         JOIN content_queue cq ON pc.content_queue_id = cq.id
-        WHERE pc.id IN (
-          SELECT id FROM posted_content ORDER BY posted_at DESC LIMIT 20
-        )
+        WHERE pc.id IN (SELECT id FROM recent_posts)
         GROUP BY cq.source_platform
         ORDER BY post_count DESC
       `)

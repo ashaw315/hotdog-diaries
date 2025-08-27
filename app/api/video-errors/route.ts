@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // Log to database without auth
     await db.query(`
       INSERT INTO video_playback_errors (platform, url, error_type, user_agent, created_at)
-      VALUES (?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, NOW())
     `, [body.platform || 'unknown', body.url, body.errorType, userAgent])
     
     return NextResponse.json({ success: true })

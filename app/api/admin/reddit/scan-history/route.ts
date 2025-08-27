@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         highest_score INTEGER DEFAULT 0,
         errors TEXT DEFAULT '[]',
         rate_limit_hit BOOLEAN DEFAULT FALSE,
-        created_at DATETIME DEFAULT (datetime('now'))
+        created_at DATETIME DEFAULT (NOW())
       )
     `)
 

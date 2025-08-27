@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
           // Mark content as posted in content_queue
           console.log(`🔄 Updating content_queue for ID ${content.id}...`)
           const updateResult = await db.query(
-            'UPDATE content_queue SET is_posted = 1, updated_at = ? WHERE id = ?',
+            'UPDATE content_queue SET is_posted = true, updated_at = ? WHERE id = ?',
             [now, content.id]
           )
           
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
             errors.push(`Failed to record posted content ${content.id}: Insert failed (changes: ${insertResult.changes}, rowCount: ${insertResult.rowCount})`)
             
             // Revert the content_queue update
-            await db.query('UPDATE content_queue SET is_posted = 0 WHERE id = ?', [content.id])
+            await db.query('UPDATE content_queue SET is_posted = false WHERE id = ?', [content.id])
             continue
           }
           
@@ -217,8 +217,8 @@ export async function POST(request: NextRequest) {
       await db.connect()
       
       const totalResult = await db.query('SELECT COUNT(*) as count FROM content_queue')
-      const approvedResult = await db.query('SELECT COUNT(*) as count FROM content_queue WHERE is_approved = 1 AND is_posted = 0')
-      const postedResult = await db.query('SELECT COUNT(*) as count FROM content_queue WHERE is_posted = 1')
+      const approvedResult = await db.query('SELECT COUNT(*) as count FROM content_queue WHERE is_approved = true AND is_posted = false')
+      const postedResult = await db.query('SELECT COUNT(*) as count FROM content_queue WHERE is_posted = true')
       
       const totalContent = totalResult.rows[0]?.count || 0
       const approvedContent = approvedResult.rows[0]?.count || 0  
@@ -298,7 +298,7 @@ export async function GET(request: NextRequest) {
         SELECT id, content_text, content_type, source_platform,
                confidence_score, is_approved, is_posted, created_at
         FROM content_queue
-        WHERE is_approved = 1 AND is_posted = 0
+        WHERE is_approved = true AND is_posted = false
         ORDER BY confidence_score DESC
         LIMIT 10
       `)

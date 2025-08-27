@@ -123,7 +123,7 @@ async function setupTestTables() {
       // Add a few test posts for today
       const testContentIds = await db.query(`
         SELECT id FROM content_queue 
-        WHERE is_approved = 1 
+        WHERE is_approved = true 
         LIMIT 3
       `)
       

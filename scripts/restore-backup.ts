@@ -179,15 +179,15 @@ async function restoreBackup() {
     
     // Count posted items
     const postedCount = await db.query(`
-      SELECT COUNT(*) as count FROM content_queue WHERE is_posted = 1
+      SELECT COUNT(*) as count FROM content_queue WHERE is_posted = true
     `)
     console.log(`\nPosted Content: ${postedCount.rows[0].count}`)
     
     // Count approved items
     const approvedCount = await db.query(`
       SELECT 
-        SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved,
-        SUM(CASE WHEN is_approved = 0 THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) as approved,
+        SUM(CASE WHEN is_approved = false THEN 1 ELSE 0 END) as rejected,
         SUM(CASE WHEN is_approved IS NULL THEN 1 ELSE 0 END) as pending
       FROM content_queue
     `)

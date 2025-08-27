@@ -43,9 +43,9 @@ async function getContentStats(): Promise<ApprovalStats> {
   const result = await db.query(`
     SELECT 
       COUNT(*) as total_content,
-      SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_content,
-      SUM(CASE WHEN is_approved = 1 AND is_posted = 0 THEN 1 ELSE 0 END) as ready_to_post,
-      SUM(CASE WHEN is_posted = 1 THEN 1 ELSE 0 END) as posted_content
+      SUM(CASE WHEN is_approved = true THEN 1 ELSE 0 END) as approved_content,
+      SUM(CASE WHEN is_approved = true AND is_posted = false THEN 1 ELSE 0 END) as ready_to_post,
+      SUM(CASE WHEN is_posted = true THEN 1 ELSE 0 END) as posted_content
     FROM content_queue
   `)
   
@@ -66,7 +66,7 @@ async function approveUnapprovedContent(targetApprovals: number = 20): Promise<n
   const candidates = await db.query(`
     SELECT id, content_text, source_platform, confidence_score
     FROM content_queue 
-    WHERE is_approved = 0 AND is_posted = 0 AND confidence_score > 0.6
+    WHERE is_approved = false AND is_posted = false AND confidence_score > 0.6
     ORDER BY confidence_score DESC, created_at ASC
     LIMIT ?
   `, [targetApprovals])
@@ -78,7 +78,7 @@ async function approveUnapprovedContent(targetApprovals: number = 20): Promise<n
     const lowConfidenceCandidates = await db.query(`
       SELECT id, content_text, source_platform, confidence_score
       FROM content_queue 
-      WHERE is_approved = 0 AND is_posted = 0 AND confidence_score > 0.4
+      WHERE is_approved = false AND is_posted = false AND confidence_score > 0.4
       ORDER BY confidence_score DESC, created_at ASC
       LIMIT ?
     `, [targetApprovals])
@@ -100,7 +100,7 @@ async function approveUnapprovedContent(targetApprovals: number = 20): Promise<n
   for (const item of candidates.rows) {
     await db.query(`
       UPDATE content_queue 
-      SET is_approved = 1, confidence_score = 0.8, updated_at = datetime('now')
+      SET is_approved = true, confidence_score = 0.8, updated_at = NOW()
       WHERE id = ?
     `, [item.id])
     
@@ -140,7 +140,7 @@ async function recycleOldContent(targetItems: number = 10): Promise<number> {
     // Reset the content_queue item
     await db.query(`
       UPDATE content_queue 
-      SET is_posted = 0, confidence_score = 0.7, updated_at = datetime('now')
+      SET is_posted = false, confidence_score = 0.7, updated_at = NOW()
       WHERE id = ?
     `, [item.id])
     
@@ -208,7 +208,7 @@ async function createEmergencyContent(targetItems: number = 5): Promise<number> 
       INSERT INTO content_queue 
       (content_text, content_type, source_platform, original_url, content_hash, 
        scraped_at, is_approved, confidence_score, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'), 1, 0.75, datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, NOW(), 1, 0.75, NOW(), NOW())
     `, [
       content.text,
       content.type,

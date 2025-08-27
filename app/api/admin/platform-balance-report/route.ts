@@ -76,8 +76,8 @@ export async function GET(request: NextRequest) {
         source_platform,
         content_type,
         COUNT(*) as total_content,
-        COUNT(CASE WHEN is_approved = 1 AND is_posted = 0 THEN 1 END) as ready_to_post,
-        COUNT(CASE WHEN is_approved = 1 THEN 1 END) as approved_content,
+        COUNT(CASE WHEN is_approved = true AND is_posted = false THEN 1 END) as ready_to_post,
+        COUNT(CASE WHEN is_approved = true THEN 1 END) as approved_content,
         AVG(confidence_score) as avg_confidence_score,
         MAX(confidence_score) as max_confidence_score
       FROM content_queue

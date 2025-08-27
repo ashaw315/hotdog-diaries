@@ -279,11 +279,11 @@ export class PostingService {
       const result = await db.query(`
         SELECT 
           COUNT(*) FILTER (WHERE posted_at >= CURRENT_DATE) as todays_posts,
-          COUNT(*) FILTER (WHERE posted_at >= CURRENT_DATE - INTERVAL '7 days') as this_weeks_posts,
-          COUNT(*) FILTER (WHERE posted_at >= CURRENT_DATE - INTERVAL '30 days') as this_months_posts,
+          COUNT(*) FILTER (WHERE posted_at >= CURRENT_DATE - INTERVAL '$1 days') as this_weeks_posts,
+          COUNT(*) FILTER (WHERE posted_at >= CURRENT_DATE - INTERVAL '$1 days') as this_months_posts,
           COUNT(*) as total_posts,
           ROUND(
-            COUNT(*) FILTER (WHERE posted_at >= CURRENT_DATE - INTERVAL '30 days') / 30.0, 
+            COUNT(*) FILTER (WHERE posted_at >= CURRENT_DATE - INTERVAL '$1 days') / 30.0, 
             2
           ) as avg_posts_per_day
         FROM posted_content

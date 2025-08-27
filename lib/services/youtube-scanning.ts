@@ -828,7 +828,7 @@ export class YouTubeScanningService {
           content_text, content_image_url, content_video_url, content_type, 
           source_platform, original_url, original_author, content_hash, 
           scraped_at, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, datetime('now'), datetime('now'), datetime('now')) 
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW(), NOW()) 
         RETURNING id`,
         [
           video.title,
