@@ -61,8 +61,6 @@ async function originalPOSTHandler(request: NextRequest): Promise<NextResponse> 
   }
 }
 
-}
-
 // Original GET handler for backward compatibility  
 async function originalGETHandler(request: NextRequest): Promise<NextResponse> {
   try {

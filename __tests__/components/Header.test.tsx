@@ -16,62 +16,33 @@ describe('Header Component', () => {
     expect(brandName).toBeInTheDocument()
   })
 
-  it('renders navigation links on desktop', () => {
+  it('renders the brand emoji', () => {
     render(<Header />)
     
-    const homeLink = screen.getByRole('link', { name: /home/i })
-    const adminLink = screen.getByRole('link', { name: /admin/i })
-    
-    expect(homeLink).toBeInTheDocument()
-    expect(adminLink).toBeInTheDocument()
+    const emoji = screen.getByText('🌭')
+    expect(emoji).toBeInTheDocument()
   })
 
-  it('toggles mobile menu when hamburger button is clicked', () => {
+  it('renders the brand link with correct href', () => {
     render(<Header />)
     
-    const menuButton = screen.getByLabelText('Toggle menu')
-    expect(menuButton).toBeInTheDocument()
-    
-    // Initially, mobile menu should not be visible
-    expect(screen.queryByText('Home')).toBeInTheDocument() // Desktop nav
-    
-    // Click to open mobile menu
-    fireEvent.click(menuButton)
-    
-    // Mobile menu should now be visible (will show additional Home/Admin links)
-    const mobileNavLinks = screen.getAllByText('Home')
-    expect(mobileNavLinks.length).toBeGreaterThan(1) // Desktop + mobile
+    const brandLink = screen.getByRole('link', { name: /🌭 Hotdog Diaries/i })
+    expect(brandLink).toBeInTheDocument()
+    expect(brandLink).toHaveAttribute('href', '/')
   })
 
-  it('closes mobile menu when a link is clicked', () => {
+  it('has correct header structure', () => {
     render(<Header />)
     
-    const menuButton = screen.getByLabelText('Toggle menu')
-    fireEvent.click(menuButton) // Open menu
-    
-    // Find mobile navigation links (they should be different from desktop ones)
-    const mobileNavLinks = screen.getAllByText('Home')
-    const mobileHomeLink = mobileNavLinks[mobileNavLinks.length - 1] // Get the last one (mobile)
-    
-    fireEvent.click(mobileHomeLink)
-    
-    // Menu should close (check for hamburger icon, not X)
-    const hamburgerPath = screen.getByLabelText('Toggle menu').querySelector('path')
-    expect(hamburgerPath?.getAttribute('d')).toContain('M4 6h16M4 12h16M4 18h16')
+    const header = screen.getByRole('banner')
+    expect(header).toBeInTheDocument()
+    expect(header).toHaveClass('feed-header')
   })
 
-  it('has correct link hrefs', () => {
-    render(<Header />)
+  it('contains header content wrapper', () => {
+    const { container } = render(<Header />)
     
-    const homeLinks = screen.getAllByRole('link', { name: /home/i })
-    const adminLinks = screen.getAllByRole('link', { name: /admin/i })
-    
-    homeLinks.forEach(link => {
-      expect(link).toHaveAttribute('href', '/')
-    })
-    
-    adminLinks.forEach(link => {
-      expect(link).toHaveAttribute('href', '/admin')
-    })
+    const headerContent = container.querySelector('.feed-header-content')
+    expect(headerContent).toBeInTheDocument()
   })
 })

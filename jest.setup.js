@@ -1,4 +1,5 @@
-import '@testing-library/jest-dom'
+// Import our centralized test setup
+import './__tests__/utils/setup'
 
 // Mock NextJS modules that cause issues in Jest
 jest.mock('next/server', () => ({
@@ -163,13 +164,61 @@ jest.mock('@/lib/utils/content-hash', () => ({
   }
 }))
 
-// Mock auth services
+// Mock auth services and middleware
 jest.mock('@/lib/services/auth', () => ({
   AuthService: {
     authenticate: jest.fn().mockResolvedValue({ success: true, token: 'mock-token' }),
     validateToken: jest.fn().mockResolvedValue({ valid: true, user: { id: 1, username: 'admin' } }),
     refreshToken: jest.fn().mockResolvedValue({ success: true, token: 'new-mock-token' }),
     logout: jest.fn().mockResolvedValue({ success: true })
+  }
+}))
+
+// Mock API middleware
+jest.mock('@/lib/api-middleware', () => ({
+  verifyAdminAuth: jest.fn().mockResolvedValue({
+    success: true,
+    user: { id: 1, username: 'admin' }
+  }),
+  createSuccessResponse: jest.fn((data, message) => 
+    Response.json({ success: true, data, message })
+  ),
+  createApiError: jest.fn((message, status, code) => {
+    const error = new Error(message)
+    error.statusCode = status
+    error.code = code
+    return error
+  }),
+  handleApiError: jest.fn((error, request, endpoint) => {
+    const status = error.statusCode || 500
+    const message = error.message || 'Internal server error'
+    return Response.json({ error: message }, { status })
+  }),
+  validateRequestMethod: jest.fn(),
+  withErrorHandling: jest.fn((handler, endpoint) => {
+    return async (request) => {
+      try {
+        return await handler(request)
+      } catch (error) {
+        const status = error.statusCode || 500
+        const message = error.message || 'Internal server error'
+        return Response.json({ error: message }, { status })
+      }
+    }
+  }),
+  validateJsonBody: jest.fn((schema) => (data) => data)
+}))
+
+// Mock legacy auth utils for routes that haven't been updated yet
+jest.mock('@/lib/auth', () => ({
+  NextAuthUtils: {
+    verifyRequestAuth: jest.fn().mockResolvedValue({
+      isValid: true,
+      user: { id: 1, username: 'admin' }
+    }),
+    getAuthTokenFromRequest: jest.fn().mockReturnValue('mock-token'),
+    generateJWT: jest.fn().mockReturnValue('mock-jwt-token'),
+    verifyJWT: jest.fn().mockReturnValue({ userId: 1, username: 'admin' })
   }
 }))
 

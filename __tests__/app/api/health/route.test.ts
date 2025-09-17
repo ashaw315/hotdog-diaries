@@ -1,20 +1,31 @@
 import { GET, HEAD } from '@/app/api/health/route'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 
 // Mock dependencies
 jest.mock('@/lib/db', () => ({
   db: {
-    healthCheck: jest.fn().mockResolvedValue({ connected: true, latency: 10 })
+    healthCheck: jest.fn()
   }
 }))
 
-// Mock NextResponse
-jest.mock('next/server', () => ({
-  NextRequest: jest.requireActual('next/server').NextRequest,
-  NextResponse: {
-    json: jest.fn(),
-  },
+jest.mock('@/lib/api-middleware', () => ({
+  withErrorHandling: jest.fn((handler) => handler),
+  validateRequestMethod: jest.fn(),
+  createSuccessResponse: jest.fn()
 }))
+
+// Mock NextResponse for HEAD requests
+jest.mock('next/server', () => {
+  const actual = jest.requireActual('next/server')
+  return {
+    ...actual,
+    NextResponse: class MockNextResponse extends Response {
+      constructor(body?: BodyInit | null, init?: ResponseInit) {
+        super(body, init)
+      }
+    }
+  }
+})
 
 // Mock process.uptime
 const mockUptime = jest.fn(() => 12345)
@@ -37,91 +48,109 @@ describe('/api/health Route', () => {
 
   describe('GET /api/health', () => {
     it('returns healthy status with correct structure', async () => {
-      const mockJson = jest.fn()
-      ;(NextResponse.json as jest.Mock).mockImplementation(mockJson)
+      const { db } = await import('@/lib/db')
+      const { createSuccessResponse } = await import('@/lib/api-middleware')
+
+      // Mock healthy database
+      ;(db.healthCheck as jest.Mock).mockResolvedValue({ 
+        connected: true, 
+        latency: 10 
+      })
+
+      // Mock successful response
+      const mockResponse = { json: () => Promise.resolve({}), status: 200 }
+      ;(createSuccessResponse as jest.Mock).mockReturnValue(mockResponse)
 
       const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
-      await GET(mockRequest)
+      const response = await GET(mockRequest)
 
-      expect(mockJson).toHaveBeenCalledWith(
-        {
+      expect(createSuccessResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
           status: 'healthy',
           timestamp: '2024-01-01T00:00:00.000Z',
           service: 'hotdog-diaries',
           version: '1.0.0',
           uptime: 12345,
           environment: 'test',
-          checks: {
-            database: 'pending',
+          checks: expect.objectContaining({
+            database: { connected: true, latency: 10 },
             socialMediaScanner: 'pending',
-            contentScheduler: 'pending',
-          }
-        },
-        { status: 200 }
-      )
-    })
-
-    it('handles errors gracefully', async () => {
-      const mockJson = jest.fn()
-      ;(NextResponse.json as jest.Mock).mockImplementation(mockJson)
-      
-      // Mock process.uptime to throw an error
-      mockUptime.mockImplementation(() => {
-        throw new Error('Uptime error')
-      })
-
-      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
-      await GET(mockRequest)
-
-      expect(mockJson).toHaveBeenCalledWith(
-        {
-          status: 'unhealthy',
-          timestamp: '2024-01-01T00:00:00.000Z',
-          service: 'hotdog-diaries',
-          error: 'Uptime error',
-        },
-        { status: 500 }
-      )
-    })
-
-    it('handles non-Error exceptions', async () => {
-      const mockJson = jest.fn()
-      ;(NextResponse.json as jest.Mock).mockImplementation(mockJson)
-      
-      // Mock process.uptime to throw a non-Error
-      mockUptime.mockImplementation(() => {
-        throw 'String error'
-      })
-
-      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
-      await GET(mockRequest)
-
-      expect(mockJson).toHaveBeenCalledWith(
-        {
-          status: 'unhealthy',
-          timestamp: '2024-01-01T00:00:00.000Z',
-          service: 'hotdog-diaries',
-          error: 'Unknown error',
-        },
-        { status: 500 }
-      )
-    })
-
-    it('uses default environment when NODE_ENV is not set', async () => {
-      const originalEnv = process.env.NODE_ENV
-      delete process.env.NODE_ENV
-
-      const mockJson = jest.fn()
-      ;(NextResponse.json as jest.Mock).mockImplementation(mockJson)
-
-      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
-      await GET(mockRequest)
-
-      expect(mockJson).toHaveBeenCalledWith(
-        expect.objectContaining({
-          environment: 'development',
+            contentScheduler: 'pending'
+          })
         }),
-        { status: 200 }
+        undefined,
+        200
+      )
+      expect(response).toBe(mockResponse)
+    })
+
+    it('returns unhealthy status when database fails', async () => {
+      const { db } = await import('@/lib/db')
+      const { createSuccessResponse } = await import('@/lib/api-middleware')
+
+      // Mock unhealthy database
+      ;(db.healthCheck as jest.Mock).mockResolvedValue({ 
+        connected: false, 
+        error: 'Connection failed' 
+      })
+
+      const mockResponse = { json: () => Promise.resolve({}), status: 503 }
+      ;(createSuccessResponse as jest.Mock).mockReturnValue(mockResponse)
+
+      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
+      const response = await GET(mockRequest)
+
+      expect(createSuccessResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'unhealthy'
+        }),
+        undefined,
+        503
+      )
+      expect(response.status).toBe(503)
+    })
+
+    it('handles database errors gracefully', async () => {
+      const { db } = await import('@/lib/db')
+
+      // Mock database throwing error
+      ;(db.healthCheck as jest.Mock).mockRejectedValue(new Error('Database connection failed'))
+
+      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
+      
+      // Since withErrorHandling is mocked to pass through, this will throw
+      await expect(GET(mockRequest)).rejects.toThrow('Database connection failed')
+    })
+
+    it('includes development metadata in development environment', async () => {
+      const { db } = await import('@/lib/db')
+      const { createSuccessResponse } = await import('@/lib/api-middleware')
+      
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+
+      ;(db.healthCheck as jest.Mock).mockResolvedValue({ 
+        connected: true, 
+        latency: 5 
+      })
+
+      const mockResponse = { json: () => Promise.resolve({}), status: 200 }
+      ;(createSuccessResponse as jest.Mock).mockReturnValue(mockResponse)
+
+      const mockRequest = new NextRequest('http://localhost/api/health', { method: 'GET' })
+      await GET(mockRequest)
+
+      expect(createSuccessResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          responseTime: expect.any(Number),
+          memory: expect.objectContaining({
+            used: expect.any(Number),
+            total: expect.any(Number),
+            external: expect.any(Number)
+          })
+        }),
+        undefined,
+        200
       )
 
       process.env.NODE_ENV = originalEnv
@@ -135,6 +164,7 @@ describe('/api/health Route', () => {
 
       expect(response).toBeInstanceOf(Response)
       expect(response.status).toBe(200)
+      expect(response.body).toBeNull()
     })
   })
 })

@@ -57,7 +57,8 @@ describe('Layout Component', () => {
     )
     
     const layoutDiv = container.firstChild as HTMLElement
-    expect(layoutDiv).toHaveClass('min-h-screen', 'flex', 'flex-col')
+    expect(layoutDiv).toHaveClass('flex', 'flex-col')
+    expect(layoutDiv).toHaveStyle('min-height: 100vh')
     
     const mainElement = screen.getByRole('main')
     expect(mainElement).toHaveClass('flex-1')

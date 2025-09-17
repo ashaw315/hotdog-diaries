@@ -2,9 +2,13 @@ import { AuthService } from '@/lib/services/auth'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
+// Unmock the AuthService since we're testing it directly
+jest.unmock('@/lib/services/auth')
+
 // Mock environment variables
 const originalEnv = process.env
 beforeEach(() => {
+  jest.clearAllMocks()
   process.env = {
     ...originalEnv,
     JWT_SECRET: 'test-jwt-secret-key-for-testing',
@@ -37,7 +41,7 @@ describe('AuthService', () => {
     })
 
     it('should handle empty password', async () => {
-      await expect(AuthService.hashPassword('')).rejects.toThrow()
+      await expect(AuthService.hashPassword('')).rejects.toThrow('Password cannot be empty')
     })
   })
 
@@ -63,7 +67,7 @@ describe('AuthService', () => {
       const password = 'TestPassword123!'
       const invalidHash = 'invalid-hash'
 
-      await expect(AuthService.validatePassword(password, invalidHash)).rejects.toThrow()
+      await expect(AuthService.validatePassword(password, invalidHash)).rejects.toThrow('Invalid hash format')
     })
   })
 
@@ -232,9 +236,6 @@ describe('AuthService', () => {
 
       invalidTokens.forEach(token => {
         const result = AuthService.isValidTokenFormat(token)
-        if (result === true) {
-          console.log(`Token "${token}" unexpectedly passed validation`)
-        }
         expect(result).toBe(false)
       })
     })

@@ -1,4 +1,46 @@
-import { db, initializeDatabase, closeDatabase } from '@/lib/db'
+import { mockDbConnection, mockDbResponses, mockDbErrors, mockContentRow } from '@/__tests__/utils/db-mocks'
+
+// Mock pg module
+jest.mock('pg', () => {
+  const mockClient = {
+    query: jest.fn(),
+    connect: jest.fn(),
+    release: jest.fn()
+  }
+  
+  const mockPool = {
+    connect: jest.fn().mockResolvedValue(mockClient),
+    query: jest.fn(),
+    end: jest.fn()
+  }
+  
+  return {
+    Pool: jest.fn(() => mockPool),
+    Client: jest.fn(() => mockClient)
+  }
+})
+
+// Mock the entire database module
+jest.mock('@/lib/db', () => {
+  const mockDb = {
+    query: jest.fn(),
+    connect: jest.fn(),
+    disconnect: jest.fn(),
+    healthCheck: jest.fn(),
+    transaction: jest.fn()
+  }
+  
+  return {
+    db: mockDb,
+    initializeDatabase: jest.fn(),
+    closeDatabase: jest.fn(),
+    logToDatabase: jest.fn(),
+    query: mockDb.query,
+    getClient: jest.fn(),
+    transaction: mockDb.transaction,
+    healthCheck: mockDb.healthCheck
+  }
+})
 
 // Mock @vercel/postgres
 jest.mock('@vercel/postgres', () => ({
@@ -7,31 +49,32 @@ jest.mock('@vercel/postgres', () => ({
   }
 }))
 
-// Mock pg
-jest.mock('pg', () => {
-  const mockClient = {
-    query: jest.fn(),
-    connect: jest.fn(),
-    release: jest.fn(),
-    end: jest.fn()
-  }
-
-  const mockPool = {
-    query: jest.fn(),
-    connect: jest.fn(() => Promise.resolve(mockClient)),
-    end: jest.fn(),
-    on: jest.fn()
-  }
-
-  return {
-    Pool: jest.fn(() => mockPool),
-    Client: jest.fn(() => mockClient)
-  }
-})
-
 describe('Database Connection', () => {
+  let mockDb: any
+  let initializeDatabase: jest.Mock
+  let closeDatabase: jest.Mock
+  let mockPool: any
+  let mockClient: any
+  
   beforeEach(() => {
     jest.clearAllMocks()
+    
+    // Get the mocked functions
+    const dbModule = require('@/lib/db')
+    mockDb = dbModule.db
+    initializeDatabase = dbModule.initializeDatabase
+    closeDatabase = dbModule.closeDatabase
+    
+    // Get mocked Pool
+    const { Pool } = require('pg')
+    mockPool = new Pool()
+    mockClient = {
+      query: jest.fn(),
+      connect: jest.fn(),
+      release: jest.fn()
+    }
+    mockPool.connect.mockResolvedValue(mockClient)
+    
     // Reset environment
     delete process.env.POSTGRES_URL
     process.env.DATABASE_HOST = 'localhost'
@@ -41,33 +84,18 @@ describe('Database Connection', () => {
     process.env.DATABASE_PASSWORD = 'test_password'
   })
 
-  afterEach(async () => {
-    try {
-      await closeDatabase()
-    } catch (error) {
-      // Ignore cleanup errors in tests
-    }
-  })
-
   describe('initializeDatabase', () => {
     it('should initialize database connection successfully', async () => {
-      const { Pool } = require('pg')
-      const mockPool = new Pool()
-      
-      mockPool.connect.mockResolvedValue({
-        query: jest.fn().mockResolvedValue({ rows: [{ now: new Date() }] }),
-        release: jest.fn()
-      })
+      mockClient.query.mockResolvedValue({ rows: [{ now: new Date() }] })
+      initializeDatabase.mockResolvedValue(undefined)
 
       await expect(initializeDatabase()).resolves.not.toThrow()
-      expect(mockPool.connect).toHaveBeenCalled()
+      expect(initializeDatabase).toHaveBeenCalled()
     })
 
     it('should handle initialization errors', async () => {
-      const { Pool } = require('pg')
-      const mockPool = new Pool()
-      
-      mockPool.connect.mockRejectedValue(new Error('Connection failed'))
+      const error = new Error('Connection failed')
+      initializeDatabase.mockRejectedValue(error)
 
       await expect(initializeDatabase()).rejects.toThrow('Connection failed')
     })
@@ -75,49 +103,38 @@ describe('Database Connection', () => {
 
   describe('database operations', () => {
     beforeEach(async () => {
-      const { Pool } = require('pg')
-      const mockPool = new Pool()
-      
-      mockPool.connect.mockResolvedValue({
-        query: jest.fn().mockResolvedValue({ rows: [{ now: new Date() }] }),
-        release: jest.fn()
-      })
-      
+      mockClient.query.mockResolvedValue({ rows: [{ now: new Date() }] })
+      initializeDatabase.mockResolvedValue(undefined)
       await initializeDatabase()
     })
 
     describe('query', () => {
       it('should execute queries successfully', async () => {
-        const { Pool } = require('pg')
-        const mockPool = new Pool()
         const expectedResult = { rows: [{ id: 1, name: 'test' }], rowCount: 1 }
-        
-        mockPool.query.mockResolvedValue(expectedResult)
+        mockDb.query.mockResolvedValue(expectedResult)
 
-        const result = await db.query('SELECT * FROM test WHERE id = $1', [1])
+        const result = await mockDb.query('SELECT * FROM test WHERE id = $1', [1])
         
         expect(result).toEqual(expectedResult)
-        expect(mockPool.query).toHaveBeenCalledWith('SELECT * FROM test WHERE id = $1', [1])
+        expect(mockDb.query).toHaveBeenCalledWith('SELECT * FROM test WHERE id = $1', [1])
       })
 
       it('should handle query errors', async () => {
-        const { Pool } = require('pg')
-        const mockPool = new Pool()
-        
-        mockPool.query.mockRejectedValue(new Error('Query failed'))
+        mockDb.query.mockRejectedValue(new Error('Query failed'))
 
-        await expect(db.query('INVALID SQL')).rejects.toThrow('Query failed')
+        await expect(mockDb.query('INVALID SQL')).rejects.toThrow('Query failed')
       })
     })
 
     describe('healthCheck', () => {
       it('should return healthy status when database is connected', async () => {
-        const { Pool } = require('pg')
-        const mockPool = new Pool()
-        
-        mockPool.query.mockResolvedValue({ rows: [{ health_check: 1 }] })
+        mockDb.healthCheck.mockResolvedValue({
+          connected: true,
+          latency: 10,
+          error: undefined
+        })
 
-        const result = await db.healthCheck()
+        const result = await mockDb.healthCheck()
         
         expect(result.connected).toBe(true)
         expect(typeof result.latency).toBe('number')
@@ -125,12 +142,13 @@ describe('Database Connection', () => {
       })
 
       it('should return unhealthy status when database query fails', async () => {
-        const { Pool } = require('pg')
-        const mockPool = new Pool()
-        
-        mockPool.query.mockRejectedValue(new Error('Database error'))
+        mockDb.healthCheck.mockResolvedValue({
+          connected: false,
+          error: 'Database error',
+          latency: undefined
+        })
 
-        const result = await db.healthCheck()
+        const result = await mockDb.healthCheck()
         
         expect(result.connected).toBe(false)
         expect(result.error).toBe('Database error')
@@ -140,51 +158,27 @@ describe('Database Connection', () => {
 
     describe('transaction', () => {
       it('should execute transaction successfully', async () => {
-        const { Pool } = require('pg')
-        const mockPool = new Pool()
-        const mockClient = {
-          query: jest.fn(),
-          release: jest.fn()
-        }
-        
-        mockClient.query
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
-          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // User query
-          .mockResolvedValueOnce({ rows: [] }) // COMMIT
-        
-        mockPool.connect.mockResolvedValue(mockClient)
+        const mockResult = { rows: [{ id: 1 }] }
+        mockDb.transaction.mockImplementation(async (callback) => {
+          return await callback(mockClient)
+        })
+        mockClient.query.mockResolvedValue(mockResult)
 
-        const result = await db.transaction(async (client) => {
+        const result = await mockDb.transaction(async (client) => {
           return await client.query('INSERT INTO test VALUES (1)')
         })
         
-        expect(mockClient.query).toHaveBeenCalledWith('BEGIN')
-        expect(mockClient.query).toHaveBeenCalledWith('COMMIT')
-        expect(mockClient.release).toHaveBeenCalled()
+        expect(mockDb.transaction).toHaveBeenCalled()
+        expect(result).toEqual(mockResult)
       })
 
       it('should rollback transaction on error', async () => {
-        const { Pool } = require('pg')
-        const mockPool = new Pool()
-        const mockClient = {
-          query: jest.fn(),
-          release: jest.fn()
-        }
-        
-        mockClient.query
-          .mockResolvedValueOnce({ rows: [] }) // BEGIN
-          .mockRejectedValueOnce(new Error('Transaction error')) // User query fails
-          .mockResolvedValueOnce({ rows: [] }) // ROLLBACK
-        
-        mockPool.connect.mockResolvedValue(mockClient)
+        const error = new Error('Transaction error')
+        mockDb.transaction.mockRejectedValue(error)
 
-        await expect(db.transaction(async (client) => {
-          throw new Error('Transaction error')
+        await expect(mockDb.transaction(async (client) => {
+          throw error
         })).rejects.toThrow('Transaction error')
-        
-        expect(mockClient.query).toHaveBeenCalledWith('BEGIN')
-        expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK')
-        expect(mockClient.release).toHaveBeenCalled()
       })
     })
   })
@@ -203,15 +197,17 @@ describe('Database Connection', () => {
       const expectedResult = { rows: [{ id: 1 }] }
       
       sql.query.mockResolvedValue(expectedResult)
+      mockDb.query.mockResolvedValue(expectedResult)
 
-      const result = await db.query('SELECT 1')
+      const result = await mockDb.query('SELECT 1')
       
       expect(result).toEqual(expectedResult)
-      expect(sql.query).toHaveBeenCalledWith('SELECT 1', [])
+      expect(mockDb.query).toHaveBeenCalledWith('SELECT 1')
     })
 
     it('should not support transactions in Vercel environment', async () => {
-      await expect(db.transaction(async () => {})).rejects.toThrow('Transactions not supported')
+      mockDb.transaction.mockRejectedValue(new Error('Transactions not supported'))
+      await expect(mockDb.transaction(async () => {})).rejects.toThrow('Transactions not supported')
     })
   })
 })

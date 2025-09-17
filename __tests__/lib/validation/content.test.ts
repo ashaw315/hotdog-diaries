@@ -7,8 +7,8 @@ describe('ContentValidator', () => {
       const validData = {
         content_text: 'Amazing hotdog content!',
         content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/user/status/123',
+        source_platform: SourcePlatform.REDDIT,
+        original_url: 'https://reddit.com/r/hotdogs/test',
         original_author: 'testuser'
       }
 
@@ -19,8 +19,8 @@ describe('ContentValidator', () => {
     it('should require at least one content field', () => {
       const invalidData = {
         content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/user/status/123'
+        source_platform: SourcePlatform.REDDIT,
+        original_url: 'https://reddit.com/r/hotdogs/test'
       }
 
       const errors = ContentValidator.validate(invalidData)
@@ -34,14 +34,14 @@ describe('ContentValidator', () => {
       const invalidData = {
         content_text: 'Test content',
         content_type: 'invalid' as ContentType,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/user/status/123'
+        source_platform: SourcePlatform.REDDIT,
+        original_url: 'https://reddit.com/r/hotdogs/test'
       }
 
       const errors = ContentValidator.validate(invalidData)
       expect(errors).toContainEqual({
         field: 'content_type',
-        message: 'Invalid content type. Must be one of: text, image, video, mixed'
+        message: 'Invalid content type. Must be one of: text, image, video, gif, mixed'
       })
     })
 
@@ -50,13 +50,13 @@ describe('ContentValidator', () => {
         content_text: 'Test content',
         content_type: ContentType.TEXT,
         source_platform: 'invalid' as SourcePlatform,
-        original_url: 'https://twitter.com/user/status/123'
+        original_url: 'https://reddit.com/r/hotdogs/test'
       }
 
       const errors = ContentValidator.validate(invalidData)
       expect(errors).toContainEqual({
         field: 'source_platform',
-        message: 'Invalid source platform. Must be one of: reddit, mastodon, flickr, youtube, unsplash, news'
+        message: 'Invalid source platform. Must be one of: reddit, youtube, pixabay, news, mastodon, bluesky, giphy, tumblr, lemmy'
       })
     })
 
@@ -64,7 +64,7 @@ describe('ContentValidator', () => {
       const invalidData = {
         content_text: 'Test content',
         content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
+        source_platform: SourcePlatform.REDDIT,
         original_url: 'not-a-url'
       }
 
@@ -79,8 +79,8 @@ describe('ContentValidator', () => {
       const invalidData = {
         content_image_url: 'https://example.com/image.jpg',
         content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/user/status/123'
+        source_platform: SourcePlatform.REDDIT,
+        original_url: 'https://reddit.com/r/hotdogs/test'
       }
 
       const errors = ContentValidator.validate(invalidData)
@@ -159,8 +159,8 @@ describe('ContentValidator', () => {
       const invalidData = {
         content_text: longText,
         content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/user/status/123'
+        source_platform: SourcePlatform.REDDIT,
+        original_url: 'https://reddit.com/r/hotdogs/test'
       }
 
       const errors = ContentValidator.validate(invalidData)
@@ -175,8 +175,8 @@ describe('ContentValidator', () => {
       const invalidData = {
         content_text: 'Test content',
         content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/user/status/123',
+        source_platform: SourcePlatform.REDDIT,
+        original_url: 'https://reddit.com/r/hotdogs/test',
         original_author: longAuthor
       }
 
@@ -258,8 +258,8 @@ describe('validateContent', () => {
     const validData = {
       content_text: 'Valid content',
       content_type: ContentType.TEXT,
-      source_platform: SourcePlatform.TWITTER,
-      original_url: 'https://twitter.com/user/status/123'
+      source_platform: SourcePlatform.REDDIT,
+      original_url: 'https://reddit.com/r/hotdogs/test'
     }
 
     const result = validateContent(validData)
@@ -270,7 +270,7 @@ describe('validateContent', () => {
   it('should return isValid false for invalid content', () => {
     const invalidData = {
       content_type: 'invalid' as ContentType,
-      source_platform: SourcePlatform.TWITTER,
+      source_platform: SourcePlatform.REDDIT,
       original_url: 'invalid-url'
     }
 

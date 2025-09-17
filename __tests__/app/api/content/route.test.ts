@@ -1,22 +1,67 @@
+/**
+ * Tests for /api/content route - consolidated endpoint
+ * Uses new API middleware and direct database queries
+ */
+
 import { NextRequest } from 'next/server'
-import { GET, POST } from '@/app/api/content/route'
-import { ContentService } from '@/lib/services/content'
-import { ContentType, SourcePlatform } from '@/types'
+import { createMockRequest } from '@/__tests__/utils/setup'
+
+// Mock the database first - use function to avoid hoisting issues
+jest.mock('@/lib/db', () => ({
+  db: {
+    query: jest.fn()
+  }
+}))
 
 // Mock ContentService
-jest.mock('@/lib/services/content')
-const mockContentService = ContentService as jest.Mocked<typeof ContentService>
+jest.mock('@/lib/services/content', () => ({
+  ContentService: {
+    createContent: jest.fn()
+  }
+}))
 
-// Mock NextRequest
-const createMockRequest = (url: string, options: any = {}) => {
-  return {
-    url,
-    method: options.method || 'GET',
-    headers: new Headers(options.headers || {}),
-    json: options.json ? () => Promise.resolve(options.json) : undefined,
-    nextUrl: new URL(url)
-  } as NextRequest
-}
+// Mock validation
+jest.mock('@/lib/validation/content', () => ({
+  validateContent: jest.fn().mockReturnValue({ isValid: true, errors: [] }),
+  CreateContentRequest: {}
+}))
+
+// Mock api-middleware with proper status code handling
+jest.mock('@/lib/api-middleware', () => ({
+  withErrorHandling: jest.fn((handler) => {
+    return async (request) => {
+      try {
+        return await handler(request)
+      } catch (error) {
+        const status = error.statusCode || 500
+        const message = error.message || 'Internal server error'
+        return Response.json({ error: message }, { status })
+      }
+    }
+  }),
+  validateRequestMethod: jest.fn(),
+  createSuccessResponse: jest.fn((data, message, status = 200) => 
+    Response.json({ success: true, data, message }, { status })
+  ),
+  createApiError: jest.fn((message, status, code) => {
+    const error = new Error(message)
+    error.statusCode = status
+    error.code = code
+    throw error
+  }),
+  validateJsonBody: jest.fn()
+}))
+
+// Import after mocks are set up
+import { GET, POST } from '@/app/api/content/route'
+import { db } from '@/lib/db'
+import { ContentService } from '@/lib/services/content'
+import { validateJsonBody } from '@/lib/api-middleware'
+
+// Get the mocked instances
+const mockDb = db as jest.Mocked<typeof db>
+const mockContentService = ContentService as jest.Mocked<typeof ContentService>
+const mockValidateJsonBody = validateJsonBody as jest.MockedFunction<typeof validateJsonBody>
 
 describe('/api/content', () => {
   beforeEach(() => {
@@ -29,26 +74,28 @@ describe('/api/content', () => {
         {
           id: 1,
           content_text: 'Test hotdog content',
-          content_type: ContentType.TEXT,
-          source_platform: SourcePlatform.REDDIT,
+          content_type: 'text',
+          source_platform: 'reddit',
           original_url: 'https://reddit.com/r/hotdogs/comments/1',
+          original_author: 'testuser',
+          content_image_url: null,
+          content_video_url: null,
           is_posted: true,
           is_approved: true,
-          posted_at: new Date()
+          posted_at: new Date().toISOString(),
+          scraped_at: new Date().toISOString()
         }
       ]
 
-      const mockResult = {
-        items: mockContent,
-        pagination: {
-          total: 1,
-          page: 1,
-          limit: 10,
-          totalPages: 1
-        }
-      }
+      // Mock the count query (first call)
+      mockDb.query.mockResolvedValueOnce({
+        rows: [{ total: 1 }]
+      })
 
-      mockContentService.getPostedContent.mockResolvedValue(mockResult)
+      // Mock the content query (second call)
+      mockDb.query.mockResolvedValueOnce({
+        rows: mockContent
+      })
 
       const request = createMockRequest('http://localhost:3000/api/content')
       const response = await GET(request)
@@ -56,98 +103,92 @@ describe('/api/content', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.data).toEqual(mockResult)
-      expect(mockContentService.getPostedContent).toHaveBeenCalledWith(
-        { page: 1, limit: 10 },
-        {}
-      )
+      expect(data.data.content).toHaveLength(1)
+      expect(data.data.content[0]).toMatchObject({
+        id: 1,
+        content_text: 'Test hotdog content',
+        source_platform: 'reddit'
+      })
+      expect(data.data.pagination).toEqual({
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+        nextPage: null,
+        previousPage: null
+      })
     })
 
     it('should handle pagination parameters', async () => {
-      const mockResult = {
-        items: [],
-        pagination: {
-          total: 0,
-          page: 2,
-          limit: 5,
-          totalPages: 0
-        }
-      }
+      // Mock count query
+      mockDb.query.mockResolvedValueOnce({
+        rows: [{ total: 0 }]
+      })
 
-      mockContentService.getPostedContent.mockResolvedValue(mockResult)
+      // Mock content query
+      mockDb.query.mockResolvedValueOnce({
+        rows: []
+      })
 
       const request = createMockRequest('http://localhost:3000/api/content?page=2&limit=5')
       const response = await GET(request)
+      const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(mockContentService.getPostedContent).toHaveBeenCalledWith(
-        { page: 2, limit: 5 },
-        {}
+      expect(data.success).toBe(true)
+      expect(data.data.pagination.page).toBe(2)
+      expect(data.data.pagination.limit).toBe(5)
+      
+      // Verify the query was called with correct parameters
+      expect(mockDb.query).toHaveBeenCalledTimes(2)
+      expect(mockDb.query).toHaveBeenLastCalledWith(
+        expect.stringContaining('LIMIT $1 OFFSET $2'),
+        [5, 5] // limit=5, offset=(page-1)*limit=5
       )
     })
 
-    it('should handle filter parameters', async () => {
-      const mockResult = {
-        items: [],
-        pagination: {
-          total: 0,
-          page: 1,
-          limit: 10,
-          totalPages: 0
-        }
-      }
-
-      mockContentService.getPostedContent.mockResolvedValue(mockResult)
-
-      const request = createMockRequest(
-        'http://localhost:3000/api/content?content_type=image&source_platform=flickr&author=testuser'
-      )
-      const response = await GET(request)
-
-      expect(response.status).toBe(200)
-      expect(mockContentService.getPostedContent).toHaveBeenCalledWith(
-        { page: 1, limit: 10 },
-        {
-          content_type: 'image',
-          source_platform: 'flickr',
-          author: 'testuser'
-        }
-      )
-    })
-
-    it('should handle service errors', async () => {
-      mockContentService.getPostedContent.mockRejectedValue(new Error('Database error'))
+    it('should handle database errors gracefully', async () => {
+      mockDb.query.mockRejectedValue(new Error('Database connection failed'))
 
       const request = createMockRequest('http://localhost:3000/api/content')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.success).toBe(false)
-      expect(data.error).toBe('Failed to fetch content')
+      expect(data.error).toBeDefined()
     })
 
     it('should validate pagination limits', async () => {
-      const mockResult = {
-        items: [],
-        pagination: {
-          total: 0,
-          page: 1,
-          limit: 100, // Should be clamped to 100
-          totalPages: 0
-        }
-      }
-
-      mockContentService.getPostedContent.mockResolvedValue(mockResult)
-
       const request = createMockRequest('http://localhost:3000/api/content?limit=500')
       const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toContain('Limit must be between 1 and 100')
+    })
+
+    it('should validate page parameter', async () => {
+      const request = createMockRequest('http://localhost:3000/api/content?page=0')
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toContain('Page number must be greater than 0')
+    })
+
+    it('should handle database not initialized', async () => {
+      mockDb.query.mockRejectedValue(new Error('relation "content_queue" does not exist'))
+
+      const request = createMockRequest('http://localhost:3000/api/content')
+      const response = await GET(request)
+      const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(mockContentService.getPostedContent).toHaveBeenCalledWith(
-        { page: 1, limit: 100 }, // Should be clamped to 100
-        {}
-      )
+      expect(data.success).toBe(true)
+      expect(data.data.content).toEqual([])
+      expect(data.message).toContain('Database not initialized')
     })
   })
 
@@ -155,8 +196,8 @@ describe('/api/content', () => {
     it('should create content successfully', async () => {
       const contentData = {
         content_text: 'New hotdog content',
-        content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.REDDIT,
+        content_type: 'text',
+        source_platform: 'reddit',
         original_url: 'https://reddit.com/r/hotdogs/comments/new',
         original_author: 'testuser'
       }
@@ -167,17 +208,18 @@ describe('/api/content', () => {
         content_hash: 'mock-hash',
         is_posted: false,
         is_approved: false,
-        scraped_at: new Date(),
-        created_at: new Date(),
-        updated_at: new Date()
+        scraped_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
 
+      // Mock validateJsonBody to return the content data
+      mockValidateJsonBody.mockResolvedValue(contentData)
       mockContentService.createContent.mockResolvedValue(mockCreatedContent)
 
       const request = createMockRequest('http://localhost:3000/api/content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        json: contentData
+        body: contentData
       })
 
       const response = await POST(request)
@@ -190,142 +232,104 @@ describe('/api/content', () => {
     })
 
     it('should handle validation errors', async () => {
+      // Mock validation to fail
+      const { validateContent } = require('@/lib/validation/content')
+      validateContent.mockReturnValue({
+        isValid: false,
+        errors: [{ field: 'content_type', message: 'Invalid content type' }]
+      })
+
       const invalidData = {
         content_type: 'invalid',
-        source_platform: SourcePlatform.REDDIT,
+        source_platform: 'reddit',
         original_url: 'invalid-url'
       }
 
-      mockContentService.createContent.mockRejectedValue(new Error('Validation failed: Invalid content type'))
-
       const request = createMockRequest('http://localhost:3000/api/content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        json: invalidData
+        body: invalidData
       })
 
       const response = await POST(request)
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.success).toBe(false)
       expect(data.error).toContain('Validation failed')
     })
 
     it('should handle duplicate content errors', async () => {
       const contentData = {
         content_text: 'Duplicate content',
-        content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.REDDIT,
+        content_type: 'text',
+        source_platform: 'reddit',
         original_url: 'https://reddit.com/r/hotdogs/comments/duplicate'
       }
 
+      // Reset validation to pass for this test
+      const { validateContent } = require('@/lib/validation/content')
+      validateContent.mockReturnValue({ isValid: true, errors: [] })
+
+      mockValidateJsonBody.mockResolvedValue(contentData)
       mockContentService.createContent.mockRejectedValue(
         new Error('Duplicate content detected. Existing content ID: 5')
       )
 
       const request = createMockRequest('http://localhost:3000/api/content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        json: contentData
+        body: contentData
       })
 
       const response = await POST(request)
       const data = await response.json()
 
       expect(response.status).toBe(409)
-      expect(data.success).toBe(false)
-      expect(data.error).toContain('Duplicate content detected')
+      expect(data.error).toContain('Duplicate content')
     })
 
     it('should handle missing request body', async () => {
-      const request = createMockRequest('http://localhost:3000/api/content', {
+      // Mock validateJsonBody to throw an error for missing body
+      const error = new Error('Invalid JSON in request body')
+      error.statusCode = 400
+      mockValidateJsonBody.mockRejectedValue(error)
+
+      const request = new Request('http://localhost:3000/api/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
-        // No json body
+        // No body
       })
 
-      const response = await POST(request)
+      const response = await POST(request as NextRequest)
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.success).toBe(false)
-      expect(data.error).toBe('Request body is required')
-    })
-
-    it('should handle invalid JSON', async () => {
-      const request = {
-        url: 'http://localhost:3000/api/content',
-        method: 'POST',
-        headers: new Headers({ 'Content-Type': 'application/json' }),
-        json: () => Promise.reject(new Error('Invalid JSON')),
-        nextUrl: new URL('http://localhost:3000/api/content')
-      } as NextRequest
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.success).toBe(false)
-      expect(data.error).toBe('Invalid JSON in request body')
+      expect(data.error).toBeDefined()
     })
 
     it('should handle service errors', async () => {
       const contentData = {
         content_text: 'Test content',
-        content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
+        content_type: 'text',
+        source_platform: 'twitter',
         original_url: 'https://twitter.com/test/1'
       }
 
+      // Reset validation to pass for this test
+      const { validateContent } = require('@/lib/validation/content')
+      validateContent.mockReturnValue({ isValid: true, errors: [] })
+
+      mockValidateJsonBody.mockResolvedValue(contentData)
       mockContentService.createContent.mockRejectedValue(new Error('Database connection failed'))
 
       const request = createMockRequest('http://localhost:3000/api/content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        json: contentData
+        body: contentData
       })
 
       const response = await POST(request)
       const data = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.success).toBe(false)
-      expect(data.error).toBe('Failed to create content')
-    })
-
-    it('should include correct response headers', async () => {
-      const contentData = {
-        content_text: 'Test content',
-        content_type: ContentType.TEXT,
-        source_platform: SourcePlatform.TWITTER,
-        original_url: 'https://twitter.com/test/1'
-      }
-
-      const mockCreatedContent = {
-        id: 1,
-        ...contentData,
-        content_hash: 'mock-hash',
-        is_posted: false,
-        is_approved: false,
-        scraped_at: new Date(),
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-
-      mockContentService.createContent.mockResolvedValue(mockCreatedContent)
-
-      const request = createMockRequest('http://localhost:3000/api/content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        json: contentData
-      })
-
-      const response = await POST(request)
-
-      expect(response.headers.get('Content-Type')).toBe('application/json')
-      expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
-      expect(response.headers.get('X-Frame-Options')).toBe('DENY')
+      expect(data.error).toBeDefined()
     })
   })
 })

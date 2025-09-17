@@ -1,5 +1,8 @@
 import { ContentHasher, generateContentHash, checkContentSimilarity } from '@/lib/utils/content-hash'
 
+// Unmock the content hash utilities for this test file since we're testing them directly
+jest.unmock('@/lib/utils/content-hash')
+
 describe('ContentHasher', () => {
   describe('generateHash', () => {
     it('should generate consistent hash for same content', () => {
