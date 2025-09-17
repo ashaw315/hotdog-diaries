@@ -10,6 +10,7 @@ import {
 import { PostedContent } from '@/types'
 import { ContentService } from '@/lib/services/content'
 import { validateContent, CreateContentRequest } from '@/lib/validation/content'
+import { ContentQueueRow, CountQueryResult } from '@/types/database'
 
 async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   validateRequestMethod(request, ['GET'])
@@ -36,15 +37,15 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
 
   try {
     // Get total count for pagination - include both posted and discovered content
-    const countResult = await db.query(`
+    const countResult = await db.query<CountQueryResult>(`
       SELECT COUNT(*) as total 
       FROM content_queue
       WHERE content_status IN ('posted', 'discovered')
     `)
-    const total = parseInt(countResult.rows[0]?.total || '0')
+    const total = parseInt(String(countResult.rows[0]?.total || '0'))
 
     // Get paginated content with diverse platform mixing to prevent clustering
-    const contentResult = await db.query(`
+    const contentResult = await db.query<ContentQueueRow>(`
       WITH ranked_content AS (
         SELECT 
           id,

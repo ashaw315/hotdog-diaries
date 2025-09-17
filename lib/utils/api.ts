@@ -57,9 +57,9 @@ export async function apiGet<T = any>(url: string): Promise<APIResponse<T>> {
 /**
  * Make an authenticated POST request
  */
-export async function apiPost<T = any>(
+export async function apiPost<T = unknown>(
   url: string, 
-  data?: any
+  data?: unknown
 ): Promise<APIResponse<T>> {
   try {
     const response = await authenticatedFetch(url, {
@@ -90,9 +90,9 @@ export async function apiPost<T = any>(
 /**
  * Make an authenticated PUT request
  */
-export async function apiPut<T = any>(
+export async function apiPut<T = unknown>(
   url: string, 
-  data?: any
+  data?: unknown
 ): Promise<APIResponse<T>> {
   try {
     const response = await authenticatedFetch(url, {

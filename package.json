@@ -86,6 +86,7 @@
     "@types/react-dom": "^19.1.7",
     "eslint": "^9.31.0",
     "eslint-config-next": "^15.4.1",
+    "identity-obj-proxy": "^3.0.0",
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
     "tsx": "^4.20.3"

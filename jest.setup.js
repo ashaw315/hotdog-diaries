@@ -197,3 +197,4 @@ jest.mock('@/lib/services/social-media', () => ({
     getPerformanceMetrics: jest.fn().mockResolvedValue([])
   }
 }))
+

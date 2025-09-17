@@ -185,7 +185,7 @@ export interface ContentItem {
   is_posted?: boolean
   is_approved?: boolean
   content_status?: string
-  [key: string]: any // Allow additional properties
+  [key: string]: unknown // Allow additional properties
 }
 
 // API Error types

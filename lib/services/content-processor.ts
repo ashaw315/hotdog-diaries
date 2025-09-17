@@ -5,6 +5,7 @@ import { duplicateDetectionService } from './duplicate-detection'
 import { loggingService } from './logging'
 import { metricsService } from './metrics'
 import { errorHandler } from '@/lib/middleware/error-handler'
+import { ContentQueueRow } from '@/types/database'
 import crypto from 'crypto'
 
 export interface ContentProcessingResult {
@@ -462,7 +463,7 @@ export class ContentProcessor {
     }
   }
 
-  async validateContent(content: any): Promise<ContentValidation> {
+  async validateContent(content: Partial<ContentQueueRow> & Record<string, unknown>): Promise<ContentValidation> {
     const errors: string[] = []
     const warnings: string[] = []
 
@@ -699,7 +700,7 @@ export class ContentProcessor {
     }
   }
 
-  generateContentHash(content: any): string {
+  generateContentHash(content: Partial<ContentQueueRow> & Record<string, unknown>): string {
     const hashInput = [
       content.content_text || '',
       content.content_image_url || '',

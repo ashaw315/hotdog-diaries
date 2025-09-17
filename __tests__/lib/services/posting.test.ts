@@ -1,5 +1,6 @@
 import { PostingService } from '@/lib/services/posting'
 import { db } from '@/lib/db'
+import { ContentQueueRow } from '@/types/database'
 
 // Mock the database and dependencies
 jest.mock('@/lib/db', () => ({
@@ -23,7 +24,10 @@ const mockDb = db as jest.Mocked<typeof db>
 
 describe('PostingService', () => {
   let postingService: PostingService
-  let mockClient: any
+  let mockClient: {
+    query: jest.MockedFunction<any>
+    release: jest.MockedFunction<any>
+  }
 
   beforeEach(() => {
     postingService = new PostingService()

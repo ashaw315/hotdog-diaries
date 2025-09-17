@@ -20,7 +20,7 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
 
     // Build WHERE clause based on type filter
     let whereClause = '1=1'
-    const queryParams: any[] = []
+    const queryParams: (string | number | boolean)[] = []
     
     switch (type) {
       case 'pending':
@@ -134,7 +134,7 @@ async function updateContentHandler(request: NextRequest): Promise<NextResponse>
 
     // Build update query dynamically based on provided fields
     const updateFields: string[] = []
-    const queryParams: any[] = []
+    const queryParams: (string | number | boolean)[] = []
     let paramCount = 1
 
     if (typeof is_approved === 'boolean') {

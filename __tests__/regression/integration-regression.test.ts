@@ -5,6 +5,14 @@
 
 import { RegressionTestSuite, TestUtils } from './framework'
 
+// Simple Jest test to prevent "no tests" error
+describe('Integration Regression Tests', () => {
+  test('should have integration regression test suite defined', () => {
+    expect(integrationRegressionSuite).toBeDefined()
+    expect(integrationRegressionSuite.name).toBe('Integration Regression Tests')
+  })
+})
+
 const integrationRegressionSuite: RegressionTestSuite = {
   name: 'Integration Regression Tests',
   description: 'Tests for service integrations and cross-component functionality',

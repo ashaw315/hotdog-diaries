@@ -9,9 +9,21 @@ const customJestConfig = {
   testEnvironment: 'jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Handle CSS and static assets
+    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(jose)/)'
+    'node_modules/(?!(jose|@testing-library|@radix-ui)/)',
+  ],
+  testMatch: [
+    '**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)',
+    '**/*.(test|spec).(js|jsx|ts|tsx)',
+  ],
+  testPathIgnorePatterns: [
+    '__tests__/regression/framework.ts',
+    'node_modules/',
+    '.next/',
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
@@ -20,10 +32,14 @@ const customJestConfig = {
     'hooks/**/*.{js,jsx,ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
+    '!**/__tests__/**',
+    '!**/coverage/**',
+    '!**/scripts/**',
   ],
   testEnvironmentOptions: {
     customExportConditions: [''],
   },
+  // Mock globals for Node.js compatibility
   globals: {
     TextEncoder: TextEncoder,
     TextDecoder: TextDecoder,

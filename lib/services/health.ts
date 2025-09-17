@@ -1,6 +1,7 @@
 import { db, DatabaseConnection } from '@/lib/db'
 import { query } from '@/lib/db-query-builder'
 import { loggingService } from './logging'
+import { CountQueryResult } from '@/types/database'
 // Social media services will be imported dynamically to avoid circular dependencies
 
 export enum HealthStatus {
@@ -275,7 +276,7 @@ export class HealthService {
         total: 0
       }
 
-      queueStats.forEach((row: any) => {
+      queueStats.forEach((row: CountQueryResult & { status?: string }) => {
         const count = parseInt(row.count)
         stats.total += count
         if (row.status in stats) {
@@ -627,25 +628,27 @@ export class HealthService {
   /**
    * Create a failed health check result
    */
-  private createFailedCheck(name: string, reason: any): HealthCheck {
+  private createFailedCheck(name: string, reason: unknown): HealthCheck {
+    const errorMessage = reason instanceof Error ? reason.message : String(reason)
     return {
       name,
       status: HealthStatus.CRITICAL,
-      message: `Health check failed: ${reason?.message || reason}`,
+      message: `Health check failed: ${errorMessage}`,
       responseTime: 0,
       lastChecked: new Date(),
-      metadata: { error: reason?.message || reason }
+      metadata: { error: errorMessage }
     }
   }
 
   /**
    * Create a failed API health check result
    */
-  private createFailedAPICheck(name: string, reason: any): APIHealthCheck {
+  private createFailedAPICheck(name: string, reason: unknown): APIHealthCheck {
+    const errorMessage = reason instanceof Error ? reason.message : String(reason)
     return {
       name: `${name} API`,
       status: HealthStatus.CRITICAL,
-      message: `API health check failed: ${reason?.message || reason}`,
+      message: `API health check failed: ${errorMessage}`,
       responseTime: 0,
       lastChecked: new Date(),
       metadata: { error: reason?.message || reason }

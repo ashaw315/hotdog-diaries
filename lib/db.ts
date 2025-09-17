@@ -5,6 +5,7 @@ import { Database } from 'sqlite'
 import sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
 import path from 'path'
+import { QueryResult as DbQueryResult, DatabaseHealthCheck } from '@/types/database'
 
 interface DatabaseConfig {
   host: string
@@ -145,7 +146,7 @@ class DatabaseConnection {
     }
   }
 
-  async query<T extends any = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+  async query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
     if (this.isSqlite) {
       return this.querySqlite<T>(text, params)
     }
@@ -165,10 +166,11 @@ class DatabaseConnection {
         }
         
         return result
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as Error & { code?: string }
         console.error('Vercel Postgres query error:', {
-          error: error.message,
-          code: error.code,
+          error: err.message,
+          code: err.code,
           query: text.substring(0, 100)
         })
         throw error
@@ -199,12 +201,13 @@ class DatabaseConnection {
         }
         
         return result
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as Error & { code?: string }
         const duration = Date.now() - start
         retries--
         
         // If it's a connection error and we have retries left, try to reconnect
-        if ((error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') && retries > 0) {
+        if ((err.code === 'ECONNRESET' || err.code === 'ENOTFOUND') && retries > 0) {
           console.warn(`Database connection error, retrying... (${retries} attempts left)`)
           this.pool = null
           await this.connect()
@@ -214,8 +217,8 @@ class DatabaseConnection {
         console.error('Query error', { 
           text: text.substring(0, 100), 
           duration, 
-          error: error.message,
-          code: error.code
+          error: err.message,
+          code: err.code
         })
         throw error
       }
@@ -224,7 +227,7 @@ class DatabaseConnection {
     throw new Error('Database query failed after all retries')
   }
 
-  private async querySqlite<T extends any = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+  private async querySqlite<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
     if (!this.sqliteDb) {
       await this.connect()
     }
@@ -307,12 +310,13 @@ class DatabaseConnection {
           fields: []
         } as QueryResult<T>
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as Error
       const duration = Date.now() - start
       console.error('SQLite Query error', { 
         text: text.substring(0, 100), 
         duration, 
-        error: error.message
+        error: err.message
       })
       throw error
     }
@@ -379,7 +383,7 @@ class DatabaseConnection {
     }
   }
 
-  async healthCheck(): Promise<{ connected: boolean; latency?: number; error?: string }> {
+  async healthCheck(): Promise<DatabaseHealthCheck> {
     try {
       const start = Date.now()
       await this.query('SELECT 1 as health_check')
@@ -439,7 +443,7 @@ export async function logToDatabase(
   level: LogLevel,
   message: string,
   component: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): Promise<void> {
   try {
     // Convert LogLevel enum to database-compatible string

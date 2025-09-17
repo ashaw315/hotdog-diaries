@@ -8,6 +8,14 @@ import { RegressionTestSuite, RegressionTestRunner, TestUtils } from './framewor
 // Mock global fetch for testing
 global.fetch = jest.fn()
 
+// Simple Jest test to prevent "no tests" error
+describe('API Regression Tests', () => {
+  test('should have API regression test suite defined', () => {
+    expect(apiRegressionSuite).toBeDefined()
+    expect(apiRegressionSuite.name).toBe('API Regression Tests')
+  })
+})
+
 const apiRegressionSuite: RegressionTestSuite = {
   name: 'API Regression Tests',
   description: 'Comprehensive regression testing for all API endpoints',

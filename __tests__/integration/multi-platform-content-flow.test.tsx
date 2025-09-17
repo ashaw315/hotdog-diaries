@@ -72,7 +72,7 @@ describe('Multi-Platform Content Flow Integration Tests', () => {
           insert: jest.fn().mockResolvedValue(undefined),
           upsert: jest.fn().mockResolvedValue(undefined)
         }
-      } as any)
+      })
 
       // Mock platform scanning services
       mockRedditScanning.getScanConfig.mockResolvedValue({

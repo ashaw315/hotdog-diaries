@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { ContentQueueRow } from '@/types/database'
 import { schedulingService } from './scheduling'
 import { loggingService } from './logging'
 
@@ -403,7 +404,7 @@ export class PostingService {
   /**
    * Analyze recent content for patterns
    */
-  private analyzeRecentContent(recentPosts: any[]): {
+  private analyzeRecentContent(recentPosts: ContentQueueRow[]): {
     contentTypes: Record<string, number>
     platforms: Record<string, number>
     lastContentType?: string
@@ -438,7 +439,7 @@ export class PostingService {
   /**
    * Determine content type from content object
    */
-  private determineContentType(content: any): string {
+  private determineContentType(content: ContentQueueRow): string {
     if (content.content_video_url) return 'video'
     if (content.content_image_url) {
       // Check if it's a GIF
@@ -522,7 +523,7 @@ export class PostingService {
   /**
    * Get platforms used in recent posts to avoid repetition
    */
-  private getRecentPlatforms(recentPosts: any[], hours: number): string[] {
+  private getRecentPlatforms(recentPosts: ContentQueueRow[], hours: number): string[] {
     const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000)
     
     return recentPosts
@@ -534,13 +535,13 @@ export class PostingService {
   /**
    * Select content by preferred type, avoiding certain platforms
    */
-  private async selectContentByType(contentType: string, avoidPlatforms: string[]): Promise<any | null> {
+  private async selectContentByType(contentType: string, avoidPlatforms: string[]): Promise<ContentQueueRow | null> {
     try {
       let whereClause = `
         WHERE is_approved = true 
         AND is_posted = false
       `
-      const params: any[] = []
+      const params: (string | number)[] = []
 
       // Add content type filter
       if (contentType === 'video') {
