@@ -1,12 +1,19 @@
 #!/usr/bin/env tsx
 
-import { db } from '../lib/db'
+import { db } from '../../lib/db'
+import { ENV } from '../../lib/env'
 
 console.log('🧪 Testing YouTube Scanner Direct API Call...\n')
 
 async function main() {
   try {
-    const YOUTUBE_API_KEY = 'AIzaSyBUeB1_I_qu3Tl2zu0JD5tdC6NuVXwiKxA'
+    const YOUTUBE_API_KEY = ENV.YOUTUBE_API_KEY
+    
+    if (!YOUTUBE_API_KEY) {
+      console.error('❌ YOUTUBE_API_KEY is not configured')
+      console.error('Please add YOUTUBE_API_KEY to your .env.local file')
+      process.exit(1)
+    }
     
     console.log('1. Testing direct YouTube API search...')
     

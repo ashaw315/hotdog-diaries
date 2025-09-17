@@ -11,7 +11,12 @@ echo ""
 
 # Configuration
 SITE_URL="https://hotdog-diaries.vercel.app"
-AUTH_TOKEN="${AUTH_TOKEN:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoiYWRtaW4iLCJpYXQiOjE3NTYyNjA2NTEsImV4cCI6MTc1NjM0NzA1MSwiYXVkIjoiYWRtaW4iLCJpc3MiOiJob3Rkb2ctZGlhcmllcyJ9.5-YxtntkiDWCAKoR5zhCaX4Sj-nkhn0dgGRhg6HzIQ8}"
+# AUTH_TOKEN should be set in environment variables
+if [ -z "$AUTH_TOKEN" ]; then
+    echo "❌ Error: AUTH_TOKEN environment variable is not set"
+    echo "Please set AUTH_TOKEN in your .env.local file or export it before running this script"
+    exit 1
+fi
 
 # Success criteria counters
 CHECKS_PASSED=0

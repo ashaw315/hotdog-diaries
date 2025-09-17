@@ -89,10 +89,9 @@ export class RedditService {
           throw new Error('Demo/test credentials detected, using mock client')
         }
         
-        // TEMPORARY: Allow test credentials for debugging
-        console.log('🔍 BYPASSING test credential check for debugging')
-        if (clientId === 'rEmsT6H1Tln9TZ4mSeDhWg') {
-          console.log('⚠️ WARNING: Using test credentials - these will fail Reddit API calls')
+        // Log warning for potentially invalid credentials
+        if (clientId.length < 15 || clientSecret.length < 20) {
+          console.log('⚠️ WARNING: Reddit credentials may be invalid - API calls might fail')
         }
 
         // Create real Snoowrap client with app-only authentication

@@ -1,12 +1,19 @@
 #!/usr/bin/env tsx
 
 import { db } from '../lib/db'
+import { ENV } from '../lib/env'
 
 console.log('🧪 Comprehensive YouTube API Test - Getting Real Content...\n')
 
 async function main() {
   try {
-    const YOUTUBE_API_KEY = 'AIzaSyBUeB1_I_qu3Tl2zu0JD5tdC6NuVXwiKxA'
+    const YOUTUBE_API_KEY = ENV.YOUTUBE_API_KEY
+    
+    if (!YOUTUBE_API_KEY) {
+      console.error('❌ YOUTUBE_API_KEY is not configured in environment variables')
+      console.error('Please add YOUTUBE_API_KEY to your .env.local file')
+      process.exit(1)
+    }
     const searchTerms = [
       "hotdog eating contest", 
       "hotdog recipe", 

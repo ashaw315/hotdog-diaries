@@ -1,9 +1,14 @@
 #!/usr/bin/env tsx
 
-// Force load environment variables
-process.env.YOUTUBE_API_KEY = 'AIzaSyBUeB1_I_qu3Tl2zu0JD5tdC6NuVXwiKxA'
+import { ENV } from '../../lib/env'
+import { youtubeScanningService } from '../../lib/services/youtube-scanning'
 
-import { youtubeScanningService } from '../lib/services/youtube-scanning'
+// Check if YouTube API key is configured
+if (!ENV.YOUTUBE_API_KEY) {
+  console.error('❌ YOUTUBE_API_KEY is not configured in environment variables')
+  console.error('Please add YOUTUBE_API_KEY to your .env.local file')
+  process.exit(1)
+}
 
 console.log('🧪 Testing YouTube Scanner with Real API...\n')
 
