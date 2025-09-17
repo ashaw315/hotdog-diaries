@@ -1,5 +1,7 @@
 import { loggingService } from './logging'
 import { metricsService as newMetricsService } from './metrics-service'
+import { query, insert } from '@/lib/db-query-builder'
+import { db } from '@/lib/db'
 
 // Re-export the new metrics service to maintain backward compatibility
 export { metricsService } from './metrics-service'

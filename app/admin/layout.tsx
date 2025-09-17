@@ -3,7 +3,7 @@
 import { Suspense, useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
-import { AuthProvider, useRequireAuth } from '@/contexts/AuthContext'
+import { AuthProvider, useRequireAuth } from '@/components/providers/AuthProvider'
 import './admin-nav.css'
 
 interface AdminLayoutProps {

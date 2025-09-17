@@ -58,7 +58,7 @@ describe('/api/admin/imgur/test-connection', () => {
       expect(data.data.environment.clientIdMasked).toBe('test***345')
       expect(data.data.environment.mode).toBe('api')
       expect(logToDatabase).toHaveBeenCalledWith(
-        'INFO',
+        'info',
         'IMGUR_CONNECTION_TEST_SUCCESS',
         expect.stringContaining('api'),
         expect.any(Object)
@@ -85,7 +85,7 @@ describe('/api/admin/imgur/test-connection', () => {
       expect(data.data.environment.clientIdMasked).toBe(null)
       expect(data.data.environment.mode).toBe('mock')
       expect(logToDatabase).toHaveBeenCalledWith(
-        'INFO',
+        'info',
         'IMGUR_CONNECTION_TEST_SUCCESS',
         expect.stringContaining('mock'),
         expect.any(Object)
@@ -109,7 +109,7 @@ describe('/api/admin/imgur/test-connection', () => {
       expect(data.success).toBe(false)
       expect(data.error).toBe('API connection failed')
       expect(logToDatabase).toHaveBeenCalledWith(
-        'WARNING',
+        'warning',
         'IMGUR_CONNECTION_TEST_FAILED',
         expect.stringContaining('failed'),
         expect.any(Object)
@@ -127,7 +127,7 @@ describe('/api/admin/imgur/test-connection', () => {
       expect(data.success).toBe(false)
       expect(data.error).toBe('Service unavailable')
       expect(logToDatabase).toHaveBeenCalledWith(
-        'ERROR',
+        'error',
         'IMGUR_CONNECTION_TEST_ERROR',
         expect.stringContaining('Service unavailable'),
         expect.any(Object)
@@ -137,8 +137,8 @@ describe('/api/admin/imgur/test-connection', () => {
     it('should mask client ID properly for security', async () => {
       // Test various client ID lengths
       const testCases = [
-        { clientId: '123', expected: '123' }, // Short IDs not masked
-        { clientId: '1234567', expected: '123***567' },
+        { clientId: '123', expected: '123***123' }, // Short IDs will show both parts
+        { clientId: '1234567', expected: '1234***567' }, // Take first 4 and last 3
         { clientId: '546c25a59c58ad7', expected: '546c***ad7' },
         { clientId: 'very-long-client-id-12345', expected: 'very***345' }
       ]

@@ -3,14 +3,17 @@ import {
   validateRequestMethod,
   createSuccessResponse,
   createApiError,
-  handleApiError
+  handleApiError,
+  verifyAdminAuth
 } from '@/lib/api-middleware'
 import { db } from '@/lib/db'
 
 async function getContentHandler(request: NextRequest): Promise<NextResponse> {
-  validateRequestMethod(request, ['GET'])
-
   try {
+    const authResult = await verifyAdminAuth(request)
+    if (!authResult.success) {
+      throw createApiError('Authentication required', 401, 'UNAUTHORIZED')
+    }
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -59,7 +62,7 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
         admin_notes,
         youtube_data,
         flickr_data,
-        unsplash_data,
+        unsplash_data
       FROM content_queue
       WHERE ${whereClause}
       ORDER BY scraped_at DESC
@@ -209,6 +212,97 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
     return await updateContentHandler(request)
+  } catch (error) {
+    return await handleApiError(error, request, '/api/admin/content')
+  }
+}
+
+async function createContentHandler(request: NextRequest): Promise<NextResponse> {
+  try {
+    const authResult = await verifyAdminAuth(request)
+    if (!authResult.success) {
+      throw createApiError('Authentication required', 401, 'UNAUTHORIZED')
+    }
+
+    const body = await request.json()
+    const {
+      contentText,
+      contentType,
+      sourcePlatform,
+      sourceUrl,
+      originalAuthor,
+      contentImageUrl,
+      contentVideoUrl,
+      confidenceScore = 0.5
+    } = body
+
+    if (!contentText || !contentType || !sourcePlatform) {
+      throw createApiError(
+        'contentText, contentType, and sourcePlatform are required', 
+        400, 
+        'MISSING_REQUIRED_FIELDS'
+      )
+    }
+
+    // Generate content hash for duplicate detection
+    const crypto = require('crypto')
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(`${contentText}-${sourcePlatform}`)
+      .digest('hex')
+
+    // Check for duplicates
+    const existingContent = await db.query(
+      'SELECT id FROM content_queue WHERE content_hash = $1',
+      [contentHash]
+    )
+
+    if (existingContent.rows.length > 0) {
+      throw createApiError('Duplicate content detected', 409, 'DUPLICATE_CONTENT')
+    }
+
+    // Insert new content
+    const result = await db.query(
+      `INSERT INTO content_queue (
+        content_text, content_type, source_platform, source_url,
+        original_author, content_image_url, content_video_url,
+        content_hash, confidence_score, scraped_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      RETURNING *`,
+      [
+        contentText,
+        contentType,
+        sourcePlatform,
+        sourceUrl,
+        originalAuthor,
+        contentImageUrl,
+        contentVideoUrl,
+        contentHash,
+        confidenceScore
+      ]
+    )
+
+    return createSuccessResponse(
+      result.rows[0],
+      'Content created successfully'
+    )
+
+  } catch (error) {
+    console.error('Failed to create content:', error)
+    if (error instanceof Error && 
+        (error.message.includes('UNAUTHORIZED') || 
+         error.message.includes('DUPLICATE_CONTENT') ||
+         error.message.includes('MISSING_REQUIRED_FIELDS'))) {
+      throw error
+    }
+    throw createApiError('Failed to create content', 500, 'CONTENT_CREATE_ERROR')
+  }
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  try {
+    validateRequestMethod(request, ['POST'])
+    return await createContentHandler(request)
   } catch (error) {
     return await handleApiError(error, request, '/api/admin/content')
   }

@@ -57,23 +57,22 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     
-    // Validate required fields
-    const requiredFields = ['isEnabled', 'scanInterval', 'maxPostsPerScan', 'minScore']
-    for (const field of requiredFields) {
-      if (body[field] === undefined || body[field] === null) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: `Missing required field: ${field}`,
-            message: 'Invalid configuration data'
-          },
-          { status: 400 }
-        )
-      }
+    // Validate that at least one field is provided for partial updates
+    const hasValidFields = ['isEnabled', 'scanInterval', 'maxPostsPerScan', 'minScore', 'sortBy', 'timeRange', 'includeNSFW', 'targetSubreddits', 'searchTerms'].some(field => body[field] !== undefined)
+    
+    if (!hasValidFields) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'At least one configuration field must be provided',
+          message: 'Invalid configuration data'
+        },
+        { status: 400 }
+      )
     }
 
-    // Validate ranges
-    if (body.scanInterval < 5 || body.scanInterval > 1440) {
+    // Validate ranges for provided fields only
+    if (body.scanInterval !== undefined && (body.scanInterval < 5 || body.scanInterval > 1440)) {
       return NextResponse.json(
         { 
           success: false, 
@@ -84,7 +83,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (body.maxPostsPerScan < 1 || body.maxPostsPerScan > 100) {
+    if (body.maxPostsPerScan !== undefined && (body.maxPostsPerScan < 1 || body.maxPostsPerScan > 100)) {
       return NextResponse.json(
         { 
           success: false, 
@@ -95,7 +94,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (body.minScore < 0) {
+    if (body.minScore !== undefined && body.minScore < 0) {
       return NextResponse.json(
         { 
           success: false, 
@@ -129,16 +128,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update configuration
-    const configUpdate: Partial<RedditScanConfig> = {
-      isEnabled: body.isEnabled,
-      scanInterval: body.scanInterval,
-      maxPostsPerScan: body.maxPostsPerScan,
-      minScore: body.minScore,
-      sortBy: body.sortBy || 'hot',
-      timeRange: body.timeRange || 'week',
-      includeNSFW: body.includeNSFW || false
-    }
+    // Update configuration (only include provided fields)
+    const configUpdate: Partial<RedditScanConfig> = {}
+    
+    if (body.isEnabled !== undefined) configUpdate.isEnabled = body.isEnabled
+    if (body.scanInterval !== undefined) configUpdate.scanInterval = body.scanInterval
+    if (body.maxPostsPerScan !== undefined) configUpdate.maxPostsPerScan = body.maxPostsPerScan
+    if (body.minScore !== undefined) configUpdate.minScore = body.minScore
+    if (body.sortBy !== undefined) configUpdate.sortBy = body.sortBy
+    if (body.timeRange !== undefined) configUpdate.timeRange = body.timeRange
+    if (body.includeNSFW !== undefined) configUpdate.includeNSFW = body.includeNSFW
 
     if (body.targetSubreddits) {
       configUpdate.targetSubreddits = body.targetSubreddits

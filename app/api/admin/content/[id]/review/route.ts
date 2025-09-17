@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { createDeprecatedHandler } from '@/lib/api-deprecation'
 
-export async function PUT(
+// Original handler for backward compatibility
+async function originalPUTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   try {
     const resolvedParams = await params
     const contentId = resolvedParams.id
@@ -55,3 +57,33 @@ export async function PUT(
     )
   }
 }
+
+// Deprecated handler with redirection to consolidated endpoint
+export const PUT = createDeprecatedHandler(
+  '/api/admin/content/[id]/review',
+  async (request: NextRequest, context: any): Promise<NextResponse> => {
+    try {
+      // Forward to the new consolidated content endpoint
+      const { PATCH } = await import('@/app/api/admin/content/[id]/route')
+      
+      // Transform the request to use the new API format
+      const body = await request.json()
+      const status = body.action === 'approve' ? 'approved' : 'rejected'
+      const newRequest = new NextRequest(request.url.replace('/review', ''), {
+        method: 'PATCH',
+        headers: request.headers,
+        body: JSON.stringify({ 
+          status,
+          reason: body.reason || body.notes || 'Legacy review endpoint',
+          notes: body.notes
+        })
+      })
+      
+      return await PATCH(newRequest, context)
+    } catch (error) {
+      console.error('Error redirecting review to consolidated endpoint:', error)
+      // Fallback to original handler
+      return await originalPUTHandler(request, context)
+    }
+  }
+)

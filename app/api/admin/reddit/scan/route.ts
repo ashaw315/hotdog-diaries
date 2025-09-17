@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { redditScanningService } from '@/lib/services/reddit-scanning'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { 
+  createDeprecatedHandler, 
+  createPlatformScanRedirectHandler 
+} from '@/lib/api-deprecation'
 
-export async function POST(request: NextRequest) {
+// Original handler for backward compatibility
+async function originalPOSTHandler(request: NextRequest): Promise<NextResponse> {
   try {
     // TODO: Add authentication check here
     // const auth = await verifyAdminAuth(request)
@@ -56,7 +61,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+}
+
+// Original GET handler for backward compatibility  
+async function originalGETHandler(request: NextRequest): Promise<NextResponse> {
   try {
     // TODO: Add authentication check here
     
@@ -87,3 +95,14 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+// Deprecated handlers with redirection to consolidated endpoints
+export const POST = createDeprecatedHandler(
+  '/api/admin/reddit/scan',
+  createPlatformScanRedirectHandler('reddit')
+)
+
+export const GET = createDeprecatedHandler(
+  '/api/admin/reddit/scan', 
+  originalGETHandler
+)

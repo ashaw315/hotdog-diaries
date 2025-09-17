@@ -107,7 +107,7 @@ describe('/api/admin/reddit/settings', () => {
     })
 
     it('should validate required fields', async () => {
-      const invalidConfig = { scanInterval: 45 } // missing required fields
+      const invalidConfig = {} // no fields provided
 
       mockRequest = new NextRequest('http://localhost:3000/api/admin/reddit/settings', {
         method: 'POST',
@@ -120,7 +120,7 @@ describe('/api/admin/reddit/settings', () => {
 
       expect(response.status).toBe(400)
       expect(data.success).toBe(false)
-      expect(data.error).toContain('Missing required field')
+      expect(data.error).toBe('At least one configuration field must be provided')
       expect(data.message).toBe('Invalid configuration data')
     })
 

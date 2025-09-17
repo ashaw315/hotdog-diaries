@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createDeprecatedHandler, createPlatformScanRedirectHandler } from '@/lib/api-deprecation'
 
-export async function POST(request: NextRequest) {
+// Original handler for backward compatibility
+async function originalPOSTHandler(request: NextRequest): Promise<NextResponse> {
   console.log('🚀 Starting comprehensive scan-all endpoint (8 platforms)...')
   
   try {
@@ -147,3 +149,9 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
+
+// Deprecated handler with redirection to consolidated endpoint
+export const POST = createDeprecatedHandler(
+  '/api/admin/scan-all',
+  createPlatformScanRedirectHandler('all')
+)

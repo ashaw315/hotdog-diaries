@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { NextAuthUtils } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { createDeprecatedHandler } from '@/lib/api-deprecation'
 
-export async function PATCH(
+// Original handler for backward compatibility
+async function originalPATCHHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   try {
     const authResult = await NextAuthUtils.verifyRequestAuth(request)
     if (!authResult.isValid || !authResult.user) {
@@ -97,3 +99,32 @@ export async function PATCH(
     )
   }
 }
+
+// Deprecated handler with redirection to consolidated endpoint
+export const PATCH = createDeprecatedHandler(
+  '/api/admin/content/[id]/schedule',
+  async (request: NextRequest, context: any): Promise<NextResponse> => {
+    try {
+      // Forward to the new consolidated content endpoint
+      const { PATCH: contentPatch } = await import('@/app/api/admin/content/[id]/route')
+      
+      // Transform the request to use the new API format
+      const body = await request.json()
+      const newRequest = new NextRequest(request.url.replace('/schedule', ''), {
+        method: 'PATCH',
+        headers: request.headers,
+        body: JSON.stringify({ 
+          status: 'scheduled', 
+          scheduled_for: body.scheduled_for,
+          reason: 'Legacy schedule endpoint' 
+        })
+      })
+      
+      return await contentPatch(newRequest, context)
+    } catch (error) {
+      console.error('Error redirecting schedule to consolidated endpoint:', error)
+      // Fallback to original handler
+      return await originalPATCHHandler(request, context)
+    }
+  }
+)

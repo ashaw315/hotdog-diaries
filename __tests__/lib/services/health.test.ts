@@ -38,18 +38,15 @@ jest.mock('@/lib/services/reddit', () => ({
   }
 }))
 
-jest.mock('@/lib/services/flickr', () => ({
-  flickrService: {
+jest.mock('@/lib/services/youtube', () => ({
+  YouTubeService: jest.fn().mockImplementation(() => ({
     getApiStatus: jest.fn().mockResolvedValue({
       isAuthenticated: true,
-      rateLimits: { remaining: 50, resetTime: new Date() },
-      tokenExpiresAt: new Date(Date.now() + 86400000), // 24 hours from now
-      lastRequest: new Date()
+      quotaUsed: 100,
+      quotaRemaining: 9900,
+      lastError: null
     })
-  }
-}))
-
-jest.mock('@/lib/services/youtube', () => ({
+  })),
   youtubeService: {
     getApiStatus: jest.fn().mockResolvedValue({
       isAuthenticated: true,
@@ -62,14 +59,28 @@ jest.mock('@/lib/services/youtube', () => ({
   }
 }))
 
-jest.mock('@/lib/services/reddit-scanning', () => ({
-  redditScanningService: {
-    getScanStats: jest.fn().mockResolvedValue({ active: true })
+jest.mock('@/lib/services/bluesky-scanning', () => ({
+  blueskyService: {
+    testConnection: jest.fn().mockResolvedValue({
+      success: true,
+      message: 'Bluesky connection successful',
+      details: { authenticated: true }
+    })
   }
 }))
 
-jest.mock('@/lib/services/flickr-scanning', () => ({
-  flickrScanningService: {
+jest.mock('@/lib/services/imgur-scanning', () => ({
+  imgurScanningService: {
+    testConnection: jest.fn().mockResolvedValue({
+      success: true,
+      message: 'Imgur connection successful',
+      details: { authenticated: true }
+    })
+  }
+}))
+
+jest.mock('@/lib/services/reddit-scanning', () => ({
+  redditScanningService: {
     getScanStats: jest.fn().mockResolvedValue({ active: true })
   }
 }))
@@ -88,12 +99,42 @@ describe('HealthService', () => {
     jest.clearAllMocks()
     
     mockDb = require('@/lib/db').db
+    
+    // Set up healthy default mock for database pool stats
+    mockDb.getPoolStats.mockReturnValue({
+      total: 10,
+      idle: 6,
+      active: 4
+    })
+    
+    // Set up comprehensive query builder mocking for all tests
+    const { query } = require('@/lib/db-query-builder')
+    const mockQueryChain = {
+      select: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      count: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      first: jest.fn().mockResolvedValue({ count: '6' }),
+      execute: jest.fn().mockResolvedValue([
+        { id: '1' },  // For system_logs query in database health check
+        { status: 'pending', count: '50' },
+        { status: 'approved', count: '25' }
+      ])
+    }
+    
+    query.mockReturnValue(mockQueryChain)
+    
     healthService = new HealthService()
   })
 
   describe('checkDatabaseHealth', () => {
     it('should return healthy status for working database', async () => {
-      mockDb.query.mockResolvedValueOnce({ rows: [{ health_check: 1 }] })
+      mockDb.query.mockImplementationOnce(() => {
+        return new Promise(resolve => {
+          setTimeout(() => resolve({ rows: [{ health_check: 1 }] }), 5)
+        })
+      })
 
       const result = await healthService.checkDatabaseHealth()
 
@@ -155,12 +196,14 @@ describe('HealthService', () => {
       const result = await healthService.checkSocialMediaAPIs()
 
       expect(result).toHaveProperty('reddit')
-      expect(result).toHaveProperty('flickr')
       expect(result).toHaveProperty('youtube')
+      expect(result).toHaveProperty('bluesky')
+      expect(result).toHaveProperty('imgur')
       
       expect(result.reddit.status).toBe(HealthStatus.HEALTHY)
-      expect(result.flickr.status).toBe(HealthStatus.HEALTHY)
       expect(result.youtube.status).toBe(HealthStatus.HEALTHY)
+      expect(result.bluesky.status).toBe(HealthStatus.HEALTHY)
+      expect(result.imgur.status).toBe(HealthStatus.HEALTHY)
     })
 
     it('should handle API failures gracefully', async () => {
@@ -171,6 +214,9 @@ describe('HealthService', () => {
 
       expect(result.reddit.status).toBe(HealthStatus.CRITICAL)
       expect(result.reddit.message).toContain('API Error')
+      expect(result.youtube.status).toBe(HealthStatus.HEALTHY)
+      expect(result.bluesky.status).toBe(HealthStatus.HEALTHY)
+      expect(result.imgur.status).toBe(HealthStatus.HEALTHY)
     })
   })
 
@@ -361,6 +407,7 @@ describe('HealthService', () => {
     })
 
     it('should set overall status to warning if any check is warning', async () => {
+      // Ensure database check is successful
       mockDb.query.mockResolvedValue({ rows: [{ health_check: 1 }] })
       mockDb.getPoolStats.mockReturnValue({
         total: 10,
@@ -382,53 +429,86 @@ describe('HealthService', () => {
       const report = await healthService.generateHealthReport()
 
       expect(report.checks.apis.reddit.status).toBe(HealthStatus.CRITICAL)
-      expect(report.checks.apis.flickr.status).toBe(HealthStatus.HEALTHY)
       expect(report.checks.apis.youtube.status).toBe(HealthStatus.HEALTHY)
+      expect(report.checks.apis.bluesky.status).toBe(HealthStatus.HEALTHY)
+      expect(report.checks.apis.imgur.status).toBe(HealthStatus.HEALTHY)
     })
   })
 
   describe('isHealthy', () => {
-    it('should return true for healthy system', async () => {
+    let isolatedHealthService: HealthService
+
+    beforeEach(() => {
+      // Reset all mocks specifically for isHealthy tests
+      jest.clearAllMocks()
+      
+      // Fresh mock setup
       mockDb.query.mockResolvedValue({ rows: [{ health_check: 1 }] })
+      mockDb.getPoolStats.mockReturnValue({
+        total: 10,
+        idle: 6,
+        active: 4
+      })
+      
+      // Reset query builder
+      const { query } = require('@/lib/db-query-builder')
+      const mockQueryChain = {
+        select: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        count: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue({ count: '6' }),
+        execute: jest.fn().mockResolvedValue([
+          { id: '1' },
+          { status: 'pending', count: '50' },
+          { status: 'approved', count: '25' }
+        ])
+      }
+      
+      query.mockReturnValue(mockQueryChain)
 
-      const isHealthy = await healthService.isHealthy()
+      // Create fresh service instance for isolation
+      isolatedHealthService = new HealthService()
+    })
 
+    it('should return true for healthy system', async () => {
+      const isHealthy = await isolatedHealthService.isHealthy()
       expect(isHealthy).toBe(true)
     })
 
     it('should return true for system with warnings', async () => {
-      mockDb.query.mockResolvedValue({ rows: [{ health_check: 1 }] })
       mockDb.getPoolStats.mockReturnValue({
         total: 10,
         idle: 1,
         active: 9 // Warning level
       })
 
-      const isHealthy = await healthService.isHealthy()
-
+      const isHealthy = await isolatedHealthService.isHealthy()
       expect(isHealthy).toBe(true) // Warnings are still considered "healthy"
     })
 
     it('should return false for critical system', async () => {
       mockDb.query.mockRejectedValue(new Error('Database down'))
 
-      const isHealthy = await healthService.isHealthy()
-
+      const isHealthy = await isolatedHealthService.isHealthy()
       expect(isHealthy).toBe(false)
     })
 
     it('should return false on health check failure', async () => {
       // Mock generateHealthReport to throw
-      jest.spyOn(healthService, 'generateHealthReport').mockRejectedValue(new Error('Health check failed'))
+      jest.spyOn(isolatedHealthService, 'generateHealthReport').mockRejectedValue(new Error('Health check failed'))
 
-      const isHealthy = await healthService.isHealthy()
-
+      const isHealthy = await isolatedHealthService.isHealthy()
       expect(isHealthy).toBe(false)
     })
   })
 
   describe('getUptime', () => {
-    it('should return uptime in milliseconds', () => {
+    it('should return uptime in milliseconds', async () => {
+      // Wait a small amount to ensure uptime > 0
+      await new Promise(resolve => setTimeout(resolve, 10))
+      
       const uptime = healthService.getUptime()
 
       expect(typeof uptime).toBe('number')

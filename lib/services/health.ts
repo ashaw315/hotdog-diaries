@@ -53,6 +53,9 @@ export interface SystemHealthReport {
     database: DatabaseHealthCheck
     apis: {
       reddit: APIHealthCheck
+      youtube: APIHealthCheck
+      bluesky: APIHealthCheck
+      imgur: APIHealthCheck
     }
     services: {
       contentQueue: HealthCheck
@@ -189,13 +192,22 @@ export class HealthService {
    */
   async checkSocialMediaAPIs(): Promise<{
     reddit: APIHealthCheck
+    youtube: APIHealthCheck
+    bluesky: APIHealthCheck
+    imgur: APIHealthCheck
   }> {
-    const [reddit] = await Promise.allSettled([
-      this.checkRedditAPI()
+    const [reddit, youtube, bluesky, imgur] = await Promise.allSettled([
+      this.checkRedditAPI(),
+      this.checkYouTubeAPI(),
+      this.checkBlueskyAPI(),
+      this.checkImgurAPI()
     ])
 
     return {
-      reddit: reddit.status === 'fulfilled' ? reddit.value : this.createFailedAPICheck('Reddit', reddit.reason)
+      reddit: reddit.status === 'fulfilled' ? reddit.value : this.createFailedAPICheck('Reddit', reddit.reason),
+      youtube: youtube.status === 'fulfilled' ? youtube.value : this.createFailedAPICheck('YouTube', youtube.reason),
+      bluesky: bluesky.status === 'fulfilled' ? bluesky.value : this.createFailedAPICheck('Bluesky', bluesky.reason),
+      imgur: imgur.status === 'fulfilled' ? imgur.value : this.createFailedAPICheck('Imgur', imgur.reason)
     }
   }
 
@@ -250,7 +262,142 @@ export class HealthService {
     }
   }
 
+  /**
+   * Check YouTube API health
+   */
+  private async checkYouTubeAPI(): Promise<APIHealthCheck> {
+    const startTime = Date.now()
+    
+    try {
+      const { YouTubeService } = await import('./youtube')
+      const youtubeService = new YouTubeService()
+      const status = await youtubeService.getApiStatus()
+      
+      let healthStatus = HealthStatus.HEALTHY
+      let message = 'YouTube API is healthy'
 
+      if (!status.isAuthenticated) {
+        healthStatus = HealthStatus.CRITICAL
+        message = 'YouTube API is not authenticated'
+      } else if (status.quotaRemaining < 100) {
+        healthStatus = HealthStatus.WARNING
+        message = 'YouTube API quota is low'
+      }
+
+      return {
+        name: 'YouTube API',
+        status: healthStatus,
+        message,
+        responseTime: Date.now() - startTime,
+        lastChecked: new Date(),
+        endpoint: 'YouTube API',
+        quotaUsage: {
+          used: status.quotaUsed || 0,
+          limit: status.quotaRemaining ? status.quotaUsed + status.quotaRemaining : 10000,
+          percentage: Math.round(((status.quotaUsed || 0) / ((status.quotaUsed || 0) + (status.quotaRemaining || 10000))) * 100)
+        },
+        metadata: {
+          quotaUsed: status.quotaUsed,
+          quotaRemaining: status.quotaRemaining,
+          lastError: status.lastError
+        }
+      }
+
+    } catch (error) {
+      return {
+        name: 'YouTube API',
+        status: HealthStatus.CRITICAL,
+        message: `YouTube API check failed: ${error.message}`,
+        responseTime: Date.now() - startTime,
+        lastChecked: new Date(),
+        metadata: { error: error.message }
+      }
+    }
+  }
+
+  /**
+   * Check Bluesky API health
+   */
+  private async checkBlueskyAPI(): Promise<APIHealthCheck> {
+    const startTime = Date.now()
+    
+    try {
+      const { blueskyService } = await import('./bluesky-scanning')
+      const status = await blueskyService.testConnection()
+      
+      let healthStatus = HealthStatus.HEALTHY
+      let message = 'Bluesky API is healthy'
+
+      if (!status.success) {
+        healthStatus = HealthStatus.CRITICAL
+        message = 'Bluesky API connection failed'
+      }
+
+      return {
+        name: 'Bluesky API',
+        status: healthStatus,
+        message: status.message || message,
+        responseTime: Date.now() - startTime,
+        lastChecked: new Date(),
+        endpoint: 'Bluesky AT Protocol',
+        metadata: {
+          connectionDetails: status.details
+        }
+      }
+
+    } catch (error) {
+      return {
+        name: 'Bluesky API',
+        status: HealthStatus.CRITICAL,
+        message: `Bluesky API check failed: ${error.message}`,
+        responseTime: Date.now() - startTime,
+        lastChecked: new Date(),
+        metadata: { error: error.message }
+      }
+    }
+  }
+
+  /**
+   * Check Imgur API health
+   */
+  private async checkImgurAPI(): Promise<APIHealthCheck> {
+    const startTime = Date.now()
+    
+    try {
+      const { imgurScanningService } = await import('./imgur-scanning')
+      const status = await imgurScanningService.testConnection()
+      
+      let healthStatus = HealthStatus.HEALTHY
+      let message = 'Imgur API is healthy'
+
+      if (!status.success) {
+        healthStatus = HealthStatus.CRITICAL
+        message = 'Imgur API connection failed'
+      }
+
+      return {
+        name: 'Imgur API',
+        status: healthStatus,
+        message: status.message || message,
+        responseTime: Date.now() - startTime,
+        lastChecked: new Date(),
+        endpoint: 'Imgur API',
+        metadata: {
+          connectionDetails: status.details
+        }
+      }
+
+    } catch (error) {
+      return {
+        name: 'Imgur API',
+        status: HealthStatus.CRITICAL,
+        message: `Imgur API check failed: ${error.message}`,
+        responseTime: Date.now() - startTime,
+        lastChecked: new Date(),
+        metadata: { error: error.message }
+      }
+    }
+  }
 
   /**
    * Check content queue health
@@ -514,7 +661,10 @@ export class HealthService {
       // Process results
       const databaseCheck = database.status === 'fulfilled' ? database.value : this.createFailedCheck('Database', database.reason)
       const apiChecks = apis.status === 'fulfilled' ? apis.value : {
-        reddit: this.createFailedAPICheck('Reddit', apis.reason)
+        reddit: this.createFailedAPICheck('Reddit', apis.reason),
+        youtube: this.createFailedAPICheck('YouTube', apis.reason),
+        bluesky: this.createFailedAPICheck('Bluesky', apis.reason),
+        imgur: this.createFailedAPICheck('Imgur', apis.reason)
       }
       const queueCheck = contentQueue.status === 'fulfilled' ? contentQueue.value : this.createFailedCheck('Content Queue', contentQueue.reason)
       const schedulerCheck = scheduler.status === 'fulfilled' ? scheduler.value : this.createFailedCheck('Scheduler', scheduler.reason)
@@ -537,6 +687,9 @@ export class HealthService {
       const allChecks = [
         databaseCheck,
         apiChecks.reddit,
+        apiChecks.youtube,
+        apiChecks.bluesky,
+        apiChecks.imgur,
         queueCheck,
         schedulerCheck,
         loggingCheck,

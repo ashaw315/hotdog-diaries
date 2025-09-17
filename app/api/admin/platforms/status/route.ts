@@ -1,148 +1,188 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { 
+  validateRequestMethod,
+  createSuccessResponse,
+  createApiError,
+  handleApiError,
+  verifyAdminAuth
+} from '@/lib/api-middleware'
+import { redditScanningService } from '@/lib/services/reddit-scanning'
 import { blueskyService } from '@/lib/services/bluesky-scanning'
-import { youtubeScanningService } from '@/lib/services/youtube-scanning'
-import { unsplashScanningService } from '@/lib/services/unsplash-scanning'
+import { imgurScanningService } from '@/lib/services/imgur-scanning'
+import { YouTubeService } from '@/lib/services/youtube'
 
-export interface PlatformStatus {
-  name: string
-  status: 'available' | 'partial' | 'unavailable' | 'mock'
-  message: string
-  usingMockData: boolean
-  hasApiKey: boolean
-  lastTestTime: string
-  details?: any
+/**
+ * Consolidated Platform Status Endpoint
+ * 
+ * GET /api/admin/platforms/status - Get platform status
+ */
+
+interface PlatformStatus {
+  platform: string
+  isEnabled: boolean
+  isAuthenticated: boolean
+  isHealthy: boolean
+  lastScanTime?: Date | null
+  totalContent?: number
+  errorRate?: number
+  responseTime?: number
+  quotaUsed?: number
+  quotaRemaining?: number
+  healthStatus: 'healthy' | 'warning' | 'error'
+  statusMessage?: string
 }
 
-export interface PlatformStatusResponse {
-  success: boolean
-  timestamp: string
-  platforms: PlatformStatus[]
-  summary: {
-    totalPlatforms: number
-    availablePlatforms: number
-    platformsWithMockData: number
-    platformsWithApiKeys: number
+async function getPlatformStatusHandler(request: NextRequest): Promise<NextResponse> {
+  try {
+    const authResult = await verifyAdminAuth(request)
+    if (!authResult.success) {
+      throw createApiError('Authentication required', 401, 'UNAUTHORIZED')
+    }
+
+    const url = new URL(request.url)
+    const requestedPlatform = url.searchParams.get('platform')
+
+    const platforms = requestedPlatform 
+      ? [requestedPlatform] 
+      : ['reddit', 'youtube', 'bluesky', 'imgur']
+
+    const statusResults: PlatformStatus[] = []
+
+    for (const platform of platforms) {
+      let status: PlatformStatus = {
+        platform,
+        isEnabled: false,
+        isAuthenticated: false,
+        isHealthy: false,
+        healthStatus: 'error'
+      }
+
+      try {
+        switch (platform) {
+          case 'reddit':
+            const redditConfig = await redditScanningService.getScanConfig()
+            const redditConnection = await redditScanningService.testConnection()
+            
+            status = {
+              ...status,
+              isEnabled: redditConfig.isEnabled,
+              isAuthenticated: redditConnection.success,
+              isHealthy: redditConnection.success && redditConfig.isEnabled,
+              lastScanTime: redditConfig.lastScanTime,
+              healthStatus: redditConnection.success && redditConfig.isEnabled ? 'healthy' : 'error',
+              statusMessage: redditConnection.message
+            }
+            break
+
+          case 'youtube':
+            const youtubeService = new YouTubeService()
+            const youtubeStatus = await youtubeService.getApiStatus()
+            
+            status = {
+              ...status,
+              isEnabled: true, // YouTube is always enabled if API key exists
+              isAuthenticated: youtubeStatus.isAuthenticated,
+              isHealthy: youtubeStatus.isAuthenticated && (youtubeStatus.quotaRemaining > 100),
+              quotaUsed: youtubeStatus.quotaUsed,
+              quotaRemaining: youtubeStatus.quotaRemaining,
+              healthStatus: youtubeStatus.isAuthenticated 
+                ? (youtubeStatus.quotaRemaining > 100 ? 'healthy' : 'warning')
+                : 'error',
+              statusMessage: youtubeStatus.lastError || 'Operating normally'
+            }
+            break
+
+          case 'bluesky':
+            const blueskyConnection = await blueskyService.testConnection()
+            const blueskyStats = await blueskyService.getScanningStats?.() || {}
+            
+            status = {
+              ...status,
+              isEnabled: true, // Bluesky doesn't have config toggle yet
+              isAuthenticated: blueskyConnection.success,
+              isHealthy: blueskyConnection.success,
+              lastScanTime: blueskyStats.lastScanTime,
+              totalContent: blueskyStats.totalPostsFound,
+              healthStatus: blueskyConnection.success ? 'healthy' : 'error',
+              statusMessage: blueskyConnection.message
+            }
+            break
+
+          case 'imgur':
+            const imgurConnection = await imgurScanningService.testConnection()
+            
+            status = {
+              ...status,
+              isEnabled: true, // Imgur doesn't have config toggle yet
+              isAuthenticated: imgurConnection.success,
+              isHealthy: imgurConnection.success,
+              healthStatus: imgurConnection.success ? 'healthy' : 'error',
+              statusMessage: imgurConnection.message
+            }
+            break
+
+          default:
+            status = {
+              ...status,
+              statusMessage: 'Platform not implemented'
+            }
+        }
+      } catch (error) {
+        console.error(`Failed to get ${platform} status:`, error)
+        status = {
+          ...status,
+          healthStatus: 'error',
+          statusMessage: `Error getting status: ${error.message}`
+        }
+      }
+
+      statusResults.push(status)
+    }
+
+    // Calculate overall health metrics
+    const totalPlatforms = statusResults.length
+    const healthyPlatforms = statusResults.filter(p => p.healthStatus === 'healthy').length
+    const activePlatforms = statusResults.filter(p => p.isEnabled).length
+    const authenticatedPlatforms = statusResults.filter(p => p.isAuthenticated).length
+
+    const overallHealthScore = Math.round((healthyPlatforms / totalPlatforms) * 100)
+
+    const response = requestedPlatform 
+      ? statusResults[0] // Single platform request
+      : {
+          // Multi-platform summary
+          totalPlatforms,
+          activePlatforms,
+          authenticatedPlatforms,
+          healthyPlatforms,
+          overallHealthScore,
+          platformStats: statusResults,
+          lastUpdated: new Date()
+        }
+
+    return createSuccessResponse(
+      response,
+      requestedPlatform 
+        ? `${requestedPlatform} status retrieved successfully`
+        : 'Platform status retrieved successfully'
+    )
+
+  } catch (error) {
+    console.error('Failed to get platform status:', error)
+    
+    if (error instanceof Error && error.message.includes('UNAUTHORIZED')) {
+      throw error
+    }
+    
+    throw createApiError('Failed to retrieve platform status', 500, 'PLATFORM_STATUS_ERROR')
   }
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const testStartTime = new Date().toISOString()
-    
-    // Test all platform connections
-    const platformTests = await Promise.allSettled([
-      testPlatformStatus('Bluesky', blueskyService, false), // No API key needed
-      testPlatformStatus('YouTube', youtubeScanningService, !!process.env.YOUTUBE_API_KEY),
-      testPlatformStatus('Unsplash', unsplashScanningService, !!process.env.UNSPLASH_ACCESS_KEY),
-    ])
-
-    const platforms: PlatformStatus[] = []
-    
-    platformTests.forEach((result, index) => {
-      const platformNames = ['Bluesky', 'YouTube', 'Unsplash']
-      
-      if (result.status === 'fulfilled') {
-        platforms.push(result.value)
-      } else {
-        platforms.push({
-          name: platformNames[index],
-          status: 'unavailable',
-          message: `Platform test failed: ${result.reason}`,
-          usingMockData: true,
-          hasApiKey: false,
-          lastTestTime: testStartTime,
-          details: { error: result.reason }
-        })
-      }
-    })
-
-    const summary = {
-      totalPlatforms: platforms.length,
-      availablePlatforms: platforms.filter(p => p.status === 'available').length,
-      platformsWithMockData: platforms.filter(p => p.usingMockData).length,
-      platformsWithApiKeys: platforms.filter(p => p.hasApiKey).length
-    }
-
-    const response: PlatformStatusResponse = {
-      success: true,
-      timestamp: testStartTime,
-      platforms,
-      summary
-    }
-
-    return NextResponse.json(response, { status: 200 })
-
+    validateRequestMethod(request, ['GET'])
+    return await getPlatformStatusHandler(request)
   } catch (error) {
-    console.error('Platform status check failed:', error)
-    
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to check platform status',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    )
-  }
-}
-
-async function testPlatformStatus(
-  name: string, 
-  service: any, 
-  hasApiKey: boolean
-): Promise<PlatformStatus> {
-  const testStartTime = new Date().toISOString()
-  
-  try {
-    const connectionResult = await service.testConnection()
-    
-    // Determine status based on connection result
-    let status: PlatformStatus['status'] = 'unavailable'
-    let usingMockData = true
-    
-    if (connectionResult.success) {
-      if (connectionResult.details?.usingMockData === false) {
-        status = 'available'
-        usingMockData = false
-      } else if (connectionResult.details?.usingMockData === true) {
-        status = 'mock'
-        usingMockData = true
-      } else {
-        if (name === 'Bluesky' && connectionResult.success) {
-          status = 'available'
-          usingMockData = false
-        } else {
-          status = connectionResult.success ? 'available' : 'mock'
-        }
-      }
-    }
-
-    // Add API key warnings to message
-    let message = connectionResult.message
-    if (!hasApiKey && name !== 'Bluesky') {
-      message += ` (API key not configured)`
-    }
-
-    return {
-      name,
-      status,
-      message,
-      usingMockData,
-      hasApiKey,
-      lastTestTime: testStartTime,
-      details: connectionResult.details
-    }
-
-  } catch (error) {
-    return {
-      name,
-      status: 'unavailable',
-      message: `Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      usingMockData: true,
-      hasApiKey,
-      lastTestTime: testStartTime,
-      details: { error: error instanceof Error ? error.message : 'Unknown error' }
-    }
+    return await handleApiError(error, request, '/api/admin/platforms/status')
   }
 }

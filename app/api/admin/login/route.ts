@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-middleware'
 import { AdminService } from '@/lib/services/admin'
 import { NextAuthUtils, AuthValidation } from '@/lib/auth'
+import { createDeprecatedHandler } from '@/lib/api-deprecation'
 
 interface LoginRequest {
   username: string
@@ -93,10 +94,27 @@ async function loginHandler(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+// Original handler for backward compatibility
+async function originalLoginHandler(request: NextRequest): Promise<NextResponse> {
   try {
     return await loginHandler(request)
   } catch (error) {
     return await handleApiError(error, request, '/api/admin/login')
   }
 }
+
+// Deprecated handler with redirection to consolidated endpoint
+export const POST = createDeprecatedHandler(
+  '/api/admin/login',
+  async (request: NextRequest): Promise<NextResponse> => {
+    try {
+      // Forward to the new consolidated auth endpoint
+      const { POST: authPost } = await import('@/app/api/admin/auth/route')
+      return await authPost(request)
+    } catch (error) {
+      console.error('Error redirecting login to auth endpoint:', error)
+      // Fallback to original handler
+      return await originalLoginHandler(request)
+    }
+  }
+)

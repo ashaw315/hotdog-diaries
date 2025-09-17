@@ -6,10 +6,57 @@ import { AuthService } from '@/lib/services/auth'
 // Mock the services
 jest.mock('@/lib/services/admin')
 jest.mock('@/lib/services/auth')
-jest.mock('@/lib/auth')
+jest.mock('@/lib/auth', () => ({
+  NextAuthUtils: {
+    setAuthCookies: jest.fn()
+  },
+  AuthValidation: {
+    validateLoginCredentials: jest.fn(),
+    sanitizeUsername: jest.fn()
+  }
+}))
+jest.mock('@/lib/db', () => ({
+  logToDatabase: jest.fn().mockResolvedValue(undefined)
+}))
+jest.mock('@/lib/auth-edge', () => ({
+  EdgeAuthUtils: {
+    setAuthCookies: jest.fn()
+  }
+}))
+jest.mock('@/lib/api-middleware', () => ({
+  validateRequestMethod: jest.fn(),
+  createSuccessResponse: jest.fn().mockImplementation((data, message) => ({
+    json: () => Promise.resolve({ success: true, data, message }),
+    status: 200,
+    headers: new Map([
+      ['Set-Cookie', 'auth-token=test; HttpOnly'],
+      ['X-Content-Type-Options', 'nosniff'],
+      ['X-Frame-Options', 'DENY']
+    ])
+  })),
+  createApiError: jest.fn().mockImplementation((message, status, code) => {
+    const error = new Error(message)
+    ;(error as any).statusCode = status
+    ;(error as any).code = code
+    return error
+  }),
+  validateJsonBody: jest.fn(),
+  handleApiError: jest.fn().mockImplementation((error) => ({
+    json: () => Promise.resolve({ 
+      success: false, 
+      error: error.message,
+      code: error.code || 'UNKNOWN_ERROR'
+    }),
+    status: error.statusCode || 500
+  }))
+}))
 
 const mockAdminService = AdminService as jest.Mocked<typeof AdminService>
 const mockAuthService = AuthService as jest.Mocked<typeof AuthService>
+
+// Get mocked modules
+const mockAuth = jest.mocked(require('@/lib/auth'))
+const mockApiMiddleware = jest.mocked(require('@/lib/api-middleware'))
 
 // Mock NextRequest
 const createMockRequest = (body: any) => {
@@ -23,6 +70,17 @@ const createMockRequest = (body: any) => {
 describe('/api/admin/login', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    
+    // Set up default mock behavior
+    mockApiMiddleware.validateRequestMethod.mockImplementation(() => {})
+    mockApiMiddleware.validateJsonBody.mockImplementation(async (req) => req.json())
+    mockAuth.AuthValidation.validateLoginCredentials.mockReturnValue({
+      isValid: true,
+      errors: []
+    })
+    mockAuth.AuthValidation.sanitizeUsername.mockImplementation((username) => 
+      username.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+    )
   })
 
   describe('POST /api/admin/login', () => {
@@ -113,6 +171,12 @@ describe('/api/admin/login', () => {
         password: ''
       }
 
+      // Mock validation to return errors
+      mockAuth.AuthValidation.validateLoginCredentials.mockReturnValue({
+        isValid: false,
+        errors: ['Username is required', 'Password is required']
+      })
+
       const request = createMockRequest(invalidData)
       const response = await POST(request)
       const data = await response.json()
@@ -129,6 +193,12 @@ describe('/api/admin/login', () => {
         password: 'short'
       }
 
+      // Mock validation to return password length error
+      mockAuth.AuthValidation.validateLoginCredentials.mockReturnValue({
+        isValid: false,
+        errors: ['Password must be at least 8 characters']
+      })
+
       const request = createMockRequest(invalidData)
       const response = await POST(request)
       const data = await response.json()
@@ -143,6 +213,12 @@ describe('/api/admin/login', () => {
         username: 'ab',
         password: 'TestPass123!'
       }
+
+      // Mock validation to return username length error
+      mockAuth.AuthValidation.validateLoginCredentials.mockReturnValue({
+        isValid: false,
+        errors: ['Username must be at least 3 characters']
+      })
 
       const request = createMockRequest(invalidData)
       const response = await POST(request)
@@ -215,6 +291,11 @@ describe('/api/admin/login', () => {
         json: () => Promise.reject(new Error('Invalid JSON'))
       } as NextRequest
 
+      // Mock validateJsonBody to throw the correct error
+      mockApiMiddleware.validateJsonBody.mockRejectedValue(
+        mockApiMiddleware.createApiError('Invalid JSON in request body', 400)
+      )
+
       const response = await POST(request)
       const data = await response.json()
 
@@ -229,6 +310,11 @@ describe('/api/admin/login', () => {
         headers: new Headers(),
         json: () => Promise.resolve({})
       } as NextRequest
+
+      // Mock validateRequestMethod to throw method not allowed error
+      mockApiMiddleware.validateRequestMethod.mockImplementation(() => {
+        throw mockApiMiddleware.createApiError('Method GET not allowed', 405)
+      })
 
       const response = await POST(request)
       const data = await response.json()

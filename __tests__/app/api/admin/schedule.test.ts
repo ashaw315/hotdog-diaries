@@ -21,14 +21,79 @@ jest.mock('@/lib/db', () => ({
   logToDatabase: jest.fn(),
 }))
 
+// Mock Supabase to prevent database connection attempts
+jest.mock('@/utils/supabase/server', () => {
+  // Create a chainable mock that supports all common Supabase query methods
+  const createChainableMock = () => {
+    const mockChain = {
+      select: jest.fn(() => mockChain),
+      eq: jest.fn(() => mockChain),
+      gte: jest.fn(() => mockChain),
+      lt: jest.fn(() => mockChain),
+      order: jest.fn(() => mockChain),
+      limit: jest.fn(() => mockChain),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      mockResolvedValue: jest.fn().mockResolvedValue({ data: [], error: null })
+    }
+    
+    // Make the chain itself callable and return the resolved value by default
+    Object.setPrototypeOf(mockChain, Promise.prototype)
+    mockChain.then = jest.fn((resolve) => resolve({ data: [], error: null }))
+    
+    return mockChain
+  }
+
+  return {
+    createSimpleClient: jest.fn(() => ({
+      from: jest.fn(() => createChainableMock())
+    }))
+  }
+})
+
 describe('/api/admin/schedule', () => {
+  const { schedulingService } = require('@/lib/services/scheduling')
+  const { postingService } = require('@/lib/services/posting')
+
   beforeEach(() => {
     jest.clearAllMocks()
+    
+    // Set up default mock implementations
+    schedulingService.getScheduleConfig.mockResolvedValue({
+      id: 1,
+      meal_times: ['08:00', '12:00', '18:00'],
+      timezone: 'America/New_York',
+      is_enabled: true,
+      created_at: new Date('2025-09-17T15:45:32.314Z'),
+      updated_at: new Date('2025-09-17T15:45:32.314Z')
+    })
+    
+    schedulingService.getPostingSchedule.mockResolvedValue({
+      nextPostTime: new Date(),
+      nextMealTime: '12:00',
+      timeUntilNext: 3600000,
+      isPostingTime: false,
+      todaysSchedule: []
+    })
+    
+    postingService.getQueueStatus.mockResolvedValue({
+      totalApproved: 10,
+      totalPending: 5,
+      totalPosted: 20,
+      isHealthy: true,
+      alertLevel: 'none',
+      message: 'Queue is healthy'
+    })
+    
+    postingService.getPostingStats.mockResolvedValue({
+      todaysPosts: 3,
+      thisWeeksPosts: 21,
+      thisMonthsPosts: 90,
+      avgPostsPerDay: 3.0,
+      lastPostTime: new Date().toISOString()
+    })
   })
 
   describe('GET', () => {
-    const { schedulingService } = require('@/lib/services/scheduling')
-    const { postingService } = require('@/lib/services/posting')
 
     it('should return complete schedule information', async () => {
       const mockConfig = {
@@ -36,8 +101,8 @@ describe('/api/admin/schedule', () => {
         meal_times: ['08:00', '12:00', '18:00'],
         timezone: 'America/New_York',
         is_enabled: true,
-        created_at: new Date(),
-        updated_at: new Date()
+        created_at: new Date('2025-09-17T15:45:32.314Z'),
+        updated_at: new Date('2025-09-17T15:45:32.314Z')
       }
 
       const mockSchedule = {

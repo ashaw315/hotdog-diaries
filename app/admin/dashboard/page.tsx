@@ -1,8 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import { DailyCronStatus } from '@/components/admin/DailyCronStatus'
+import { useDashboardData } from '@/hooks/useAdminData'
+import { useRequireAuth } from '@/components/providers/AuthProvider'
+import ApiDemo from '@/components/admin/ApiDemo'
 
 interface ContentItem {
   id: number
@@ -12,71 +15,12 @@ interface ContentItem {
   content_video_url: string | null
 }
 
-interface DashboardData {
-  queueStats: {
-    totalApproved: number
-    daysOfContent: number
-    needsScanning: boolean
-    contentBalance: {
-      video: number
-      gif: number
-      image: number
-      text: number
-    }
-  }
-  postingSchedule: {
-    todaysPosts: number
-    nextPost: Date | null
-    upcomingPosts: Array<{
-      time: string
-      content: ContentItem | null
-      type: string
-      platform: string
-    }>
-  }
-  platformStatus: Record<string, {
-    operational: boolean
-    itemCount: number
-    lastScan: Date | null
-    status: string
-  }>
-  apiSavings: {
-    callsSavedToday: number
-    estimatedMonthlySavings: number
-    nextScanDate: Date | null
-  }
-  alerts: Array<{
-    type: 'critical' | 'warning' | 'info'
-    message: string
-    action?: string
-  }>
-}
-
 export default function AdminDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetchDashboardData()
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchDashboardData, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/admin/dashboard')
-      if (!response.ok) throw new Error('Failed to fetch dashboard data')
-      const result = await response.json()
-      setData(result.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Ensure user is authenticated
+  useRequireAuth()
+  
+  // Use the new dashboard data hook
+  const { data, loading, error, refresh } = useDashboardData(5 * 60 * 1000) // 5 minutes
 
   const calculateNextScanDate = () => {
     if (!data) return 'Unknown'
@@ -139,7 +83,7 @@ export default function AdminDashboard() {
                 Queue Analytics
               </Link>
               <button 
-                onClick={fetchDashboardData}
+                onClick={refresh}
                 className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
               >
                 Refresh
@@ -377,6 +321,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* API Integration Demo */}
+        <ApiDemo />
+
         {/* Daily Cron Status */}
         <div className="mt-8">
           <DailyCronStatus />
@@ -405,7 +352,12 @@ export default function AdminDashboard() {
               Manage Queue
             </Link>
             <button 
-              onClick={() => window.confirm('Force scan all platforms?') && fetch('/api/cron/scan-content', {method: 'POST', headers: {'Authorization': 'Bearer hotdog-cron-secret-2025', 'Content-Type': 'application/json'}, body: JSON.stringify({force: true})})}
+              onClick={() => {
+                if (window.confirm('Force scan all platforms?')) {
+                  // This would trigger a platform scan via the new API
+                  console.log('Force scan triggered - implement via new API')
+                }
+              }}
               className="bg-red-500 text-white px-4 py-3 rounded-lg hover:bg-red-600 text-center"
             >
               Force Scan

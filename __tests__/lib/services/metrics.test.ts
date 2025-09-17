@@ -1,4 +1,4 @@
-import { MetricsService } from '@/lib/services/metrics'
+import { metricsService } from '@/lib/services/metrics-service'
 
 // Mock dependencies
 jest.mock('@/lib/db-query-builder', () => ({
@@ -49,16 +49,17 @@ jest.mock('@/lib/services/logging', () => ({
 }))
 
 describe('MetricsService', () => {
-  let metricsService: MetricsService
-  
   beforeEach(() => {
     jest.clearAllMocks()
-    metricsService = new MetricsService()
+    // Clear the metric buffer for each test
+    if (metricsService && metricsService['metricBuffer']) {
+      metricsService['metricBuffer'] = []
+    }
   })
 
-  afterEach(() => {
-    if (metricsService) {
-      metricsService.shutdown()
+  afterEach(async () => {
+    if (metricsService && metricsService.shutdown) {
+      await metricsService.shutdown()
     }
   })
 
@@ -89,7 +90,7 @@ describe('MetricsService', () => {
 
     it('should tag failed API calls correctly', async () => {
       await metricsService.recordAPIMetric(
-        'flickr',
+        'imgur',
         '/api/media',
         1000,
         500, // Server error
@@ -366,7 +367,7 @@ describe('MetricsService', () => {
         .mockResolvedValueOnce({ // API metrics
           metrics: [
             { name: 'api_response_time', value: 200, tags: { platform: 'reddit' } },
-            { name: 'api_response_time', value: 150, tags: { platform: 'flickr' } }
+            { name: 'api_response_time', value: 150, tags: { platform: 'youtube' } }
           ],
           total: 2,
           hasMore: false
@@ -404,10 +405,10 @@ describe('MetricsService', () => {
         totalMetrics: 1000,
         recentAPIResponseTimes: expect.objectContaining({
           reddit: expect.any(Number),
-          flickr: expect.any(Number),
           youtube: expect.any(Number),
-          mastodon: expect.any(Number),
-          unsplash: expect.any(Number)
+          bluesky: expect.any(Number),
+          imgur: expect.any(Number),
+          pixabay: expect.any(Number)
         }),
         systemResources: expect.objectContaining({
           memoryUsagePercent: expect.any(Number),
