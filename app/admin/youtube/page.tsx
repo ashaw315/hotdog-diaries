@@ -63,9 +63,9 @@ export default function YouTubeAdminPage() {
 
       // Load API status, config, and recent scan results
       const [statusResponse, configResponse, scanResponse] = await Promise.all([
-        fetch('/api/admin/youtube/status', { credentials: 'include' }),
+        fetch('/api/admin/platforms/status?platform=youtube', { credentials: 'include' }),
         fetch('/api/admin/youtube/config', { credentials: 'include' }),
-        fetch('/api/admin/youtube/scans?limit=1', { credentials: 'include' })
+        fetch('/api/admin/platforms/scans?limit=1', { credentials: 'include' })
       ])
 
       if (statusResponse.ok) {
@@ -98,7 +98,7 @@ export default function YouTubeAdminPage() {
       setScanning(true)
       setError(null)
 
-      const response = await fetch('/api/admin/youtube/scan', {
+      const response = await fetch('/api/admin/platforms/scan', {
         method: 'POST'
       })
 

@@ -64,7 +64,7 @@ export default function AdminDashboard() {
     const fetchDashboardData = async () => {
       try {
         // Fetch dashboard statistics
-        const statsResponse = await fetch('/api/admin/dashboard/stats', {
+        const statsResponse = await fetch('/api/admin/dashboard', {
           credentials: 'include'
         })
         if (statsResponse.ok) {
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
         }
 
         // Fetch recent activity
-        const activityResponse = await fetch('/api/admin/dashboard/activity', {
+        const activityResponse = await fetch('/api/admin/dashboard?view=activity', {
           credentials: 'include'
         })
         if (activityResponse.ok) {

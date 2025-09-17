@@ -54,7 +54,7 @@ export default function ContentQueue() {
         limit: '50'
       })
       
-      const response = await authFetch(`/api/admin/content/queue?${params}`)
+      const response = await authFetch(`/api/admin/content?${params}`)
       if (response.ok) {
         const data = await response.json()
         setQueuedContent(data.content || [])
@@ -94,7 +94,7 @@ export default function ContentQueue() {
         const content_status = action === 'approve' ? 'approved' : 'rejected'
         const rejection_reason = action === 'reject' ? 'Bulk rejection' : undefined
         
-        return authFetch(`/api/admin/content/queue?id=${id}`, {
+        return authFetch(`/api/admin/content?id=${id}`, {
           method: 'PATCH',
           body: JSON.stringify({
             content_status,
@@ -113,7 +113,7 @@ export default function ContentQueue() {
 
   const handleUpdateContent = async (id: number, updates: Partial<QueuedContent>) => {
     try {
-      const response = await authFetch(`/api/admin/content/queue?id=${id}`, {
+      const response = await authFetch(`/api/admin/content?id=${id}`, {
         method: 'PATCH',
         body: JSON.stringify(updates)
       })
@@ -153,7 +153,7 @@ export default function ContentQueue() {
       if (changes.action === 'status') {
         // Handle status changes
         const updates = Array.from(selectedItems).map(async (id) => {
-          return authFetch(`/api/admin/content/queue?id=${id}`, {
+          return authFetch(`/api/admin/content?id=${id}`, {
             method: 'PATCH',
             body: JSON.stringify({
               content_status: changes.content_status,
@@ -164,7 +164,7 @@ export default function ContentQueue() {
         await Promise.all(updates)
       } else if (changes.action === 'schedule') {
         // Handle bulk scheduling
-        const response = await authFetch('/api/admin/content/bulk-schedule', {
+        const response = await authFetch('/api/admin/content/bulk', {
           method: 'POST',
           body: JSON.stringify({
             contentIds: Array.from(selectedItems),
@@ -197,7 +197,7 @@ export default function ContentQueue() {
               break
           }
           
-          return authFetch(`/api/admin/content/queue?id=${item.id}`, {
+          return authFetch(`/api/admin/content?id=${item.id}`, {
             method: 'PATCH',
             body: JSON.stringify({
               content_text: newText

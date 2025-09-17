@@ -53,7 +53,7 @@ export default function PostedContentPage() {
       }
 
       const [contentResponse, statsResponse] = await Promise.allSettled([
-        fetch(`/api/admin/content/posted?limit=${itemsPerPage}&offset=${(page - 1) * itemsPerPage}`, {
+        fetch(`/api/admin/content?status=posted?limit=${itemsPerPage}&offset=${(page - 1) * itemsPerPage}`, {
           headers,
           credentials: 'include'
         }),
@@ -109,7 +109,7 @@ export default function PostedContentPage() {
     setHidingPost(postId)
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
-      const response = await fetch(`/api/admin/content/posted/${postId}/hide`, {
+      const response = await fetch(`/api/admin/content?status=posted/${postId}/hide`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -39,7 +39,7 @@ export default function ReviewPage() {
   const fetchReviewContent = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/admin/content/queue?status=pending_review&limit=100&order=desc')
+      const response = await fetch('/api/admin/content?status=pending_review&limit=100&order=desc')
       if (response.ok) {
         const data = await response.json()
         setReviewContent(data.content || [])
@@ -57,7 +57,7 @@ export default function ReviewPage() {
 
   const handleReviewAction = async (contentId: number, action: 'approved' | 'rejected', reason?: string) => {
     try {
-      const response = await fetch(`/api/admin/content/queue?id=${contentId}`, {
+      const response = await fetch(`/api/admin/content/${contentId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'

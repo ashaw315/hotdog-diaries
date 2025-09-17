@@ -67,7 +67,7 @@ export default function UnsplashAdminPage() {
       const [statusResponse, configResponse, scanResponse] = await Promise.all([
         fetch('/api/admin/unsplash/status'),
         fetch('/api/admin/unsplash/config'),
-        fetch('/api/admin/unsplash/scans?limit=5')
+        fetch('/api/admin/platforms/scans?limit=5')
       ])
 
       if (statusResponse.ok) {
@@ -101,7 +101,7 @@ export default function UnsplashAdminPage() {
       setIsScanning(true)
       setError(null)
       
-      const response = await fetch('/api/admin/unsplash/scan', {
+      const response = await fetch('/api/admin/platforms/scan', {
         method: 'POST'
       })
 
@@ -128,7 +128,7 @@ export default function UnsplashAdminPage() {
       setIsTesting(true)
       setError(null)
       
-      const response = await fetch('/api/admin/unsplash/scan?test=true', {
+      const response = await fetch('/api/admin/platforms/scan?test=true', {
         method: 'POST'
       })
 

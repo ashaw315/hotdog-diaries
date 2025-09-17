@@ -71,7 +71,7 @@ export default function BlueskyAdminPage() {
 
   const loadStatus = async () => {
     try {
-      const response = await fetch('/api/admin/bluesky/status')
+      const response = await fetch('/api/admin/platforms/status?platform=bluesky')
       const result = await response.json()
       if (result.success) {
         setStatus(result.data)
@@ -98,10 +98,10 @@ export default function BlueskyAdminPage() {
   const handleScan = async () => {
     setScanning(true)
     try {
-      const response = await fetch('/api/admin/bluesky/scan', {
+      const response = await fetch('/api/admin/platforms/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ maxPosts: 30 })
+        body: JSON.stringify({ platform: 'bluesky', maxPosts: 30 })
       })
       
       const result = await response.json()

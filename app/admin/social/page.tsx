@@ -71,7 +71,7 @@ export default function SocialPlatformsPage() {
       const [socialResponse, redditResponse, youtubeResponse, flickrResponse, unsplashResponse] = await Promise.allSettled([
         fetch('/api/admin/social/stats'),
         fetch('/api/admin/reddit/stats'),
-        fetch('/api/admin/youtube/status'),
+        fetch('/api/admin/platforms/status?platform=youtube'),
         fetch('/api/admin/flickr/status'),
         fetch('/api/admin/unsplash/status')
       ])

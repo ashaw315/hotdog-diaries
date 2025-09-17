@@ -77,7 +77,7 @@ export default function RedditSettingsPage() {
 
   const loadStatus = async () => {
     try {
-      const response = await fetch('/api/admin/reddit/status', { credentials: 'include' })
+      const response = await fetch('/api/admin/platforms/status?platform=reddit', { credentials: 'include' })
       const data: ApiResponse<RedditApiStatus> = await response.json()
       if (data.success && data.data) {
         setStatus(data.data)
@@ -89,7 +89,7 @@ export default function RedditSettingsPage() {
 
   const loadScanHistory = async () => {
     try {
-      const response = await fetch('/api/admin/reddit/scan-history')
+      const response = await fetch('/api/admin/platforms/scan-history')
       const data: ApiResponse<RedditScanResult[]> = await response.json()
       if (data.success && data.data) {
         setScanHistory(data.data)
@@ -146,7 +146,7 @@ export default function RedditSettingsPage() {
   const runManualScan = async () => {
     setIsRunningManualScan(true)
     try {
-      const response = await fetch('/api/admin/reddit/scan', {
+      const response = await fetch('/api/admin/platforms/scan', {
         method: 'POST',
         credentials: 'include'
       })

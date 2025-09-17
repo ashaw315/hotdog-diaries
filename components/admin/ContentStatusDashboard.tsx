@@ -60,7 +60,7 @@ export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProp
   const fetchMetrics = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/admin/content/metrics')
+      const response = await fetch('/api/admin/analytics?type=content')
       if (response.ok) {
         const result = await response.json()
         // Handle the API response format: { success: true, data: ... }

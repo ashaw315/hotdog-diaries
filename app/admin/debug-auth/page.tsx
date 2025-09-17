@@ -21,14 +21,14 @@ export default function DebugAuthPage() {
     setCookies(allCookies)
     addLog(`Document cookies: ${allCookies}`)
     
-    // Test /api/admin/me
+    // Test /api/admin/auth/me
     testApiMe()
   }, [])
 
   const testApiMe = async () => {
     try {
-      addLog('Testing /api/admin/me...')
-      const response = await fetch('/api/admin/me', {
+      addLog('Testing /api/admin/auth/me...')
+      const response = await fetch('/api/admin/auth/me', {
         method: 'GET',
         credentials: 'include', // Important for cookies
         headers: {
@@ -51,7 +51,7 @@ export default function DebugAuthPage() {
   const testLogin = async () => {
     try {
       addLog('Testing manual login...')
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch('/api/admin/auth', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -72,7 +72,7 @@ export default function DebugAuthPage() {
       setCookies(newCookies)
       addLog(`Cookies after login: ${newCookies}`)
       
-      // Test /api/admin/me again
+      // Test /api/admin/auth/me again
       setTimeout(() => {
         testApiMe()
       }, 1000)
@@ -112,7 +112,7 @@ export default function DebugAuthPage() {
               cursor: 'pointer'
             }}
           >
-            Test /api/admin/me
+            Test /api/admin/auth/me
           </button>
           
           <button
