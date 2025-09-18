@@ -22,68 +22,128 @@ interface DatabaseConfig {
 class DatabaseConnection {
   private pool: Pool | null = null
   private sqliteDb: Database | null = null
-  private isVercel: boolean = false
+  private isSupabase: boolean = false
   private isSqlite: boolean = false
+  private connectionMode: 'supabase' | 'sqlite' | 'postgres-pool' = 'postgres-pool'
 
   constructor() {
-    // Enhanced Vercel environment detection
-    const hasVercelEnv = !!(process.env.VERCEL || process.env.VERCEL_ENV)
-    const hasPostgresUrl = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres'))
-    const hasSupabaseUrl = !!(process.env.DATABASE_URL?.includes('supabase.co'))
+    this.initializeDatabaseMode()
+  }
+
+  private initializeDatabaseMode(): void {
+    const nodeEnv = process.env.NODE_ENV
+    const databaseUrl = process.env.DATABASE_URL
+    const isProduction = nodeEnv === 'production'
+    const isPreview = process.env.VERCEL_ENV === 'preview'
+    const isDevelopment = nodeEnv === 'development'
     
-    // Vercel deployment detection: Use Vercel Postgres in production or when Vercel env vars exist
-    this.isVercel = (hasVercelEnv && hasPostgresUrl) || (process.env.NODE_ENV === 'production' && hasPostgresUrl)
-    this.isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV && !hasPostgresUrl
+    // Check for Supabase connection string
+    const hasSupabaseUrl = !!(databaseUrl?.includes('supabase.co'))
     
-    // Enhanced database mode logging
-    const dbMode = hasSupabaseUrl ? 'Supabase Postgres' : 
-                   this.isVercel ? 'Vercel Postgres' : 
-                   this.isSqlite ? 'SQLite' : 'PostgreSQL Pool'
-    
-    console.log(`🗄️ [DB INIT] Database Mode: ${dbMode}`)
-    
-    // Enhanced logging with more detail
-    console.log('[DB INIT]', {
-      NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL: process.env.DATABASE_URL ? 
-        (hasSupabaseUrl ? 'supabase.co detected' : 'postgres detected') : 'missing',
-      POSTGRES_URL: process.env.POSTGRES_URL ? 'set' : 'missing',
-      MODE: hasSupabaseUrl ? 'supabase' : this.isSqlite ? 'sqlite' : 'postgres',
-      isVercel: this.isVercel,
-      isSqlite: this.isSqlite,
-      hasVercelEnv,
-      hasPostgresUrl,
-      hasSupabaseUrl
+    console.log('🚀 [DB INIT] Starting database initialization...')
+    console.log('[DB INIT] Environment detection:', {
+      NODE_ENV: nodeEnv,
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      DATABASE_URL_SET: Boolean(databaseUrl),
+      DATABASE_URL_TYPE: hasSupabaseUrl ? 'supabase' : databaseUrl ? 'postgres' : 'missing',
+      isProduction,
+      isPreview,
+      isDevelopment
     })
-    
-    // Additional production debugging
-    if (process.env.NODE_ENV === 'production') {
-      console.log('🔍 [DB INIT] Production Environment Verification:', {
-        vercelEnv: process.env.VERCEL_ENV,
-        vercelUrl: process.env.VERCEL_URL ? 'set' : 'missing',
-        databaseProvider: hasSupabaseUrl ? 'Supabase' : hasPostgresUrl ? 'Postgres' : 'Unknown',
-        expectedMode: hasSupabaseUrl ? 'supabase' : 'postgres',
-        actualMode: this.isVercel ? 'vercel-postgres' : this.isSqlite ? 'sqlite' : 'postgres-pool'
-      })
+
+    // STRICT PRODUCTION REQUIREMENTS
+    if (isProduction) {
+      if (!databaseUrl) {
+        const errorMsg = '🚨 FATAL ERROR: DATABASE_URL not set in production — Supabase connection required.'
+        console.error(errorMsg)
+        console.error('[DB INIT] Production deployments must have DATABASE_URL configured to connect to Supabase.')
+        console.error('[DB INIT] Set DATABASE_URL in your Vercel environment variables.')
+        throw new Error('DATABASE_URL is required in production environment')
+      }
+      
+      if (!hasSupabaseUrl) {
+        const errorMsg = '🚨 FATAL ERROR: DATABASE_URL in production must be a Supabase connection string.'
+        console.error(errorMsg)
+        console.error('[DB INIT] Expected DATABASE_URL to contain "supabase.co"')
+        console.error('[DB INIT] Current DATABASE_URL type:', databaseUrl.includes('postgres') ? 'postgres' : 'unknown')
+        throw new Error('DATABASE_URL must be a Supabase connection string in production')
+      }
+      
+      this.isSupabase = true
+      this.isSqlite = false
+      this.connectionMode = 'supabase'
+      console.log('✅ [DB INIT] Using Supabase Postgres via DATABASE_URL')
+      return
+    }
+
+    // PREVIEW ENVIRONMENT (Vercel preview deploys)
+    if (isPreview) {
+      if (hasSupabaseUrl) {
+        this.isSupabase = true
+        this.isSqlite = false
+        this.connectionMode = 'supabase'
+        console.log('✅ [DB INIT] Using Supabase Postgres via DATABASE_URL (preview)')
+        return
+      } else {
+        this.isSupabase = false
+        this.isSqlite = true
+        this.connectionMode = 'sqlite'
+        console.log('✅ [DB INIT] Using SQLite (preview fallback)')
+        return
+      }
+    }
+
+    // DEVELOPMENT ENVIRONMENT
+    if (isDevelopment) {
+      if (hasSupabaseUrl) {
+        this.isSupabase = true
+        this.isSqlite = false
+        this.connectionMode = 'supabase'
+        console.log('✅ [DB INIT] Using Supabase Postgres via DATABASE_URL (development)')
+        return
+      } else {
+        this.isSupabase = false
+        this.isSqlite = true
+        this.connectionMode = 'sqlite'
+        console.log('✅ [DB INIT] Using SQLite (development fallback)')
+        return
+      }
+    }
+
+    // FALLBACK FOR OTHER ENVIRONMENTS
+    if (hasSupabaseUrl) {
+      this.isSupabase = true
+      this.isSqlite = false
+      this.connectionMode = 'supabase'
+      console.log('✅ [DB INIT] Using Supabase Postgres via DATABASE_URL (other environment)')
+    } else {
+      this.isSupabase = false
+      this.isSqlite = false
+      this.connectionMode = 'postgres-pool'
+      console.log('✅ [DB INIT] Using PostgreSQL connection pool (other environment)')
     }
   }
 
   private getConfig(): DatabaseConfig {
-    if (this.isVercel) {
-      // Vercel Postgres configuration - uses environment variables set by Vercel
+    if (this.isSupabase) {
+      // Parse Supabase DATABASE_URL for connection details
+      const databaseUrl = process.env.DATABASE_URL!
+      const url = new URL(databaseUrl)
+      
       return {
-        host: process.env.POSTGRES_HOST!,
-        port: parseInt(process.env.POSTGRES_PORT || '5432'),
-        database: process.env.POSTGRES_DATABASE!,
-        user: process.env.POSTGRES_USER!,
-        password: process.env.POSTGRES_PASSWORD!,
-        ssl: true,
-        max: 10, // Vercel Postgres has connection limits
+        host: url.hostname,
+        port: parseInt(url.port || '5432'),
+        database: url.pathname.slice(1), // Remove leading slash
+        user: url.username,
+        password: url.password,
+        ssl: true, // Supabase requires SSL
+        max: 10,
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000, // Increased timeout for Vercel
+        connectionTimeoutMillis: 5000,
       }
     }
 
+    // Fallback configuration for development or other PostgreSQL connections
     return {
       host: process.env.DATABASE_HOST || 'localhost',
       port: parseInt(process.env.DATABASE_PORT || '5432'),
@@ -172,30 +232,10 @@ class DatabaseConnection {
       return this.querySqlite<T>(text, params)
     }
 
-    if (this.isVercel) {
-      try {
-        const start = Date.now()
-        const result = await sql.query(text, params || []) as QueryResult<T>
-        const duration = Date.now() - start
-        
-        // Log slow queries in production
-        if (duration > 1000) {
-          console.warn(`Slow query detected: ${duration}ms`, { 
-            query: text.substring(0, 100),
-            duration 
-          })
-        }
-        
-        return result
-      } catch (error: unknown) {
-        const err = error as Error & { code?: string }
-        console.error('Vercel Postgres query error:', {
-          error: err.message,
-          code: err.code,
-          query: text.substring(0, 100)
-        })
-        throw error
-      }
+    if (this.isSupabase) {
+      // For Supabase, use the standard pool connection
+      // Supabase is PostgreSQL compatible and works with the pg Pool
+      // Fall through to the standard pool logic below
     }
 
     // Ensure connection before query
@@ -381,8 +421,8 @@ class DatabaseConnection {
   }
 
   async getClient(): Promise<PoolClient> {
-    if (this.isVercel) {
-      throw new Error('Client connections not supported in Vercel environment')
+    if (this.isSqlite) {
+      throw new Error('Client connections not supported with SQLite')
     }
 
     if (!this.pool) {
@@ -393,7 +433,7 @@ class DatabaseConnection {
   }
 
   getPoolStats(): { total: number; idle: number; active: number } {
-    if (this.isVercel || !this.pool) {
+    if (this.isSqlite || !this.pool) {
       return { total: 0, idle: 0, active: 0 }
     }
 
@@ -419,8 +459,8 @@ class DatabaseConnection {
   }
 
   async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
-    if (this.isVercel) {
-      throw new Error('Transactions not supported in Vercel environment with @vercel/postgres')
+    if (this.isSqlite) {
+      throw new Error('Transactions not supported with SQLite adapter')
     }
 
     const client = await this.getClient()

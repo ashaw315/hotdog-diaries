@@ -5,10 +5,21 @@ export async function GET() {
   try {
     console.log("[DB HEALTH CHECK] Starting database health verification");
     
-    // Detect database mode based on environment variables
-    const hasSupabaseUrl = process.env.DATABASE_URL?.includes("supabase.co");
-    const hasPostgresUrl = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes("postgres"));
-    const databaseMode = hasSupabaseUrl ? "supabase" : hasPostgresUrl ? "postgres" : "sqlite";
+    // Detect database mode based on environment variables (matching lib/db.ts logic)
+    const databaseUrl = process.env.DATABASE_URL;
+    const hasSupabaseUrl = !!(databaseUrl?.includes("supabase.co"));
+    const isProduction = process.env.NODE_ENV === "production";
+    const isPreview = process.env.VERCEL_ENV === "preview";
+    const isDevelopment = process.env.NODE_ENV === "development";
+    
+    let databaseMode: string;
+    if (isProduction || hasSupabaseUrl) {
+      databaseMode = hasSupabaseUrl ? "supabase" : "unknown";
+    } else if (isPreview || isDevelopment) {
+      databaseMode = hasSupabaseUrl ? "supabase" : "sqlite";
+    } else {
+      databaseMode = hasSupabaseUrl ? "supabase" : "postgres-pool";
+    }
     
     // Environment info
     const envInfo = {
