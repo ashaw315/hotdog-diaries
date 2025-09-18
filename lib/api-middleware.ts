@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logToDatabase } from './db'
 import { LogLevel } from '@/types'
+import { EdgeAuthUtils, JWTPayload } from './auth-edge'
 
 export interface ApiError extends Error {
   statusCode?: number
@@ -179,4 +180,34 @@ export function createSuccessResponse<T = any>(
   )
 
   return addSecurityHeaders(response)
+}
+
+/**
+ * Verify admin authentication from request
+ */
+export async function verifyAdminAuth(request: NextRequest): Promise<{
+  success: boolean
+  payload?: JWTPayload
+  error?: string
+}> {
+  try {
+    const authResult = await EdgeAuthUtils.verifyRequestAuth(request)
+    
+    if (!authResult.isValid) {
+      return {
+        success: false,
+        error: 'Authentication required'
+      }
+    }
+
+    return {
+      success: true,
+      payload: authResult.payload
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Authentication failed'
+    }
+  }
 }

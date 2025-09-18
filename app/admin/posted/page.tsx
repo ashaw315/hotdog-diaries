@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import './admin-posted.css'
 
 interface PostedContent {
   id: number
@@ -53,7 +54,7 @@ export default function PostedContentPage() {
       }
 
       const [contentResponse, statsResponse] = await Promise.allSettled([
-        fetch(`/api/admin/content?status=posted?limit=${itemsPerPage}&offset=${(page - 1) * itemsPerPage}`, {
+        fetch(`/api/admin/content?status=posted&limit=${itemsPerPage}&offset=${(page - 1) * itemsPerPage}`, {
           headers,
           credentials: 'include'
         }),
@@ -65,7 +66,7 @@ export default function PostedContentPage() {
 
       if (contentResponse.status === 'fulfilled' && contentResponse.value.ok) {
         const contentData = await contentResponse.value.json()
-        const newContent = contentData.content || []
+        const newContent = contentData.data?.content || []
         
         if (page === 1) {
           setPostedContent(newContent)
@@ -75,7 +76,17 @@ export default function PostedContentPage() {
         
         setHasMore(newContent.length === itemsPerPage)
       } else {
-        throw new Error('Failed to load posted content')
+        // Get more specific error message from response
+        if (contentResponse.status === 'fulfilled') {
+          try {
+            const errorData = await contentResponse.value.json()
+            throw new Error(errorData.error || 'Failed to load posted content')
+          } catch {
+            throw new Error(`HTTP ${contentResponse.value.status}: Failed to load posted content`)
+          }
+        } else {
+          throw new Error('Network error: Unable to connect to server')
+        }
       }
 
       if (statsResponse.status === 'fulfilled' && statsResponse.value.ok && 'json' in statsResponse.value) {
@@ -84,7 +95,8 @@ export default function PostedContentPage() {
       }
 
     } catch (err) {
-      setError('Failed to load posted content')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load posted content'
+      setError(errorMessage)
       console.error('Error loading posted content:', err)
     } finally {
       setLoading(false)
@@ -109,7 +121,7 @@ export default function PostedContentPage() {
     setHidingPost(postId)
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
-      const response = await fetch(`/api/admin/content?status=posted/${postId}/hide`, {
+      const response = await fetch(`/api/admin/content/${postId}/hide`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,6 +170,12 @@ export default function PostedContentPage() {
       case 'unsplash': return '🖼️'
       case 'instagram': return '📷'
       case 'tiktok': return '🎵'
+      case 'bluesky': return '🦋'
+      case 'tumblr': return '🎨'
+      case 'lemmy': return '🌐'
+      case 'imgur': return '🖼️'
+      case 'pixabay': return '📷'
+      case 'emergency': return '🚨'
       default: return '🌐'
     }
   }
@@ -167,6 +185,7 @@ export default function PostedContentPage() {
       case 'image': return '🖼️'
       case 'video': return '🎥'
       case 'text': return '📝'
+      case 'gif': return '🎭'
       case 'mixed': return '📋'
       default: return '📄'
     }
@@ -174,204 +193,227 @@ export default function PostedContentPage() {
 
   if (loading && postedContent.length === 0) {
     return (
-      <div className="container content-area">
-        <div className="text-center">
-          <div className="spinner mb-sm"></div>
-          <p className="loading">Loading posted content...</p>
+      <div className="posted-container">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p className="loading-text">Loading posted content...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container content-area">
-      <div className="grid gap-lg">
-        {/* Header */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex justify-between align-center">
-              <div>
-                <h1 className="flex align-center gap-sm">
-                  <span>📤</span>
-                  Posted Content History
-                </h1>
-                <p className="text-muted">
-                  View all content that has been posted to the public site
-                </p>
-              </div>
-              <button onClick={() => { setPage(1); loadPostedContent(); }} className="btn">
-                Refresh
-              </button>
+    <div className="posted-container">
+      {/* Header */}
+      <div className="posted-section">
+        <div className="section-header">
+          <div className="header-content">
+            <div className="header-info">
+              <h1>
+                <span>📤</span>
+                Posted Content History
+              </h1>
+              <p className="header-description">
+                View all content that has been posted to the public site
+              </p>
             </div>
+            <button 
+              onClick={() => { setPage(1); loadPostedContent(); }} 
+              className="refresh-btn"
+            >
+              🔄 Refresh
+            </button>
+          </div>
 
-            {error && (
-              <div className="alert alert-danger mt-sm">
-                <span>⚠ {error}</span>
+          {error && (
+            <div className="error-message">
+              <span className="error-icon">⚠️</span>
+              <div className="error-content">
+                <h3>Error Loading Content</h3>
+                <p className="error-text">{error}</p>
+                {error.includes('Network error') && (
+                  <p className="error-hint">
+                    Please check your internet connection and try again.
+                  </p>
+                )}
+                {error.includes('401') && (
+                  <p className="error-hint">
+                    Your session may have expired. Please log in again.
+                  </p>
+                )}
               </div>
-            )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Statistics */}
+      {stats && (
+        <div className="posted-section">
+          <div className="section-header">
+            <div className="header-info">
+              <h2>📊 Posting Statistics</h2>
+            </div>
+          </div>
+          <div className="section-body">
+            <div className="stats-grid">
+              <div className="stat-item">
+                <div className="stat-number primary">{stats.totalPosted}</div>
+                <p className="stat-label">Total Posted</p>
+              </div>
+              <div className="stat-item">
+                <div className="stat-number success">{stats.postedToday}</div>
+                <p className="stat-label">Posted Today</p>
+              </div>
+              <div className="stat-item">
+                <div className="stat-number primary">{Math.round(stats.averageEngagement)}%</div>
+                <p className="stat-label">Avg Engagement</p>
+              </div>
+              <div className="stat-item">
+                <div className="stat-number primary">{postedContent.length > 0 ? Math.round(stats.totalPosted / 30) : 0}</div>
+                <p className="stat-label">Posts/Day (30d avg)</p>
+              </div>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Statistics */}
-        {stats && (
-          <div className="card">
-            <div className="card-header">
-              <h2>Posting Statistics</h2>
-            </div>
-            <div className="card-body">
-              <div className="grid grid-4 gap-md">
-                <div className="text-center">
-                  <h3>{stats.totalPosted}</h3>
-                  <p className="text-muted">Total Posted</p>
-                </div>
-                <div className="text-center">
-                  <h3 className="text-success">{stats.postedToday}</h3>
-                  <p className="text-muted">Posted Today</p>
-                </div>
-                <div className="text-center">
-                  <h3>{Math.round(stats.averageEngagement)}%</h3>
-                  <p className="text-muted">Avg Engagement</p>
-                </div>
-                <div className="text-center">
-                  <h3>{postedContent.length > 0 ? Math.round(stats.totalPosted / 30) : 0}</h3>
-                  <p className="text-muted">Posts/Day (30d avg)</p>
-                </div>
-              </div>
-            </div>
+      {/* Posted Content List */}
+      <div className="posted-section">
+        <div className="section-header">
+          <div className="header-info">
+            <h2>📝 Posted Content ({postedContent.length} items)</h2>
           </div>
-        )}
-
-        {/* Posted Content List */}
-        <div className="card">
-          <div className="card-header">
-            <h2>Posted Content ({postedContent.length} items)</h2>
+        </div>
+        
+        {postedContent.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">📭</div>
+            <h3 className="empty-title">No content has been posted yet</h3>
+            <p className="empty-description">Posted content will appear here once items are published</p>
           </div>
-          <div className="card-body">
-            {postedContent.length === 0 ? (
-              <div className="text-center p-lg">
-                <div className="mb-sm">📭</div>
-                <p className="text-muted">No content has been posted yet</p>
-              </div>
-            ) : (
-              <div className="grid gap-md">
-                {postedContent.map((item) => (
-                  <div key={item.id} className="card">
-                    <div className="card-header">
-                      <div className="flex justify-between align-center">
-                        <div className="flex align-center gap-sm">
-                          <span>{getPlatformIcon(item.source_platform)}</span>
-                          <span><strong>{item.source_platform}</strong></span>
-                          <span>{getContentTypeIcon(item.content_type)}</span>
-                          <span className="text-muted">{item.content_type}</span>
-                        </div>
-                        <div className="flex align-center gap-sm">
-                          <span className="text-success">Posted</span>
-                          <span className="text-muted">#{item.post_order}</span>
-                          <button
-                            onClick={() => hidePost(item.id, item.content_text)}
-                            disabled={hidingPost === item.id}
-                            className="btn btn-sm btn-danger"
-                            title="Remove this post from the public feed"
-                          >
-                            {hidingPost === item.id ? '⏳' : '🗑️'} 
-                            {hidingPost === item.id ? 'Removing...' : 'Remove'}
-                          </button>
-                        </div>
-                      </div>
+        ) : (
+          <div className="posted-list">
+            {postedContent.map((item) => (
+              <div key={item.id} className="content-item">
+                <div className="item-header">
+                  <div className="item-meta">
+                    <div className="meta-badge platform">
+                      <span className="platform-icon">{getPlatformIcon(item.source_platform)}</span>
+                      <span>{item.source_platform}</span>
                     </div>
-                    
-                    <div className="card-body">
-                      {item.content_text && (
-                        <p className="mb-sm">{item.content_text}</p>
-                      )}
-
-                      {item.content_image_url && (
-                        // Check if the "image" URL is actually a video file
-                        item.content_image_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
-                          <video 
-                            src={item.content_image_url}
-                            controls
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'cover' }}
-                            className="mb-sm"
-                          />
-                        ) : (
-                          <img 
-                            src={item.content_image_url} 
-                            alt="Posted content" 
-                            style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'cover' }}
-                            className="mb-sm"
-                          />
-                        )
-                      )}
-
-                      {item.content_video_url && (
-                        <div className="mb-sm">
-                          <a 
-                            href={item.content_video_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="nav-link flex align-center gap-xs"
-                          >
-                            <span>🎥</span>
-                            <span>View Video</span>
-                          </a>
-                        </div>
-                      )}
-
-                      <div className="grid grid-2 gap-sm text-muted">
-                        <div>
-                          <strong>Author:</strong> {item.original_author}
-                        </div>
-                        <div>
-                          <strong>Posted:</strong> {formatDate(item.posted_at)}
-                        </div>
-                      </div>
-
-                      {item.engagement_stats && (
-                        <div className="grid grid-3 gap-sm mt-sm">
-                          <div className="text-center p-xs card">
-                            <strong>{item.engagement_stats.views}</strong>
-                            <p className="text-muted">Views</p>
-                          </div>
-                          <div className="text-center p-xs card">
-                            <strong>{item.engagement_stats.likes}</strong>
-                            <p className="text-muted">Likes</p>
-                          </div>
-                          <div className="text-center p-xs card">
-                            <strong>{item.engagement_stats.shares}</strong>
-                            <p className="text-muted">Shares</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="card-footer">
-                      <a 
-                        href={item.original_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="nav-link flex align-center gap-xs"
-                      >
-                        <span>🔗</span>
-                        <span>View Original</span>
-                      </a>
+                    <div className="meta-badge content-type">
+                      <span className="content-type-icon">{getContentTypeIcon(item.content_type)}</span>
+                      <span>{item.content_type}</span>
                     </div>
                   </div>
-                ))}
+                  <div className="item-actions">
+                    <span className="status-badge">Posted</span>
+                    <span className="post-order">#{item.post_order}</span>
+                    <button
+                      onClick={() => hidePost(item.id, item.content_text)}
+                      disabled={hidingPost === item.id}
+                      className="remove-btn"
+                      title="Remove this post from the public feed"
+                    >
+                      {hidingPost === item.id ? '⏳' : '🗑️'} 
+                      {hidingPost === item.id ? 'Removing...' : 'Remove'}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="item-body">
+                  {item.content_text && (
+                    <p className="content-text">{item.content_text}</p>
+                  )}
+
+                  {item.content_image_url && (
+                    <div className="media-container">
+                      {/* Check if the "image" URL is actually a video file */}
+                      {item.content_image_url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ? (
+                        <video 
+                          src={item.content_image_url}
+                          controls
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="content-video"
+                        />
+                      ) : (
+                        <img 
+                          src={item.content_image_url} 
+                          alt="Posted content" 
+                          className="content-image"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {item.content_video_url && (
+                    <div className="media-container">
+                      <a 
+                        href={item.content_video_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="video-link"
+                      >
+                        <span>🎥</span>
+                        <span>View Video</span>
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="content-details">
+                    <div className="detail-row">
+                      <span className="detail-label">Author:</span>
+                      <span className="detail-value">{item.original_author}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Posted:</span>
+                      <span className="detail-value">{formatDate(item.posted_at)}</span>
+                    </div>
+                  </div>
+
+                  {item.engagement_stats && (
+                    <div className="engagement-stats">
+                      <div className="engagement-card">
+                        <div className="engagement-number">{item.engagement_stats.views}</div>
+                        <p className="engagement-label">Views</p>
+                      </div>
+                      <div className="engagement-card">
+                        <div className="engagement-number">{item.engagement_stats.likes}</div>
+                        <p className="engagement-label">Likes</p>
+                      </div>
+                      <div className="engagement-card">
+                        <div className="engagement-number">{item.engagement_stats.shares}</div>
+                        <p className="engagement-label">Shares</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="item-footer">
+                  <a 
+                    href={item.original_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="view-original"
+                  >
+                    <span>🔗</span>
+                    <span>View Original</span>
+                  </a>
+                </div>
               </div>
-            )}
+            ))}
 
             {/* Load More Button */}
             {hasMore && postedContent.length > 0 && (
-              <div className="text-center mt-lg">
+              <div className="load-more-container">
                 <button 
                   onClick={loadMore} 
                   disabled={loading}
-                  className="btn btn-primary"
+                  className="load-more-btn"
                 >
                   {loading ? 'Loading...' : 'Load More'}
                 </button>
@@ -379,12 +421,12 @@ export default function PostedContentPage() {
             )}
 
             {!hasMore && postedContent.length > 0 && (
-              <div className="text-center mt-lg">
-                <p className="text-muted">All posted content loaded ({postedContent.length} items)</p>
+              <div className="load-more-container">
+                <p className="load-complete">All posted content loaded ({postedContent.length} items)</p>
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

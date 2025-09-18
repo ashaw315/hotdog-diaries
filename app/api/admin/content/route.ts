@@ -17,9 +17,10 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
-    const type = searchParams.get('type') || 'all'
+    const offset = parseInt(searchParams.get('offset') || '0')
+    const type = searchParams.get('type') || searchParams.get('status') || 'all'
     
-    const offset = (page - 1) * limit
+    const actualOffset = offset || (page - 1) * limit
 
     // Build WHERE clause based on type filter
     let whereClause = '1=1'
@@ -44,44 +45,82 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
         break
     }
 
-    // Get content with pagination
-    const contentQuery = `
-      SELECT 
-        id,
-        content_text,
-        content_type,
-        source_platform,
-        original_url,
-        original_author,
-        content_image_url,
-        content_video_url,
-        scraped_at,
-        is_posted,
-        is_approved,
-        posted_at,
-        admin_notes,
-        youtube_data,
-        flickr_data,
-        unsplash_data
-      FROM content_queue
-      WHERE ${whereClause}
-      ORDER BY scraped_at DESC
-      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
-    `
+    // Get content with pagination - special handling for posted content
+    let contentQuery: string
+    let orderBy = 'scraped_at DESC'
+    let fromClause = 'content_queue'
     
-    queryParams.push(limit, offset)
+    if (type === 'posted') {
+      // For posted content, join with posted_content table to get posting details
+      contentQuery = `
+        SELECT 
+          cq.id,
+          cq.content_text,
+          cq.content_type,
+          cq.source_platform,
+          cq.original_url,
+          cq.original_author,
+          cq.content_image_url,
+          cq.content_video_url,
+          cq.scraped_at,
+          cq.is_posted,
+          cq.is_approved,
+          cq.admin_notes,
+          pc.posted_at,
+          pc.post_order
+        FROM content_queue cq
+        INNER JOIN posted_content pc ON cq.id = pc.content_queue_id
+        ORDER BY pc.posted_at DESC
+        LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+      `
+    } else {
+      contentQuery = `
+        SELECT 
+          id,
+          content_text,
+          content_type,
+          source_platform,
+          original_url,
+          original_author,
+          content_image_url,
+          content_video_url,
+          scraped_at,
+          is_posted,
+          is_approved,
+          posted_at,
+          admin_notes
+        FROM content_queue
+        WHERE ${whereClause}
+        ORDER BY ${orderBy}
+        LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+      `
+    }
+    
+    queryParams.push(limit, actualOffset)
     
     const contentResult = await db.query(contentQuery, queryParams)
     
     // Get total count for pagination
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM content_queue
-      WHERE ${whereClause}
-    `
+    let countQuery: string
+    let total: number
     
-    const countResult = await db.query(countQuery)
-    const total = parseInt(countResult.rows[0].total)
+    if (type === 'posted') {
+      countQuery = `
+        SELECT COUNT(*) as total
+        FROM content_queue cq
+        INNER JOIN posted_content pc ON cq.id = pc.content_queue_id
+      `
+      const countResult = await db.query(countQuery)
+      total = parseInt(countResult.rows[0].total)
+    } else {
+      countQuery = `
+        SELECT COUNT(*) as total
+        FROM content_queue
+        WHERE ${whereClause}
+      `
+      const countResult = await db.query(countQuery)
+      total = parseInt(countResult.rows[0].total)
+    }
 
     const content = contentResult.rows.map(row => ({
       id: row.id,
@@ -97,11 +136,7 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
       is_approved: row.is_approved,
       posted_at: row.posted_at,
       admin_notes: row.admin_notes,
-      platform_data: {
-        youtube: row.youtube_data,
-        flickr: row.flickr_data,
-        unsplash: row.unsplash_data,
-      }
+      post_order: row.post_order // Only available for posted content
     }))
 
     const responseData = {
@@ -111,7 +146,7 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
-        hasMore: offset + content.length < total
+        hasMore: actualOffset + content.length < total
       },
       filter: type
     }
