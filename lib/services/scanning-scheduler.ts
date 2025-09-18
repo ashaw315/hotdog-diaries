@@ -349,7 +349,7 @@ export class ScanningScheduler {
         // Estimate queue depletion
         currentQueueSize -= dailyConsumption
         
-        let shouldScan = currentQueueSize < 42 // Less than 7 days
+        const shouldScan = currentQueueSize < 42 // Less than 7 days
         let estimatedItems = 0
         let priority: string[] = []
         let reason = ''

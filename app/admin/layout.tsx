@@ -110,7 +110,6 @@ function AdminHeader({ user, onLogout }: AdminHeaderProps) {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
   const dropdownMenuRef = useRef<HTMLDivElement>(null)
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   const isActivePage = (href: string) => {
     if (href === '/admin') {

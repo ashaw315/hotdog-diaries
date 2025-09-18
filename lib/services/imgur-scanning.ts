@@ -390,7 +390,7 @@ export class ImgurScanningService {
       // Determine content type and URLs
       const isAnimated = image.animated || image.type?.includes('gif') || image.link.includes('.gif')
       let contentType = isAnimated ? 'gif' : 'image'
-      let imageUrl = image.link
+      const imageUrl = image.link
       let videoUrl: string | undefined
 
       // For GIFs, prefer MP4 if available

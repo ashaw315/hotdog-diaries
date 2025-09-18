@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
 
         // Generate content hash for duplicate detection - use UUID + timestamp to ensure uniqueness
         const hashInput = `pixabay_unique_${hit.id}_${hit.pageURL}_${Date.now()}_${Math.random()}`
-        let contentHash = require('crypto').createHash('md5').update(hashInput).digest('hex')
+        const contentHash = require('crypto').createHash('md5').update(hashInput).digest('hex')
         
         console.log(`🔍 Processing Pixabay image ${hit.id}: "${hit.tags}"`)
         console.log(`🔍 Generated unique hash: ${contentHash.substring(0, 12)}... (timestamp-based to avoid collisions)`)

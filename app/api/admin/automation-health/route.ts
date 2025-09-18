@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSimpleClient } from '@/utils/supabase/server'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     console.log('🔍 Checking automation health...')
     
@@ -85,7 +85,13 @@ export async function GET(request: NextRequest) {
     })
 
     // Calculate posting patterns
-    const postingPatterns = {
+    const postingPatterns: {
+      totalPostsToday: number
+      recentPlatforms: string[]
+      diversityViolations: number
+      lastPostedPlatform: string | null
+      postsLast24h: number
+    } = {
       totalPostsToday: 0,
       recentPlatforms: [],
       diversityViolations: 0,
@@ -93,19 +99,24 @@ export async function GET(request: NextRequest) {
       postsLast24h: 0
     }
 
-    if (recentPosts) {
-      postingPatterns.recentPlatforms = recentPosts.map(p => p.content_queue.source_platform)
-      postingPatterns.lastPostedPlatform = recentPosts[0]?.content_queue.source_platform || null
+    if (recentPosts && Array.isArray(recentPosts)) {
+      const typedRecentPosts = recentPosts as Array<{ 
+        posted_at: string; 
+        content_queue?: { source_platform: string; content_type: string } 
+      }>
+      
+      postingPatterns.recentPlatforms = typedRecentPosts.map(p => p.content_queue?.source_platform).filter(Boolean) as string[]
+      postingPatterns.lastPostedPlatform = typedRecentPosts[0]?.content_queue?.source_platform || null
       
       // Count violations (consecutive same platform)
-      for (let i = 1; i < recentPosts.length; i++) {
-        if (recentPosts[i].content_queue.source_platform === recentPosts[i-1].content_queue.source_platform) {
+      for (let i = 1; i < typedRecentPosts.length; i++) {
+        if (typedRecentPosts[i]?.content_queue?.source_platform === typedRecentPosts[i-1]?.content_queue?.source_platform) {
           postingPatterns.diversityViolations++
         }
       }
 
       // Posts in last 24h
-      postingPatterns.postsLast24h = recentPosts.filter(p => 
+      postingPatterns.postsLast24h = typedRecentPosts.filter(p => 
         new Date(p.posted_at) > oneDayAgo
       ).length
     }
@@ -149,8 +160,8 @@ export async function GET(request: NextRequest) {
       contentSummary: {
         totalReady: totalReadyContent,
         daysRemaining: daysOfContentRemaining,
-        addedToday: Object.values(platformHealth).reduce((sum, stats) => sum + stats.addedToday, 0),
-        addedThisWeek: Object.values(platformHealth).reduce((sum, stats) => stats.addedThisWeek, 0)
+        addedToday: Object.values(platformHealth).reduce((sum, stats: any) => sum + stats.addedToday, 0),
+        addedThisWeek: Object.values(platformHealth).reduce((sum, stats: any) => sum + stats.addedThisWeek, 0)
       },
 
       // Posting health

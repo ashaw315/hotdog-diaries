@@ -31,7 +31,7 @@ async function loginHandler(request: NextRequest): Promise<NextResponse> {
           id: authResult.user.id,
           username: authResult.user.username,
           email: authResult.user.email,
-          lastLogin: authResult.user.last_login
+          lastLogin: authResult.user.last_login_at
         },
         tokens: authResult.tokens
       },

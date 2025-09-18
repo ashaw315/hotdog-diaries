@@ -193,9 +193,9 @@ export default function DebugLoginPage() {
           }}>
             <strong>Current Values:</strong>
             <br />
-            Username: "{username}"
+            Username: &quot;{username}&quot;
             <br />
-            Password: "{password}"
+            Password: &quot;{password}&quot;
           </div>
 
           <div style={{ marginTop: '15px' }}>
@@ -289,11 +289,11 @@ export default function DebugLoginPage() {
         <ol>
           <li>Try clicking on the username input (red border)</li>
           <li>Try typing - watch the logs on the right</li>
-          <li>Click "Test Programmatic Input" to see if JS can set values</li>
-          <li>Click "Focus Input" to programmatically focus</li>
-          <li>Click "Check Blocking Elements" to see what's at the input position</li>
+          <li>Click &quot;Test Programmatic Input&quot; to see if JS can set values</li>
+          <li>Click &quot;Focus Input&quot; to programmatically focus</li>
+          <li>Click &quot;Check Blocking Elements&quot; to see what&apos;s at the input position</li>
         </ol>
-        <p><strong>Check browser console for additional "[DEBUG]" messages</strong></p>
+        <p><strong>Check browser console for additional &quot;[DEBUG]&quot; messages</strong></p>
       </div>
     </div>
   )

@@ -56,7 +56,7 @@ export default function ContentFeed({
       setError(null)
 
       // Use public API for posted content, admin API for others
-      let endpoint = type === 'posted' ? '/api/content' : '/api/admin/content'
+      const endpoint = type === 'posted' ? '/api/content' : '/api/admin/content'
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: limit.toString()

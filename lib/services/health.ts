@@ -581,12 +581,12 @@ export class HealthService {
 
       // CPU check (simplified - track event loop lag)
       const cpuUsage = process.cpuUsage()
-      let cpuStatus = HealthStatus.HEALTHY
-      let cpuMessage = 'CPU usage is normal'
+      const cpuStatus = HealthStatus.HEALTHY
+      const cpuMessage = 'CPU usage is normal'
 
       // Disk check (simplified - check if we can write to temp)
-      let diskStatus = HealthStatus.HEALTHY
-      let diskMessage = 'Disk space is adequate'
+      const diskStatus = HealthStatus.HEALTHY
+      const diskMessage = 'Disk space is adequate'
 
       return {
         memory: {

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Test database connection
-    let databaseStatus = { connected: false, error: null, stats: null }
+    const databaseStatus = { connected: false, error: null, stats: null }
     try {
       const supabase = createSimpleClient()
       

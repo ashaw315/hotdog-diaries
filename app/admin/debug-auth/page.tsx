@@ -43,8 +43,9 @@ export default function DebugAuthPage() {
       addLog(`Response data: ${JSON.stringify(data)}`)
       
     } catch (error) {
-      addLog(`API error: ${error}`)
-      setApiResponse({ error: error.message })
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      addLog(`API error: ${errorMessage}`)
+      setApiResponse({ error: errorMessage })
     }
   }
 

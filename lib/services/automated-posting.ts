@@ -232,8 +232,8 @@ export class AutomatedPostingService {
     recentHours: number,
     platformBalance: boolean
   ): Promise<ContentItem[]> {
-    let whereConditions = ["cq.content_status = 'approved'"]
-    let queryParams: any[] = []
+    const whereConditions = ["cq.content_status = 'approved'"]
+    const queryParams: any[] = []
 
     // Quality threshold
     if (qualityThreshold > 0) {

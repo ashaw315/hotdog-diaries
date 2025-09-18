@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const supabase = createSimpleClient()
     
     // 1. Check specific posted content IDs 204 and 252
-    const { data: specificPosts, error: postsError } = await supabase
+    const { data: specificPosts } = await supabase
       .from('posted_content')
       .select(`
         id,
@@ -65,22 +65,22 @@ export async function GET(request: NextRequest) {
 
     // Find duplicates
     const contentDuplicates = Array.from(contentGroups.entries())
-      .filter(([key, items]) => items.length > 1)
+      .filter(([, items]) => items.length > 1)
       .map(([key, items]) => ({
         key,
         count: items.length,
-        ids: items.map(i => i.id),
+        ids: items.map((i: any) => i.id),
         first_created: items[0].created_at,
         content_preview: items[0].content_text?.substring(0, 100),
         platform: items[0].source_platform
       }))
 
     const hashDuplicates = Array.from(hashGroups.entries())
-      .filter(([hash, items]) => items.length > 1)
+      .filter(([, items]) => items.length > 1)
       .map(([hash, items]) => ({
         hash,
         count: items.length,
-        ids: items.map(i => i.id)
+        ids: items.map((i: any) => i.id)
       }))
 
     // 3. Get recent posted content for analysis

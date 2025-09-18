@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit
 
     // Build WHERE clause
-    let whereConditions = ['p.is_visible = true']
+    const whereConditions = ['p.is_visible = true']
     const queryParams: any[] = []
 
     if (featured) {

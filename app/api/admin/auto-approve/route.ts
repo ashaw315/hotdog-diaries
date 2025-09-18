@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         approved: row?.approved || 0,
         readyToPost: row?.ready_to_post || 0,
         pendingApproval: row?.pending_approval || 0,
-        daysOfContent: Math.floor((row?.ready_to_post || 0) / 6)
+        daysOfContent: Math.floor(Number(row?.ready_to_post || 0) / 6)
       }
     } else {
       const supabase = createSimpleClient()

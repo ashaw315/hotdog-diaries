@@ -436,7 +436,7 @@ export class FilteringService {
       
       const lowerText = text.toLowerCase()
       let hasHotdogReference = false
-      let foundTerms: string[] = []
+      const foundTerms: string[] = []
       
       for (const term of hotdogTerms) {
         if (lowerText.includes(term)) {

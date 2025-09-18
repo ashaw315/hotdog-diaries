@@ -7,13 +7,6 @@ import { useDashboardData } from '@/hooks/useAdminData'
 import { useRequireAuth } from '@/components/providers/AuthProvider'
 import ApiDemo from '@/components/admin/ApiDemo'
 
-interface ContentItem {
-  id: number
-  source_platform: string
-  content_text: string | null
-  content_image_url: string | null
-  content_video_url: string | null
-}
 
 export default function AdminDashboard() {
   // Ensure user is authenticated
@@ -58,7 +51,7 @@ export default function AdminDashboard() {
           <div className="text-red-600 text-xl mb-4">⚠️ Dashboard Error</div>
           <p className="text-gray-600 mb-4">{error}</p>
           <button 
-            onClick={fetchDashboardData}
+            onClick={refresh}
             className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
           >
             Retry

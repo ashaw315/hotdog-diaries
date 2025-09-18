@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { blueskyService } from '@/lib/services/bluesky-scanning'
 
 export async function GET() {

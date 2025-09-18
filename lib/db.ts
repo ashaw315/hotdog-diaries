@@ -236,7 +236,7 @@ class DatabaseConnection {
     
     try {
       // Convert PostgreSQL syntax to SQLite
-      let sqliteQuery = this.convertPostgresToSqlite(text)
+      const sqliteQuery = this.convertPostgresToSqlite(text)
       
       // Handle different query types
       if (sqliteQuery.trim().toUpperCase().startsWith('SELECT') || sqliteQuery.trim().toUpperCase().startsWith('WITH')) {

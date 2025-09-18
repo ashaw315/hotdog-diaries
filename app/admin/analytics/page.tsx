@@ -122,11 +122,6 @@ export default function AnalyticsPage() {
     return `${(value * 100).toFixed(1)}%`
   }
 
-  const formatTime = (seconds: number) => {
-    if (seconds < 60) return `${Math.round(seconds)}s`
-    if (seconds < 3600) return `${Math.round(seconds / 60)}m`
-    return `${Math.round(seconds / 3600)}h`
-  }
 
   const getEffectivenessColor = (rate: number) => {
     if (rate >= 0.9) return 'text-green-600'

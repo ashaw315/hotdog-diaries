@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     )
 
     let selectedContent
-    let results = []
+    const results = []
 
     if (contentIds && contentIds.length > 0) {
       // Post specific content items

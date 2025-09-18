@@ -70,10 +70,12 @@ async function originalPOSTHandler(request: NextRequest, context: { params: Prom
 // Deprecated handler with redirection to consolidated endpoint
 export const POST = createDeprecatedHandler(
   '/api/admin/content/[id]/reject',
-  async (request: NextRequest, context: any): Promise<NextResponse> => {
+  async (request: NextRequest): Promise<NextResponse> => {
     try {
       // Forward to the new consolidated content endpoint
       const { PATCH } = await import('@/app/api/admin/content/[id]/route')
+      const url = new URL(request.url)
+      const id = url.pathname.split('/')[4] // Extract ID from path
       
       // Transform the request to use the new API format
       const newRequest = new NextRequest(request.url.replace('/reject', ''), {
@@ -82,11 +84,13 @@ export const POST = createDeprecatedHandler(
         body: JSON.stringify({ status: 'rejected', reason: 'Legacy reject endpoint' })
       })
       
-      return await PATCH(newRequest, context)
+      return await PATCH(newRequest, { params: Promise.resolve({ id }) })
     } catch (error) {
       console.error('Error redirecting reject to consolidated endpoint:', error)
       // Fallback to original handler
-      return await originalPOSTHandler(request, context)
+      const url = new URL(request.url)
+      const id = url.pathname.split('/')[4]
+      return await originalPOSTHandler(request, { params: Promise.resolve({ id }) })
     }
   }
 )

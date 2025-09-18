@@ -42,7 +42,7 @@ export default function SimpleTestPage() {
         border: '1px solid #ccc',
         marginTop: '20px'
       }}>
-        <strong>Current Value:</strong> "{value}"
+        <strong>Current Value:</strong> &quot;{value}&quot;
       </div>
 
       <div style={{ marginTop: '20px' }}>
@@ -71,10 +71,10 @@ export default function SimpleTestPage() {
         <ol>
           <li>Click in the input field above</li>
           <li>Type some characters</li>
-          <li>Check if the "Current Value" updates</li>
-          <li>Try the "Set Value Programmatically" button</li>
+          <li>Check if the &quot;Current Value&quot; updates</li>
+          <li>Try the &quot;Set Value Programmatically&quot; button</li>
         </ol>
-        <p><strong>If this doesn't work, the issue is fundamental browser/React configuration.</strong></p>
+        <p><strong>If this doesn&apos;t work, the issue is fundamental browser/React configuration.</strong></p>
       </div>
     </div>
   )

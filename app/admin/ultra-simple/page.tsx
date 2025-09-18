@@ -87,7 +87,7 @@ export default function UltraSimplePage() {
           border: '2px solid #333',
           marginBottom: '20px'
         }}>
-          <strong>Current Value:</strong> "{value}" (length: {value.length})
+          <strong>Current Value:</strong> &quot;{value}&quot; (length: {value.length})
         </div>
 
         <div style={{
@@ -137,7 +137,7 @@ export default function UltraSimplePage() {
             <li>Try typing characters</li>
             <li>Watch the event log for activity</li>
             <li>Check browser console for errors (F12)</li>
-            <li>If no events fire, there's a deeper browser/OS issue</li>
+            <li>If no events fire, there&apos;s a deeper browser/OS issue</li>
           </ol>
         </div>
       </body>

@@ -57,7 +57,14 @@ export async function GET(request: NextRequest) {
       .from('content_queue')
       .select('id, is_approved, is_posted, source_platform, content_type, created_at, scraped_at')
 
-    const queueStats = {
+    const queueStats: {
+      totalContent: number
+      approvedContent: number
+      postedContent: number
+      pendingContent: number
+      daysOfContent: number
+      platformBreakdown: Record<string, { total: number; approved: number; posted: number }>
+    } = {
       totalContent: queueData?.length || 0,
       approvedContent: queueData?.filter(c => c.is_approved && !c.is_posted).length || 0,
       postedContent: queueData?.filter(c => c.is_posted).length || 0,
@@ -80,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Get today's posting activity
-    const { data: todayPosts, error: postsError } = await supabase
+    const { data: todayPosts } = await supabase
       .from('posted_content')
       .select(`
         id, posted_at, content_queue_id,
@@ -91,14 +98,14 @@ export async function GET(request: NextRequest) {
 
     // 5. Get recent scanning activity (last 7 days)
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const { data: recentContent, error: recentError } = await supabase
+    const { data: recentContent } = await supabase
       .from('content_queue')
       .select('id, source_platform, scraped_at')
       .gte('scraped_at', weekAgo)
       .order('scraped_at', { ascending: false })
 
     // Group recent content by day
-    const scanningActivity = {}
+    const scanningActivity: Record<string, { total: number; platforms: Record<string, number> }> = {}
     if (recentContent) {
       recentContent.forEach(item => {
         const day = item.scraped_at.split('T')[0]

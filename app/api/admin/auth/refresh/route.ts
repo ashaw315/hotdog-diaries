@@ -26,7 +26,7 @@ async function refreshTokenHandler(request: NextRequest): Promise<NextResponse> 
     let decoded
     try {
       decoded = AuthService.verifyJWT(refreshToken)
-    } catch (error) {
+    } catch {
       throw createApiError('Invalid refresh token', 401, 'INVALID_REFRESH_TOKEN')
     }
 

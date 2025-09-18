@@ -7,7 +7,7 @@ export async function POST() {
     
     const supabase = await createClient();
     let totalScanned = 0;
-    let errors: string[] = [];
+    const errors: string[] = [];
 
     // Create content_queue table if it doesn't exist
     const { error: tableError } = await supabase.rpc('exec_sql', {

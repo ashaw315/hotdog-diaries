@@ -5,8 +5,7 @@ import {
   validateRequestMethod,
   createSuccessResponse,
   createApiError,
-  handleApiError,
-  verifyAdminAuth
+  handleApiError
 } from '@/lib/api-middleware'
 
 /**
@@ -17,14 +16,17 @@ import {
 
 async function getCurrentUserHandler(request: NextRequest): Promise<NextResponse> {
   try {
-    // Verify authentication
-    const authResult = await verifyAdminAuth(request)
-    if (!authResult.success) {
-      throw createApiError('Authentication required', 401, 'UNAUTHORIZED')
+    // Get auth token from header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
     }
 
+    const token = authHeader.replace('Bearer ', '')
+    const decoded = AuthService.verifyJWT(token)
+    
     // Get full user details
-    const user = await AdminService.getAdminById(authResult.user.id)
+    const user = await AdminService.getAdminById(decoded.userId)
     if (!user) {
       throw createApiError('User not found', 404, 'USER_NOT_FOUND')
     }
@@ -36,9 +38,8 @@ async function getCurrentUserHandler(request: NextRequest): Promise<NextResponse
         email: user.email,
         fullName: user.full_name,
         isActive: user.is_active,
-        lastLogin: user.last_login,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at
+        lastLogin: user.last_login_at,
+        createdAt: user.created_at
       },
       'User information retrieved successfully'
     )

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { blueskyService } from '@/lib/services/bluesky-scanning'
 import { db } from '@/lib/db'
 
@@ -45,24 +45,24 @@ export async function GET() {
     
     const enrichedStats = {
       // Basic stats
-      totalPostsFound: parseInt(dbStats.total_posts) || 0,
-      postsProcessed: parseInt(dbStats.total_posts) || 0,
-      postsApproved: parseInt(dbStats.approved_posts) || 0,
-      postsRejected: parseInt(dbStats.rejected_posts) || 0,
-      postsPending: parseInt(dbStats.pending_posts) || 0,
+      totalPostsFound: parseInt(String(dbStats.total_posts)) || 0,
+      postsProcessed: parseInt(String(dbStats.total_posts)) || 0,
+      postsApproved: parseInt(String(dbStats.approved_posts)) || 0,
+      postsRejected: parseInt(String(dbStats.rejected_posts)) || 0,
+      postsPending: parseInt(String(dbStats.pending_posts)) || 0,
       
       // Content type breakdown
       contentTypes: {
-        text: parseInt(dbStats.text_posts) || 0,
-        image: parseInt(dbStats.image_posts) || 0,
-        video: parseInt(dbStats.video_posts) || 0,
-        mixed: parseInt(dbStats.mixed_posts) || 0
+        text: parseInt(String(dbStats.text_posts)) || 0,
+        image: parseInt(String(dbStats.image_posts)) || 0,
+        video: parseInt(String(dbStats.video_posts)) || 0,
+        mixed: parseInt(String(dbStats.mixed_posts)) || 0
       },
       
       // Performance metrics
       successRate: stats.successRate,
-      approvalRate: parseInt(dbStats.total_posts) > 0 ? 
-        (parseInt(dbStats.approved_posts) / parseInt(dbStats.total_posts)) : 0,
+      approvalRate: parseInt(String(dbStats.total_posts)) > 0 ? 
+        (parseInt(String(dbStats.approved_posts)) / parseInt(String(dbStats.total_posts))) : 0,
       
       // Time-based stats
       timeRange: {
@@ -73,15 +73,15 @@ export async function GET() {
       },
       
       // Content quality metrics
-      averageTextLength: Math.round(parseFloat(dbStats.avg_text_length) || 0),
+      averageTextLength: Math.round(parseFloat(String(dbStats.avg_text_length)) || 0),
       
       // Hourly breakdown
-      hourlyActivity: hourlyStats.rows.map(row => ({
+      hourlyActivity: hourlyStats.rows.map((row: any) => ({
         hour: row.hour,
-        postsFound: parseInt(row.posts_count),
-        postsApproved: parseInt(row.approved_count),
-        approvalRate: parseInt(row.posts_count) > 0 ? 
-          (parseInt(row.approved_count) / parseInt(row.posts_count)) : 0
+        postsFound: parseInt(String(row.posts_count)),
+        postsApproved: parseInt(String(row.approved_count)),
+        approvalRate: parseInt(String(row.posts_count)) > 0 ? 
+          (parseInt(String(row.approved_count)) / parseInt(String(row.posts_count))) : 0
       })),
       
       // Health indicators
@@ -89,10 +89,10 @@ export async function GET() {
         isActive: stats.totalPostsFound > 0,
         recentActivity: hourlyStats.rows.length > 0,
         contentDiversity: Object.values({
-          text: parseInt(dbStats.text_posts) || 0,
-          image: parseInt(dbStats.image_posts) || 0,
-          video: parseInt(dbStats.video_posts) || 0,
-          mixed: parseInt(dbStats.mixed_posts) || 0
+          text: parseInt(String(dbStats.text_posts)) || 0,
+          image: parseInt(String(dbStats.image_posts)) || 0,
+          video: parseInt(String(dbStats.video_posts)) || 0,
+          mixed: parseInt(String(dbStats.mixed_posts)) || 0
         }).filter(count => count > 0).length
       }
     }

@@ -17,7 +17,7 @@ export async function POST() {
     console.log('🌭 Starting temporary content scan...');
     
     const tempContent: TempContent[] = [];
-    let errors: string[] = [];
+    const errors: string[] = [];
 
     // Reddit scanning
     try {
