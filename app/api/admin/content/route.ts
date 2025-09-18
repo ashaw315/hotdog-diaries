@@ -10,8 +10,11 @@ import { db } from '@/lib/db'
 
 async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   try {
+    console.log(`🔍 Getting content - Environment: ${process.env.NODE_ENV}`)
+    
     const authResult = await verifyAdminAuth(request)
     if (!authResult.success) {
+      console.error('❌ Authentication failed:', authResult.error)
       throw createApiError('Authentication required', 401, 'UNAUTHORIZED')
     }
     const { searchParams } = new URL(request.url)
@@ -21,6 +24,8 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
     const type = searchParams.get('type') || searchParams.get('status') || 'all'
     
     const actualOffset = offset || (page - 1) * limit
+    
+    console.log(`📊 Query params - type: ${type}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
 
     // Build WHERE clause based on type filter
     let whereClause = '1=1'
@@ -51,28 +56,32 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
     let fromClause = 'content_queue'
     
     if (type === 'posted') {
-      // For posted content, join with posted_content table to get posting details
+      // Simple fallback: just get posted content from content_queue
+      // This works regardless of whether posts or posted_content tables exist
+      console.log('🔄 Using simple content_queue filter for posted content')
+      whereClause = 'is_posted = TRUE'
       contentQuery = `
         SELECT 
-          cq.id,
-          cq.content_text,
-          cq.content_type,
-          cq.source_platform,
-          cq.original_url,
-          cq.original_author,
-          cq.content_image_url,
-          cq.content_video_url,
-          cq.scraped_at,
-          cq.is_posted,
-          cq.is_approved,
-          cq.admin_notes,
-          pc.posted_at,
-          pc.post_order
-        FROM content_queue cq
-        INNER JOIN posted_content pc ON cq.id = pc.content_queue_id
-        ORDER BY pc.posted_at DESC
-        LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+          id,
+          content_text,
+          content_type,
+          source_platform,
+          original_url,
+          original_author,
+          content_image_url,
+          content_video_url,
+          scraped_at,
+          is_posted,
+          is_approved,
+          posted_at,
+          admin_notes,
+          id as post_order
+        FROM content_queue
+        WHERE ${whereClause}
+        ORDER BY posted_at DESC NULLS LAST, created_at DESC
+        LIMIT $1 OFFSET $2
       `
+      queryParams.push(limit, actualOffset)
     } else {
       contentQuery = `
         SELECT 
@@ -92,23 +101,28 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
         FROM content_queue
         WHERE ${whereClause}
         ORDER BY ${orderBy}
-        LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+        LIMIT $1 OFFSET $2
       `
+      queryParams.push(limit, actualOffset)
     }
     
-    queryParams.push(limit, actualOffset)
+    console.log(`🗄️ Executing query for type: ${type}`)
+    console.log(`📝 Query: ${contentQuery.replace(/\s+/g, ' ').trim()}`)
+    console.log(`🔢 Params: [${queryParams.join(', ')}]`)
     
     const contentResult = await db.query(contentQuery, queryParams)
+    console.log(`✅ Content query successful - Found ${contentResult.rows.length} rows`)
     
     // Get total count for pagination
     let countQuery: string
     let total: number
     
     if (type === 'posted') {
+      // Simple count from content_queue
       countQuery = `
         SELECT COUNT(*) as total
-        FROM content_queue cq
-        INNER JOIN posted_content pc ON cq.id = pc.content_queue_id
+        FROM content_queue
+        WHERE is_posted = TRUE
       `
       const countResult = await db.query(countQuery)
       total = parseInt(countResult.rows[0].total)
@@ -121,6 +135,8 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
       const countResult = await db.query(countQuery)
       total = parseInt(countResult.rows[0].total)
     }
+    
+    console.log(`📊 Total count: ${total}`)
 
     const content = contentResult.rows.map(row => ({
       id: row.id,
@@ -151,9 +167,18 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
       filter: type
     }
 
+    console.log(`🎉 Successfully returning ${content.length} content items`)
     return createSuccessResponse(responseData, `Retrieved ${content.length} content items`)
 
   } catch (error) {
+    console.error('❌ Error in getContentHandler:', error)
+    if (error instanceof Error) {
+      console.error('📋 Error details:', {
+        message: error.message,
+        stack: error.stack?.split('\n').slice(0, 3).join('\n'),
+        name: error.name
+      })
+    }
     console.error('Failed to get content:', error)
     throw createApiError('Failed to retrieve content', 500, 'CONTENT_RETRIEVAL_ERROR')
   }

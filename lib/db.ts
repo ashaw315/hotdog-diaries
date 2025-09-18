@@ -29,20 +29,41 @@ class DatabaseConnection {
     // Enhanced Vercel environment detection
     const hasVercelEnv = !!(process.env.VERCEL || process.env.VERCEL_ENV)
     const hasPostgresUrl = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres'))
+    const hasSupabaseUrl = !!(process.env.DATABASE_URL?.includes('supabase.co'))
     
     // Vercel deployment detection: Use Vercel Postgres in production or when Vercel env vars exist
     this.isVercel = (hasVercelEnv && hasPostgresUrl) || (process.env.NODE_ENV === 'production' && hasPostgresUrl)
     this.isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV && !hasPostgresUrl
     
-    console.log(`🗄️ Database Mode: ${this.isVercel ? 'Vercel Postgres' : this.isSqlite ? 'SQLite' : 'PostgreSQL Pool'}`)
+    // Enhanced database mode logging
+    const dbMode = hasSupabaseUrl ? 'Supabase Postgres' : 
+                   this.isVercel ? 'Vercel Postgres' : 
+                   this.isSqlite ? 'SQLite' : 'PostgreSQL Pool'
     
-    // Debug environment variables in production
+    console.log(`🗄️ [DB INIT] Database Mode: ${dbMode}`)
+    
+    // Enhanced logging with more detail
+    console.log('[DB INIT]', {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL ? 
+        (hasSupabaseUrl ? 'supabase.co detected' : 'postgres detected') : 'missing',
+      POSTGRES_URL: process.env.POSTGRES_URL ? 'set' : 'missing',
+      MODE: hasSupabaseUrl ? 'supabase' : this.isSqlite ? 'sqlite' : 'postgres',
+      isVercel: this.isVercel,
+      isSqlite: this.isSqlite,
+      hasVercelEnv,
+      hasPostgresUrl,
+      hasSupabaseUrl
+    })
+    
+    // Additional production debugging
     if (process.env.NODE_ENV === 'production') {
-      console.log('🔍 Production DB Config:', {
-        hasVercelEnv,
-        hasPostgresUrl,
-        isVercel: this.isVercel,
-        nodeEnv: process.env.NODE_ENV
+      console.log('🔍 [DB INIT] Production Environment Verification:', {
+        vercelEnv: process.env.VERCEL_ENV,
+        vercelUrl: process.env.VERCEL_URL ? 'set' : 'missing',
+        databaseProvider: hasSupabaseUrl ? 'Supabase' : hasPostgresUrl ? 'Postgres' : 'Unknown',
+        expectedMode: hasSupabaseUrl ? 'supabase' : 'postgres',
+        actualMode: this.isVercel ? 'vercel-postgres' : this.isSqlite ? 'sqlite' : 'postgres-pool'
       })
     }
   }
