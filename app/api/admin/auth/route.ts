@@ -64,28 +64,45 @@ async function loginHandler(request: NextRequest): Promise<NextResponse> {
 
 async function logoutHandler(request: NextRequest): Promise<NextResponse> {
   try {
-    // Extract token from Authorization header for logout logging
+    // Extract token from Authorization header or cookies for logout logging
     const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '')
+    let token = authHeader?.replace('Bearer ', '')
+    
+    // If no authorization header, try to get from cookies
+    if (!token) {
+      token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+    }
 
     if (token) {
       try {
         const decoded = AuthService.verifyJWT(token)
-        console.log(`User ${decoded.username} logged out`)
+        console.log(`🚪 [Logout] User ${decoded.username} logging out`)
       } catch {
         // Token invalid/expired - still allow logout
+        console.log('🚪 [Logout] Token invalid/expired - proceeding with logout')
       }
     }
 
-    return createSuccessResponse(
+    // Create the response
+    const response = createSuccessResponse(
       {},
       'Logout successful'
     )
 
+    // CRITICAL: Clear the authentication cookies
+    console.log('🍪 [Logout] Clearing authentication cookies')
+    EdgeAuthUtils.clearAuthCookies(response)
+    
+    console.log('🚪 [Logout] Logout complete - cookies cleared')
+
+    return response
+
   } catch (error) {
     console.error('Logout error:', error)
-    // Always return success for logout
-    return createSuccessResponse({}, 'Logout completed')
+    // Always return success for logout and clear cookies
+    const response = createSuccessResponse({}, 'Logout completed')
+    EdgeAuthUtils.clearAuthCookies(response)
+    return response
   }
 }
 
