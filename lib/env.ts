@@ -16,6 +16,12 @@ let envLoaded = false
 export function loadEnv() {
   if (envLoaded) return
   
+  // Skip loading .env files during testing
+  if (process.env.NODE_ENV === 'test' && process.env.JEST_WORKER_ID) {
+    envLoaded = true
+    return
+  }
+  
   // Load .env.local first (highest priority)
   config({ path: path.resolve(process.cwd(), '.env.local') })
   
@@ -25,8 +31,10 @@ export function loadEnv() {
   envLoaded = true
 }
 
-// Auto-load when imported
-loadEnv()
+// Auto-load when imported (but not during tests)
+if (process.env.NODE_ENV !== 'test' || !process.env.JEST_WORKER_ID) {
+  loadEnv()
+}
 
 // ========================================
 // Environment Schema Definition
@@ -54,7 +62,7 @@ const databaseSchema = z.object({
   
   // SQLite settings
   DATABASE_URL_SQLITE: z.string().optional(),
-  USE_POSTGRES_IN_DEV: z.string().transform(val => val === 'true').default('false'),
+  USE_POSTGRES_IN_DEV: z.string().default('false').transform(val => val === 'true'),
   
   // Vercel Postgres (production)
   POSTGRES_URL: z.string().optional(),
@@ -129,8 +137,8 @@ const automationSchema = z.object({
   CRON_SECRET: z.string().min(16, 'CRON_SECRET must be at least 16 characters'),
   AUTH_TOKEN: z.string().optional(),
   
-  ENABLE_AUTO_SCANNING: z.string().transform(val => val === 'true').default('false'),
-  ENABLE_AUTO_POSTING: z.string().transform(val => val === 'true').default('false'),
+  ENABLE_AUTO_SCANNING: z.string().default('false').transform(val => val === 'true'),
+  ENABLE_AUTO_POSTING: z.string().default('false').transform(val => val === 'true'),
   POSTING_TIMES: z.string().default('07:00,10:00,13:00,16:00,19:00,22:00'),
 })
 
@@ -178,8 +186,8 @@ class Environment {
     try {
       this.validated = envSchema.parse(process.env)
       
-      // Log successful validation in development
-      if (process.env.NODE_ENV === 'development') {
+      // Log successful validation in development (but not in tests)
+      if (process.env.NODE_ENV === 'development' && !process.env.JEST_WORKER_ID) {
         console.log('✅ Environment variables validated successfully')
         this.logLoadedServices()
       }
@@ -203,6 +211,23 @@ class Environment {
       return this.validate()
     }
     return this.validated
+  }
+
+  /**
+   * Reset validation state (for testing)
+   */
+  reset(): void {
+    this.validated = null
+    this.errors = null
+  }
+
+  /**
+   * Reset singleton instance (for testing)
+   */
+  static resetInstance(): void {
+    if (Environment.instance) {
+      Environment.instance.reset()
+    }
   }
 
   /**
@@ -271,8 +296,11 @@ class Environment {
    * Handle validation errors
    */
   private handleValidationError(error: z.ZodError, strict: boolean) {
-    console.error('\n❌ Environment Variable Validation Failed!\n')
-    console.error('Missing or invalid environment variables:')
+    // Only log errors if not in test environment
+    if (process.env.NODE_ENV !== 'test' || !process.env.JEST_WORKER_ID) {
+      console.error('\n❌ Environment Variable Validation Failed!\n')
+      console.error('Missing or invalid environment variables:')
+    }
     
     const grouped = (error.errors || []).reduce((acc, err) => {
       const category = this.categorizeError(err.path[0] as string)
@@ -281,20 +309,23 @@ class Environment {
       return acc
     }, {} as Record<string, z.ZodIssue[]>)
     
-    Object.entries(grouped).forEach(([category, errors]) => {
-      console.error(`\n[${category}]`)
-      errors.forEach(err => {
-        const path = err.path.join('.')
-        console.error(`  • ${path}: ${err.message}`)
+    // Only log detailed errors if not in test environment
+    if (process.env.NODE_ENV !== 'test' || !process.env.JEST_WORKER_ID) {
+      Object.entries(grouped).forEach(([category, errors]) => {
+        console.error(`\n[${category}]`)
+        errors.forEach(err => {
+          const path = err.path.join('.')
+          console.error(`  • ${path}: ${err.message}`)
+        })
       })
-    })
+      
+      console.error('\n📝 To fix this:')
+      console.error('  1. Copy .env.example to .env.local')
+      console.error('  2. Fill in the required values')
+      console.error('  3. Restart the application\n')
+    }
     
-    console.error('\n📝 To fix this:')
-    console.error('  1. Copy .env.example to .env.local')
-    console.error('  2. Fill in the required values')
-    console.error('  3. Restart the application\n')
-    
-    if (strict) {
+    if (strict && process.env.NODE_ENV !== 'test') {
       process.exit(1)
     }
   }
@@ -347,4 +378,4 @@ export const isServiceConfigured = (service: Parameters<typeof env.isServiceConf
 export const getDatabaseConfig = () => env.getDatabaseConfig()
 
 // Export for testing
-export { envSchema }
+export { envSchema, Environment }
