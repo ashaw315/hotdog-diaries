@@ -1,29 +1,28 @@
+// Mock dependencies first
+jest.mock('@/lib/services/social-media', () => ({
+  socialMediaService: {
+    getAllPlatformStatus: jest.fn(),
+    getUnifiedStats: jest.fn(),
+    performCoordinatedScan: jest.fn(),
+    getPerformanceMetrics: jest.fn()
+  }
+}))
+jest.mock('@/lib/db-query-builder')
+jest.mock('@/lib/db')
+
 import { GET as StatusGET } from '@/app/api/admin/social/status/route'
 import { GET as PerformanceGET } from '@/app/api/admin/social/performance/route'
 import { GET as DistributionGET } from '@/app/api/admin/social/distribution/route'
 import { GET as SettingsGET, PUT as SettingsPUT } from '@/app/api/admin/social/settings/route'
 import { POST as ScanAllPOST } from '@/app/api/admin/social/scan-all/route'
 import { NextRequest } from 'next/server'
+import { socialMediaService } from '@/lib/services/social-media'
 
-// Mock dependencies
-jest.mock('@/lib/services/social-media')
-jest.mock('@/lib/db-query-builder')
-jest.mock('@/lib/db')
-
-const mockSocialMediaService = {
-  getPlatformStatuses: jest.fn(),
-  getUnifiedStats: jest.fn(),
-  performCoordinatedScan: jest.fn(),
-  getPerformanceMetrics: jest.fn()
-}
-
-// Mock the service imports
-jest.doMock('@/lib/services/social-media', () => ({
-  socialMediaService: mockSocialMediaService
-}))
+// Get a reference to the mocked service
+const mockSocialMediaService = socialMediaService as jest.Mocked<typeof socialMediaService>
 
 const mockQuery = jest.fn()
-jest.doMock('@/lib/db-query-builder', () => ({
+jest.mock('@/lib/db-query-builder', () => ({
   query: mockQuery
 }))
 
@@ -76,26 +75,34 @@ describe('Social Media API Endpoints', () => {
           }
         ]
 
-        mockSocialMediaService.getPlatformStatuses.mockResolvedValue(mockPlatformStatuses)
+        mockSocialMediaService.getAllPlatformStatus.mockResolvedValue({
+          totalPlatforms: 4,
+          activePlatforms: 2,
+          totalContentScanned: 0,
+          totalContentApproved: 0,
+          overallHealthScore: 50,
+          platformStats: mockPlatformStatuses
+        })
 
         const response = await StatusGET(mockRequest)
         const data = await response.json()
 
-        expect(mockSocialMediaService.getPlatformStatuses).toHaveBeenCalled()
+        expect(mockSocialMediaService.getAllPlatformStatus).toHaveBeenCalled()
         expect(response.status).toBe(200)
         expect(data.success).toBe(true)
         expect(data.data.platforms).toHaveLength(4)
         expect(data.data.platforms[0].platform).toBe('reddit')
         expect(data.data.platforms[2].healthStatus).toBe('disabled')
         expect(data.data.summary.totalPlatforms).toBe(4)
-        expect(data.data.summary.enabledPlatforms).toBe(2)
-        expect(data.data.summary.authenticatedPlatforms).toBe(2)
+        expect(data.data.summary.activePlatforms).toBe(2)
+        expect(data.data.summary.totalContentScanned).toBe(0)
+        expect(data.data.summary.overallHealthScore).toBe(50)
       })
 
       test('GET should handle platform status errors', async () => {
         const mockRequest = new NextRequest('http://localhost:3000/api/admin/social/status')
 
-        mockSocialMediaService.getPlatformStatuses.mockRejectedValue(new Error('Database connection failed'))
+        mockSocialMediaService.getAllPlatformStatus.mockRejectedValue(new Error('Database connection failed'))
 
         const response = await StatusGET(mockRequest)
         const data = await response.json()
@@ -658,7 +665,7 @@ describe('Social Media API Endpoints', () => {
     test('should handle database connection failures', async () => {
       const mockRequest = new NextRequest('http://localhost:3000/api/admin/social/status')
 
-      mockSocialMediaService.getPlatformStatuses.mockRejectedValue(
+      mockSocialMediaService.getAllPlatformStatus.mockRejectedValue(
         new Error('Database connection timeout')
       )
 
@@ -687,7 +694,7 @@ describe('Social Media API Endpoints', () => {
     test('should sanitize error messages for security', async () => {
       const mockRequest = new NextRequest('http://localhost:3000/api/admin/social/status')
 
-      mockSocialMediaService.getPlatformStatuses.mockRejectedValue(
+      mockSocialMediaService.getAllPlatformStatus.mockRejectedValue(
         new Error('Database password: secret123 failed')
       )
 

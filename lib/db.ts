@@ -326,7 +326,7 @@ class DatabaseConnection {
     let converted = query
     
     // Convert PostgreSQL-specific syntax to SQLite
-    converted = converted.replace(/NOW\(\)/g, "NOW()")
+    converted = converted.replace(/NOW\(\)/g, "datetime('now')")
     converted = converted.replace(/SERIAL/g, 'INTEGER PRIMARY KEY AUTOINCREMENT')
     converted = converted.replace(/TIMESTAMP WITH TIME ZONE/g, 'DATETIME')
     converted = converted.replace(/TIMESTAMP/g, 'DATETIME')

@@ -164,6 +164,7 @@ export class AdminApiClient {
 
   constructor(baseUrl = '/api/admin') {
     this.baseUrl = baseUrl
+    this.initializeAuthToken()
   }
 
   /**
@@ -171,6 +172,10 @@ export class AdminApiClient {
    */
   setAuthToken(token: string): void {
     this.authToken = token
+    // Persist to localStorage for session management
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin_auth_token', token)
+    }
   }
 
   /**
@@ -178,6 +183,22 @@ export class AdminApiClient {
    */
   clearAuthToken(): void {
     this.authToken = null
+    // Remove from localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('admin_auth_token')
+    }
+  }
+
+  /**
+   * Initialize auth token from localStorage
+   */
+  private initializeAuthToken(): void {
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('admin_auth_token')
+      if (storedToken) {
+        this.authToken = storedToken
+      }
+    }
   }
 
   /**

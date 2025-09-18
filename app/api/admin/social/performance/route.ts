@@ -58,16 +58,16 @@ export async function GET(request: NextRequest) {
       },
       overview: unifiedStats,
       platforms: {
-        reddit: this.calculatePlatformMetrics(redditScans, 'reddit'),
-        instagram: this.calculatePlatformMetrics(instagramScans, 'instagram'),
-        tiktok: this.calculatePlatformMetrics(tiktokScans, 'tiktok')
+        reddit: calculatePlatformMetrics(redditScans, 'reddit'),
+        instagram: calculatePlatformMetrics(instagramScans, 'instagram'),
+        tiktok: calculatePlatformMetrics(tiktokScans, 'tiktok')
       },
       trends: {
-        contentVolume: this.calculateContentVolumeTrends([redditScans, instagramScans, tiktokScans]),
-        successRates: this.calculateSuccessRateTrends([redditScans, instagramScans, tiktokScans]),
-        errorFrequency: includeErrors ? this.calculateErrorTrends([redditScans, instagramScans, tiktokScans]) : null
+        contentVolume: calculateContentVolumeTrends([redditScans, instagramScans, tiktokScans]),
+        successRates: calculateSuccessRateTrends([redditScans, instagramScans, tiktokScans]),
+        errorFrequency: includeErrors ? calculateErrorTrends([redditScans, instagramScans, tiktokScans]) : null
       },
-      recommendations: this.generatePerformanceRecommendations(unifiedStats, [redditScans, instagramScans, tiktokScans])
+      recommendations: generatePerformanceRecommendations(unifiedStats, [redditScans, instagramScans, tiktokScans])
     }
 
     return NextResponse.json({

@@ -51,7 +51,14 @@ export default function AdminLoginHtmlStyle() {
         throw new Error('Password is required')
       }
 
-      await login(username.trim(), password)
+      const loginSuccess = await login(username.trim(), password)
+      
+      if (loginSuccess) {
+        // Immediate redirect on successful login
+        console.log('🔀 [AdminLoginHtmlStyle] Login successful, redirecting to /admin')
+        window.location.replace('/admin')
+        return
+      }
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed'

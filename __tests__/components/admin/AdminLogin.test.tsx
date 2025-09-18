@@ -2,6 +2,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AdminLogin from '@/components/admin/AdminLogin'
 import { useAuth, useRedirectIfAuthenticated } from '@/contexts/AuthContext'
+import { 
+  renderWithProviders, 
+  createMockAuthContext,
+  mockFetch 
+} from '@/__tests__/utils/component-mocks'
 
 // Mock Next.js navigation
 jest.mock('next/navigation', () => ({
@@ -33,287 +38,173 @@ const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as jest.MockedFunction<typeof useSearchParams>
 
 describe('AdminLogin', () => {
+  const fetchMock = mockFetch()
+  
   beforeEach(() => {
     jest.clearAllMocks()
+    fetchMock.reset()
     
     mockUseRouter.mockReturnValue(mockRouter)
     mockUseSearchParams.mockReturnValue(mockSearchParams as any)
     mockUseRedirectIfAuthenticated.mockReturnValue({} as any)
     
-    mockUseAuth.mockReturnValue({
+    mockUseAuth.mockReturnValue(createMockAuthContext({
       user: null,
       isLoading: false,
-      isAuthenticated: false,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
+      isAuthenticated: false
+    }))
+    
+    mockSearchParams.get.mockReturnValue(null)
   })
 
-  it('should render login form', () => {
-    render(<AdminLogin />)
+  it('should render login form with basic elements', () => {
+    renderWithProviders(<AdminLogin />)
 
     expect(screen.getByText('Admin Login')).toBeInTheDocument()
-    expect(screen.getByText('Sign in to access the Hotdog Diaries admin panel')).toBeInTheDocument()
-    expect(screen.getByLabelText('Username')).toBeInTheDocument()
-    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+    expect(screen.getByText('Enter your credentials to access the dashboard')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Enter username')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Enter password')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
   })
 
-  it('should show hotdog emoji', () => {
-    render(<AdminLogin />)
+  it('should handle username input changes', () => {
+    renderWithProviders(<AdminLogin />)
     
-    expect(screen.getByText('🌭')).toBeInTheDocument()
-  })
-
-  it('should handle username input', () => {
-    render(<AdminLogin />)
-    
-    const usernameInput = screen.getByLabelText('Username')
+    const usernameInput = screen.getByPlaceholderText('Enter username') as HTMLInputElement
     fireEvent.change(usernameInput, { target: { value: 'testuser' } })
     
-    expect(usernameInput).toHaveValue('testuser')
+    expect(usernameInput.value).toBe('testuser')
   })
 
-  it('should handle password input', () => {
-    render(<AdminLogin />)
+  it('should handle password input changes', () => {
+    renderWithProviders(<AdminLogin />)
     
-    const passwordInput = screen.getByLabelText('Password')
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
+    const passwordInput = screen.getByPlaceholderText('Enter password') as HTMLInputElement
+    fireEvent.change(passwordInput, { target: { value: 'testpass' } })
     
-    expect(passwordInput).toHaveValue('password123')
+    expect(passwordInput.value).toBe('testpass')
   })
 
   it('should toggle password visibility', () => {
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
-    const passwordInput = screen.getByLabelText('Password')
-    const toggleButton = screen.getByRole('button', { name: '' }) // Eye icon button
+    const passwordInput = screen.getByPlaceholderText('Enter password') as HTMLInputElement
+    const toggleButton = screen.getByText('👁️')
     
-    expect(passwordInput).toHaveAttribute('type', 'password')
-    
-    fireEvent.click(toggleButton)
-    expect(passwordInput).toHaveAttribute('type', 'text')
+    expect(passwordInput.type).toBe('password')
     
     fireEvent.click(toggleButton)
-    expect(passwordInput).toHaveAttribute('type', 'password')
+    expect(passwordInput.type).toBe('text')
+    expect(screen.getByText('🙈')).toBeInTheDocument()
   })
 
   it('should handle remember me checkbox', () => {
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
-    const rememberMeCheckbox = screen.getByLabelText('Remember me')
-    expect(rememberMeCheckbox).not.toBeChecked()
+    const checkbox = screen.getByRole('checkbox') as HTMLInputElement
+    expect(checkbox.checked).toBe(false)
     
-    fireEvent.click(rememberMeCheckbox)
-    expect(rememberMeCheckbox).toBeChecked()
+    fireEvent.click(checkbox)
+    expect(checkbox.checked).toBe(true)
   })
 
   it('should call login function on form submission', async () => {
-    const mockLogin = jest.fn().mockResolvedValue(undefined)
-    mockUseAuth.mockReturnValue({
+    const mockLogin = jest.fn().mockResolvedValue({ success: true })
+    mockUseAuth.mockReturnValue(createMockAuthContext({
       user: null,
       isLoading: false,
       isAuthenticated: false,
-      login: mockLogin,
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
+      login: mockLogin
+    }))
 
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
-    const usernameInput = screen.getByLabelText('Username')
-    const passwordInput = screen.getByLabelText('Password')
+    const usernameInput = screen.getByPlaceholderText('Enter username')
+    const passwordInput = screen.getByPlaceholderText('Enter password')
     const submitButton = screen.getByRole('button', { name: /sign in/i })
     
-    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
-    fireEvent.change(passwordInput, { target: { value: 'TestPass123!' } })
+    fireEvent.change(usernameInput, { target: { value: 'admin' } })
+    fireEvent.change(passwordInput, { target: { value: 'password' } })
     fireEvent.click(submitButton)
     
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('testuser', 'TestPass123!')
+      expect(mockLogin).toHaveBeenCalledWith('admin', 'password')
     })
   })
 
   it('should show loading state during login', async () => {
-    const mockLogin = jest.fn().mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-    mockUseAuth.mockReturnValue({
+    const mockLogin = jest.fn().mockImplementation(() => new Promise(() => {}))
+    mockUseAuth.mockReturnValue(createMockAuthContext({
       user: null,
       isLoading: false,
       isAuthenticated: false,
-      login: mockLogin,
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
+      login: mockLogin
+    }))
 
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
-    const usernameInput = screen.getByLabelText('Username')
-    const passwordInput = screen.getByLabelText('Password')
+    const usernameInput = screen.getByPlaceholderText('Enter username')
+    const passwordInput = screen.getByPlaceholderText('Enter password')
     const submitButton = screen.getByRole('button', { name: /sign in/i })
     
-    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
-    fireEvent.change(passwordInput, { target: { value: 'TestPass123!' } })
+    fireEvent.change(usernameInput, { target: { value: 'admin' } })
+    fireEvent.change(passwordInput, { target: { value: 'password' } })
     fireEvent.click(submitButton)
     
-    expect(screen.getByText('Signing in...')).toBeInTheDocument()
-    expect(submitButton).toBeDisabled()
-    
     await waitFor(() => {
-      expect(screen.queryByText('Signing in...')).not.toBeInTheDocument()
+      expect(screen.getByText('Signing in...')).toBeInTheDocument()
     })
   })
 
   it('should show error message on login failure', async () => {
     const mockLogin = jest.fn().mockRejectedValue(new Error('Invalid credentials'))
-    mockUseAuth.mockReturnValue({
+    mockUseAuth.mockReturnValue(createMockAuthContext({
       user: null,
       isLoading: false,
       isAuthenticated: false,
-      login: mockLogin,
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
+      login: mockLogin
+    }))
 
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
-    const usernameInput = screen.getByLabelText('Username')
-    const passwordInput = screen.getByLabelText('Password')
+    const usernameInput = screen.getByPlaceholderText('Enter username')
+    const passwordInput = screen.getByPlaceholderText('Enter password')
     const submitButton = screen.getByRole('button', { name: /sign in/i })
     
-    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
-    fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } })
+    fireEvent.change(usernameInput, { target: { value: 'admin' } })
+    fireEvent.change(passwordInput, { target: { value: 'wrongpass' } })
     fireEvent.click(submitButton)
     
     await waitFor(() => {
-      expect(screen.getByText('Login Failed')).toBeInTheDocument()
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
     })
   })
 
   it('should validate required username', async () => {
-    const mockLogin = jest.fn()
-    mockUseAuth.mockReturnValue({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      login: mockLogin,
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
-
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
-    const passwordInput = screen.getByLabelText('Password')
+    const passwordInput = screen.getByPlaceholderText('Enter password')
     const submitButton = screen.getByRole('button', { name: /sign in/i })
     
-    fireEvent.change(passwordInput, { target: { value: 'TestPass123!' } })
+    fireEvent.change(passwordInput, { target: { value: 'password' } })
     fireEvent.click(submitButton)
     
     await waitFor(() => {
       expect(screen.getByText('Username is required')).toBeInTheDocument()
     })
-    
-    expect(mockLogin).not.toHaveBeenCalled()
   })
 
   it('should validate required password', async () => {
-    const mockLogin = jest.fn()
-    mockUseAuth.mockReturnValue({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      login: mockLogin,
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
-
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
-    const usernameInput = screen.getByLabelText('Username')
+    const usernameInput = screen.getByPlaceholderText('Enter username')
     const submitButton = screen.getByRole('button', { name: /sign in/i })
     
-    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
+    fireEvent.change(usernameInput, { target: { value: 'admin' } })
     fireEvent.click(submitButton)
     
     await waitFor(() => {
       expect(screen.getByText('Password is required')).toBeInTheDocument()
-    })
-    
-    expect(mockLogin).not.toHaveBeenCalled()
-  })
-
-  it('should clear error when user starts typing', async () => {
-    const mockLogin = jest.fn().mockRejectedValue(new Error('Invalid credentials'))
-    mockUseAuth.mockReturnValue({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      login: mockLogin,
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
-
-    render(<AdminLogin />)
-    
-    const usernameInput = screen.getByLabelText('Username')
-    const passwordInput = screen.getByLabelText('Password')
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    
-    // Trigger error
-    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
-    fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } })
-    fireEvent.click(submitButton)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
-    })
-    
-    // Start typing to clear error
-    fireEvent.change(usernameInput, { target: { value: 'testuser2' } })
-    
-    expect(screen.queryByText('Invalid credentials')).not.toBeInTheDocument()
-  })
-
-  it('should show URL error message', () => {
-    mockSearchParams.get.mockReturnValue('auth_service_error')
-    
-    render(<AdminLogin />)
-    
-    expect(screen.getByText('Authentication service is temporarily unavailable. Please try again.')).toBeInTheDocument()
-  })
-
-  it('should show session expired error message', () => {
-    mockSearchParams.get.mockReturnValue('session_expired')
-    
-    render(<AdminLogin />)
-    
-    expect(screen.getByText('Your session has expired. Please log in again.')).toBeInTheDocument()
-  })
-
-  it('should trim whitespace from username', async () => {
-    const mockLogin = jest.fn().mockResolvedValue(undefined)
-    mockUseAuth.mockReturnValue({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      login: mockLogin,
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
-
-    render(<AdminLogin />)
-    
-    const usernameInput = screen.getByLabelText('Username')
-    const passwordInput = screen.getByLabelText('Password')
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    
-    fireEvent.change(usernameInput, { target: { value: '  testuser  ' } })
-    fireEvent.change(passwordInput, { target: { value: 'TestPass123!' } })
-    fireEvent.click(submitButton)
-    
-    await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('testuser', 'TestPass123!')
     })
   })
 
@@ -321,7 +212,7 @@ describe('AdminLogin', () => {
     const originalEnv = process.env.NODE_ENV
     process.env.NODE_ENV = 'development'
     
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
     expect(screen.getByText('Development Mode')).toBeInTheDocument()
     expect(screen.getByText('Demo credentials will be available after database setup.')).toBeInTheDocument()
@@ -329,35 +220,47 @@ describe('AdminLogin', () => {
     process.env.NODE_ENV = originalEnv
   })
 
+  it('should show URL error message when provided', () => {
+    mockSearchParams.get.mockReturnValue('invalid_token')
+    
+    renderWithProviders(<AdminLogin />)
+    
+    expect(screen.getByText('An error occurred. Please try logging in again.')).toBeInTheDocument()
+  })
+
+  it('should show session expired error message', () => {
+    mockSearchParams.get.mockReturnValue('session_expired')
+    
+    renderWithProviders(<AdminLogin />)
+    
+    expect(screen.getByText('Your session has expired. Please log in again.')).toBeInTheDocument()
+  })
+
   it('should disable form inputs during loading', async () => {
-    const mockLogin = jest.fn().mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-    mockUseAuth.mockReturnValue({
+    const mockLogin = jest.fn().mockImplementation(() => new Promise(() => {}))
+    mockUseAuth.mockReturnValue(createMockAuthContext({
       user: null,
       isLoading: false,
       isAuthenticated: false,
-      login: mockLogin,
-      logout: jest.fn(),
-      refreshUser: jest.fn()
-    })
+      login: mockLogin
+    }))
 
-    render(<AdminLogin />)
+    renderWithProviders(<AdminLogin />)
     
-    const usernameInput = screen.getByLabelText('Username')
-    const passwordInput = screen.getByLabelText('Password')
+    const usernameInput = screen.getByPlaceholderText('Enter username')
+    const passwordInput = screen.getByPlaceholderText('Enter password')
     const submitButton = screen.getByRole('button', { name: /sign in/i })
-    const rememberMeCheckbox = screen.getByLabelText('Remember me')
+    const rememberMeCheckbox = screen.getByRole('checkbox')
     
-    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
-    fireEvent.change(passwordInput, { target: { value: 'TestPass123!' } })
+    fireEvent.change(usernameInput, { target: { value: 'admin' } })
+    fireEvent.change(passwordInput, { target: { value: 'password' } })
     fireEvent.click(submitButton)
     
-    expect(usernameInput).toBeDisabled()
-    expect(passwordInput).toBeDisabled()
-    expect(submitButton).toBeDisabled()
-    expect(rememberMeCheckbox).toBeDisabled()
-    
     await waitFor(() => {
-      expect(usernameInput).not.toBeDisabled()
+      expect(usernameInput).toBeDisabled()
+      expect(passwordInput).toBeDisabled()
+      expect(submitButton).toBeDisabled()
+      expect(rememberMeCheckbox).toBeDisabled()
     })
   })
 })

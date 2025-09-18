@@ -1,4 +1,4 @@
-import { SchedulingService } from '@/lib/services/scheduling'
+import { schedulingService } from '@/lib/services/scheduling'
 import { db } from '@/lib/db'
 
 // Mock the database
@@ -12,10 +12,7 @@ jest.mock('@/lib/db', () => ({
 const mockDb = db as jest.Mocked<typeof db>
 
 describe('SchedulingService', () => {
-  let schedulingService: SchedulingService
-  
   beforeEach(() => {
-    schedulingService = new SchedulingService()
     jest.clearAllMocks()
     
     // Mock current date/time
