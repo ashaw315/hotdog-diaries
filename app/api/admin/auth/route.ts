@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { AdminService } from '@/lib/services/admin'
 import { AuthService } from '@/lib/services/auth'
+import { EdgeAuthUtils } from '@/lib/auth-edge'
 import { 
   validateRequestMethod,
   createSuccessResponse,
@@ -25,7 +26,8 @@ async function loginHandler(request: NextRequest): Promise<NextResponse> {
 
     const authResult = await AdminService.authenticateAdmin({ username, password })
 
-    return createSuccessResponse(
+    // Create success response
+    const response = createSuccessResponse(
       {
         user: {
           id: authResult.user.id,
@@ -38,9 +40,22 @@ async function loginHandler(request: NextRequest): Promise<NextResponse> {
       'Authentication successful'
     )
 
+    // Set authentication cookies for httpOnly cookie auth
+    console.log('🍪 [Auth] Setting authentication cookies for user:', authResult.user.username)
+    
+    EdgeAuthUtils.setAuthCookies(
+      response,
+      authResult.tokens.accessToken,
+      authResult.tokens.refreshToken
+    )
+    
+    console.log('🍪 [Auth] Cookies set in response')
+
+    return response
+
   } catch (error) {
     console.error('Login failed:', error)
-    if (error instanceof Error && error.message.includes('Invalid credentials')) {
+    if (error instanceof Error && error.message.includes('Invalid username or password')) {
       throw createApiError('Invalid username or password', 401, 'INVALID_CREDENTIALS')
     }
     throw createApiError('Authentication failed', 500, 'AUTH_ERROR')

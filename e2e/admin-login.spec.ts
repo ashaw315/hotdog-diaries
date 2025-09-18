@@ -16,8 +16,9 @@ test.describe('Admin Login Flow', () => {
     // Verify successful redirect and authenticated state
     await expect(page).toHaveURL('/admin')
     
-    // Check for admin dashboard elements
-    await expect(page.locator('text=/dashboard|queue|content/i')).toBeVisible()
+    // Check for specific admin dashboard elements
+    await expect(page.locator('.admin-header')).toBeVisible()
+    await expect(page.locator('text=Total Content')).toBeVisible()
   })
 
   test('should show error with invalid credentials', async ({ page }) => {

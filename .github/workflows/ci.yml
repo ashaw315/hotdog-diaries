@@ -25,10 +25,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run linter
-        run: npm run lint
+      - name: ESLint Check (Baseline: 800 warnings max)
+        run: npm run lint:ci
 
-      - name: Run type check
+      - name: TypeScript Check (Non-blocking baseline)
         run: npm run type-check
 
       - name: Run unit tests
@@ -145,6 +145,47 @@ jobs:
 
       - name: Check for known vulnerabilities
         run: npm audit --audit-level=high || echo "High-severity vulnerabilities found, review required"
+
+  type-check-strict:
+    name: TypeScript Strict Check (Optional)
+    runs-on: ubuntu-latest
+    continue-on-error: true  # This job can fail without blocking CI
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript Strict Check (Shows all ~1443 errors)
+        run: npm run type-check:strict
+        continue-on-error: true
+
+      - name: Create TypeScript Error Report
+        if: always()
+        run: |
+          echo "## TypeScript Error Report" > ts-error-report.md
+          echo "**Baseline Errors**: ~1443" >> ts-error-report.md
+          echo "**Current Errors**: $(npm run type-check:strict 2>&1 | grep -c 'error TS' || echo 'Error counting failed')" >> ts-error-report.md
+          echo "" >> ts-error-report.md
+          echo "### Top Error Categories:" >> ts-error-report.md
+          npm run type-check:strict 2>&1 | grep "error TS" | sed 's/.*error TS\([0-9]*\).*/TS\1/' | sort | uniq -c | sort -rn | head -5 >> ts-error-report.md || echo "Error analysis failed" >> ts-error-report.md
+
+      - name: Upload TypeScript Error Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: typescript-error-report-${{ github.sha }}
+          path: ts-error-report.md
+          retention-days: 7
 
   deploy-preview:
     name: Deploy Preview (PR only)

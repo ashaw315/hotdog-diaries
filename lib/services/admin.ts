@@ -126,17 +126,11 @@ export class AdminService {
       // Update last login and increment login count
       await this.updateLastLogin(user.id)
 
-      // Generate tokens using Edge-compatible auth utils
-      const { EdgeAuthUtils } = await import('../auth-edge')
-      const accessToken = await EdgeAuthUtils.generateJWT({
+      // Generate tokens using standard auth service for consistency
+      const tokens = AuthService.generateTokens({
         id: user.id,
         username: user.username
       })
-      const refreshToken = await EdgeAuthUtils.generateRefreshToken({
-        id: user.id,
-        username: user.username
-      })
-      const tokens = { accessToken, refreshToken }
 
       // Prepare user profile (without password_hash)
       const userProfile: AdminProfile = {

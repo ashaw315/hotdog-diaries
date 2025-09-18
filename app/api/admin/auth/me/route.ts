@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { AdminService } from '@/lib/services/admin'
 import { AuthService } from '@/lib/services/auth'
+import { EdgeAuthUtils } from '@/lib/auth-edge'
 import { 
   validateRequestMethod,
   createSuccessResponse,
@@ -16,14 +17,31 @@ import {
 
 async function getCurrentUserHandler(request: NextRequest): Promise<NextResponse> {
   try {
-    // Get auth token from header
+    // Get auth token from Authorization header OR cookies (Edge compatible)
+    let token: string | null = null
+    
+    // First try Authorization header
     const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.replace('Bearer ', '')
+    } else {
+      // Fallback to cookies (for httpOnly cookie auth)
+      token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+    }
+    
+    if (!token) {
       throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const decoded = AuthService.verifyJWT(token)
+    // Try standard JWT verification first (for compatibility)
+    let decoded
+    try {
+      decoded = AuthService.verifyJWT(token)
+    } catch (error) {
+      // Fallback to Edge JWT verification for older tokens
+      console.log('Standard JWT verification failed, trying Edge JWT verification')
+      decoded = await EdgeAuthUtils.verifyJWT(token)
+    }
     
     // Get full user details
     const user = await AdminService.getAdminById(decoded.userId)

@@ -50,13 +50,22 @@ export async function loginAsAdmin(page: Page) {
     }
   }
   
-  // Verify we're logged in by checking for admin elements (more flexible)
-  // Wait for either loading state to complete or admin content to appear
-  await Promise.race([
-    expect(page.locator('text=/dashboard|queue|content|analytics/i')).toBeVisible({ timeout: 15000 }),
-    expect(page.locator('[data-testid="admin-dashboard"], .admin-header, .admin-nav')).toBeVisible({ timeout: 15000 }),
-    expect(page.locator('body')).toContainText(/Dashboard|Content Queue|Posted Content/i, { timeout: 15000 })
-  ])
+  // Verify we're logged in by checking for specific admin header (more reliable)
+  await expect(page.locator('.admin-header')).toBeVisible({ timeout: 15000 })
+  
+  // Also verify we can see the navigation
+  await expect(page.locator('a[href="/admin"]:has-text("Dashboard")')).toBeVisible({ timeout: 5000 })
+  
+  // Wait for dashboard content to load (not just loading state)
+  await page.waitForFunction(() => {
+    const loadingElements = document.querySelectorAll('.loading, [class*="loading"]')
+    return loadingElements.length === 0 || Array.from(loadingElements).every(el => 
+      el.textContent && !el.textContent.includes('Loading dashboard data')
+    )
+  }, { timeout: 10000 }).catch(() => {
+    // If dashboard is still loading after 10 seconds, that's okay for login verification
+    console.log('Dashboard still loading, but admin header and nav are visible - login successful')
+  })
   
   console.log('✅ Admin login successful')
 }

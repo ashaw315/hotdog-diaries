@@ -175,7 +175,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (username: string, password: string): Promise<void> => {
     console.log('🔐 [AuthContext] Login function called')
     try {
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch('/api/admin/auth', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -218,8 +218,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async (): Promise<void> => {
     console.log('🚪 [AuthContext] Logout function called')
     try {
-      await fetch('/api/admin/logout', {
-        method: 'POST',
+      await fetch('/api/admin/auth', {
+        method: 'DELETE',
         credentials: 'include'
       })
     } catch (error) {
