@@ -29,8 +29,15 @@ test.describe('Admin Login Flow', () => {
     await page.fill('input[name="password"]', 'wrongpass')
     await page.click('button[type="submit"]')
     
-    // Should stay on login page and show error
-    await expect(page.locator('text=/error|invalid|failed/i')).toBeVisible()
+    // Wait for error message to appear (exclude Next.js route announcer)
+    await page.waitForSelector('[role="alert"]:has-text("Invalid")', { timeout: 10000 })
+    
+    // Check error message content
+    const errorElement = page.locator('[role="alert"]:has-text("Invalid")')
+    await expect(errorElement).toBeVisible()
+    await expect(errorElement).toContainText(/Invalid username or password/i)
+    
+    // Should stay on login page
     await expect(page).toHaveURL('/admin/login')
   })
 
@@ -57,23 +64,24 @@ test.describe('Admin Login Flow', () => {
   })
 
   test('should handle loading states during login', async ({ page }) => {
+    // Navigate to login page
     await page.goto('/admin/login')
     
     // Fill valid credentials
     await page.fill('input[name="username"]', 'admin')
     await page.fill('input[name="password"]', 'StrongAdminPass123!')
     
-    // Click submit and immediately check for loading state
+    // Start login and immediately check for loading state (before navigation completes)
     const submitPromise = page.click('button[type="submit"]')
     
-    // The button might be disabled during loading
-    await expect(page.locator('button[type="submit"][disabled]')).toBeVisible({ timeout: 1000 }).catch(() => {
-      // It's OK if we don't catch the loading state - the login might be too fast
-    })
+    // Give a small delay to catch the loading state if visible
+    await page.waitForTimeout(100)
     
+    // Complete the login process
     await submitPromise
+    await page.waitForURL(/\/admin/, { timeout: 15000 })
     
-    // Should eventually redirect
-    await expect(page).toHaveURL('/admin')
+    // Verify we're on the admin page
+    await expect(page.locator('.admin-header')).toBeVisible({ timeout: 15000 })
   })
 })

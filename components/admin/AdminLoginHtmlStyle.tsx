@@ -126,7 +126,9 @@ export default function AdminLoginHtmlStyle() {
         </div>
         
         {error && (
-          <div style={{
+          <div 
+            role="alert"
+            style={{
             background: '#fee2e2',
             color: '#dc2626',
             padding: '10px',

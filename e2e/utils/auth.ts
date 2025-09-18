@@ -21,32 +21,28 @@ export async function loginAsAdmin(page: Page) {
   await page.fill('input[name="username"]', ADMIN_CREDENTIALS.username)
   await page.fill('input[name="password"]', ADMIN_CREDENTIALS.password)
   
-  // Click submit button
-  await page.click('button[type="submit"]')
+  // Click submit and wait for navigation away from login page
+  await Promise.all([
+    // Wait for navigation to any admin page that's not login
+    page.waitForFunction(() => {
+      const url = window.location.href
+      return url.includes('/admin') && !url.includes('/admin/login')
+    }, { timeout: 30000 }),
+    // Click the submit button  
+    page.click('button[type="submit"]')
+  ])
   
-  // Wait for successful redirect to admin dashboard with more robust error handling
-  try {
-    await page.waitForURL('/admin', { timeout: 20000 })
-  } catch (timeoutError) {
-    // If URL didn't change, check if we're on a redirect loop or error state
-    const currentUrl = page.url()
-    console.log('❌ Redirect timeout. Current URL:', currentUrl)
-    
-    // Check page content for debugging
-    const pageContent = await page.textContent('body')
-    console.log('Page content (first 200 chars):', pageContent?.substring(0, 200))
-    
-    // If we're still on login page, wait a bit more and check again
-    if (currentUrl.includes('/admin/login')) {
-      console.log('Still on login page, waiting additional time...')
-      await page.waitForTimeout(5000)
-      
-      const finalUrl = page.url()
-      if (finalUrl.includes('/admin') && !finalUrl.includes('/admin/login')) {
-        console.log('✅ Eventually redirected to:', finalUrl)
-      } else {
-        throw new Error(`Failed to redirect. Final URL: ${finalUrl}`)
-      }
+  // Verify we successfully navigated away from login page
+  const currentUrl = page.url()
+  console.log('✅ Successfully redirected to:', currentUrl)
+  
+  // Double-check we're not still on login page
+  if (currentUrl.includes('/admin/login')) {
+    // Wait a bit more for slower redirects
+    await page.waitForTimeout(2000)
+    const retryUrl = page.url()
+    if (retryUrl.includes('/admin/login')) {
+      throw new Error(`Still on login page after redirect. URL: ${retryUrl}`)
     }
   }
   
