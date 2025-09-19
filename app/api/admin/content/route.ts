@@ -1,52 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { 
-  validateRequestMethod,
-  createSuccessResponse,
-  createApiError,
-  handleApiError,
-  verifyAdminAuth
-} from '@/lib/api-middleware'
 import { db } from '@/lib/db'
 
 async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   try {
     console.log('[AdminContentAPI] Incoming request to /api/admin/content')
     
-    // Use Edge-compatible auth utils to verify JWT from cookies (same as /api/admin/me)
     const { EdgeAuthUtils } = await import('@/lib/auth-edge')
     
     const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
-    console.log('[AdminContentAPI] Cookie token found?', !!token)
-
     if (!token) {
-      console.error('[AdminContentAPI] No token found - returning 401')
-      return NextResponse.json(
-        { error: 'Authentication required', code: 'NO_TOKEN' },
-        { status: 401 }
-      )
+      console.warn('[AdminContentAPI] No token found')
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    try {
-      const user = await EdgeAuthUtils.verifyJWT(token)
-      console.log('[AdminContentAPI] User verified?', !!user)
-
-      if (!user) {
-        console.error('[AdminContentAPI] Token verification failed')
-        return NextResponse.json(
-          { error: 'Invalid or expired token', code: 'INVALID_TOKEN' },
-          { status: 401 }
-        )
-      }
-
-      // Attach user to context and proceed
-      console.log(`🔍 Getting content - Environment: ${process.env.NODE_ENV}`)
-    } catch (err: any) {
-      console.error('[AdminContentAPI] Auth verification failed', { error: err.message })
-      return NextResponse.json(
-        { error: 'Authentication failed', details: err.message },
-        { status: 401 }
-      )
+    const user = await EdgeAuthUtils.verifyJWT(token)
+    if (!user) {
+      console.warn('[AdminContentAPI] Invalid token')
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
+
+    console.log('[AdminContentAPI] User verified:', user.username)
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -198,37 +171,52 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
     }
 
     console.log(`🎉 Successfully returning ${content.length} content items`)
-    return createSuccessResponse(responseData, `Retrieved ${content.length} content items`)
+    return NextResponse.json({
+      success: true,
+      data: responseData,
+      message: `Retrieved ${content.length} content items`
+    })
 
   } catch (error) {
     console.error('[AdminContentAPI] Request failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      statusCode: error instanceof Error && 'statusCode' in error ? (error as any).statusCode : undefined,
       endpoint: '/api/admin/content GET',
       timestamp: new Date().toISOString()
     })
     
-    // Re-throw auth errors without modification
-    if (error instanceof Error && 
-        (error.message.includes('No authentication token') || 
-         error.message.includes('Invalid or expired token'))) {
-      throw error
-    }
-    
-    throw createApiError('Failed to retrieve content', 500, 'CONTENT_RETRIEVAL_ERROR')
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
 async function updateContentHandler(request: NextRequest): Promise<NextResponse> {
-  validateRequestMethod(request, ['PUT'])
-
   try {
+    console.log('[AdminContentAPI] Incoming request to /api/admin/content PUT')
+    
+    const { EdgeAuthUtils } = await import('@/lib/auth-edge')
+    
+    const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+    if (!token) {
+      console.warn('[AdminContentAPI] No token found')
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const user = await EdgeAuthUtils.verifyJWT(token)
+    if (!user) {
+      console.warn('[AdminContentAPI] Invalid token')
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    console.log('[AdminContentAPI] User verified:', user.username)
+
     const body = await request.json()
     const { id, is_approved, admin_notes, is_posted } = body
 
     if (!id) {
-      throw createApiError('Content ID is required', 400, 'MISSING_CONTENT_ID')
+      return NextResponse.json({ error: 'Content ID is required' }, { status: 400 })
     }
 
     // Build update query dynamically based on provided fields
@@ -282,18 +270,29 @@ async function updateContentHandler(request: NextRequest): Promise<NextResponse>
     const result = await db.query(updateQuery, queryParams)
 
     if (result.rows.length === 0) {
-      throw createApiError('Content not found', 404, 'CONTENT_NOT_FOUND')
+      console.warn('[AdminContentAPI] Content not found:', id)
+      return NextResponse.json({ error: 'Content not found' }, { status: 404 })
     }
 
-    return createSuccessResponse(result.rows[0], 'Content updated successfully')
+    console.log('[AdminContentAPI] Content updated successfully:', id)
+    return NextResponse.json({
+      success: true,
+      data: result.rows[0],
+      message: 'Content updated successfully'
+    })
 
   } catch (error) {
-    if (error instanceof Error && error.message.includes('CONTENT_NOT_FOUND')) {
-      throw error
-    }
+    console.error('[AdminContentAPI] Request failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      endpoint: '/api/admin/content PUT',
+      timestamp: new Date().toISOString()
+    })
     
-    console.error('Failed to update content:', error)
-    throw createApiError('Failed to update content', 500, 'CONTENT_UPDATE_ERROR')
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
@@ -318,7 +317,16 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
     return await updateContentHandler(request)
   } catch (error) {
-    return await handleApiError(error, request, '/api/admin/content')
+    console.error('[AdminContentAPI] PUT request failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
+    
+    // Return structured JSON error responses
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error', code: 'SERVER_ERROR' },
+      { status: 500 }
+    )
   }
 }
 
@@ -374,10 +382,9 @@ async function createContentHandler(request: NextRequest): Promise<NextResponse>
     } = body
 
     if (!contentText || !contentType || !sourcePlatform) {
-      throw createApiError(
-        'contentText, contentType, and sourcePlatform are required', 
-        400, 
-        'MISSING_REQUIRED_FIELDS'
+      return NextResponse.json(
+        { error: 'contentText, contentType, and sourcePlatform are required' }, 
+        { status: 400 }
       )
     }
 
@@ -395,7 +402,7 @@ async function createContentHandler(request: NextRequest): Promise<NextResponse>
     )
 
     if (existingContent.rows.length > 0) {
-      throw createApiError('Duplicate content detected', 409, 'DUPLICATE_CONTENT')
+      return NextResponse.json({ error: 'Duplicate content detected' }, { status: 409 })
     }
 
     // Insert new content
@@ -419,20 +426,24 @@ async function createContentHandler(request: NextRequest): Promise<NextResponse>
       ]
     )
 
-    return createSuccessResponse(
-      result.rows[0],
-      'Content created successfully'
-    )
+    return NextResponse.json({
+      success: true,
+      data: result.rows[0],
+      message: 'Content created successfully'
+    })
 
   } catch (error) {
-    console.error('Failed to create content:', error)
-    if (error instanceof Error && 
-        (error.message.includes('UNAUTHORIZED') || 
-         error.message.includes('DUPLICATE_CONTENT') ||
-         error.message.includes('MISSING_REQUIRED_FIELDS'))) {
-      throw error
-    }
-    throw createApiError('Failed to create content', 500, 'CONTENT_CREATE_ERROR')
+    console.error('[AdminContentAPI] POST request failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      endpoint: '/api/admin/content POST',
+      timestamp: new Date().toISOString()
+    })
+    
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
