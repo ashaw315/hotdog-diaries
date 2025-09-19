@@ -13,7 +13,7 @@ interface DatabaseConfig {
   database: string
   user: string
   password: string
-  ssl?: boolean
+  ssl?: boolean | { rejectUnauthorized: boolean }
   max?: number
   idleTimeoutMillis?: number
   connectionTimeoutMillis?: number
@@ -51,7 +51,24 @@ class DatabaseConnection {
       isDevelopment
     })
 
-    // STRICT PRODUCTION REQUIREMENTS
+    // PREVIEW ENVIRONMENT (Vercel preview deploys) - Check BEFORE production
+    if (isPreview) {
+      if (hasSupabaseUrl) {
+        this.isSupabase = true
+        this.isSqlite = false
+        this.connectionMode = 'supabase'
+        console.log('✅ [DB INIT] Using Supabase Postgres via DATABASE_URL (preview)')
+        return
+      } else {
+        this.isSupabase = false
+        this.isSqlite = true
+        this.connectionMode = 'sqlite'
+        console.log('✅ [DB INIT] Using SQLite (preview fallback)')
+        return
+      }
+    }
+
+    // STRICT PRODUCTION REQUIREMENTS (after preview check)
     if (isProduction) {
       if (!databaseUrl) {
         const errorMsg = '🚨 FATAL ERROR: DATABASE_URL not set in production — Supabase connection required.'
@@ -74,23 +91,6 @@ class DatabaseConnection {
       this.connectionMode = 'supabase'
       console.log('✅ [DB INIT] Using Supabase Postgres via DATABASE_URL')
       return
-    }
-
-    // PREVIEW ENVIRONMENT (Vercel preview deploys)
-    if (isPreview) {
-      if (hasSupabaseUrl) {
-        this.isSupabase = true
-        this.isSqlite = false
-        this.connectionMode = 'supabase'
-        console.log('✅ [DB INIT] Using Supabase Postgres via DATABASE_URL (preview)')
-        return
-      } else {
-        this.isSupabase = false
-        this.isSqlite = true
-        this.connectionMode = 'sqlite'
-        console.log('✅ [DB INIT] Using SQLite (preview fallback)')
-        return
-      }
     }
 
     // DEVELOPMENT ENVIRONMENT
@@ -130,13 +130,22 @@ class DatabaseConnection {
       const databaseUrl = process.env.DATABASE_URL!
       const url = new URL(databaseUrl)
       
+      // Configure SSL for Supabase to handle self-signed certificates
+      const sslConfig = { rejectUnauthorized: false }
+      
+      console.log('🔐 [DB CONFIG] Configuring Supabase SSL connection', {
+        host: url.hostname,
+        sslEnabled: true,
+        sslConfig: 'rejectUnauthorized: false'
+      })
+      
       return {
         host: url.hostname,
         port: parseInt(url.port || '5432'),
         database: url.pathname.slice(1), // Remove leading slash
         user: url.username,
         password: url.password,
-        ssl: true, // Supabase requires SSL
+        ssl: sslConfig, // Supabase SSL with relaxed certificate validation
         max: 10,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
@@ -144,6 +153,11 @@ class DatabaseConnection {
     }
 
     // Fallback configuration for development or other PostgreSQL connections
+    console.log('🔗 [DB CONFIG] Configuring standard PostgreSQL connection', {
+      host: process.env.DATABASE_HOST || 'localhost',
+      sslEnabled: false
+    })
+    
     return {
       host: process.env.DATABASE_HOST || 'localhost',
       port: parseInt(process.env.DATABASE_PORT || '5432'),
@@ -174,7 +188,8 @@ class DatabaseConnection {
     })
 
     this.pool.on('connect', () => {
-      console.log('Database connection established')
+      const sslStatus = this.isSupabase ? 'SSL enabled (rejectUnauthorized: false)' : 'SSL disabled'
+      console.log(`Database connection established - ${sslStatus}`)
     })
 
     this.pool.on('remove', () => {
@@ -185,9 +200,23 @@ class DatabaseConnection {
       const client = await this.pool.connect()
       await client.query('SELECT NOW()')
       client.release()
-      console.log('Database connection successful')
+      
+      const connectionInfo = {
+        mode: this.connectionMode,
+        ssl: this.isSupabase ? 'enabled (rejectUnauthorized: false)' : 'disabled',
+        host: config.host,
+        port: config.port
+      }
+      console.log('✅ Database connection successful', connectionInfo)
     } catch (error) {
-      console.error('Database connection failed:', error)
+      console.error('❌ Database connection failed:', error)
+      console.error('Connection config (masked):', {
+        host: config.host,
+        port: config.port,
+        database: config.database,
+        ssl: this.isSupabase ? 'SSL configured' : 'No SSL',
+        connectionMode: this.connectionMode
+      })
       throw error
     }
   }
