@@ -28,6 +28,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "db:migrate": "tsx scripts/migrate-database.ts",
+    "db:migrate:supabase": "tsx scripts/migrate-supabase.ts",
     "db:migrate:postgres": "tsx scripts/migrate-to-postgres.ts",
     "db:rollback": "tsx lib/migrations/migrator.ts rollback",
     "db:status": "tsx lib/migrations/migrator.ts status",

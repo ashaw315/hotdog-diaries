@@ -22,6 +22,7 @@ export async function GET() {
     }
     
     // Environment info
+    const hasPostgresUrl = !!(databaseUrl?.includes("postgres") && !hasSupabaseUrl);
     const envInfo = {
       NODE_ENV: process.env.NODE_ENV,
       DATABASE_URL_SET: Boolean(process.env.DATABASE_URL),
@@ -67,29 +68,91 @@ export async function GET() {
       
       console.log("[DB HEALTH CHECK] Database info retrieved:", dbInfo);
       
-      // Test a simple content_queue query if the table exists
-      let contentQueueTest: any = null;
-      try {
-        const contentTest = await db.query("SELECT COUNT(*) as count FROM content_queue LIMIT 1");
-        contentQueueTest = {
-          table_exists: true,
-          row_count: parseInt(contentTest.rows[0]?.count || "0")
-        };
-        console.log("[DB HEALTH CHECK] content_queue table test passed");
-      } catch (tableError) {
-        contentQueueTest = {
-          table_exists: false,
-          error: tableError instanceof Error ? tableError.message : "Unknown table error"
-        };
-        console.log("[DB HEALTH CHECK] content_queue table test failed:", tableError);
+      // Test core tables
+      const tableTests: Record<string, any> = {};
+      const coreTableNames = [
+        'content_queue',
+        'posted_content', 
+        'admin_users',
+        'system_logs',
+        'system_alerts',
+        'content_analysis',
+        'queue_alerts',
+        'platform_metrics',
+        'api_usage_metrics'
+      ];
+      
+      for (const tableName of coreTableNames) {
+        try {
+          const result = await db.query(`SELECT COUNT(*) as count FROM ${tableName} LIMIT 1`);
+          tableTests[tableName] = {
+            exists: true,
+            row_count: parseInt(result.rows[0]?.count || "0")
+          };
+          console.log(`[DB HEALTH CHECK] ${tableName} table test passed`);
+        } catch (error) {
+          tableTests[tableName] = {
+            exists: false,
+            error: error instanceof Error ? error.message : "Unknown error"
+          };
+          console.log(`[DB HEALTH CHECK] ${tableName} table test failed:`, error);
+        }
       }
+      
+      // Test column existence for critical tables
+      const columnTests: Record<string, any> = {};
+      
+      if (databaseMode !== "sqlite") {
+        // PostgreSQL/Supabase specific column checks
+        const criticalColumns = [
+          { table: 'posted_content', column: 'posted_at' },
+          { table: 'posted_content', column: 'scheduled_time' },
+          { table: 'posted_content', column: 'post_order' },
+          { table: 'content_queue', column: 'content_status' },
+          { table: 'content_analysis', column: 'confidence_score' }
+        ];
+        
+        for (const { table, column } of criticalColumns) {
+          try {
+            const result = await db.query(`
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = $1 AND column_name = $2 AND table_schema = 'public'
+            `, [table, column]);
+            
+            columnTests[`${table}.${column}`] = {
+              exists: result.rows.length > 0
+            };
+          } catch (error) {
+            columnTests[`${table}.${column}`] = {
+              exists: false,
+              error: error instanceof Error ? error.message : "Unknown error"
+            };
+          }
+        }
+      }
+      
+      // Calculate health status
+      const totalTables = coreTableNames.length;
+      const existingTables = Object.values(tableTests).filter((test: any) => test.exists).length;
+      const healthPercentage = Math.round((existingTables / totalTables) * 100);
+      
+      const healthStatus = {
+        overall: healthPercentage >= 90 ? 'healthy' : healthPercentage >= 70 ? 'warning' : 'critical',
+        tables_total: totalTables,
+        tables_existing: existingTables,
+        health_percentage: healthPercentage,
+        missing_tables: coreTableNames.filter(name => !tableTests[name]?.exists)
+      };
       
       return NextResponse.json({
         success: true,
         timestamp: new Date().toISOString(),
         environment: envInfo,
         database: dbInfo,
-        content_queue_test: contentQueueTest,
+        health_status: healthStatus,
+        table_tests: tableTests,
+        column_tests: columnTests,
         connection_verified: true
       });
       
