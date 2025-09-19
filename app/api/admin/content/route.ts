@@ -4,161 +4,107 @@ import { EdgeAuthUtils } from '@/lib/auth-edge'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  console.log('[AdminContentAPI] GET /api/admin/content request received')
+
+  // Cookie-based authentication
+  const cookieStore = cookies()
+  const token = cookieStore.get('auth')?.value
+
+  if (!token) {
+    console.warn('[AdminContentAPI] No token found in cookies')
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
+  // Verify JWT token
+  let user
   try {
-    console.log('[AdminContentAPI] GET /api/admin/content request received')
-
-    const cookieStore = cookies()
-    const token = cookieStore.get('auth')?.value
-
-    if (!token) {
-      console.warn('[AdminContentAPI] No token found in cookies')
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
-
-    let user
-    try {
-      user = await EdgeAuthUtils.verifyJWT(token)
-      if (!user) {
-        console.warn('[AdminContentAPI] Token verification returned null')
-        try {
-          const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
-          console.log('[AdminContentAPI] Decoded token payload:', decoded)
-        } catch (e) {
-          console.warn('[AdminContentAPI] Could not decode token body')
-        }
-        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-      }
-    } catch (error) {
-      console.error('[AdminContentAPI] Token verification error:', error)
-      try {
-        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
-        console.log('[AdminContentAPI] Decoded token payload:', decoded)
-      } catch (e) {
-        console.warn('[AdminContentAPI] Could not decode token body')
-      }
+    user = await EdgeAuthUtils.verifyJWT(token)
+    if (!user) {
+      console.warn('[AdminContentAPI] Token verification returned null')
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
+  } catch (error) {
+    console.error('[AdminContentAPI] Token verification error:', error)
+    return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+  }
 
-    console.log('[AdminContentAPI] User verified:', user.username)
+  console.log('[AdminContentAPI] User verified:', user.username)
 
-    // Parse query parameters
-    const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
-    const type = searchParams.get('type') || searchParams.get('status') || 'all'
-    
-    const actualOffset = offset || (page - 1) * limit
-    
-    console.log(`[AdminContentAPI] Query params - type: ${type}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
+  // Parse query parameters
+  const { searchParams } = new URL(request.url)
+  const page = parseInt(searchParams.get('page') || '1')
+  const limit = parseInt(searchParams.get('limit') || '50')
+  const offset = parseInt(searchParams.get('offset') || '0')
+  const status = searchParams.get('status') || 'all'
+  
+  const actualOffset = offset || (page - 1) * limit
+  
+  console.log(`[AdminContentAPI] Query params - status: ${status}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
 
-    // Build WHERE clause based on type filter
+  try {
+    // Build WHERE clause based on status filter
     let whereClause = '1=1'
-    const queryParams: (string | number | boolean)[] = []
-    
-    switch (type) {
-      case 'pending':
-        whereClause = 'is_approved = FALSE AND is_posted = FALSE AND (admin_notes IS NULL OR admin_notes NOT LIKE \'%Rejected%\')'
-        break
-      case 'approved':
-        whereClause = 'is_approved = TRUE AND is_posted = FALSE'
-        break
-      case 'posted':
-        whereClause = 'is_posted = TRUE'
-        break
-      case 'rejected':
-        whereClause = 'is_approved = FALSE AND is_posted = FALSE AND admin_notes LIKE \'%Rejected%\''
-        break
-      case 'all':
-      default:
-        whereClause = '1=1'
-        break
-    }
-
-    // Get content with pagination - special handling for posted content
-    let contentQuery: string
     let orderBy = 'scraped_at DESC'
     
-    if (type === 'posted') {
-      console.log('[AdminContentAPI] Using content_queue filter for posted content')
-      whereClause = 'is_posted = TRUE'
-      contentQuery = `
-        SELECT 
-          id,
-          content_text,
-          content_type,
-          source_platform,
-          original_url,
-          original_author,
-          content_image_url,
-          content_video_url,
-          scraped_at,
-          is_posted,
-          is_approved,
-          posted_at,
-          admin_notes,
-          id as post_order
-        FROM content_queue
-        WHERE ${whereClause}
-        ORDER BY posted_at DESC NULLS LAST, created_at DESC
-        LIMIT $1 OFFSET $2
-      `
-      queryParams.push(limit, actualOffset)
-    } else {
-      contentQuery = `
-        SELECT 
-          id,
-          content_text,
-          content_type,
-          source_platform,
-          original_url,
-          original_author,
-          content_image_url,
-          content_video_url,
-          scraped_at,
-          is_posted,
-          is_approved,
-          posted_at,
-          admin_notes
-        FROM content_queue
-        WHERE ${whereClause}
-        ORDER BY ${orderBy}
-        LIMIT $1 OFFSET $2
-      `
-      queryParams.push(limit, actualOffset)
+    if (status === 'posted') {
+      // For posted status, check posted_at IS NOT NULL
+      whereClause = 'posted_at IS NOT NULL'
+      orderBy = 'posted_at DESC'
+      console.log('[AdminContentAPI] Filtering for posted content (posted_at IS NOT NULL)')
+    } else if (status === 'pending') {
+      whereClause = 'is_approved = FALSE AND posted_at IS NULL AND (admin_notes IS NULL OR admin_notes NOT LIKE \'%Rejected%\')'
+    } else if (status === 'approved') {
+      whereClause = 'is_approved = TRUE AND posted_at IS NULL'
+    } else if (status === 'rejected') {
+      whereClause = 'is_approved = FALSE AND posted_at IS NULL AND admin_notes LIKE \'%Rejected%\''
     }
+    // For 'all' or any other value, keep whereClause as '1=1'
+
+    // Build and execute content query
+    const contentQuery = `
+      SELECT 
+        id,
+        content_text,
+        content_type,
+        source_platform,
+        original_url,
+        original_author,
+        content_image_url,
+        content_video_url,
+        scraped_at,
+        is_posted,
+        is_approved,
+        posted_at,
+        admin_notes,
+        created_at,
+        updated_at
+      FROM content_queue
+      WHERE ${whereClause}
+      ORDER BY ${orderBy}
+      LIMIT $1 OFFSET $2
+    `
     
-    console.log(`[AdminContentAPI] Executing query for type: ${type}`)
-    console.log(`[AdminContentAPI] Query: ${contentQuery.replace(/\s+/g, ' ').trim()}`)
-    console.log(`[AdminContentAPI] Params: [${queryParams.join(', ')}]`)
+    const queryParams = [limit, actualOffset]
+    
+    console.log(`[AdminContentAPI] Executing query with WHERE: ${whereClause}`)
+    console.log(`[AdminContentAPI] Query params: limit=${limit}, offset=${actualOffset}`)
     
     const contentResult = await db.query(contentQuery, queryParams)
-    console.log(`[AdminContentAPI] Content query successful - Found ${contentResult.rows.length} rows`)
+    console.log(`[AdminContentAPI] Content query successful: ${contentResult.rows.length} rows`)
     
     // Get total count for pagination
-    let countQuery: string
-    let total: number
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM content_queue
+      WHERE ${whereClause}
+    `
     
-    if (type === 'posted') {
-      countQuery = `
-        SELECT COUNT(*) as total
-        FROM content_queue
-        WHERE is_posted = TRUE
-      `
-      const countResult = await db.query(countQuery)
-      total = parseInt(countResult.rows[0].total)
-    } else {
-      countQuery = `
-        SELECT COUNT(*) as total
-        FROM content_queue
-        WHERE ${whereClause}
-      `
-      const countResult = await db.query(countQuery)
-      total = parseInt(countResult.rows[0].total)
-    }
+    const countResult = await db.query(countQuery)
+    const total = parseInt(countResult.rows[0].total)
     
     console.log(`[AdminContentAPI] Total count: ${total}`)
 
+    // Map rows to response format
     const content = contentResult.rows.map(row => ({
       id: row.id,
       content_text: row.content_text,
@@ -173,7 +119,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       is_approved: row.is_approved,
       posted_at: row.posted_at,
       admin_notes: row.admin_notes,
-      post_order: row.post_order // Only available for posted content
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      post_order: row.id // Use id as post_order for compatibility
     }))
 
     const responseData = {
@@ -185,7 +133,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         totalPages: Math.ceil(total / limit),
         hasMore: actualOffset + content.length < total
       },
-      filter: type
+      filter: status
     }
 
     console.log(`[AdminContentAPI] Successfully returning ${content.length} content items`)
@@ -195,7 +143,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       message: `Retrieved ${content.length} content items`
     })
 
-  } catch (err: any) {
+  } catch (err) {
     console.error('[AdminContentAPI] Database error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
