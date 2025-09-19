@@ -42,63 +42,98 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   console.log(`[AdminContentAPI] Query params - status: ${status}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
 
   try {
-    // Build WHERE clause based on status filter
-    let whereClause = '1=1'
-    let orderBy = 'scraped_at DESC'
-    
-    if (status === 'posted') {
-      // For posted status, check posted_at IS NOT NULL
-      whereClause = 'posted_at IS NOT NULL'
-      orderBy = 'posted_at DESC'
-      console.log('[AdminContentAPI] Filtering for posted content (posted_at IS NOT NULL)')
-    } else if (status === 'pending') {
-      whereClause = 'is_approved = FALSE AND posted_at IS NULL AND (admin_notes IS NULL OR admin_notes NOT LIKE \'%Rejected%\')'
-    } else if (status === 'approved') {
-      whereClause = 'is_approved = TRUE AND posted_at IS NULL'
-    } else if (status === 'rejected') {
-      whereClause = 'is_approved = FALSE AND posted_at IS NULL AND admin_notes LIKE \'%Rejected%\''
-    }
-    // For 'all' or any other value, keep whereClause as '1=1'
-
-    // Build and execute content query
-    const contentQuery = `
-      SELECT 
-        id,
-        content_text,
-        content_type,
-        source_platform,
-        original_url,
-        original_author,
-        content_image_url,
-        content_video_url,
-        scraped_at,
-        is_posted,
-        is_approved,
-        posted_at,
-        admin_notes,
-        created_at,
-        updated_at
-      FROM content_queue
-      WHERE ${whereClause}
-      ORDER BY ${orderBy}
-      LIMIT $1 OFFSET $2
-    `
-    
+    let contentQuery: string
+    let countQuery: string
     const queryParams = [limit, actualOffset]
     
-    console.log(`[AdminContentAPI] Executing query with WHERE: ${whereClause}`)
-    console.log(`[AdminContentAPI] Query params: limit=${limit}, offset=${actualOffset}`)
+    if (status === 'posted') {
+      // Query content_queue joined with posting_history for posted content
+      console.log('[AdminContentAPI] Filtering for posted content (JOIN with posting_history)')
+      
+      contentQuery = `
+        SELECT 
+          cq.id,
+          cq.content_text,
+          cq.content_type,
+          cq.source_platform,
+          cq.original_url,
+          cq.original_author,
+          cq.content_image_url,
+          cq.content_video_url,
+          cq.scraped_at,
+          cq.is_posted,
+          cq.is_approved,
+          cq.admin_notes,
+          cq.created_at,
+          cq.updated_at,
+          ph.posted_at
+        FROM content_queue cq
+        JOIN posting_history ph ON ph.content_queue_id = cq.id
+        WHERE ph.posted_at IS NOT NULL
+        ORDER BY ph.posted_at DESC
+        LIMIT $1 OFFSET $2
+      `
+      
+      countQuery = `
+        SELECT COUNT(*) as total
+        FROM content_queue cq
+        JOIN posting_history ph ON ph.content_queue_id = cq.id
+        WHERE ph.posted_at IS NOT NULL
+      `
+      
+    } else {
+      // Query content_queue only for other statuses
+      let whereClause = '1=1'
+      let orderBy = 'cq.scraped_at DESC'
+      
+      if (status === 'pending') {
+        whereClause = 'cq.is_approved = FALSE AND NOT EXISTS (SELECT 1 FROM posting_history WHERE content_queue_id = cq.id) AND (cq.admin_notes IS NULL OR cq.admin_notes NOT LIKE \'%Rejected%\')'
+      } else if (status === 'approved') {
+        whereClause = 'cq.is_approved = TRUE AND NOT EXISTS (SELECT 1 FROM posting_history WHERE content_queue_id = cq.id)'
+      } else if (status === 'rejected') {
+        whereClause = 'cq.is_approved = FALSE AND cq.admin_notes LIKE \'%Rejected%\''
+      }
+      // For 'all' or any other value, keep whereClause as '1=1'
+      
+      console.log(`[AdminContentAPI] Filtering for ${status} content with WHERE: ${whereClause}`)
+      
+      contentQuery = `
+        SELECT 
+          cq.id,
+          cq.content_text,
+          cq.content_type,
+          cq.source_platform,
+          cq.original_url,
+          cq.original_author,
+          cq.content_image_url,
+          cq.content_video_url,
+          cq.scraped_at,
+          cq.is_posted,
+          cq.is_approved,
+          cq.admin_notes,
+          cq.created_at,
+          cq.updated_at,
+          NULL as posted_at
+        FROM content_queue cq
+        WHERE ${whereClause}
+        ORDER BY ${orderBy}
+        LIMIT $1 OFFSET $2
+      `
+      
+      countQuery = `
+        SELECT COUNT(*) as total
+        FROM content_queue cq
+        WHERE ${whereClause}
+      `
+    }
     
+    console.log(`[AdminContentAPI] Executing content query for status: ${status}`)
+    
+    // Execute content query
     const contentResult = await db.query(contentQuery, queryParams)
-    console.log(`[AdminContentAPI] Content query successful: ${contentResult.rows.length} rows`)
+    console.log(`[AdminContentAPI] Query success: ${contentResult.rows.length} rows`)
     
-    // Get total count for pagination
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM content_queue
-      WHERE ${whereClause}
-    `
-    
+    // Execute count query
     const countResult = await db.query(countQuery)
     const total = parseInt(countResult.rows[0].total)
     
