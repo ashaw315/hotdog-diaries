@@ -43,24 +43,28 @@ export default function PostedContentPage() {
     try {
       setError(null)
 
-      // Get auth token for API calls
+      // Get auth token for API calls (fallback to localStorage if needed)
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
       const headers: HeadersInit = {
         'Content-Type': 'application/json'
       }
       
+      // Only add Authorization header if we have a token from localStorage
+      // Primary auth should be via cookies (credentials: 'include')
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
 
       const [contentResponse, statsResponse] = await Promise.allSettled([
         fetch(`/api/admin/content?status=posted&limit=${itemsPerPage}&offset=${(page - 1) * itemsPerPage}`, {
+          method: 'GET',
           headers,
-          credentials: 'include'
+          credentials: 'include' // ✅ ensures cookies are sent
         }),
         page === 1 ? fetch('/api/admin/posting/stats', {
+          method: 'GET',
           headers,
-          credentials: 'include'
+          credentials: 'include' // ✅ ensures cookies are sent
         }) : Promise.resolve({ ok: false })
       ])
 
@@ -121,13 +125,19 @@ export default function PostedContentPage() {
     setHidingPost(postId)
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      // Only add Authorization header if we have a token from localStorage
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
       const response = await fetch(`/api/admin/content/${postId}/hide`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        credentials: 'include'
+        headers,
+        credentials: 'include' // ✅ ensures cookies are sent
       })
 
       if (!response.ok) {

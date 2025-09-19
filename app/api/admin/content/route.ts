@@ -10,6 +10,7 @@ import { db } from '@/lib/db'
 
 async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   try {
+    console.log('[AdminContentAPI] Incoming request to /api/admin/content')
     console.log(`🔍 Getting content - Environment: ${process.env.NODE_ENV}`)
     
     // Use Edge-compatible auth utils to verify JWT from cookies (same as /api/admin/me)
@@ -17,21 +18,30 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
     
     // Get and verify JWT token from cookies or Authorization header
     const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+    console.log('[AdminContentAPI] Cookie token found?', !!token)
     
     if (!token) {
+      console.log('[AdminContentAPI] No token found - returning 401')
       throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
     }
 
     // Verify the JWT token
-    let payload
+    let user
     try {
-      payload = await EdgeAuthUtils.verifyJWT(token)
+      user = await EdgeAuthUtils.verifyJWT(token)
+      console.log('[AdminContentAPI] User verified?', !!user, user?.username)
     } catch (error) {
+      console.error('[AdminContentAPI] Auth verification failed', error)
       console.error('[AdminContentAPI] JWT verification failed:', {
         error: error instanceof Error ? error.message : 'Unknown error',
         tokenLength: token ? token.length : 0
       })
       throw createApiError('Invalid or expired token', 401, 'INVALID_TOKEN')
+    }
+
+    if (!user) {
+      console.log('[AdminContentAPI] User verification returned null - returning 401')
+      throw createApiError('Unauthorized - invalid token', 401, 'UNAUTHORIZED')
     }
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -315,18 +325,31 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
 async function createContentHandler(request: NextRequest): Promise<NextResponse> {
   try {
+    console.log('[AdminContentAPI] Incoming request to /api/admin/content POST')
+    
     // Use Edge-compatible auth utils to verify JWT from cookies (same as /api/admin/me)
     const { EdgeAuthUtils } = await import('@/lib/auth-edge')
     
     const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+    console.log('[AdminContentAPI] Cookie token found?', !!token)
+    
     if (!token) {
+      console.log('[AdminContentAPI] No token found - returning 401')
       throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
     }
 
+    let user
     try {
-      await EdgeAuthUtils.verifyJWT(token)
+      user = await EdgeAuthUtils.verifyJWT(token)
+      console.log('[AdminContentAPI] User verified?', !!user, user?.username)
     } catch (error) {
+      console.error('[AdminContentAPI] Auth verification failed', error)
       throw createApiError('Invalid or expired token', 401, 'INVALID_TOKEN')
+    }
+
+    if (!user) {
+      console.log('[AdminContentAPI] User verification returned null - returning 401')
+      throw createApiError('Unauthorized - invalid token', 401, 'UNAUTHORIZED')
     }
 
     const body = await request.json()
