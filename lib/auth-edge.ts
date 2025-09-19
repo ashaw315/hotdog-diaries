@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SignJWT, jwtVerify } from 'jose'
 
-export const AUTH_COOKIE_NAME = 'auth-token'
+export const AUTH_COOKIE_NAME = 'auth'
 export const REFRESH_COOKIE_NAME = 'refresh-token'
 
 export interface JWTPayload {
@@ -201,36 +201,26 @@ export class EdgeAuthUtils {
     accessToken: string,
     refreshToken?: string
   ): void {
-    console.log('🍪 [EdgeAuth] setAuthCookies called with tokens:', {
-      accessTokenLength: accessToken.length,
-      refreshTokenLength: refreshToken?.length,
-      isDevelopment: process.env.NODE_ENV !== 'production'
-    })
+    console.log('[AuthAPI] Setting authentication cookies')
     
     const cookieOptions = {
       httpOnly: true,
-      secure: false, // Allow non-HTTPS in development
+      secure: true,
       sameSite: 'lax' as const,
       path: '/',
       maxAge: 24 * 60 * 60 // 24 hours
     }
     
-    console.log('🍪 [EdgeAuth] Cookie options:', cookieOptions)
-
     response.cookies.set(AUTH_COOKIE_NAME, accessToken, cookieOptions)
-    console.log('🍪 [EdgeAuth] Set access token cookie:', AUTH_COOKIE_NAME)
+    console.log('[AuthAPI] Setting cookie: auth')
 
     if (refreshToken) {
       response.cookies.set(REFRESH_COOKIE_NAME, refreshToken, {
         ...cookieOptions,
         maxAge: 7 * 24 * 60 * 60 // 7 days
       })
-      console.log('🍪 [EdgeAuth] Set refresh token cookie:', REFRESH_COOKIE_NAME)
+      console.log('[AuthAPI] Setting cookie: refresh-token')
     }
-    
-    // Log response headers to see what's actually being set
-    const setCookieHeaders = response.headers.getSetCookie?.() || []
-    console.log('🍪 [EdgeAuth] Set-Cookie headers being sent:', setCookieHeaders)
   }
 
   /**
@@ -239,14 +229,15 @@ export class EdgeAuthUtils {
   static clearAuthCookies(response: NextResponse): void {
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict' as const,
+      secure: true,
+      sameSite: 'lax' as const,
       path: '/',
       maxAge: 0
     }
 
     response.cookies.set(AUTH_COOKIE_NAME, '', cookieOptions)
     response.cookies.set(REFRESH_COOKIE_NAME, '', cookieOptions)
+    console.log('[AuthAPI] Cleared cookies: auth, refresh-token')
   }
 
   /**
