@@ -11,37 +11,41 @@ import { db } from '@/lib/db'
 async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   try {
     console.log('[AdminContentAPI] Incoming request to /api/admin/content')
-    console.log(`🔍 Getting content - Environment: ${process.env.NODE_ENV}`)
     
     // Use Edge-compatible auth utils to verify JWT from cookies (same as /api/admin/me)
     const { EdgeAuthUtils } = await import('@/lib/auth-edge')
     
-    // Get and verify JWT token from cookies or Authorization header
     const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
     console.log('[AdminContentAPI] Cookie token found?', !!token)
-    
+
     if (!token) {
-      console.log('[AdminContentAPI] No token found - returning 401')
-      throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
+      console.error('[AdminContentAPI] No token found - returning 401')
+      return NextResponse.json(
+        { error: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      )
     }
 
-    // Verify the JWT token
-    let user
     try {
-      user = await EdgeAuthUtils.verifyJWT(token)
-      console.log('[AdminContentAPI] User verified?', !!user, user?.username)
-    } catch (error) {
-      console.error('[AdminContentAPI] Auth verification failed', error)
-      console.error('[AdminContentAPI] JWT verification failed:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        tokenLength: token ? token.length : 0
-      })
-      throw createApiError('Invalid or expired token', 401, 'INVALID_TOKEN')
-    }
+      const user = await EdgeAuthUtils.verifyJWT(token)
+      console.log('[AdminContentAPI] User verified?', !!user)
 
-    if (!user) {
-      console.log('[AdminContentAPI] User verification returned null - returning 401')
-      throw createApiError('Unauthorized - invalid token', 401, 'UNAUTHORIZED')
+      if (!user) {
+        console.error('[AdminContentAPI] Token verification failed')
+        return NextResponse.json(
+          { error: 'Invalid or expired token', code: 'INVALID_TOKEN' },
+          { status: 401 }
+        )
+      }
+
+      // Attach user to context and proceed
+      console.log(`🔍 Getting content - Environment: ${process.env.NODE_ENV}`)
+    } catch (err: any) {
+      console.error('[AdminContentAPI] Auth verification failed', { error: err.message })
+      return NextResponse.json(
+        { error: 'Authentication failed', details: err.message },
+        { status: 401 }
+      )
     }
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -299,19 +303,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('[AdminContentAPI] GET request failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      statusCode: error instanceof Error && 'statusCode' in error ? (error as any).statusCode : undefined
+      stack: error instanceof Error ? error.stack : undefined
     })
     
     // Return structured JSON error responses
-    if (error instanceof Error && 'statusCode' in error) {
-      return NextResponse.json(
-        { success: false, error: error.message || 'Unknown error' },
-        { status: (error as any).statusCode || 500 }
-      )
-    }
-    
-    return await handleApiError(error, request, '/api/admin/content')
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error', code: 'SERVER_ERROR' },
+      { status: 500 }
+    )
   }
 }
 
@@ -332,24 +331,34 @@ async function createContentHandler(request: NextRequest): Promise<NextResponse>
     
     const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
     console.log('[AdminContentAPI] Cookie token found?', !!token)
-    
+
     if (!token) {
-      console.log('[AdminContentAPI] No token found - returning 401')
-      throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
+      console.error('[AdminContentAPI] No token found - returning 401')
+      return NextResponse.json(
+        { error: 'Authentication required', code: 'NO_TOKEN' },
+        { status: 401 }
+      )
     }
 
-    let user
     try {
-      user = await EdgeAuthUtils.verifyJWT(token)
-      console.log('[AdminContentAPI] User verified?', !!user, user?.username)
-    } catch (error) {
-      console.error('[AdminContentAPI] Auth verification failed', error)
-      throw createApiError('Invalid or expired token', 401, 'INVALID_TOKEN')
-    }
+      const user = await EdgeAuthUtils.verifyJWT(token)
+      console.log('[AdminContentAPI] User verified?', !!user)
 
-    if (!user) {
-      console.log('[AdminContentAPI] User verification returned null - returning 401')
-      throw createApiError('Unauthorized - invalid token', 401, 'UNAUTHORIZED')
+      if (!user) {
+        console.error('[AdminContentAPI] Token verification failed')
+        return NextResponse.json(
+          { error: 'Invalid or expired token', code: 'INVALID_TOKEN' },
+          { status: 401 }
+        )
+      }
+
+      // Attach user to context and proceed
+    } catch (err: any) {
+      console.error('[AdminContentAPI] Auth verification failed', { error: err.message })
+      return NextResponse.json(
+        { error: 'Authentication failed', details: err.message },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
@@ -429,9 +438,17 @@ async function createContentHandler(request: NextRequest): Promise<NextResponse>
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    validateRequestMethod(request, ['POST'])
     return await createContentHandler(request)
   } catch (error) {
-    return await handleApiError(error, request, '/api/admin/content')
+    console.error('[AdminContentAPI] POST request failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
+    
+    // Return structured JSON error responses
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error', code: 'SERVER_ERROR' },
+      { status: 500 }
+    )
   }
 }
