@@ -15,9 +15,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const user = await EdgeAuthUtils.verifyJWT(token)
-    if (!user) {
-      console.warn('[AdminContentAPI] Invalid token')
+    let user
+    try {
+      user = await EdgeAuthUtils.verifyJWT(token)
+      if (!user) {
+        console.warn('[AdminContentAPI] Token verification returned null')
+        try {
+          const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+          console.log('[AdminContentAPI] Decoded token payload:', decoded)
+        } catch (e) {
+          console.warn('[AdminContentAPI] Could not decode token body')
+        }
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
+    } catch (error) {
+      console.error('[AdminContentAPI] Token verification error:', error)
+      try {
+        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+        console.log('[AdminContentAPI] Decoded token payload:', decoded)
+      } catch (e) {
+        console.warn('[AdminContentAPI] Could not decode token body')
+      }
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
@@ -195,9 +213,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const user = await EdgeAuthUtils.verifyJWT(token)
-    if (!user) {
-      console.warn('[AdminContentAPI] Invalid token')
+    let user
+    try {
+      user = await EdgeAuthUtils.verifyJWT(token)
+      if (!user) {
+        console.warn('[AdminContentAPI] Token verification returned null')
+        try {
+          const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+          console.log('[AdminContentAPI] Decoded token payload:', decoded)
+        } catch (e) {
+          console.warn('[AdminContentAPI] Could not decode token body')
+        }
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
+    } catch (error) {
+      console.error('[AdminContentAPI] Token verification error:', error)
+      try {
+        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+        console.log('[AdminContentAPI] Decoded token payload:', decoded)
+      } catch (e) {
+        console.warn('[AdminContentAPI] Could not decode token body')
+      }
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
@@ -286,9 +322,27 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const user = await EdgeAuthUtils.verifyJWT(token)
-    if (!user) {
-      console.warn('[AdminContentAPI] Invalid token')
+    let user
+    try {
+      user = await EdgeAuthUtils.verifyJWT(token)
+      if (!user) {
+        console.warn('[AdminContentAPI] Token verification returned null')
+        try {
+          const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+          console.log('[AdminContentAPI] Decoded token payload:', decoded)
+        } catch (e) {
+          console.warn('[AdminContentAPI] Could not decode token body')
+        }
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
+    } catch (error) {
+      console.error('[AdminContentAPI] Token verification error:', error)
+      try {
+        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+        console.log('[AdminContentAPI] Decoded token payload:', decoded)
+      } catch (e) {
+        console.warn('[AdminContentAPI] Could not decode token body')
+      }
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
