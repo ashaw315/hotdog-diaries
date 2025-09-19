@@ -12,10 +12,26 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
   try {
     console.log(`🔍 Getting content - Environment: ${process.env.NODE_ENV}`)
     
-    const authResult = await verifyAdminAuth(request)
-    if (!authResult.success) {
-      console.error('❌ Authentication failed:', authResult.error)
-      throw createApiError('Authentication required', 401, 'UNAUTHORIZED')
+    // Use Edge-compatible auth utils to verify JWT from cookies (same as /api/admin/me)
+    const { EdgeAuthUtils } = await import('@/lib/auth-edge')
+    
+    // Get and verify JWT token from cookies or Authorization header
+    const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+    
+    if (!token) {
+      throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
+    }
+
+    // Verify the JWT token
+    let payload
+    try {
+      payload = await EdgeAuthUtils.verifyJWT(token)
+    } catch (error) {
+      console.error('[AdminContentAPI] JWT verification failed:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        tokenLength: token ? token.length : 0
+      })
+      throw createApiError('Invalid or expired token', 401, 'INVALID_TOKEN')
     }
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -171,15 +187,21 @@ async function getContentHandler(request: NextRequest): Promise<NextResponse> {
     return createSuccessResponse(responseData, `Retrieved ${content.length} content items`)
 
   } catch (error) {
-    console.error('❌ Error in getContentHandler:', error)
-    if (error instanceof Error) {
-      console.error('📋 Error details:', {
-        message: error.message,
-        stack: error.stack?.split('\n').slice(0, 3).join('\n'),
-        name: error.name
-      })
+    console.error('[AdminContentAPI] Request failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      statusCode: error instanceof Error && 'statusCode' in error ? (error as any).statusCode : undefined,
+      endpoint: '/api/admin/content GET',
+      timestamp: new Date().toISOString()
+    })
+    
+    // Re-throw auth errors without modification
+    if (error instanceof Error && 
+        (error.message.includes('No authentication token') || 
+         error.message.includes('Invalid or expired token'))) {
+      throw error
     }
-    console.error('Failed to get content:', error)
+    
     throw createApiError('Failed to retrieve content', 500, 'CONTENT_RETRIEVAL_ERROR')
   }
 }
@@ -265,6 +287,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     return await getContentHandler(request)
   } catch (error) {
+    console.error('[AdminContentAPI] GET request failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      statusCode: error instanceof Error && 'statusCode' in error ? (error as any).statusCode : undefined
+    })
+    
+    // Return structured JSON error responses
+    if (error instanceof Error && 'statusCode' in error) {
+      return NextResponse.json(
+        { success: false, error: error.message || 'Unknown error' },
+        { status: (error as any).statusCode || 500 }
+      )
+    }
+    
     return await handleApiError(error, request, '/api/admin/content')
   }
 }
@@ -279,9 +315,18 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
 async function createContentHandler(request: NextRequest): Promise<NextResponse> {
   try {
-    const authResult = await verifyAdminAuth(request)
-    if (!authResult.success) {
-      throw createApiError('Authentication required', 401, 'UNAUTHORIZED')
+    // Use Edge-compatible auth utils to verify JWT from cookies (same as /api/admin/me)
+    const { EdgeAuthUtils } = await import('@/lib/auth-edge')
+    
+    const token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+    if (!token) {
+      throw createApiError('No authentication token provided', 401, 'NO_TOKEN')
+    }
+
+    try {
+      await EdgeAuthUtils.verifyJWT(token)
+    } catch (error) {
+      throw createApiError('Invalid or expired token', 401, 'INVALID_TOKEN')
     }
 
     const body = await request.json()
