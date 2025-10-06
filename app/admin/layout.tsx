@@ -4,6 +4,8 @@ import { Suspense, useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { AuthProvider, useRequireAuth } from '@/contexts/AuthContext'
+import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary'
+import { ToastProvider } from '@/components/admin/Toast'
 import './admin-nav.css'
 
 interface AdminLayoutProps {
@@ -62,7 +64,9 @@ function AuthenticatedContent({ children }: AdminLayoutProps) {
           <>
             <AdminHeader user={auth.user} onLogout={auth.logout} />
             <main style={{ position: 'relative', zIndex: 1 }}>
-              {children}
+              <AdminErrorBoundary>
+                {children}
+              </AdminErrorBoundary>
             </main>
           </>
         )}
@@ -287,13 +291,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   
   return (
     <AuthProvider>
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        </div>
-      }>
-        <AdminContent>{children}</AdminContent>
-      </Suspense>
+      <ToastProvider>
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+        }>
+          <AdminContent>{children}</AdminContent>
+        </Suspense>
+      </ToastProvider>
     </AuthProvider>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useMetrics } from '@/hooks/useAdminData'
 
 interface ContentStatusMetrics {
   statusCounts: {
@@ -38,47 +39,44 @@ interface ContentStatusDashboardProps {
 }
 
 export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProps) {
-  const [metrics, setMetrics] = useState<ContentStatusMetrics | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null)
-
-  useEffect(() => {
-    fetchMetrics()
-    
-    // Auto-refresh every 5 minutes
-    const interval = setInterval(fetchMetrics, 5 * 60 * 1000)
-    setRefreshInterval(interval)
-
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval)
-      }
-    }
-  }, [])
-
-  const fetchMetrics = async () => {
-    try {
-      setIsLoading(true)
-      const response = await fetch('/api/admin/analytics?type=content')
-      if (response.ok) {
-        const result = await response.json()
-        // Handle the API response format: { success: true, data: ... }
-        const data = result.success ? result.data : result
-        setMetrics(data)
-        setError(null)
-      } else {
-        throw new Error('Failed to fetch metrics')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const { data: metricsData, loading: isLoading, error, refresh } = useMetrics()
+  
+  // Map the metrics data to the expected format
+  const metrics: ContentStatusMetrics | null = metricsData ? {
+    statusCounts: {
+      discovered: 0, // Would need to be added to the API
+      pending_review: metricsData.overview?.pendingContent || 0,
+      approved: metricsData.overview?.approvedContent || 0,
+      scheduled: 0, // Would need to be added to the API
+      posted: metricsData.overview?.postedContent || 0,
+      rejected: 0, // Would need to be added to the API
+      archived: 0, // Would need to be added to the API
+    },
+    flowMetrics: {
+      processedToday: metricsData.overview?.contentToday || 0,
+      processingRate: 0, // Would need to be calculated
+      approvalRate: metricsData.overview?.approvedContent && metricsData.overview?.totalContent 
+        ? (metricsData.overview.approvedContent / metricsData.overview.totalContent) * 100 
+        : 0,
+      averageReviewTime: 0, // Would need to be added to the API
+    },
+    queueHealth: {
+      approvedAvailable: metricsData.overview?.approvedContent || 0,
+      scheduledUpcoming: 0, // Would need to be added to the API
+      nextPostingGap: 0, // Would need to be calculated
+      recommendedActions: [], // Would need to be generated based on queue state
+    },
+    platformPerformance: metricsData.platforms?.map(platform => ({
+      platform: platform.platform,
+      totalProcessed: platform.totalCount,
+      approvalRate: platform.totalCount > 0 ? (platform.approvedCount / platform.totalCount) * 100 : 0,
+      averageConfidence: platform.avgConfidence * 100,
+      topPerformer: false, // Would need to be calculated
+    })) || []
+  } : null
 
   const handleRefresh = () => {
-    fetchMetrics()
+    refresh()
     onRefresh?.()
   }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useDashboardData } from '@/hooks/useAdminData'
 import { ContentStatusDashboard } from './ContentStatusDashboard'
 
 interface DashboardStats {
@@ -36,74 +37,62 @@ interface RecentActivity {
 
 export default function AdminDashboard() {
   const { user } = useAuth()
-  const [stats, setStats] = useState<DashboardStats>({
-    totalContent: 0,
-    pendingContent: 0,
-    postedToday: 0,
-    totalViews: 0,
-    avgEngagement: 0,
-    systemStatus: 'online',
+  const { data: dashboardData, loading: isLoading, error: dashboardError, refresh } = useDashboardData(30000) // 30 second refresh
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
+
+  // Map dashboard data to local stats format for compatibility
+  const stats: DashboardStats = {
+    totalContent: dashboardData?.overview?.totalContent || 0,
+    pendingContent: dashboardData?.overview?.pendingContent || 0,
+    postedToday: dashboardData?.posting?.postsToday || 0,
+    totalViews: 0, // This would come from analytics if available
+    avgEngagement: 0, // This would come from analytics if available
+    systemStatus: dashboardData ? 'online' : 'offline',
     platformStats: {
-      reddit: { enabled: false, contentFound: 0 },
-      youtube: { enabled: false, contentFound: 0 },
-      flickr: { enabled: false, contentFound: 0 },
-      unsplash: { enabled: false, contentFound: 0 }
+      reddit: { 
+        enabled: dashboardData?.platforms?.some(p => p.platform === 'reddit') || false, 
+        contentFound: dashboardData?.platforms?.find(p => p.platform === 'reddit')?.totalCount || 0
+      },
+      youtube: { 
+        enabled: dashboardData?.platforms?.some(p => p.platform === 'youtube') || false, 
+        contentFound: dashboardData?.platforms?.find(p => p.platform === 'youtube')?.totalCount || 0
+      },
+      flickr: { 
+        enabled: dashboardData?.platforms?.some(p => p.platform === 'flickr') || false, 
+        contentFound: dashboardData?.platforms?.find(p => p.platform === 'flickr')?.totalCount || 0
+      },
+      unsplash: { 
+        enabled: dashboardData?.platforms?.some(p => p.platform === 'unsplash') || false, 
+        contentFound: dashboardData?.platforms?.find(p => p.platform === 'unsplash')?.totalCount || 0
+      }
     },
     contentPipeline: {
-      queuedForReview: 0,
-      autoApproved: 0,
-      flaggedForManualReview: 0,
-      rejected: 0
+      queuedForReview: dashboardData?.overview?.pendingContent || 0,
+      autoApproved: dashboardData?.overview?.approvedContent || 0,
+      flaggedForManualReview: 0, // This would need to be added to the API
+      rejected: 0 // This would need to be calculated from content_queue
     }
-  })
-  
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  }
 
+  // Fetch recent activity separately as it's not in the main dashboard hook
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchRecentActivity = async () => {
       try {
-        // Fetch dashboard statistics
-        const statsResponse = await fetch('/api/admin/dashboard', {
-          credentials: 'include'
-        })
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json()
-          // Merge with default stats to ensure all required fields are present
-          setStats(prevStats => ({
-            ...prevStats,
-            ...statsData,
-            // Ensure platformStats exists
-            platformStats: statsData.platformStats || prevStats.platformStats,
-            // Ensure contentPipeline exists  
-            contentPipeline: statsData.contentPipeline || prevStats.contentPipeline
-          }))
-        } else if (statsResponse.status === 401) {
-          console.warn('Unauthorized access to dashboard stats')
-        }
-
-        // Fetch recent activity
         const activityResponse = await fetch('/api/admin/dashboard?view=activity', {
           credentials: 'include'
         })
         if (activityResponse.ok) {
           const activityData = await activityResponse.json()
-          setRecentActivity(activityData)
+          setRecentActivity(activityData || [])
         } else if (activityResponse.status === 401) {
           console.warn('Unauthorized access to dashboard activity')
         }
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error)
-      } finally {
-        setIsLoading(false)
+        console.error('Failed to fetch recent activity:', error)
       }
     }
 
-    fetchDashboardData()
-    
-    // Refresh data every 30 seconds
-    const interval = setInterval(fetchDashboardData, 30000)
-    return () => clearInterval(interval)
+    fetchRecentActivity()
   }, [])
 
   const formatTime = (date?: Date) => {
@@ -129,18 +118,69 @@ export default function AdminDashboard() {
     }
   }
 
+  // Error state with retry option
+  if (dashboardError) {
+    return (
+      <div className="admin-dashboard">
+        <div className="dashboard-main">
+          <div className="metric-card" style={{ textAlign: 'center', padding: '40px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+            <h2 style={{ color: '#dc2626', marginBottom: '12px' }}>Dashboard Error</h2>
+            <p style={{ color: '#6b7280', marginBottom: '20px' }}>{dashboardError}</p>
+            <button
+              onClick={refresh}
+              className="refresh-btn"
+              style={{ 
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              🔄 Retry Loading
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Loading state
   if (isLoading) {
     return (
-      <div className="grid gap-md">
-        <div className="grid grid-4 gap-md">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="card">
-              <div className="card-body">
-                <div className="loading">Loading dashboard data...</div>
+      <div className="admin-dashboard">
+        <div className="dashboard-main">
+          <div className="stats-grid">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="metric-card" style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  border: '3px solid #e5e7eb',
+                  borderTop: '3px solid #3b82f6',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '20px auto'
+                }}></div>
+                <div style={{ color: '#6b7280', fontSize: '14px' }}>Loading...</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+        
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     )
   }

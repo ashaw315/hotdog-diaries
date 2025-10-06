@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { BulkEditModal } from './BulkEditModal'
 import { authFetch } from '@/lib/auth-fetch'
+import { useContentData } from '@/hooks/useAdminData'
 
 interface QueuedContent {
   id: number
@@ -31,8 +32,6 @@ interface QueuedContent {
 }
 
 export default function ContentQueue() {
-  const [queuedContent, setQueuedContent] = useState<QueuedContent[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   const [sortBy, setSortBy] = useState<'created_at' | 'updated_at' | 'scraped_at' | 'confidence_score'>('created_at')
   const [filterBy, setFilterBy] = useState<'all' | 'discovered' | 'pending_review' | 'approved' | 'rejected'>('all')
@@ -40,33 +39,38 @@ export default function ContentQueue() {
   const [editText, setEditText] = useState<string>('')
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
 
-  useEffect(() => {
-    fetchQueuedContent()
-  }, [sortBy, filterBy])
-
-  const fetchQueuedContent = async () => {
-    try {
-      setIsLoading(true)
-      const params = new URLSearchParams({
-        sort: sortBy,
-        status: filterBy === 'all' ? 'all' : filterBy,
-        order: 'desc',
-        limit: '50'
-      })
-      
-      const response = await authFetch(`/api/admin/content?${params}`)
-      if (response.ok) {
-        const data = await response.json()
-        setQueuedContent(data.content || [])
-      } else {
-        console.error('Failed to fetch queued content')
-      }
-    } catch (error) {
-      console.error('Error fetching queued content:', error)
-    } finally {
-      setIsLoading(false)
+  // Map the filterBy values to the hook's expected status values
+  const getHookStatus = (filter: string) => {
+    switch (filter) {
+      case 'pending_review': return 'pending'
+      case 'approved': return 'approved'
+      case 'rejected': return 'rejected'
+      case 'posted': return 'posted'
+      default: return undefined
     }
   }
+
+  // Use the hook for content data management
+  const { 
+    data: queuedContent, 
+    loading: isLoading, 
+    error: contentError, 
+    refresh, 
+    updateContentStatus 
+  } = useContentData({
+    page: 1,
+    limit: 50,
+    status: getHookStatus(filterBy),
+    autoRefresh: true
+  })
+
+  // Refresh when sort or filter changes
+  useEffect(() => {
+    refresh()
+  }, [sortBy, filterBy, refresh])
+
+  // Replace the manual fetchQueuedContent with the hook's refresh function
+  const fetchQueuedContent = refresh
 
   const handleSelectItem = (id: number) => {
     const newSelected = new Set(selectedItems)
@@ -113,19 +117,31 @@ export default function ContentQueue() {
 
   const handleUpdateContent = async (id: number, updates: Partial<QueuedContent>) => {
     try {
-      const response = await authFetch(`/api/admin/content?id=${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates)
-      })
-
-      if (response.ok) {
-        await fetchQueuedContent()
-        if (editingContent === id) {
+      // If it's a status update, use the hook's method
+      if (updates.content_status) {
+        const success = await updateContentStatus(id, updates.content_status as any, {
+          reason: updates.rejection_reason
+        })
+        if (success && editingContent === id) {
           setEditingContent(null)
           setEditText('')
         }
       } else {
-        console.error('Failed to update content')
+        // For other updates (like text editing), use manual API call
+        const response = await authFetch(`/api/admin/content?id=${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(updates)
+        })
+
+        if (response.ok) {
+          await refresh()
+          if (editingContent === id) {
+            setEditingContent(null)
+            setEditText('')
+          }
+        } else {
+          console.error('Failed to update content')
+        }
       }
     } catch (error) {
       console.error('Error updating content:', error)
@@ -255,6 +271,72 @@ export default function ContentQueue() {
     })
   }
 
+  // Error state with retry option
+  if (contentError) {
+    return (
+      <>
+        <style jsx>{`
+          .error-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            padding: 40px;
+            text-align: center;
+          }
+          
+          .error-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+          }
+          
+          .error-title {
+            color: #dc2626;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+          }
+          
+          .error-message {
+            color: #6b7280;
+            font-size: 16px;
+            margin-bottom: 20px;
+          }
+          
+          .retry-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+          }
+          
+          .retry-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+          }
+        `}</style>
+        <div className="error-container">
+          <div className="error-icon">⚠️</div>
+          <h2 className="error-title">Content Queue Error</h2>
+          <p className="error-message">{contentError}</p>
+          <button onClick={refresh} className="retry-btn">
+            🔄 Retry Loading
+          </button>
+        </div>
+      </>
+    )
+  }
+
+  // Loading state
   if (isLoading) {
     return (
       <>

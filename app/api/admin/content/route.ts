@@ -5,6 +5,9 @@ import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   console.log('[AdminContentAPI] GET /api/admin/content request received')
+  console.log('[AdminContentAPI] Environment:', process.env.NODE_ENV)
+  console.log('[AdminContentAPI] Database URL set:', Boolean(process.env.DATABASE_URL))
+  console.log('[AdminContentAPI] Supabase URL set:', Boolean(process.env.SUPABASE_URL))
 
   // Cookie-based authentication
   const cookieStore = cookies()
@@ -42,13 +45,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   console.log(`[AdminContentAPI] Query params - status: ${status}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
 
   try {
+    // Check database connection and log current state
+    const healthCheck = await db.healthCheck()
+    console.log('[AdminContentAPI] Database health:', healthCheck)
+    
     let contentQuery: string
     let countQuery: string
     const queryParams = [limit, actualOffset]
     
     if (status === 'posted') {
-      // Query content_queue joined with posting_history for posted content
-      console.log('[AdminContentAPI] Filtering for posted content (JOIN with posting_history)')
+      // Query content_queue joined with posted_content for posted content
+      console.log('[AdminContentAPI] Filtering for posted content (JOIN with posted_content)')
       
       contentQuery = `
         SELECT 
@@ -66,19 +73,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           cq.admin_notes,
           cq.created_at,
           cq.updated_at,
-          ph.posted_at
+          pc.posted_at
         FROM content_queue cq
-        JOIN posting_history ph ON ph.content_queue_id = cq.id
-        WHERE ph.posted_at IS NOT NULL
-        ORDER BY ph.posted_at DESC
+        JOIN posted_content pc ON pc.content_queue_id = cq.id
+        WHERE pc.posted_at IS NOT NULL
+        ORDER BY pc.posted_at DESC
         LIMIT $1 OFFSET $2
       `
       
       countQuery = `
         SELECT COUNT(*) as total
         FROM content_queue cq
-        JOIN posting_history ph ON ph.content_queue_id = cq.id
-        WHERE ph.posted_at IS NOT NULL
+        JOIN posted_content pc ON pc.content_queue_id = cq.id
+        WHERE pc.posted_at IS NOT NULL
       `
       
     } else {
@@ -87,9 +94,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       let orderBy = 'cq.scraped_at DESC'
       
       if (status === 'pending') {
-        whereClause = 'cq.is_approved = FALSE AND NOT EXISTS (SELECT 1 FROM posting_history WHERE content_queue_id = cq.id) AND (cq.admin_notes IS NULL OR cq.admin_notes NOT LIKE \'%Rejected%\')'
+        whereClause = 'cq.is_approved = FALSE AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id) AND (cq.admin_notes IS NULL OR cq.admin_notes NOT LIKE \'%Rejected%\')'
       } else if (status === 'approved') {
-        whereClause = 'cq.is_approved = TRUE AND NOT EXISTS (SELECT 1 FROM posting_history WHERE content_queue_id = cq.id)'
+        whereClause = 'cq.is_approved = TRUE AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
       } else if (status === 'rejected') {
         whereClause = 'cq.is_approved = FALSE AND cq.admin_notes LIKE \'%Rejected%\''
       }
@@ -180,7 +187,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   } catch (err) {
     console.error('[AdminContentAPI] Database error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[AdminContentAPI] Error details:', {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      stack: err?.stack
+    })
+    
+    // Check if this is a table/column missing error
+    if (err?.message?.includes('relation') && err?.message?.includes('does not exist')) {
+      console.error('[AdminContentAPI] Schema mismatch detected - table/column missing')
+      return NextResponse.json({ 
+        error: 'Database schema mismatch', 
+        details: 'Missing table or column in database'
+      }, { status: 500 })
+    }
+    
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? err?.message : undefined
+    }, { status: 500 })
   }
 }
 
