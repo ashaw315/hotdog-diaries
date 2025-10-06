@@ -29,6 +29,91 @@ export interface AdminProfile {
 
 export class AdminService {
   /**
+   * Get or create service account for CI/CD
+   */
+  static async getServiceAccount(): Promise<AdminUser | null> {
+    try {
+      return await query('admin_users')
+        .where('username', '=', 'service-account')
+        .where('is_active', '=', true)
+        .first<AdminUser>()
+    } catch (error) {
+      await logToDatabase(
+        LogLevel.ERROR,
+        'Failed to get service account',
+        'AdminService',
+        { error: error.message }
+      )
+      return null
+    }
+  }
+
+  /**
+   * Create service account for CI/CD
+   */
+  static async createServiceAccount(): Promise<AdminUser> {
+    try {
+      const existingAccount = await this.getServiceAccount()
+      if (existingAccount) {
+        return existingAccount
+      }
+
+      // Generate secure password for service account
+      const password = AuthService.generateSecurePassword(32)
+      const passwordHash = await AuthService.hashPassword(password)
+
+      const serviceAccount = await insert('admin_users', {
+        username: 'service-account',
+        password_hash: passwordHash,
+        email: 'service@hotdog-diaries.com',
+        full_name: 'CI/CD Service Account',
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
+      }).returning<AdminUser>('*')
+
+      await logToDatabase(
+        LogLevel.INFO,
+        'Service account created',
+        'AdminService',
+        { accountId: serviceAccount.id }
+      )
+
+      return serviceAccount
+    } catch (error) {
+      await logToDatabase(
+        LogLevel.ERROR,
+        'Failed to create service account',
+        'AdminService',
+        { error: error.message }
+      )
+      throw error
+    }
+  }
+
+  /**
+   * Update last activity timestamp
+   */
+  static async updateLastActivity(userId: number): Promise<void> {
+    try {
+      await update('admin_users')
+        .set({ 
+          last_login_at: new Date(),
+          updated_at: new Date()
+        })
+        .where('id', '=', userId)
+        .execute()
+    } catch (error) {
+      await logToDatabase(
+        LogLevel.ERROR,
+        'Failed to update last activity',
+        'AdminService',
+        { userId, error: error.message }
+      )
+    }
+  }
+
+  /**
    * Create a new admin user
    */
   static async createAdminUser(data: CreateAdminUserData): Promise<AdminUser> {

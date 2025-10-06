@@ -1,0 +1,130 @@
+name: Token Refresh (Reusable)
+
+on:
+  workflow_call:
+    outputs:
+      auth_token:
+        description: 'Refreshed authentication token'
+        value: ${{ jobs.refresh.outputs.auth_token }}
+    secrets:
+      SITE_URL:
+        required: true
+      SERVICE_ACCOUNT_SECRET:
+        required: false
+      REFRESH_TOKEN:
+        required: false
+      AUTH_TOKEN:
+        required: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    outputs:
+      auth_token: ${{ steps.refresh.outputs.auth_token }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      
+      - name: Refresh Authentication Token
+        id: refresh
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          SERVICE_ACCOUNT_SECRET: ${{ secrets.SERVICE_ACCOUNT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+        run: |
+          echo "🔐 Starting token refresh process..."
+          
+          # Initialize variables
+          ACCESS_TOKEN=""
+          TOKEN_REFRESHED=false
+          
+          # Try service account first
+          if [ -n "$SERVICE_ACCOUNT_SECRET" ]; then
+            echo "Attempting service account authentication..."
+            RESPONSE=$(curl -s -X POST "$SITE_URL/api/auth/refresh" \
+              -H "Content-Type: application/json" \
+              -d "{\"serviceAccount\": \"$SERVICE_ACCOUNT_SECRET\"}")
+            
+            ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r '.accessToken // empty')
+            
+            if [ -n "$ACCESS_TOKEN" ]; then
+              echo "✅ Service account token obtained"
+              TOKEN_REFRESHED=true
+            else
+              echo "⚠️ Service account authentication failed"
+            fi
+          fi
+          
+          # Try refresh token if service account failed
+          if [ "$TOKEN_REFRESHED" = false ] && [ -n "$REFRESH_TOKEN" ]; then
+            echo "Attempting refresh token authentication..."
+            RESPONSE=$(curl -s -X POST "$SITE_URL/api/auth/refresh" \
+              -H "Content-Type: application/json" \
+              -d "{\"refreshToken\": \"$REFRESH_TOKEN\"}")
+            
+            ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r '.accessToken // empty')
+            NEW_REFRESH_TOKEN=$(echo "$RESPONSE" | jq -r '.refreshToken // empty')
+            
+            if [ -n "$ACCESS_TOKEN" ]; then
+              echo "✅ Refresh token authentication successful"
+              TOKEN_REFRESHED=true
+              
+              # Store new refresh token if provided
+              if [ -n "$NEW_REFRESH_TOKEN" ]; then
+                echo "📝 New refresh token received (update GitHub secret manually)"
+              fi
+            else
+              echo "⚠️ Refresh token authentication failed"
+            fi
+          fi
+          
+          # Validate existing token as last resort
+          if [ "$TOKEN_REFRESHED" = false ] && [ -n "$AUTH_TOKEN" ]; then
+            echo "Testing existing AUTH_TOKEN..."
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: Bearer $AUTH_TOKEN" \
+              "$SITE_URL/api/admin/queue/status")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Existing token is still valid"
+              ACCESS_TOKEN="$AUTH_TOKEN"
+              TOKEN_REFRESHED=true
+            else
+              echo "⚠️ Existing token is invalid (HTTP $HTTP_CODE)"
+            fi
+          fi
+          
+          # Output final status
+          if [ "$TOKEN_REFRESHED" = true ]; then
+            echo "✅ Authentication successful"
+            echo "::add-mask::$ACCESS_TOKEN"
+            echo "auth_token=$ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          else
+            echo "❌ All authentication methods failed"
+            echo "::error::Token refresh failed - manual intervention required"
+            exit 1
+          fi
+      
+      - name: Verify Token
+        if: success()
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          AUTH_TOKEN: ${{ steps.refresh.outputs.auth_token }}
+        run: |
+          echo "🔍 Verifying refreshed token..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            "$SITE_URL/api/admin/queue/status")
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Token verification successful"
+          else
+            echo "❌ Token verification failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi

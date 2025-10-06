@@ -18,6 +18,7 @@ export class AuthService {
   private static readonly SALT_ROUNDS = 12
   private static readonly ACCESS_TOKEN_EXPIRY = '24h'
   private static readonly REFRESH_TOKEN_EXPIRY = '7d'
+  private static readonly SERVICE_TOKEN_EXPIRY = '30d'
 
   /**
    * Hash a password using bcrypt
@@ -159,6 +160,58 @@ export class AuthService {
     return {
       accessToken: this.generateJWT(user),
       refreshToken: this.generateRefreshToken(user)
+    }
+  }
+
+  /**
+   * Generate service account token (long-lived for CI/CD)
+   */
+  static generateServiceToken(user: Pick<AdminUser, 'id' | 'username'>): string {
+    const secret = process.env.JWT_SECRET
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required')
+    }
+
+    const payload: JWTPayload = {
+      userId: user.id,
+      username: user.username
+    }
+
+    try {
+      return jwt.sign(payload, secret, {
+        expiresIn: this.SERVICE_TOKEN_EXPIRY,
+        issuer: 'hotdog-diaries',
+        audience: 'service-account'
+      })
+    } catch (error) {
+      throw new Error(`Service token generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  /**
+   * Verify service account token
+   */
+  static verifyServiceToken(token: string): JWTPayload {
+    const secret = process.env.JWT_SECRET
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required')
+    }
+
+    try {
+      const decoded = jwt.verify(token, secret, {
+        issuer: 'hotdog-diaries',
+        audience: 'service-account'
+      }) as JWTPayload
+
+      return decoded
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new Error('Service token has expired')
+      } else if (error instanceof jwt.JsonWebTokenError) {
+        throw new Error('Invalid service token')
+      } else {
+        throw new Error(`Service token verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     }
   }
 

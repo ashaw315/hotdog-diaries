@@ -6,10 +6,21 @@ on:
   workflow_dispatch:
 
 jobs:
+  refresh-token:
+    uses: ./.github/workflows/token-refresh.yml
+    secrets:
+      SITE_URL: ${{ secrets.SITE_URL }}
+      SERVICE_ACCOUNT_SECRET: ${{ secrets.SERVICE_ACCOUNT_SECRET }}
+      REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+      AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+
   post-breakfast:
+    needs: refresh-token
     runs-on: ubuntu-latest
     steps:
       - name: Post Breakfast Content
+        env:
+          AUTH_TOKEN: ${{ needs.refresh-token.outputs.auth_token }}
         run: |
           echo "🌅 Posting breakfast content..."
           

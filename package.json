@@ -36,6 +36,7 @@
     "db:setup-vercel": "tsx scripts/setup-vercel-postgres.ts",
     "admin:create": "tsx scripts/seed-admin.ts",
     "admin:create-prod": "NODE_ENV=production tsx scripts/create-prod-admin.ts",
+    "generate:service-token": "tsx scripts/generate-service-token.ts",
     "postbuild": "echo 'Skipping Vercel DB setup during build'"
   },
   "dependencies": {
