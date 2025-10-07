@@ -18,6 +18,10 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout>()
 
+  // Disable polling in CI environments
+  const isCI = process.env.NEXT_PUBLIC_CI === 'true'
+  const actualRefreshInterval = isCI ? 0 : refreshInterval
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
@@ -32,20 +36,27 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
     } catch (err) {
       const errorMessage = ApiHelpers.handleError(err)
       setError(errorMessage)
-      console.error('Dashboard fetch error:', err)
+      if (!isCI) {
+        console.error('Dashboard fetch error:', err)
+      }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isCI])
 
   const refresh = useCallback(() => fetchData(), [fetchData])
 
   useEffect(() => {
     fetchData()
 
-    // Set up refresh interval
-    if (refreshInterval > 0) {
-      intervalRef.current = setInterval(fetchData, refreshInterval)
+    // Set up refresh interval (disabled in CI)
+    if (actualRefreshInterval > 0) {
+      intervalRef.current = setInterval(fetchData, actualRefreshInterval)
+      if (!isCI) {
+        console.log(`🔄 Dashboard auto-refresh enabled: ${actualRefreshInterval}ms`)
+      }
+    } else if (isCI) {
+      console.log('🧪 [CI] Dashboard auto-refresh disabled for CI environment')
     }
 
     return () => {
@@ -53,7 +64,7 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
         clearInterval(intervalRef.current)
       }
     }
-  }, [fetchData, refreshInterval])
+  }, [fetchData, actualRefreshInterval, isCI])
 
   return { data, loading, error, refresh }
 }
@@ -149,11 +160,16 @@ export function useContentData(params?: {
     fetchData()
   }, [fetchData])
 
-  // Auto-refresh if enabled
+  // Auto-refresh if enabled (disabled in CI)
   useEffect(() => {
-    if (params?.autoRefresh) {
+    const isCI = process.env.NEXT_PUBLIC_CI === 'true'
+    
+    if (params?.autoRefresh && !isCI) {
       const interval = setInterval(refresh, 30000) // 30 seconds
+      console.log('🔄 Content auto-refresh enabled: 30s interval')
       return () => clearInterval(interval)
+    } else if (params?.autoRefresh && isCI) {
+      console.log('🧪 [CI] Content auto-refresh disabled for CI environment')
     }
   }, [params?.autoRefresh, refresh])
 
@@ -301,13 +317,18 @@ export function useSystemHealth(autoRefresh = false) {
     fetchData()
   }, [fetchData])
 
-  // Auto-refresh if enabled
+  // Auto-refresh if enabled (disabled in CI)
   useEffect(() => {
-    if (autoRefresh) {
+    const isCI = process.env.NEXT_PUBLIC_CI === 'true'
+    
+    if (autoRefresh && !isCI) {
       const interval = setInterval(refresh, 60000) // 1 minute
+      console.log('🔄 System health auto-refresh enabled: 60s interval')
       return () => clearInterval(interval)
+    } else if (autoRefresh && isCI) {
+      console.log('🧪 [CI] System health auto-refresh disabled for CI environment')
     }
-  }, [autoRefresh, refresh])
+  }, [autoRefresh, refresh, isCI])
 
   return { 
     data, 

@@ -40,7 +40,8 @@ export default defineConfig({
     env: { 
       CI: 'true', 
       DISABLE_HEALTH_LOOPS: 'true',
-      NODE_ENV: 'test'
+      NODE_ENV: 'test',
+      NEXT_PUBLIC_CI: 'true'
     },
   },
 
