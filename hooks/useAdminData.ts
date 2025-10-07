@@ -77,6 +77,7 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
       console.groupEnd()
       
       if (response.success && response.data) {
+        console.log("useDashboardData final:", response.data)
         setData(response.data)
       } else {
         throw new Error(response.error || 'Failed to fetch dashboard data')

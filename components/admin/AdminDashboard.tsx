@@ -42,33 +42,37 @@ export default function AdminDashboard() {
 
   // Map dashboard data to local stats format for compatibility
   const stats: DashboardStats = {
-    totalContent: dashboardData?.overview?.totalContent || 0,
-    pendingContent: dashboardData?.overview?.pendingContent || 0,
-    postedToday: dashboardData?.posting?.postsToday || 0,
+    totalContent: dashboardData?.queueStats?.totalApproved || 0,
+    pendingContent: 0, // No pending data in current API response
+    postedToday: dashboardData?.postingSchedule?.todaysPosts || 0,
     totalViews: 0, // This would come from analytics if available
     avgEngagement: 0, // This would come from analytics if available
     systemStatus: dashboardData ? 'online' : 'offline',
     platformStats: {
       reddit: { 
-        enabled: dashboardData?.platforms?.some(p => p.platform === 'reddit') || false, 
-        contentFound: dashboardData?.platforms?.find(p => p.platform === 'reddit')?.totalCount || 0
+        enabled: dashboardData?.platformStatus?.reddit?.operational || false, 
+        contentFound: dashboardData?.platformStatus?.reddit?.itemCount || 0,
+        lastScan: dashboardData?.platformStatus?.reddit?.lastScan || undefined
       },
       youtube: { 
-        enabled: dashboardData?.platforms?.some(p => p.platform === 'youtube') || false, 
-        contentFound: dashboardData?.platforms?.find(p => p.platform === 'youtube')?.totalCount || 0
+        enabled: dashboardData?.platformStatus?.youtube?.operational || false, 
+        contentFound: dashboardData?.platformStatus?.youtube?.itemCount || 0,
+        lastScan: dashboardData?.platformStatus?.youtube?.lastScan || undefined
       },
       flickr: { 
-        enabled: dashboardData?.platforms?.some(p => p.platform === 'flickr') || false, 
-        contentFound: dashboardData?.platforms?.find(p => p.platform === 'flickr')?.totalCount || 0
+        enabled: false, // Flickr not in current API response
+        contentFound: 0,
+        lastScan: undefined
       },
       unsplash: { 
-        enabled: dashboardData?.platforms?.some(p => p.platform === 'unsplash') || false, 
-        contentFound: dashboardData?.platforms?.find(p => p.platform === 'unsplash')?.totalCount || 0
+        enabled: false, // Unsplash not in current API response  
+        contentFound: 0,
+        lastScan: undefined
       }
     },
     contentPipeline: {
-      queuedForReview: dashboardData?.overview?.pendingContent || 0,
-      autoApproved: dashboardData?.overview?.approvedContent || 0,
+      queuedForReview: 0, // No pending data in current API response
+      autoApproved: dashboardData?.queueStats?.totalApproved || 0,
       flaggedForManualReview: 0, // This would need to be added to the API
       rejected: 0 // This would need to be calculated from content_queue
     }
@@ -465,10 +469,14 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {[
-                    { name: '🔴 Reddit', key: 'reddit', status: stats.platformStats?.reddit?.enabled ? 'active' : 'inactive' },
-                    { name: '📺 YouTube', key: 'youtube', status: stats.platformStats?.youtube?.enabled ? 'active' : 'inactive' },
-                    { name: '📸 Flickr', key: 'flickr', status: stats.platformStats?.flickr?.enabled ? 'active' : 'inactive' },
-                    { name: '🖼️ Unsplash', key: 'unsplash', status: stats.platformStats?.unsplash?.enabled ? 'active' : 'inactive' }
+                    { name: '🔴 Reddit', key: 'reddit', status: dashboardData?.platformStatus?.reddit?.operational ? 'active' : 'inactive' },
+                    { name: '📺 YouTube', key: 'youtube', status: dashboardData?.platformStatus?.youtube?.operational ? 'active' : 'inactive' },
+                    { name: '🖼️ Pixabay', key: 'pixabay', status: dashboardData?.platformStatus?.pixabay?.operational ? 'active' : 'inactive' },
+                    { name: '🎬 Giphy', key: 'giphy', status: dashboardData?.platformStatus?.giphy?.operational ? 'active' : 'inactive' },
+                    { name: '🦋 Bluesky', key: 'bluesky', status: dashboardData?.platformStatus?.bluesky?.operational ? 'active' : 'inactive' },
+                    { name: '🎨 Tumblr', key: 'tumblr', status: dashboardData?.platformStatus?.tumblr?.operational ? 'active' : 'inactive' },
+                    { name: '📱 Imgur', key: 'imgur', status: dashboardData?.platformStatus?.imgur?.operational ? 'active' : 'inactive' },
+                    { name: '🌐 Lemmy', key: 'lemmy', status: dashboardData?.platformStatus?.lemmy?.operational ? 'active' : 'inactive' }
                   ].map((platform, index) => (
                     <tr key={index} className="table-row" data-testid={`platform-row-${platform.key}`}>
                       <td className="table-cell" data-testid={`platform-name-${platform.key}`}>{platform.name}</td>
@@ -484,11 +492,11 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="table-cell" style={{ textAlign: 'center' }} data-testid={`platform-content-count-${platform.key}`}>
-                        {stats.platformStats?.[platform.key]?.contentFound || 0}
+                        {dashboardData?.platformStatus?.[platform.key]?.itemCount || 0}
                       </td>
                       <td className="table-cell" style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280' }} data-testid={`platform-last-scan-${platform.key}`}>
-                        {stats.platformStats?.[platform.key]?.lastScan ? 
-                          new Date(stats.platformStats[platform.key].lastScan).toLocaleDateString() : 
+                        {dashboardData?.platformStatus?.[platform.key]?.lastScan ? 
+                          new Date(dashboardData.platformStatus[platform.key].lastScan).toLocaleDateString() : 
                           'Never'
                         }
                       </td>
