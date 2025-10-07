@@ -111,7 +111,7 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox
 
       - name: Create test environment
         run: |
@@ -120,16 +120,29 @@ jobs:
           echo "JWT_SECRET=test-jwt-secret-for-e2e-testing-${{ github.sha }}" >> $GITHUB_ENV
           echo "ADMIN_USERNAME=admin" >> $GITHUB_ENV
           echo "ADMIN_PASSWORD=StrongAdminPass123!" >> $GITHUB_ENV
+          echo "CI=true" >> $GITHUB_ENV
+
+      - name: Build application for E2E tests
+        run: npm run build
+        env:
+          DATABASE_URL_SQLITE: ./test_hotdog_diaries.db
+          NODE_ENV: test
+          CI: true
 
       - name: Initialize test database
         run: |
           npm run db:init || echo "Database init attempted"
           npm run admin:create || echo "Admin user creation attempted"
 
-      - name: Run E2E smoke tests
-        run: npm run test:e2e
+      - name: Run E2E smoke tests with health endpoint readiness
+        run: |
+          echo "🎬 Starting Playwright E2E tests..."
+          echo "✅ Playwright will wait for http://127.0.0.1:3000/api/health to return 200 OK"
+          echo "🔍 This ensures server is fully ready before running tests"
+          npm run test:e2e
         env:
-          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          DEBUG: pw:webserver
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
