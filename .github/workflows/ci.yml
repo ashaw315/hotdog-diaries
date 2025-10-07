@@ -149,6 +149,15 @@ jobs:
           NODE_ENV: test
           CI: true
 
+      - name: Run CI Health Dump
+        run: |
+          echo "🧪 Running comprehensive CI environment health check..."
+          npx tsx scripts/ci-health-dump.ts || echo "⚠️ Health check completed with warnings"
+        env:
+          DATABASE_URL_SQLITE: ./test_hotdog_diaries.db
+          NODE_ENV: test
+          CI: true
+
       - name: Run E2E smoke tests with health endpoint readiness
         run: |
           echo "🎬 Starting Playwright E2E tests..."

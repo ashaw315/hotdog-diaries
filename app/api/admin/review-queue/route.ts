@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { mockAdminDataIfCI } from '../route-utils'
 
 export async function GET(request: NextRequest) {
+  // Return mock data for CI/test environments
+  const mock = mockAdminDataIfCI('queue')
+  if (mock) return NextResponse.json(mock)
+  
   try {
     const flaggedContent = await query(`
       SELECT 

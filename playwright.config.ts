@@ -1,5 +1,21 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// Debug logging for CI
+console.log('🎭 ================================')
+console.log('🎭 PLAYWRIGHT CONFIGURATION DEBUG')
+console.log('🎭 ================================')
+console.log('💡 NODE_ENV:', process.env.NODE_ENV || 'NOT SET')
+console.log('💡 CI:', process.env.CI || 'NOT SET')
+console.log('💡 GITHUB_ACTIONS:', process.env.GITHUB_ACTIONS || 'NOT SET')
+console.log('💡 DATABASE_URL:', process.env.DATABASE_URL ? 'SET (PostgreSQL)' : 'NOT SET')
+console.log('💡 DATABASE_URL_SQLITE:', process.env.DATABASE_URL_SQLITE || 'NOT SET')
+console.log('💡 JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET')
+console.log('💡 PLAYWRIGHT_BASE_URL:', process.env.PLAYWRIGHT_BASE_URL || 'NOT SET (will use default)')
+console.log('💡 Using baseURL:', process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000')
+console.log('💡 Worker count:', process.env.CI ? '1 (CI mode)' : 'undefined (auto)')
+console.log('💡 Retry count:', process.env.CI ? '2 (CI mode)' : '0 (dev mode)')
+console.log('🎭 ================================\n')
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */

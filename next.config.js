@@ -3,6 +3,8 @@
 // CI-safe environment fallbacks
 const isCI = process.env.CI === 'true' || process.env.NODE_ENV === 'test'
 if (isCI) {
+  console.log('🧪 [CI] Injecting CI-safe API key defaults...')
+  
   // Set dummy API keys for CI environment to prevent missing key errors
   process.env.YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'fake-test-youtube-key'
   process.env.IMGUR_CLIENT_ID = process.env.IMGUR_CLIENT_ID || 'fake-test-imgur-id'
@@ -12,6 +14,22 @@ if (isCI) {
   process.env.PIXABAY_API_KEY = process.env.PIXABAY_API_KEY || 'fake-test-pixabay-key'
   process.env.REDDIT_CLIENT_ID = process.env.REDDIT_CLIENT_ID || 'fake-test-reddit-id'
   process.env.REDDIT_CLIENT_SECRET = process.env.REDDIT_CLIENT_SECRET || 'fake-test-reddit-secret'
+  process.env.REDDIT_USERNAME = process.env.REDDIT_USERNAME || 'fake-test-user'
+  process.env.REDDIT_PASSWORD = process.env.REDDIT_PASSWORD || 'fake-test-pass'
+  
+  // Database fallback for CI
+  if (!process.env.DATABASE_URL && !process.env.DATABASE_URL_SQLITE) {
+    process.env.DATABASE_URL_SQLITE = './ci-test.db'
+    console.log('🧪 [CI] Set DATABASE_URL_SQLITE fallback: ./ci-test.db')
+  }
+  
+  // JWT Secret fallback
+  if (!process.env.JWT_SECRET) {
+    process.env.JWT_SECRET = 'ci-test-jwt-secret-' + Date.now()
+    console.log('🧪 [CI] Generated JWT_SECRET fallback')
+  }
+  
+  console.log('✅ [CI] API key defaults injected successfully')
 }
 
 const nextConfig = {
