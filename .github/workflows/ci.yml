@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -56,17 +56,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run CI environment diagnostic
+        run: |
+          echo "🔍 CI Environment Check:"
+          echo "NODE_ENV: $NODE_ENV"
+          echo "DATABASE_URL set: $([ -n '${{ secrets.DATABASE_URL }}' ] && echo 'true' || echo 'false')"
+          echo "POSTGRES_URL set: $([ -n '$POSTGRES_URL' ] && echo 'true' || echo 'false')"
+          echo ""
+          echo "🔧 Running comprehensive diagnostic..."
+          npx tsx scripts/ci-env-check.ts
 
       - name: Build application
         run: npm run build
         env:
           # Use production-like environment for build test
           NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           POSTGRES_URL: "postgresql://test:test@localhost:5432/test"
 
       - name: Check build artifacts
@@ -87,7 +98,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -134,7 +145,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -159,7 +170,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies

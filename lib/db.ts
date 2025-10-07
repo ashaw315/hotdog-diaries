@@ -36,6 +36,7 @@ class DatabaseConnection {
     const isProduction = nodeEnv === 'production'
     const isPreview = process.env.VERCEL_ENV === 'preview'
     const isDevelopment = nodeEnv === 'development'
+    const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS)
     
     // Check for Supabase connection string
     const hasSupabaseUrl = !!(databaseUrl?.includes('supabase.co'))
@@ -44,12 +45,33 @@ class DatabaseConnection {
     console.log('[DB INIT] Environment detection:', {
       NODE_ENV: nodeEnv,
       VERCEL_ENV: process.env.VERCEL_ENV,
+      CI: process.env.CI,
+      GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
       DATABASE_URL_SET: Boolean(databaseUrl),
       DATABASE_URL_TYPE: hasSupabaseUrl ? 'supabase' : databaseUrl ? 'postgres' : 'missing',
       isProduction,
       isPreview,
-      isDevelopment
+      isDevelopment,
+      isCI
     })
+
+    // CI ENVIRONMENT (GitHub Actions) - Check BEFORE production
+    if (isCI) {
+      if (hasSupabaseUrl) {
+        this.isSupabase = true
+        this.isSqlite = false
+        this.connectionMode = 'supabase'
+        console.log('✅ [DB INIT] Using Supabase Postgres via DATABASE_URL (CI)')
+        return
+      } else {
+        // CI fallback: Use SQLite for testing even with production NODE_ENV
+        this.isSupabase = false
+        this.isSqlite = true
+        this.connectionMode = 'sqlite'
+        console.log('✅ [DB INIT] Using SQLite (CI fallback - DATABASE_URL not available)')
+        return
+      }
+    }
 
     // PREVIEW ENVIRONMENT (Vercel preview deploys) - Check BEFORE production
     if (isPreview) {
@@ -68,7 +90,7 @@ class DatabaseConnection {
       }
     }
 
-    // STRICT PRODUCTION REQUIREMENTS (after preview check)
+    // STRICT PRODUCTION REQUIREMENTS (after CI and preview checks)
     if (isProduction) {
       if (!databaseUrl) {
         const errorMsg = '🚨 FATAL ERROR: DATABASE_URL not set in production — Supabase connection required.'
