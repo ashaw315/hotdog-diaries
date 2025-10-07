@@ -5,40 +5,44 @@ test.describe('Admin Logout Flow', () => {
     // Set up API mocks for CI environment
     try {
       if (process.env.CI || process.env.MOCK_ADMIN_DATA) {
-      await authenticatedPage.route('**/api/admin/me', (route) => {
-        if (route.request().headers()['authorization'] || route.request().headers()['cookie']) {
-          route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              success: true,
-              user: { id: 1, username: 'admin', email: 'admin@test.com' }
+        await authenticatedPage.route('**/api/admin/me', async (route) => {
+          const headers = route.request().headers()
+          if (headers['authorization'] || headers['cookie']) {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                success: true,
+                user: { id: 1, username: 'admin', email: 'admin@test.com' }
+              })
             })
-          })
-        } else {
-          route.fulfill({
-            status: 401,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              success: false,
-              error: 'No authentication token'
+          } else {
+            await route.fulfill({
+              status: 401,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                success: false,
+                error: 'No authentication token'
+              })
             })
-          })
-        }
-      })
+          }
+        })
 
-      await authenticatedPage.route('**/api/admin/auth', (route) => {
-        if (route.request().method() === 'DELETE') {
-          route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-              success: true,
-              message: 'Logged out successfully'
+        await authenticatedPage.route('**/api/admin/auth', async (route) => {
+          if (route.request().method() === 'DELETE') {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                success: true,
+                message: 'Logged out successfully'
+              })
             })
-          })
-        }
-      })
+          }
+        })
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to set up logout test mocks:', error.message)
     }
   })
 
