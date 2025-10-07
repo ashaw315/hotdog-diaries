@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 export default function AdminDebugPage() {
   const [logs, setLogs] = useState<string[]>([])
@@ -67,8 +67,8 @@ export default function AdminDebugPage() {
           🚪 Test AuthContext Logout
         </button>
         
-        <button onClick={() => auth.refreshUser()} style={{ padding: '10px 15px', marginRight: '10px' }}>
-          🔄 Refresh User Data
+        <button onClick={() => auth.refreshAuth()} style={{ padding: '10px 15px', marginRight: '10px' }}>
+          🔄 Refresh Auth Data
         </button>
       </div>
 

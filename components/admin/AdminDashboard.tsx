@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { useDashboardData } from '@/hooks/useAdminData'
 import { ContentStatusDashboard } from './ContentStatusDashboard'
 

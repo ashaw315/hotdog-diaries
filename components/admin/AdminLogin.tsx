@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useAuth, useRedirectIfAuthenticated } from '@/contexts/AuthContext'
+import { useAuth, useRedirectIfAuthenticated } from '@/components/providers/AuthProvider'
 
 interface LoginForm {
   username: string

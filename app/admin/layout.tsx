@@ -3,7 +3,7 @@
 import { Suspense, useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
-import { AuthProvider, useRequireAuth } from '@/contexts/AuthContext'
+import { AuthProvider, useRequireAuth } from '@/components/providers/AuthProvider'
 import { AdminErrorBoundary } from '@/components/admin/ErrorBoundary'
 import { ToastProvider } from '@/components/admin/Toast'
 import './admin-nav.css'

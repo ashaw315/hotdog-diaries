@@ -1,6 +1,6 @@
 'use client'
 
-import { AuthProvider } from '@/contexts/AuthContext'
+import { AuthProvider } from '@/components/providers/AuthProvider'
 
 interface LoginLayoutProps {
   children: React.ReactNode

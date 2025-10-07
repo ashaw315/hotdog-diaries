@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 export default function AdminLoginHtmlStyle() {
   const [error, setError] = useState<string | null>(null)

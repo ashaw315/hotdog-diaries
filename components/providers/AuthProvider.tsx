@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import { adminApi, AdminApiClient, AuthResult, ApiHelpers } from '@/lib/api-client'
 
 // Auth context types
@@ -37,6 +37,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  
+  // Prevent double mount with useRef guard
+  const isInitialized = useRef(false)
 
   const isAuthenticated = user !== null && token !== null
 
@@ -66,6 +69,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Initialize auth state on mount
   useEffect(() => {
+    // Prevent double initialization with useRef guard
+    if (isInitialized.current) {
+      console.log('⏸️ AuthProvider already initialized, skipping to prevent double mount')
+      return
+    }
+    
+    console.log('🏗️ [AuthProvider] First initialization starting...')
+    isInitialized.current = true
+    
     // 🔍 AuthProvider Mount Diagnostics & Token Rehydration
     const storedToken = rehydrateToken()
     console.group('🔍 AuthProvider Mount Diagnostics & Token Rehydration')
@@ -233,9 +245,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 // Hook to use auth context
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext)
+  
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    // Enhanced defensive error logging
+    console.group('❌ useAuth Context Boundary Error')
+    console.error('useAuth was called outside of an AuthProvider')
+    console.error('Current component stack:', new Error().stack)
+    console.error('Ensure the component is wrapped in <AuthProvider>')
+    console.groupEnd()
+    
+    throw new Error('useAuth must be used within an AuthProvider. Check that your component is wrapped in <AuthProvider> and imported from @/components/providers/AuthProvider')
   }
+  
   return context
 }
 
@@ -249,6 +270,20 @@ export function useRequireAuth(): AuthContextType {
       window.location.href = '/admin/login'
     }
   }, [auth.isLoading, auth.isAuthenticated])
+
+  return auth
+}
+
+// Hook to redirect authenticated users (used on login page)
+export function useRedirectIfAuthenticated(redirectTo: string = '/admin'): AuthContextType {
+  const auth = useAuth()
+  
+  useEffect(() => {
+    if (!auth.isLoading && auth.isAuthenticated) {
+      // Redirect authenticated users away from login page
+      window.location.href = redirectTo
+    }
+  }, [auth.isLoading, auth.isAuthenticated, redirectTo])
 
   return auth
 }
