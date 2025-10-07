@@ -7,10 +7,10 @@ export const TEST_CONTENT = {
   samplePlatform: 'test-platform'
 }
 
-// Mock API responses for testing
+// Enhanced Mock API responses for CI testing
 export async function mockApiResponses(page: Page) {
   // Mock successful content queue API
-  await page.route('**/api/admin/content/queue*', async (route) => {
+  await page.route('**/api/admin/content**', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
@@ -48,6 +48,30 @@ export async function mockApiResponses(page: Page) {
         })
       })
     }
+  })
+
+  // Mock admin metrics API for dashboard
+  await page.route('**/api/admin/metrics**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          contentCount: 150,
+          approvedCount: 120,
+          pendingCount: 20,
+          rejectedCount: 10,
+          queueHealth: 'Healthy',
+          platformStats: {
+            reddit: 45,
+            youtube: 30,
+            giphy: 25,
+            pixabay: 20
+          }
+        }
+      })
+    })
   })
 
   // Mock successful dashboard stats
