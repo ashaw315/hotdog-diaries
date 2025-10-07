@@ -5,7 +5,6 @@
  */
 
 import { chromium, FullConfig } from '@playwright/test'
-import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -14,31 +13,25 @@ function debugLog(message: string) {
   console.log(`[GLOBAL SETUP] ${message}`)
 }
 
-async function ensureBrowsersInstalled() {
-  debugLog('🔍 Checking if Playwright browsers are installed...')
+async function ensureBrowsersReady() {
+  debugLog('🔍 Verifying Playwright browsers are ready...')
   
   try {
-    // Check if chromium is available by trying to get its executable path
+    // Simply verify chromium is available (installation handled by CI workflow)
     const testBrowser = await chromium.launch({ headless: true })
     await testBrowser.close()
-    debugLog('✅ Chromium browser is available')
+    debugLog('✅ Chromium browser is ready')
     return true
   } catch (error) {
-    debugLog('❌ Chromium browser not found, installing...')
-    
-    try {
-      // Install Playwright browsers in CI environment
-      debugLog('📦 Running: npx playwright install chromium --with-deps')
-      execSync('npx playwright install chromium --with-deps', { 
-        stdio: 'inherit',
-        timeout: 120000 // 2 minute timeout
-      })
-      debugLog('✅ Playwright browsers installed successfully')
-      return true
-    } catch (installError) {
-      debugLog(`❌ Failed to install browsers: ${installError.message}`)
+    debugLog(`❌ Chromium browser not available: ${error.message}`)
+    // In CI, browsers should already be installed, so this is a real error
+    if (process.env.CI) {
+      debugLog('❌ Browser installation failed in CI - this should not happen')
       return false
     }
+    // For local development, provide helpful message
+    debugLog('💡 For local development, run: npx playwright install --with-deps')
+    return false
   }
 }
 
@@ -52,8 +45,8 @@ async function globalSetup(config: FullConfig) {
     debugLog('🧪 CI detected - enabling mock data mode')
   }
   
-  // Ensure browsers are installed before proceeding
-  const browsersReady = await ensureBrowsersInstalled()
+  // Verify browsers are ready before proceeding
+  const browsersReady = await ensureBrowsersReady()
   if (!browsersReady) {
     debugLog('❌ Cannot proceed without browsers - exiting')
     process.exit(1)

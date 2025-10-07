@@ -1,16 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
-import { execSync } from 'child_process'
 
-// Ensure browsers are installed in CI environment before configuration loads
-if (process.env.CI) {
-  try {
-    console.log('🧩 CI detected - ensuring Playwright browsers are installed...')
-    execSync('npx playwright install chromium firefox --with-deps', { stdio: 'inherit' })
-    console.log('✅ Playwright browsers installation completed')
-  } catch (e) {
-    console.warn('⚠️ Browser installation may have been skipped - continuing...')
-  }
-}
+// CI browser installation is now handled by GitHub Actions workflow
+// This eliminates redundant browser installs and prevents CI looping
 
 const PORT = 3000
 const HOST = '127.0.0.1'
