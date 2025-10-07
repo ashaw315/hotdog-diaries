@@ -56,15 +56,32 @@ jobs:
       - name: Build Next.js application
         run: npm run build
 
+      - name: Verify build output
+        run: |
+          echo "📦 Checking for .next directory..."
+          ls -la
+          if [ ! -d ".next" ]; then
+            echo "❌ Build output missing!"
+            exit 1
+          fi
+          echo "✅ .next build output verified."
+          echo "📊 Build directory structure:"
+          ls -la .next/
+          echo "📊 Build size:"
+          du -sh .next
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nextjs-build
+          include-hidden-files: true
           path: |
-            .next/
+            .next/**
+            public/**
             package.json
             package-lock.json
           retention-days: 1
+          if-no-files-found: error
 
   test-chromium:
     name: E2E Tests (Chromium)
@@ -90,15 +107,20 @@ jobs:
       - name: Verify build artifacts
         run: |
           echo "🧩 Checking for .next directory..."
+          echo "📁 Current directory contents:"
+          ls -la
+          
           if [ ! -d ".next" ]; then
-            echo "❌ ERROR: .next directory not found. Build artifacts missing."
-            echo "📁 Current directory contents:"
-            ls -la
-            exit 1
+            echo "❌ ERROR: .next directory not found. Running fallback build..."
+            echo "📦 Installing dependencies first..."
+            npm ci
+            echo "🏗️ Running build..."
+            npm run build
+          else
+            echo "✅ Found .next build directory."
+            echo "📊 .next contents:"
+            ls -la .next/
           fi
-          echo "✅ Found .next build directory."
-          echo "📊 .next directory size:"
-          du -sh .next
 
       - name: Restore dependencies
         run: |
@@ -141,15 +163,23 @@ jobs:
           npm run db:init || echo "Database init completed"
           npm run admin:create || echo "Admin user creation completed"
 
-      - name: Verify server readiness
+      - name: Final build verification
         run: |
           echo "🔍 Final pre-start verification..."
           if [ ! -d ".next" ]; then
-            echo "❌ CRITICAL: .next directory missing before server start!"
-            echo "📦 Attempting emergency build..."
-            npm run build
+            echo "❌ CRITICAL: .next directory still missing!"
+            echo "📁 Directory listing:"
+            ls -la
+            echo "🔧 Attempting final build..."
+            npm run build || exit 1
           fi
-          echo "✅ Server prerequisites met."
+          
+          if [ ! -d ".next/standalone" ] && [ ! -d ".next/server" ]; then
+            echo "⚠️ Warning: .next directory structure may be incomplete"
+            ls -la .next/
+          fi
+          
+          echo "✅ Build directory confirmed."
 
       - name: Start Next.js server
         run: |
@@ -170,8 +200,12 @@ jobs:
               echo "❌ Server failed to start within $TIMEOUT seconds"
               echo "📋 Server process status:"
               ps aux | grep -E "next|node" | head -5
-              echo "📋 Last 50 lines of npm debug log (if exists):"
-              [ -f npm-debug.log ] && tail -50 npm-debug.log
+              echo "📋 Current directory:"
+              pwd
+              echo "📋 Directory contents:"
+              ls -la
+              echo "📋 .next directory contents:"
+              ls -la .next/ || echo ".next directory not found"
               exit 1
             fi
           done
@@ -221,15 +255,20 @@ jobs:
       - name: Verify build artifacts
         run: |
           echo "🧩 Checking for .next directory..."
+          echo "📁 Current directory contents:"
+          ls -la
+          
           if [ ! -d ".next" ]; then
-            echo "❌ ERROR: .next directory not found. Build artifacts missing."
-            echo "📁 Current directory contents:"
-            ls -la
-            exit 1
+            echo "❌ ERROR: .next directory not found. Running fallback build..."
+            echo "📦 Installing dependencies first..."
+            npm ci
+            echo "🏗️ Running build..."
+            npm run build
+          else
+            echo "✅ Found .next build directory."
+            echo "📊 .next contents:"
+            ls -la .next/
           fi
-          echo "✅ Found .next build directory."
-          echo "📊 .next directory size:"
-          du -sh .next
 
       - name: Restore dependencies
         run: |
@@ -272,15 +311,23 @@ jobs:
           npm run db:init || echo "Database init completed"
           npm run admin:create || echo "Admin user creation completed"
 
-      - name: Verify server readiness
+      - name: Final build verification
         run: |
           echo "🔍 Final pre-start verification..."
           if [ ! -d ".next" ]; then
-            echo "❌ CRITICAL: .next directory missing before server start!"
-            echo "📦 Attempting emergency build..."
-            npm run build
+            echo "❌ CRITICAL: .next directory still missing!"
+            echo "📁 Directory listing:"
+            ls -la
+            echo "🔧 Attempting final build..."
+            npm run build || exit 1
           fi
-          echo "✅ Server prerequisites met."
+          
+          if [ ! -d ".next/standalone" ] && [ ! -d ".next/server" ]; then
+            echo "⚠️ Warning: .next directory structure may be incomplete"
+            ls -la .next/
+          fi
+          
+          echo "✅ Build directory confirmed."
 
       - name: Start Next.js server
         run: |
@@ -301,8 +348,12 @@ jobs:
               echo "❌ Server failed to start within $TIMEOUT seconds"
               echo "📋 Server process status:"
               ps aux | grep -E "next|node" | head -5
-              echo "📋 Last 50 lines of npm debug log (if exists):"
-              [ -f npm-debug.log ] && tail -50 npm-debug.log
+              echo "📋 Current directory:"
+              pwd
+              echo "📋 Directory contents:"
+              ls -la
+              echo "📋 .next directory contents:"
+              ls -la .next/ || echo ".next directory not found"
               exit 1
             fi
           done
