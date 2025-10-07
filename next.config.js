@@ -1,4 +1,19 @@
 /** @type {import('next').NextConfig} */
+
+// CI-safe environment fallbacks
+const isCI = process.env.CI === 'true' || process.env.NODE_ENV === 'test'
+if (isCI) {
+  // Set dummy API keys for CI environment to prevent missing key errors
+  process.env.YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || 'fake-test-youtube-key'
+  process.env.IMGUR_CLIENT_ID = process.env.IMGUR_CLIENT_ID || 'fake-test-imgur-id'
+  process.env.BLUESKY_IDENTIFIER = process.env.BLUESKY_IDENTIFIER || 'test@fake.com'
+  process.env.BLUESKY_APP_PASSWORD = process.env.BLUESKY_APP_PASSWORD || 'fake-test-password'
+  process.env.GIPHY_API_KEY = process.env.GIPHY_API_KEY || 'fake-test-giphy-key'
+  process.env.PIXABAY_API_KEY = process.env.PIXABAY_API_KEY || 'fake-test-pixabay-key'
+  process.env.REDDIT_CLIENT_ID = process.env.REDDIT_CLIENT_ID || 'fake-test-reddit-id'
+  process.env.REDDIT_CLIENT_SECRET = process.env.REDDIT_CLIENT_SECRET || 'fake-test-reddit-secret'
+}
+
 const nextConfig = {
   // Production optimizations
   productionBrowserSourceMaps: false,

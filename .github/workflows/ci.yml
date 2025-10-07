@@ -138,6 +138,16 @@ jobs:
         run: |
           npm run db:init || echo "Database init attempted"
           npm run admin:create || echo "Admin user creation attempted"
+          
+      - name: Seed test database with CI data
+        run: |
+          echo "🌱 Seeding test database for E2E tests..."
+          npx tsx scripts/seed-ci-db.ts
+          echo "✅ Database seeded with test data"
+        env:
+          DATABASE_URL_SQLITE: ./test_hotdog_diaries.db
+          NODE_ENV: test
+          CI: true
 
       - name: Run E2E smoke tests with health endpoint readiness
         run: |
