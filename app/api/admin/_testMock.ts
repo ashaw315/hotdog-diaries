@@ -1,6 +1,9 @@
 /**
  * Test Mock Data for Admin APIs
- * Provides consistent mock data for CI/test environments to avoid external API dependencies
+ * 
+ * Provides consistent, deterministic mock data for CI/test environments to eliminate
+ * external API dependencies and ensure stable E2E test execution. This file is only
+ * active when NODE_ENV=test, CI=true, or GITHUB_ACTIONS=true.
  */
 
 // Mock metrics data
@@ -205,5 +208,3 @@ export function mockAdminDataIfCI(type: 'metrics' | 'queue' | 'diagnostics' | 'd
   }
 }
 
-// Export individual mock datasets
-export { mockMetrics, mockContentQueue, mockDiagnostics, mockDashboard }
