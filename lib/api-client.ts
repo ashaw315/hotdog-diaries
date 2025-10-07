@@ -202,6 +202,28 @@ export class AdminApiClient {
   }
 
   /**
+   * Get current auth token with fallback to localStorage
+   */
+  private getCurrentToken(): string | null {
+    // First try instance token
+    if (this.authToken) {
+      return this.authToken
+    }
+    
+    // Fallback to localStorage
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('admin_auth_token')
+      if (storedToken) {
+        // Auto-sync instance token if found in localStorage
+        this.authToken = storedToken
+        return storedToken
+      }
+    }
+    
+    return null
+  }
+
+  /**
    * Make authenticated request
    */
   private async request<T>(
@@ -215,19 +237,21 @@ export class AdminApiClient {
       ...options.headers
     }
 
-    // Add auth token if available
-    if (this.authToken) {
-      headers['Authorization'] = `Bearer ${this.authToken}`
+    // Add auth token if available (with fallback to localStorage)
+    const currentToken = this.getCurrentToken()
+    if (currentToken) {
+      headers['Authorization'] = `Bearer ${currentToken}`
     }
 
     // 🔍 AdminAPI Request Diagnostics
     console.group(`[AdminAPI] ${options.method || 'GET'} ${endpoint}`)
     console.log('Full URL:', url)
-    console.log('Auth token available:', !!this.authToken)
-    console.log('Auth token length:', this.authToken?.length ?? 0)
+    console.log('Instance token:', !!this.authToken)
+    console.log('Current token (with fallback):', !!currentToken)
+    console.log('Auth token length:', currentToken?.length ?? 0)
     console.log('Request headers:', {
       'Content-Type': headers['Content-Type'],
-      'Authorization': this.authToken ? `Bearer ${this.authToken.substring(0, 20)}...` : 'None'
+      'Authorization': currentToken ? `Bearer ${currentToken.substring(0, 20)}...` : 'None'
     })
 
     try {

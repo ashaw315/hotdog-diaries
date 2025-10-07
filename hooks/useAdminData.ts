@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { adminApi, DashboardData, ContentItem, SystemHealth, ApiHelpers, PaginatedResponse, ScanResult } from '@/lib/api-client'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 // Generic hook state interface
 interface UseAsyncState<T> {
@@ -17,6 +18,9 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout>()
+  
+  // Get auth context for authentication guard
+  const authContext = useAuth()
 
   // Disable polling in CI environments and reduce frequency in production
   const isCI = process.env.NEXT_PUBLIC_CI === 'true'
@@ -28,10 +32,29 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
       setLoading(true)
       setError(null)
       
+      // 🔍 Authentication Guard
+      if (!authContext.isAuthenticated || !authContext.token) {
+        console.group('🔍 Dashboard Data Authentication Guard')
+        console.log('Authentication status:', {
+          isAuthenticated: authContext.isAuthenticated,
+          hasToken: !!authContext.token,
+          hasUser: !!authContext.user,
+          isLoading: authContext.isLoading
+        })
+        console.log('⏸️ Waiting for authentication before API call')
+        console.groupEnd()
+        
+        setLoading(false)
+        return
+      }
+      
       // 🔍 Dashboard Data Diagnostics
       console.group('🔍 Dashboard Data Diagnostics')
-      console.log('Auth token present?', !!localStorage.getItem('admin_auth_token'))
-      console.log('Raw auth token length:', localStorage.getItem('admin_auth_token')?.length ?? 0)
+      console.log('✅ Authentication confirmed, proceeding with API call')
+      console.log('Auth context token present?', !!authContext.token)
+      console.log('Auth context token length:', authContext.token?.length ?? 0)
+      console.log('LocalStorage token present?', !!localStorage.getItem('admin_auth_token'))
+      console.log('LocalStorage token length:', localStorage.getItem('admin_auth_token')?.length ?? 0)
       console.log('Environment:', { isCI, isProd: process.env.NODE_ENV === 'production' })
       console.log('Calling /admin/dashboard API...')
       
@@ -75,23 +98,28 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
     } finally {
       setLoading(false)
     }
-  }, [isCI])
+  }, [isCI, authContext.isAuthenticated, authContext.token])
 
   const refresh = useCallback(() => fetchData(), [fetchData])
 
   useEffect(() => {
-    fetchData()
+    // Only start fetching data when authentication is confirmed
+    if (authContext.isAuthenticated && authContext.token) {
+      fetchData()
 
-    // Set up refresh interval (disabled in CI)
-    if (actualRefreshInterval > 0) {
-      intervalRef.current = setInterval(fetchData, actualRefreshInterval)
-      if (!isCI) {
-        console.log(`🔄 Dashboard auto-refresh enabled: ${actualRefreshInterval}ms`)
+      // Set up refresh interval (disabled in CI)
+      if (actualRefreshInterval > 0) {
+        intervalRef.current = setInterval(fetchData, actualRefreshInterval)
+        if (!isCI) {
+          console.log(`🔄 Dashboard auto-refresh enabled: ${actualRefreshInterval}ms`)
+        }
+      } else if (isCI) {
+        console.log('🧪 [CI] Dashboard auto-refresh disabled for CI environment')
+      } else if (isProd) {
+        console.log('🚀 [PROD] Dashboard auto-refresh disabled for production environment')
       }
-    } else if (isCI) {
-      console.log('🧪 [CI] Dashboard auto-refresh disabled for CI environment')
-    } else if (isProd) {
-      console.log('🚀 [PROD] Dashboard auto-refresh disabled for production environment')
+    } else {
+      console.log('⏸️ Dashboard data fetch deferred until authentication completes')
     }
 
     return () => {
@@ -99,7 +127,7 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
         clearInterval(intervalRef.current)
       }
     }
-  }, [fetchData, actualRefreshInterval, isCI])
+  }, [fetchData, actualRefreshInterval, isCI, authContext.isAuthenticated, authContext.token])
 
   return { data, loading, error, refresh }
 }

@@ -16,6 +16,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
+  token: string | null
   login: (username: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
   clearError: () => void
@@ -35,25 +36,75 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [token, setToken] = useState<string | null>(null)
 
-  const isAuthenticated = user !== null
+  const isAuthenticated = user !== null && token !== null
 
   // Clear error message
   const clearError = () => setError(null)
 
+  // Token rehydration helper
+  const rehydrateToken = useCallback(() => {
+    if (typeof window === 'undefined') return null
+    
+    // Try localStorage first
+    let storedToken = localStorage.getItem('admin_auth_token')
+    
+    // If not found, try cookies as fallback
+    if (!storedToken) {
+      const cookies = document.cookie.split(';')
+      const authCookie = cookies.find(cookie => cookie.trim().startsWith('admin_auth_token='))
+      if (authCookie) {
+        storedToken = authCookie.split('=')[1]
+        // Sync back to localStorage
+        localStorage.setItem('admin_auth_token', storedToken)
+      }
+    }
+    
+    return storedToken
+  }, [])
+
   // Initialize auth state on mount
   useEffect(() => {
-    // 🔍 AuthProvider Mount Diagnostics
-    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_auth_token') : null
-    console.group('🔍 AuthProvider Mount Diagnostics')
+    // 🔍 AuthProvider Mount Diagnostics & Token Rehydration
+    const storedToken = rehydrateToken()
+    console.group('🔍 AuthProvider Mount Diagnostics & Token Rehydration')
     console.log('Window available:', typeof window !== 'undefined')
-    console.log('Token found?', !!token)
-    console.log('Token length:', token?.length ?? 0)
-    console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'None')
+    console.log('Token found after rehydration?', !!storedToken)
+    console.log('Token length:', storedToken?.length ?? 0)
+    console.log('Token preview:', storedToken ? `${storedToken.substring(0, 20)}...` : 'None')
+    
+    // Immediately set token state if found
+    if (storedToken) {
+      setToken(storedToken)
+      // Also ensure adminApi has the token
+      adminApi.setAuthToken(storedToken)
+      console.log('✅ Token immediately set in state and adminApi after rehydration')
+    } else {
+      console.log('❌ No token found after rehydration, will need authentication')
+    }
     console.groupEnd()
     
     checkAuthStatus()
-  }, [])
+  }, [rehydrateToken])
+
+  // Rehydrate token on visibility change (useful for SSR scenarios)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !token) {
+        console.log('🔄 Page became visible, attempting token rehydration...')
+        const rehydratedToken = rehydrateToken()
+        if (rehydratedToken) {
+          setToken(rehydratedToken)
+          adminApi.setAuthToken(rehydratedToken)
+          console.log('✅ Token rehydrated on visibility change')
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [token, rehydrateToken])
 
   // Check current authentication status
   const checkAuthStatus = async () => {
@@ -76,9 +127,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (response.success && response.data?.valid && response.data?.user) {
         console.log('✅ Authentication valid, setting user:', response.data.user.username)
         setUser(response.data.user)
+        // Ensure token is synced if not already set
+        const currentToken = localStorage.getItem('admin_auth_token')
+        if (currentToken && !token) {
+          setToken(currentToken)
+          adminApi.setAuthToken(currentToken)
+        }
       } else {
         console.log('❌ Authentication invalid, clearing token')
         setUser(null)
+        setToken(null)
         adminApi.clearAuthToken()
       }
       console.groupEnd()
@@ -88,6 +146,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.groupEnd()
       
       setUser(null)
+      setToken(null)
       adminApi.clearAuthToken()
       // Don't set error for initial auth check to avoid showing error on load
     } finally {
@@ -106,6 +165,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (response.success && response.data) {
         // Set the auth token for future requests
         adminApi.setAuthToken(response.data.tokens.accessToken)
+        
+        // Set token state
+        setToken(response.data.tokens.accessToken)
         
         // Set user data
         setUser(response.data.user)
@@ -137,6 +199,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       // Clear local state regardless of API call result
       setUser(null)
+      setToken(null)
       adminApi.clearAuthToken()
       setError(null)
       setIsLoading(false)
@@ -157,6 +220,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated,
     isLoading,
     error,
+    token,
     login,
     logout,
     clearError,
