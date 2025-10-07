@@ -62,7 +62,6 @@ jobs:
           name: nextjs-build
           path: |
             .next/
-            node_modules/
             package.json
             package-lock.json
           retention-days: 1
@@ -87,6 +86,27 @@ jobs:
         with:
           name: nextjs-build
 
+      - name: Restore dependencies
+        run: |
+          echo "📦 Restoring npm dependencies..."
+          npm ci
+        working-directory: ./
+
+      - name: Install Playwright Test package
+        run: |
+          if [ ! -d "node_modules/@playwright/test" ]; then
+            echo "Installing @playwright/test..."
+            npm install --save-dev @playwright/test
+          else
+            echo "@playwright/test already installed."
+          fi
+        working-directory: ./
+
+      - name: Verify Playwright CLI presence
+        run: |
+          npx playwright --version || (echo "❌ Playwright not found" && exit 1)
+        working-directory: ./
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
@@ -98,11 +118,9 @@ jobs:
       - name: Install Playwright browsers
         run: |
           npx playwright install --with-deps chromium
-          # Fallback: reinstall if browsers missing
-          if ! npx playwright install-deps chromium 2>/dev/null; then
-            echo "Reinstalling Playwright browsers due to cache miss"
-            npx playwright install --with-deps chromium --force
-          fi
+          # Verify installation
+          npx playwright install-deps chromium || echo "Browser dependencies already satisfied"
+        working-directory: ./
 
       - name: Initialize test environment
         run: |
@@ -121,6 +139,7 @@ jobs:
         
       - name: Run Playwright tests (Chromium)
         run: npx playwright test --project=chromium --reporter=github --retries=1
+        working-directory: ./
         
       - name: Upload Playwright report (Chromium)
         uses: actions/upload-artifact@v4
@@ -158,6 +177,27 @@ jobs:
         with:
           name: nextjs-build
 
+      - name: Restore dependencies
+        run: |
+          echo "📦 Restoring npm dependencies..."
+          npm ci
+        working-directory: ./
+
+      - name: Install Playwright Test package
+        run: |
+          if [ ! -d "node_modules/@playwright/test" ]; then
+            echo "Installing @playwright/test..."
+            npm install --save-dev @playwright/test
+          else
+            echo "@playwright/test already installed."
+          fi
+        working-directory: ./
+
+      - name: Verify Playwright CLI presence
+        run: |
+          npx playwright --version || (echo "❌ Playwright not found" && exit 1)
+        working-directory: ./
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
@@ -169,11 +209,9 @@ jobs:
       - name: Install Playwright browsers
         run: |
           npx playwright install --with-deps firefox
-          # Fallback: reinstall if browsers missing
-          if ! npx playwright install-deps firefox 2>/dev/null; then
-            echo "Reinstalling Playwright browsers due to cache miss"
-            npx playwright install --with-deps firefox --force
-          fi
+          # Verify installation
+          npx playwright install-deps firefox || echo "Browser dependencies already satisfied"
+        working-directory: ./
 
       - name: Initialize test environment
         run: |
@@ -192,6 +230,7 @@ jobs:
         
       - name: Run Playwright tests (Firefox)
         run: npx playwright test --project=firefox --reporter=github --retries=1
+        working-directory: ./
         
       - name: Upload Playwright report (Firefox)
         uses: actions/upload-artifact@v4
