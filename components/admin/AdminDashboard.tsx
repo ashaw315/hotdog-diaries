@@ -424,24 +424,24 @@ export default function AdminDashboard() {
         }
       `}</style>
       
-      <div className="admin-dashboard">
+      <div className="admin-dashboard" data-testid="admin-dashboard">
         {/* Main Content */}
-        <main className="dashboard-main">
+        <main className="dashboard-main" data-testid="dashboard-main">
           {/* Key Metrics */}
-          <div className="stats-grid">
+          <div className="stats-grid" data-testid="stats-grid">
             {[
-              { label: 'Total Content', value: stats.totalContent, color: '#3b82f6', icon: '📊' },
-              { label: 'Approved', value: stats.totalContent - stats.pendingContent, color: '#10b981', icon: '✅' },
-              { label: 'Pending', value: stats.pendingContent, color: '#f59e0b', icon: '⏳' },
-              { label: 'Posted Today', value: stats.postedToday, color: '#8b5cf6', icon: '📤' }
+              { label: 'Total Content', value: stats.totalContent, color: '#3b82f6', icon: '📊', testId: 'metric-total-content' },
+              { label: 'Approved', value: stats.totalContent - stats.pendingContent, color: '#10b981', icon: '✅', testId: 'metric-approved' },
+              { label: 'Pending', value: stats.pendingContent, color: '#f59e0b', icon: '⏳', testId: 'metric-pending' },
+              { label: 'Posted Today', value: stats.postedToday, color: '#8b5cf6', icon: '📤', testId: 'metric-posted-today' }
             ].map((stat, index) => (
-              <div key={index} className="metric-card" style={{ borderLeft: `4px solid ${stat.color}` }}>
+              <div key={index} className="metric-card" style={{ borderLeft: `4px solid ${stat.color}` }} data-testid={stat.testId}>
                 <div className="metric-header">
-                  <span className="metric-label">{stat.label}</span>
-                  <span className="metric-icon">{stat.icon}</span>
+                  <span className="metric-label" data-testid={`${stat.testId}-label`}>{stat.label}</span>
+                  <span className="metric-icon" data-testid={`${stat.testId}-icon`}>{stat.icon}</span>
                 </div>
-                <div className="metric-value">{stat.value.toLocaleString()}</div>
-                <div className="metric-updated">
+                <div className="metric-value" data-testid={`${stat.testId}-value`}>{stat.value.toLocaleString()}</div>
+                <div className="metric-updated" data-testid={`${stat.testId}-updated`}>
                   Updated {new Date().toLocaleTimeString()}
                 </div>
               </div>
@@ -449,11 +449,11 @@ export default function AdminDashboard() {
           </div>
 
           {/* Platform Status */}
-          <div className="platform-section">
-            <h2 className="section-title">Platform Status</h2>
+          <div className="platform-section" data-testid="platform-status-section">
+            <h2 className="section-title" data-testid="platform-status-title">Platform Status</h2>
             
-            <div style={{ overflowX: 'auto' }}>
-              <table className="platform-table">
+            <div style={{ overflowX: 'auto' }} data-testid="platform-table-container">
+              <table className="platform-table" data-testid="platform-table">
                 <thead>
                   <tr className="table-header">
                     <th>Platform</th>
@@ -470,30 +470,30 @@ export default function AdminDashboard() {
                     { name: '📸 Flickr', key: 'flickr', status: stats.platformStats?.flickr?.enabled ? 'active' : 'inactive' },
                     { name: '🖼️ Unsplash', key: 'unsplash', status: stats.platformStats?.unsplash?.enabled ? 'active' : 'inactive' }
                   ].map((platform, index) => (
-                    <tr key={index} className="table-row">
-                      <td className="table-cell">{platform.name}</td>
+                    <tr key={index} className="table-row" data-testid={`platform-row-${platform.key}`}>
+                      <td className="table-cell" data-testid={`platform-name-${platform.key}`}>{platform.name}</td>
                       <td className="table-cell">
                         <span className="status-badge" style={{
                           backgroundColor: platform.status === 'active' ? '#d1fae5' : '#fee2e2',
                           color: platform.status === 'active' ? '#065f46' : '#991b1b'
-                        }}>
+                        }} data-testid={`platform-status-${platform.key}`}>
                           <span className="status-dot" style={{
                             backgroundColor: platform.status === 'active' ? '#10b981' : '#ef4444'
                           }} />
                           {platform.status}
                         </span>
                       </td>
-                      <td className="table-cell" style={{ textAlign: 'center' }}>
+                      <td className="table-cell" style={{ textAlign: 'center' }} data-testid={`platform-content-count-${platform.key}`}>
                         {stats.platformStats?.[platform.key]?.contentFound || 0}
                       </td>
-                      <td className="table-cell" style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>
+                      <td className="table-cell" style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280' }} data-testid={`platform-last-scan-${platform.key}`}>
                         {stats.platformStats?.[platform.key]?.lastScan ? 
                           new Date(stats.platformStats[platform.key].lastScan).toLocaleDateString() : 
                           'Never'
                         }
                       </td>
                       <td className="table-cell" style={{ textAlign: 'center' }}>
-                        <button className="scan-btn">
+                        <button className="scan-btn" data-testid={`platform-scan-btn-${platform.key}`}>
                           Scan
                         </button>
                       </td>
@@ -510,19 +510,20 @@ export default function AdminDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="platform-section">
-            <h2 className="section-title">Quick Actions</h2>
+          <div className="platform-section" data-testid="quick-actions-section">
+            <h2 className="section-title" data-testid="quick-actions-title">Quick Actions</h2>
             
-            <div className="quick-actions-grid">
+            <div className="quick-actions-grid" data-testid="quick-actions-grid">
               {[
-                { label: 'Scan All Platforms', icon: '🔄', color: '#3b82f6', href: '/admin/social' },
-                { label: 'Review Content', icon: '👁️', color: '#10b981', href: '/admin/queue' },
-                { label: 'View Analytics', icon: '📊', color: '#8b5cf6', href: '/admin/analytics' },
-                { label: 'System Settings', icon: '⚙️', color: '#6b7280', href: '/admin/settings' }
+                { label: 'Scan All Platforms', icon: '🔄', color: '#3b82f6', href: '/admin/social', testId: 'action-scan-all' },
+                { label: 'Review Content', icon: '👁️', color: '#10b981', href: '/admin/queue', testId: 'action-review-content' },
+                { label: 'View Analytics', icon: '📊', color: '#8b5cf6', href: '/admin/analytics', testId: 'action-view-analytics' },
+                { label: 'System Settings', icon: '⚙️', color: '#6b7280', href: '/admin/settings', testId: 'action-system-settings' }
               ].map((action, index) => (
                 <a key={index} href={action.href} className="action-link" style={{
                   border: `2px solid ${action.color}`
                 }}
+                data-testid={action.testId}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = action.color;
                   e.currentTarget.style.color = 'white';
@@ -531,8 +532,8 @@ export default function AdminDashboard() {
                   e.currentTarget.style.backgroundColor = 'white';
                   e.currentTarget.style.color = 'inherit';
                 }}>
-                  <span className="action-icon">{action.icon}</span>
-                  <span className="action-label">{action.label}</span>
+                  <span className="action-icon" data-testid={`${action.testId}-icon`}>{action.icon}</span>
+                  <span className="action-label" data-testid={`${action.testId}-label`}>{action.label}</span>
                 </a>
               ))}
             </div>

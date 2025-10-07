@@ -7,28 +7,16 @@ import { errorRecoveryService } from '@/lib/services/error-recovery'
 import { errorHandler } from '@/lib/middleware/error-handler'
 import { query } from '@/lib/db-query-builder'
 import { db } from '@/lib/db'
+import { mockAdminDataIfCI } from '@/app/api/admin/_testMock'
+import { USE_MOCK_DATA } from '@/lib/env'
 
 export const GET = errorHandler.withErrorHandling(async (request: NextRequest) => {
   // Return mock data for CI/test environments
-  if (process.env.CI === 'true' || process.env.NODE_ENV === 'test') {
-    return NextResponse.json({
-      status: 'healthy',
-      services: {
-        YouTube: { status: 'connected', apiKey: 'mock' },
-        Imgur: { status: 'connected', clientId: 'mock' },
-        Bluesky: { status: 'connected', authenticated: true },
-        Reddit: { status: 'connected', clientId: 'mock' },
-        Giphy: { status: 'connected', apiKey: 'mock' },
-        Pixabay: { status: 'connected', apiKey: 'mock' }
-      },
-      database: { status: 'connected', responseTime: 45 },
-      system: { 
-        memory: { heapUsed: 128, heapTotal: 256 },
-        uptime: 3600,
-        nodeVersion: process.version
-      },
-      timestamp: new Date().toISOString()
-    })
+  if (USE_MOCK_DATA) {
+    const mockData = mockAdminDataIfCI('diagnostics')
+    if (mockData) {
+      return NextResponse.json(mockData)
+    }
   }
   
   const { searchParams } = new URL(request.url)

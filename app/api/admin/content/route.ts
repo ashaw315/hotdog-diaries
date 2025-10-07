@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { EdgeAuthUtils } from '@/lib/auth-edge'
 import { db } from '@/lib/db'
-import { mockAdminDataIfCI } from '../route-utils'
+import { mockAdminDataIfCI } from '@/app/api/admin/_testMock'
+import { USE_MOCK_DATA } from '@/lib/env'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   console.log('[AdminContentAPI] GET /api/admin/content request received')
@@ -11,10 +12,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   console.log('[AdminContentAPI] Supabase URL set:', Boolean(process.env.SUPABASE_URL))
 
   // Return mock data for CI/test environments
-  const mock = mockAdminDataIfCI('content')
-  if (mock) {
-    console.log('[AdminContentAPI] Returning mock data for CI environment')
-    return NextResponse.json(mock)
+  if (USE_MOCK_DATA) {
+    console.log('[AdminContentAPI] Returning mock data for CI/test environment')
+    const mockData = mockAdminDataIfCI('queue')
+    if (mockData) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          content: mockData,
+          pagination: { page: 1, limit: 50, total: mockData.length, totalPages: 1, hasMore: false },
+          filter: 'all'
+        },
+        message: `Retrieved ${mockData.length} content items`
+      })
+    }
   }
 
   // Cookie-based authentication

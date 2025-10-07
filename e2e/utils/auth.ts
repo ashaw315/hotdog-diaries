@@ -14,12 +14,12 @@ export async function loginAsAdmin(page: Page) {
   // Navigate to login page
   await page.goto('/admin/login')
   
-  // Wait for the form to be visible
-  await expect(page.getByRole('heading', { name: /admin login/i })).toBeVisible()
+  // Wait for the form to be visible using data-testid
+  await expect(page.getByTestId('admin-login-title')).toBeVisible()
   
-  // Fill in credentials using role-based selectors
-  await page.getByRole('textbox', { name: /username/i }).fill(ADMIN_CREDENTIALS.username)
-  await page.getByLabel(/password/i).fill(ADMIN_CREDENTIALS.password)
+  // Fill in credentials using data-testid selectors
+  await page.getByTestId('admin-login-username-input').fill(ADMIN_CREDENTIALS.username)
+  await page.getByTestId('admin-login-password-input').fill(ADMIN_CREDENTIALS.password)
   
   // Click submit and wait for navigation away from login page
   await Promise.all([
@@ -28,8 +28,8 @@ export async function loginAsAdmin(page: Page) {
       const url = window.location.href
       return url.includes('/admin') && !url.includes('/admin/login')
     }, { timeout: 30000 }),
-    // Click the submit button using role selector
-    page.getByRole('button', { name: /sign in|login|submit/i }).click()
+    // Click the submit button using data-testid selector
+    page.getByTestId('admin-login-submit-button').click()
   ])
   
   // Verify we successfully navigated away from login page
@@ -46,11 +46,11 @@ export async function loginAsAdmin(page: Page) {
     }
   }
   
-  // Verify we're logged in by checking for specific admin header (more reliable)
-  await expect(page.locator('.admin-header')).toBeVisible({ timeout: 15000 })
+  // Verify we're logged in by checking for admin dashboard using data-testid
+  await expect(page.getByTestId('admin-dashboard')).toBeVisible({ timeout: 15000 })
   
-  // Also verify we can see admin navigation
-  await expect(page.getByRole('link', { name: /dashboard|admin/i })).toBeVisible({ timeout: 5000 })
+  // Also verify we can see admin stats grid
+  await expect(page.getByTestId('stats-grid')).toBeVisible({ timeout: 5000 })
   
   // Wait for dashboard content to load (not just loading state)
   await page.waitForFunction(() => {
@@ -60,7 +60,7 @@ export async function loginAsAdmin(page: Page) {
     )
   }, { timeout: 10000 }).catch(() => {
     // If dashboard is still loading after 10 seconds, that's okay for login verification
-    console.log('Dashboard still loading, but admin header and nav are visible - login successful')
+    console.log('Dashboard still loading, but admin dashboard and stats are visible - login successful')
   })
   
   console.log('✅ Admin login successful')

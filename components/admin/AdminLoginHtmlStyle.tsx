@@ -96,7 +96,7 @@ export default function AdminLoginHtmlStyle() {
       padding: '20px',
       margin: 0,
       fontFamily: 'Arial, sans-serif'
-    }}>
+    }} data-testid="admin-login-container">
       <div style={{
         background: 'white',
         padding: '40px',
@@ -104,25 +104,25 @@ export default function AdminLoginHtmlStyle() {
         boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
         width: '100%',
         maxWidth: '400px'
-      }}>
+      }} data-testid="admin-login-form-container">
         <div style={{
           textAlign: 'center',
           marginBottom: '30px'
-        }}>
+        }} data-testid="admin-login-header">
           <div style={{
             fontSize: '48px',
             marginBottom: '10px'
-          }}>🌭</div>
+          }} data-testid="admin-login-icon">🌭</div>
           <h1 style={{
             margin: 0,
             color: '#333',
             fontSize: '24px'
-          }}>Admin Login</h1>
+          }} data-testid="admin-login-title">Admin Login</h1>
           <p style={{
             margin: '8px 0 0 0',
             color: '#666',
             fontSize: '14px'
-          }}>Hotdog Diaries</p>
+          }} data-testid="admin-login-subtitle">Hotdog Diaries</p>
         </div>
         
         {error && (
@@ -135,13 +135,13 @@ export default function AdminLoginHtmlStyle() {
             borderRadius: '5px',
             marginBottom: '20px',
             border: '1px solid #fecaca'
-          }}>
+          }} data-testid="admin-login-error">
             ⚠️ {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
+        <form onSubmit={handleSubmit} data-testid="admin-login-form">
+          <div style={{ marginBottom: '20px' }} data-testid="admin-login-username-field">
             <label 
               htmlFor="username-fixed" 
               style={{
@@ -150,6 +150,7 @@ export default function AdminLoginHtmlStyle() {
                 color: '#333',
                 fontWeight: 'bold'
               }}
+              data-testid="admin-login-username-label"
             >
               Username:
             </label>
@@ -163,10 +164,11 @@ export default function AdminLoginHtmlStyle() {
               placeholder="Type 'admin' here"
               disabled={isLoading}
               style={inputStyle}
+              data-testid="admin-login-username-input"
             />
           </div>
           
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '20px' }} data-testid="admin-login-password-field">
             <label 
               htmlFor="password-fixed"
               style={{
@@ -175,6 +177,7 @@ export default function AdminLoginHtmlStyle() {
                 color: '#333',
                 fontWeight: 'bold'
               }}
+              data-testid="admin-login-password-label"
             >
               Password:
             </label>
@@ -188,6 +191,7 @@ export default function AdminLoginHtmlStyle() {
               placeholder="Type password here"
               disabled={isLoading}
               style={inputStyle}
+              data-testid="admin-login-password-input"
             />
           </div>
 
@@ -205,6 +209,7 @@ export default function AdminLoginHtmlStyle() {
               cursor: isLoading ? 'not-allowed' : 'pointer',
               fontWeight: 'bold'
             }}
+            data-testid="admin-login-submit-button"
           >
             {isLoading ? 'Logging in...' : 'Login'}
           </button>
@@ -217,10 +222,10 @@ export default function AdminLoginHtmlStyle() {
           borderRadius: '5px',
           marginTop: '20px',
           fontSize: '14px'
-        }}>
+        }} data-testid="admin-login-demo-credentials">
           <strong>Demo Credentials:</strong><br />
-          Username: <code>admin</code><br />
-          Password: <code>StrongAdminPass123!</code>
+          Username: <code data-testid="demo-username">admin</code><br />
+          Password: <code data-testid="demo-password">StrongAdminPass123!</code>
         </div>
       </div>
     </div>

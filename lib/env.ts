@@ -358,6 +358,61 @@ class Environment {
 }
 
 // ========================================
+// Environment Detection Flags
+// ========================================
+
+// Environment detection
+export const IS_CI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
+export const IS_TEST = process.env.NODE_ENV === 'test'
+export const IS_DEV = process.env.NODE_ENV === 'development'
+export const IS_PROD = process.env.NODE_ENV === 'production'
+export const IS_VERCEL = process.env.VERCEL === '1'
+
+// Test/Mock mode detection - returns mocked data when true
+export const USE_MOCK_DATA = IS_CI || IS_TEST
+
+// Database configuration helpers
+export const shouldUseSQLite = () => {
+  return IS_DEV || (IS_TEST && !process.env.USE_POSTGRES_IN_DEV)
+}
+
+export const shouldUsePostgres = () => {
+  return !shouldUseSQLite()
+}
+
+// API configuration
+export const getBaseUrl = () => {
+  if (IS_VERCEL) return `https://${process.env.VERCEL_URL}`
+  if (process.env.BASE_URL) return process.env.BASE_URL
+  if (process.env.PLAYWRIGHT_BASE_URL) return process.env.PLAYWRIGHT_BASE_URL
+  return 'http://localhost:3000'
+}
+
+// Debug logging helper
+export const debugLog = (message: string, ...args: any[]) => {
+  if (IS_DEV || IS_TEST) {
+    console.log(`[DEBUG] ${message}`, ...args)
+  }
+}
+
+// Environment summary for debugging
+export const getEnvironmentSummary = () => {
+  return {
+    IS_CI,
+    IS_TEST,
+    IS_DEV,
+    IS_PROD,
+    IS_VERCEL,
+    USE_MOCK_DATA,
+    shouldUseSQLite: shouldUseSQLite(),
+    shouldUsePostgres: shouldUsePostgres(),
+    baseUrl: getBaseUrl(),
+    nodeEnv: process.env.NODE_ENV,
+    platform: process.platform
+  }
+}
+
+// ========================================
 // Exports
 // ========================================
 

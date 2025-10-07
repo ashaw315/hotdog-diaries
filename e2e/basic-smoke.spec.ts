@@ -4,11 +4,11 @@ test.describe('Basic Smoke Tests', () => {
   test('should load the admin login page', async ({ page }) => {
     await page.goto('/admin/login')
     
-    // Check that login page loads
-    await expect(page.getByRole('heading', { name: /admin login/i })).toBeVisible()
-    await expect(page.getByRole('textbox', { name: /username/i })).toBeVisible()
-    await expect(page.getByLabel(/password/i)).toBeVisible()
-    await expect(page.getByRole('button', { name: /sign in|login|submit/i })).toBeVisible()
+    // Check that login page loads using data-testid selectors
+    await expect(page.getByTestId('admin-login-title')).toBeVisible()
+    await expect(page.getByTestId('admin-login-username-input')).toBeVisible()
+    await expect(page.getByTestId('admin-login-password-input')).toBeVisible()
+    await expect(page.getByTestId('admin-login-submit-button')).toBeVisible()
     
     console.log('✅ Login page loads correctly')
   })
@@ -16,14 +16,14 @@ test.describe('Basic Smoke Tests', () => {
   test('should attempt login and handle response', async ({ page }) => {
     await page.goto('/admin/login')
     
-    // Fill in test credentials
-    await page.getByRole('textbox', { name: /username/i }).fill('admin')
-    await page.getByLabel(/password/i).fill('StrongAdminPass123!')
+    // Fill in test credentials using data-testid selectors
+    await page.getByTestId('admin-login-username-input').fill('admin')
+    await page.getByTestId('admin-login-password-input').fill('StrongAdminPass123!')
     
     // Submit the form
-    await page.getByRole('button', { name: /sign in|login|submit/i }).click()
+    await page.getByTestId('admin-login-submit-button').click()
     
-    // Wait a moment for response
+    // Wait for redirect or response
     await page.waitForTimeout(3000)
     
     // Check what happened - either redirected or stayed with error
@@ -64,15 +64,15 @@ test.describe('Basic Smoke Tests', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.waitForTimeout(500)
     
-    // Should still show login form
-    await expect(page.getByRole('textbox', { name: /username/i })).toBeVisible()
+    // Should still show login form using data-testid
+    await expect(page.getByTestId('admin-login-username-input')).toBeVisible()
     
     // Test desktop viewport
     await page.setViewportSize({ width: 1200, height: 800 })
     await page.waitForTimeout(500)
     
-    // Should still show login form
-    await expect(page.getByRole('textbox', { name: /username/i })).toBeVisible()
+    // Should still show login form using data-testid
+    await expect(page.getByTestId('admin-login-username-input')).toBeVisible()
     
     console.log('✅ Responsive design working')
   })

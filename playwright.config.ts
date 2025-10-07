@@ -21,6 +21,8 @@ console.log('🎭 ================================\n')
  */
 export default defineConfig({
   testDir: './e2e',
+  /* Global setup for authentication */
+  globalSetup: './e2e/global-setup.ts',
   /* Test timeout for individual tests */
   timeout: 120_000,
   /* Extended timeout for expectations in CI */
@@ -39,6 +41,9 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000',
+    
+    /* Use saved authentication state */
+    storageState: './e2e/auth-state.json',
     
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -59,13 +64,23 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: undefined, // Don't use auth state for setup
+      },
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
     },
 
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
+      dependencies: ['setup'],
     },
 
     // Disable webkit and mobile for now to reduce CI complexity
@@ -73,10 +88,12 @@ export default defineConfig({
     // {
     //   name: 'webkit',
     //   use: { ...devices['Desktop Safari'] },
+    //   dependencies: ['setup'],
     // },
     // {
     //   name: 'Mobile Chrome',
     //   use: { ...devices['Pixel 5'] },
+    //   dependencies: ['setup'],
     // },
   ],
 

@@ -2,50 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { queueManager } from '@/lib/services/queue-manager'
 import { postingService } from '@/lib/services/posting'
 import { db } from '@/lib/db'
+import { mockAdminDataIfCI } from '@/app/api/admin/_testMock'
+import { USE_MOCK_DATA } from '@/lib/env'
 
 export async function GET(request: NextRequest) {
   // Return mock data for CI/test environments
-  if (process.env.CI === 'true' || process.env.NODE_ENV === 'test') {
-    const mockData = {
-      queueStats: {
-        totalApproved: 87,
-        daysOfContent: 14.5,
-        needsScanning: false,
-        contentBalance: { video: 35, gif: 25, image: 35, text: 5 }
-      },
-      postingSchedule: {
-        todaysPosts: 4,
-        nextPost: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
-        upcomingPosts: [
-          { time: '08:00', content: { source_platform: 'reddit', content_text: 'Mock hotdog post 1' }, type: 'image', platform: 'reddit' },
-          { time: '12:00', content: { source_platform: 'youtube', content_text: 'Mock hotdog video' }, type: 'video', platform: 'youtube' },
-          { time: '15:00', content: { source_platform: 'giphy', content_text: 'Mock hotdog GIF' }, type: 'gif', platform: 'giphy' },
-          { time: '18:00', content: { source_platform: 'pixabay', content_text: 'Mock hotdog image' }, type: 'image', platform: 'pixabay' },
-          { time: '21:00', content: { source_platform: 'imgur', content_text: 'Mock imgur hotdog' }, type: 'image', platform: 'imgur' },
-          { time: '23:00', content: { source_platform: 'bluesky', content_text: 'Mock bluesky hotdog' }, type: 'text', platform: 'bluesky' }
-        ]
-      },
-      platformStatus: {
-        reddit: { operational: true, itemCount: 25, lastScan: new Date().toISOString(), status: 'Active' },
-        youtube: { operational: true, itemCount: 18, lastScan: new Date().toISOString(), status: 'Active' },
-        giphy: { operational: true, itemCount: 22, lastScan: new Date().toISOString(), status: 'Active' },
-        pixabay: { operational: true, itemCount: 15, lastScan: new Date().toISOString(), status: 'Active' },
-        bluesky: { operational: true, itemCount: 12, lastScan: new Date().toISOString(), status: 'Active' },
-        tumblr: { operational: true, itemCount: 8, lastScan: new Date().toISOString(), status: 'Active' },
-        imgur: { operational: true, itemCount: 14, lastScan: new Date().toISOString(), status: 'Active' },
-        lemmy: { operational: true, itemCount: 6, lastScan: new Date().toISOString(), status: 'Active' }
-      },
-      apiSavings: {
-        callsSavedToday: 0,
-        estimatedMonthlySavings: 0,
-        nextScanDate: new Date().toISOString()
-      },
-      alerts: [
-        { type: 'info', message: '📋 Queue well stocked: 14.5 days of content', action: 'Review content quality' }
-      ]
+  if (USE_MOCK_DATA) {
+    const mockData = mockAdminDataIfCI('dashboard')
+    if (mockData) {
+      return NextResponse.json({ success: true, data: mockData })
     }
-    
-    return NextResponse.json({ success: true, data: mockData })
   }
   
   try {

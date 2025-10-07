@@ -81,30 +81,16 @@ test.describe('Admin Navigation and Core Flows', () => {
   test('should display consistent admin header/navigation', async ({ authenticatedPage: page }) => {
     await page.goto('/admin')
     
-    // Look for common navigation elements
-    const navElements = [
-      'navigation', 'nav', 'menu', 'header',
-      'text=Dashboard', 'text=Content', 'text=Queue',
-      'text=Logout', 'text=Admin'
-    ]
+    // Look for admin dashboard elements using data-testid
+    const dashboardVisible = await page.getByTestId('admin-dashboard').isVisible({ timeout: 5000 })
     
-    let foundNav = false
-    for (const element of navElements) {
-      try {
-        const selector = element.startsWith('text=') ? element : element
-        const isVisible = await page.locator(selector).isVisible({ timeout: 2000 })
-        
-        if (isVisible) {
-          console.log(`✅ Found navigation element: ${element}`)
-          foundNav = true
-          break
-        }
-      } catch (e) {
-        continue
-      }
-    }
-    
-    if (!foundNav) {
+    if (dashboardVisible) {
+      console.log('✅ Found admin dashboard element')
+      
+      // Check for stats grid which should be visible on dashboard
+      await expect(page.getByTestId('stats-grid')).toBeVisible()
+      console.log('✅ Found stats grid in dashboard')
+    } else {
       // At minimum, should have some admin-related text
       await expect(page.getByText(/admin|dashboard|content|hotdog/i).first()).toBeVisible()
       console.log('✅ Basic admin interface detected')

@@ -5,10 +5,10 @@ test.describe('Admin Login Flow', () => {
     // Navigate to login page
     await page.goto('/admin/login')
     
-    // Verify login page loads
-    await expect(page.getByRole('heading', { name: /admin login/i })).toBeVisible()
-    await expect(page.getByRole('textbox', { name: /username/i })).toBeVisible()
-    await expect(page.getByLabel(/password/i)).toBeVisible()
+    // Verify login page loads using data-testid selectors
+    await expect(page.getByTestId('admin-login-title')).toBeVisible()
+    await expect(page.getByTestId('admin-login-username-input')).toBeVisible()
+    await expect(page.getByTestId('admin-login-password-input')).toBeVisible()
     
     // Perform login
     await loginAsAdmin(page)
@@ -16,24 +16,24 @@ test.describe('Admin Login Flow', () => {
     // Verify successful redirect and authenticated state
     await expect(page).toHaveURL('/admin')
     
-    // Check for specific admin dashboard elements
-    await expect(page.locator('.admin-header')).toBeVisible()
-    await expect(page.getByRole('heading', { name: /dashboard|admin|content/i })).toBeVisible({ timeout: 15000 })
+    // Check for admin dashboard elements using data-testid
+    await expect(page.getByTestId('admin-dashboard')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByTestId('stats-grid')).toBeVisible()
   })
 
   test('should show error with invalid credentials', async ({ page }) => {
     await page.goto('/admin/login')
     
-    // Try login with wrong credentials
-    await page.getByRole('textbox', { name: /username/i }).fill('wronguser')
-    await page.getByLabel(/password/i).fill('wrongpass')
-    await page.getByRole('button', { name: /sign in|login|submit/i }).click()
+    // Try login with wrong credentials using data-testid selectors
+    await page.getByTestId('admin-login-username-input').fill('wronguser')
+    await page.getByTestId('admin-login-password-input').fill('wrongpass')
+    await page.getByTestId('admin-login-submit-button').click()
     
-    // Wait for error message to appear (exclude Next.js route announcer)
-    await page.waitForSelector('[role="alert"]:has-text("Invalid")', { timeout: 10000 })
+    // Wait for error message to appear using data-testid
+    await page.waitForSelector('[data-testid="admin-login-error"]', { timeout: 10000 })
     
     // Check error message content
-    const errorElement = page.locator('[role="alert"]:has-text("Invalid")')
+    const errorElement = page.getByTestId('admin-login-error')
     await expect(errorElement).toBeVisible()
     await expect(errorElement).toContainText(/Invalid username or password/i)
     
@@ -55,8 +55,8 @@ test.describe('Admin Login Flow', () => {
   test('should require both username and password', async ({ page }) => {
     await page.goto('/admin/login')
     
-    // Try to submit empty form
-    await page.getByRole('button', { name: /sign in|login|submit/i }).click()
+    // Try to submit empty form using data-testid
+    await page.getByTestId('admin-login-submit-button').click()
     
     // Should show validation error or stay on page
     const isStillOnLogin = page.url().includes('/admin/login')
@@ -67,12 +67,12 @@ test.describe('Admin Login Flow', () => {
     // Navigate to login page
     await page.goto('/admin/login')
     
-    // Fill valid credentials
-    await page.getByRole('textbox', { name: /username/i }).fill('admin')
-    await page.getByLabel(/password/i).fill('StrongAdminPass123!')
+    // Fill valid credentials using data-testid selectors
+    await page.getByTestId('admin-login-username-input').fill('admin')
+    await page.getByTestId('admin-login-password-input').fill('StrongAdminPass123!')
     
     // Start login and immediately check for loading state (before navigation completes)
-    const submitPromise = page.getByRole('button', { name: /sign in|login|submit/i }).click()
+    const submitPromise = page.getByTestId('admin-login-submit-button').click()
     
     // Give a small delay to catch the loading state if visible
     await page.waitForTimeout(100)
@@ -81,7 +81,7 @@ test.describe('Admin Login Flow', () => {
     await submitPromise
     await page.waitForURL(/\/admin/, { timeout: 15000 })
     
-    // Verify we're on the admin page
-    await expect(page.locator('.admin-header')).toBeVisible({ timeout: 15000 })
+    // Verify we're on the admin page using data-testid
+    await expect(page.getByTestId('admin-dashboard')).toBeVisible({ timeout: 15000 })
   })
 })
