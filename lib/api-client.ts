@@ -220,13 +220,34 @@ export class AdminApiClient {
       headers['Authorization'] = `Bearer ${this.authToken}`
     }
 
+    // 🔍 AdminAPI Request Diagnostics
+    console.group(`[AdminAPI] ${options.method || 'GET'} ${endpoint}`)
+    console.log('Full URL:', url)
+    console.log('Auth token available:', !!this.authToken)
+    console.log('Auth token length:', this.authToken?.length ?? 0)
+    console.log('Request headers:', {
+      'Content-Type': headers['Content-Type'],
+      'Authorization': this.authToken ? `Bearer ${this.authToken.substring(0, 20)}...` : 'None'
+    })
+
     try {
       const response = await fetch(url, {
         ...options,
         headers
       })
 
+      console.log('Response status:', response.status, response.statusText)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+
       const data = await response.json()
+      
+      console.log('Response body preview:', {
+        success: data.success,
+        hasData: !!data.data,
+        error: data.error,
+        dataKeys: data.data ? Object.keys(data.data) : null
+      })
+      console.groupEnd()
 
       if (!response.ok) {
         throw new ApiError(
@@ -238,6 +259,9 @@ export class AdminApiClient {
 
       return data
     } catch (error) {
+      console.error('Request failed:', error)
+      console.groupEnd()
+      
       if (error instanceof ApiError) {
         throw error
       }

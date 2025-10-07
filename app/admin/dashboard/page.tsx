@@ -15,6 +15,25 @@ export default function AdminDashboard() {
   // Use the new dashboard data hook
   const { data, loading, error, refresh } = useDashboardData(5 * 60 * 1000) // 5 minutes
 
+  // 🔍 Dashboard Component Data Diagnostics
+  React.useEffect(() => {
+    console.group('🔍 Dashboard Component State')
+    console.log('Loading state:', loading)
+    console.log('Error state:', error)
+    console.log('Data present:', !!data)
+    if (data) {
+      console.log('Data structure check:', {
+        queueStats: !!data.queueStats,
+        totalApproved: data.queueStats?.totalApproved,
+        daysOfContent: data.queueStats?.daysOfContent,
+        todaysPosts: data.postingSchedule?.todaysPosts,
+        platformStatus: !!data.platformStatus,
+        alerts: data.alerts?.length ?? 0
+      })
+    }
+    console.groupEnd()
+  }, [data, loading, error])
+
   const calculateNextScanDate = () => {
     if (!data) return 'Unknown'
     const daysUntilScan = Math.max(0, data.queueStats.daysOfContent - 14)
@@ -116,7 +135,16 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm text-gray-600">Queue Health</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {data?.queueStats.totalApproved || 0}
+                  {(() => {
+                    const value = data?.queueStats.totalApproved || 0
+                    console.log('🔍 UI Render - totalApproved:', {
+                      rawValue: data?.queueStats?.totalApproved,
+                      fallbackValue: value,
+                      dataExists: !!data,
+                      queueStatsExists: !!data?.queueStats
+                    })
+                    return value
+                  })()}
                 </p>
                 <p className="text-xs text-gray-500">
                   {data?.queueStats.daysOfContent.toFixed(1) || 0} days
@@ -143,7 +171,15 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm text-gray-600">Today&apos;s Posts</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {data?.postingSchedule.todaysPosts || 0}/6
+                  {(() => {
+                    const value = data?.postingSchedule.todaysPosts || 0
+                    console.log('🔍 UI Render - todaysPosts:', {
+                      rawValue: data?.postingSchedule?.todaysPosts,
+                      fallbackValue: value,
+                      postingScheduleExists: !!data?.postingSchedule
+                    })
+                    return `${value}/6`
+                  })()}
                 </p>
                 <p className="text-xs text-gray-500">
                   Next: {data?.postingSchedule.nextPost ? 

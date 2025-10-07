@@ -27,7 +27,31 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
     try {
       setLoading(true)
       setError(null)
+      
+      // 🔍 Dashboard Data Diagnostics
+      console.group('🔍 Dashboard Data Diagnostics')
+      console.log('Auth token present?', !!localStorage.getItem('admin_auth_token'))
+      console.log('Raw auth token length:', localStorage.getItem('admin_auth_token')?.length ?? 0)
+      console.log('Environment:', { isCI, isProd: process.env.NODE_ENV === 'production' })
+      console.log('Calling /admin/dashboard API...')
+      
       const response = await adminApi.getDashboard()
+      
+      console.log('Dashboard API response:', response)
+      console.log('Response success:', response.success)
+      console.log('Response data present:', !!response.data)
+      if (response.data) {
+        console.log('Queue stats:', {
+          totalApproved: response.data.queueStats?.totalApproved,
+          daysOfContent: response.data.queueStats?.daysOfContent,
+          needsScanning: response.data.queueStats?.needsScanning
+        })
+        console.log('Posting schedule:', {
+          todaysPosts: response.data.postingSchedule?.todaysPosts,
+          upcomingCount: response.data.postingSchedule?.upcomingPosts?.length
+        })
+      }
+      console.groupEnd()
       
       if (response.success && response.data) {
         setData(response.data)
@@ -35,6 +59,14 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
         throw new Error(response.error || 'Failed to fetch dashboard data')
       }
     } catch (err) {
+      console.group('❌ Dashboard Data Error')
+      console.error('Fetch error details:', err)
+      if (err instanceof Error) {
+        console.error('Error message:', err.message)
+        console.error('Error stack:', err.stack)
+      }
+      console.groupEnd()
+      
       const errorMessage = ApiHelpers.handleError(err)
       setError(errorMessage)
       if (!isCI) {

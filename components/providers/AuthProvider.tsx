@@ -43,6 +43,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Initialize auth state on mount
   useEffect(() => {
+    // 🔍 AuthProvider Mount Diagnostics
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_auth_token') : null
+    console.group('🔍 AuthProvider Mount Diagnostics')
+    console.log('Window available:', typeof window !== 'undefined')
+    console.log('Token found?', !!token)
+    console.log('Token length:', token?.length ?? 0)
+    console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'None')
+    console.groupEnd()
+    
     checkAuthStatus()
   }, [])
 
@@ -52,16 +61,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(true)
       setError(null)
       
+      console.group('🔍 AuthProvider Token Verification')
+      console.log('Starting auth verification...')
+      
       const response = await adminApi.verifyToken()
       
+      console.log('Verify token response:', {
+        success: response.success,
+        valid: response.data?.valid,
+        hasUser: !!response.data?.user,
+        error: response.error
+      })
+      
       if (response.success && response.data?.valid && response.data?.user) {
+        console.log('✅ Authentication valid, setting user:', response.data.user.username)
         setUser(response.data.user)
       } else {
+        console.log('❌ Authentication invalid, clearing token')
         setUser(null)
         adminApi.clearAuthToken()
       }
+      console.groupEnd()
     } catch (error) {
+      console.group('❌ AuthProvider Token Verification Error')
       console.error('Auth status check failed:', error)
+      console.groupEnd()
+      
       setUser(null)
       adminApi.clearAuthToken()
       // Don't set error for initial auth check to avoid showing error on load
