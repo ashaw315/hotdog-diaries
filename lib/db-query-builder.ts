@@ -25,6 +25,7 @@ export class QueryBuilder {
   private whereConditions: WhereCondition[] = []
   private orderByFields: OrderBy[] = []
   private joinClauses: JoinClause[] = []
+  private groupByFields: string[] = []
   private limitCount?: number
   private offsetCount?: number
   private parameters: any[] = []
@@ -93,6 +94,15 @@ export class QueryBuilder {
     return this
   }
 
+  groupBy(fields: string | string[]): QueryBuilder {
+    if (typeof fields === 'string') {
+      this.groupByFields = [fields]
+    } else {
+      this.groupByFields = fields
+    }
+    return this
+  }
+
   build(): { query: string; params: any[] } {
     this.parameters = []
     let paramIndex = 1
@@ -136,6 +146,12 @@ export class QueryBuilder {
       whereClause = `WHERE ${conditions.join(' AND ')}`
     }
 
+    // Build GROUP BY clause
+    let groupByClause = ''
+    if (this.groupByFields.length > 0) {
+      groupByClause = `GROUP BY ${this.groupByFields.join(', ')}`
+    }
+
     // Build ORDER BY clause
     let orderByClause = ''
     if (this.orderByFields.length > 0) {
@@ -164,6 +180,7 @@ export class QueryBuilder {
       selectClause,
       fromClause,
       whereClause,
+      groupByClause,
       orderByClause,
       limitClause,
       offsetClause
@@ -180,6 +197,11 @@ export class QueryBuilder {
   async first<T extends QueryResultRow = any>(): Promise<T | null> {
     const result = await this.limit(1).execute<T>()
     return result.rows[0] || null
+  }
+
+  countQuery(): QueryBuilder {
+    this.selectFields = ['COUNT(*) as count']
+    return this
   }
 
   async count(): Promise<number> {

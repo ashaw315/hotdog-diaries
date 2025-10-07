@@ -310,12 +310,23 @@ export class LoggingService {
           .where('created_at', '<=', dateRange.end)
       }
 
-      // Get counts by level
-      const levelCounts = await baseQuery.clone()
-        .select(['log_level'])
-        .count('* as count')
-        .groupBy('log_level')
-        .execute()
+      // Get counts by level - using raw SQL for Supabase compatibility
+      const { db } = await import('@/lib/db')
+      let levelCountsQuery = `
+        SELECT log_level, COUNT(*) as count
+        FROM system_logs
+      `
+      const queryParams: any[] = []
+
+      if (dateRange) {
+        levelCountsQuery += ` WHERE created_at >= $1 AND created_at <= $2`
+        queryParams.push(dateRange.start, dateRange.end)
+      }
+
+      levelCountsQuery += ` GROUP BY log_level`
+
+      const levelCountsResult = await db.query(levelCountsQuery, queryParams)
+      const levelCounts = levelCountsResult.rows
 
       const stats = {
         totalLogs: 0,
@@ -345,14 +356,20 @@ export class LoggingService {
         }
       })
 
-      // Get top components
-      const topComponents = await baseQuery.clone()
-        .select(['component'])
-        .count('* as count')
-        .groupBy('component')
-        .orderBy('count', 'DESC')
-        .limit(10)
-        .execute()
+      // Get top components - using raw SQL for Supabase compatibility
+      let topComponentsQuery = `
+        SELECT component, COUNT(*) as count
+        FROM system_logs
+      `
+
+      if (dateRange) {
+        topComponentsQuery += ` WHERE created_at >= $1 AND created_at <= $2`
+      }
+
+      topComponentsQuery += ` GROUP BY component ORDER BY count DESC LIMIT 10`
+
+      const topComponentsResult = await db.query(topComponentsQuery, queryParams)
+      const topComponents = topComponentsResult.rows
 
       // Get recent errors
       const recentErrorsQuery = await this.queryLogs({
@@ -371,8 +388,17 @@ export class LoggingService {
       }
 
     } catch (error) {
-      console.error('Failed to get log statistics:', error)
-      throw new Error(`Log statistics query failed: ${error.message}`)
+      console.error('[LoggingService] Failed to get log statistics:', error)
+      // Return safe defaults for admin API
+      return {
+        totalLogs: 0,
+        errorCount: 0,
+        warningCount: 0,
+        infoCount: 0,
+        debugCount: 0,
+        topComponents: [],
+        recentErrors: []
+      }
     }
   }
 

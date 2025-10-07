@@ -423,14 +423,27 @@ export class HealthService {
         }
       }
 
-      // Check queue size
-      const queueStats = await query('content_queue')
-        .select([
-          'status',
-          'COUNT(*) as count'
-        ])
-        .groupBy('status')
-        .execute()
+      // Check queue size - using raw SQL for Supabase compatibility
+      const { db } = await import('@/lib/db')
+      const queueStatsResult = await db.query(`
+        SELECT 
+          CASE 
+            WHEN is_approved = true AND is_posted = false THEN 'approved'
+            WHEN is_approved = false AND is_posted = false THEN 'pending'
+            WHEN is_posted = true THEN 'posted'
+            ELSE 'unknown'
+          END as status,
+          COUNT(*) as count
+        FROM content_queue
+        GROUP BY (CASE 
+          WHEN is_approved = true AND is_posted = false THEN 'approved'
+          WHEN is_approved = false AND is_posted = false THEN 'pending'
+          WHEN is_posted = true THEN 'posted'
+          ELSE 'unknown'
+        END)
+      `)
+      
+      const queueStats = queueStatsResult.rows
 
       const stats = {
         pending: 0,

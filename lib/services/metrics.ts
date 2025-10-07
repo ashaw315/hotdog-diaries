@@ -558,15 +558,18 @@ export class MetricsService {
         .first()
       const queueSize = parseInt(queueResult?.count || '0')
 
-      // Get top slow operations
-      const slowOperations = await query('system_metrics')
-        .select(['tags', 'AVG(value) as avg_time', 'COUNT(*) as count'])
-        .where('name', 'content_processing_time')
-        .where('timestamp', '>', last24h)
-        .groupBy('tags')
-        .orderBy('avg_time', 'DESC')
-        .limit(5)
-        .execute()
+      // Get top slow operations - using raw SQL for Supabase compatibility
+      const { db } = await import('@/lib/db')
+      const slowOperationsResult = await db.query(`
+        SELECT tags, AVG(metric_value) as avg_time, COUNT(*) as count
+        FROM system_metrics
+        WHERE metric_name = $1 AND timestamp > $2
+        GROUP BY tags
+        ORDER BY avg_time DESC
+        LIMIT 5
+      `, ['content_processing_time', last24h])
+      
+      const slowOperations = slowOperationsResult.rows
 
       const topSlowOperations = slowOperations.map((row: any) => ({
         operation: row.tags?.operation || 'unknown',

@@ -18,9 +18,10 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout>()
 
-  // Disable polling in CI environments
+  // Disable polling in CI environments and reduce frequency in production
   const isCI = process.env.NEXT_PUBLIC_CI === 'true'
-  const actualRefreshInterval = isCI ? 0 : refreshInterval
+  const isProd = process.env.NODE_ENV === 'production'
+  const actualRefreshInterval = isCI ? 0 : (isProd ? 0 : refreshInterval)
 
   const fetchData = useCallback(async () => {
     try {
@@ -57,6 +58,8 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
       }
     } else if (isCI) {
       console.log('🧪 [CI] Dashboard auto-refresh disabled for CI environment')
+    } else if (isProd) {
+      console.log('🚀 [PROD] Dashboard auto-refresh disabled for production environment')
     }
 
     return () => {
@@ -160,16 +163,19 @@ export function useContentData(params?: {
     fetchData()
   }, [fetchData])
 
-  // Auto-refresh if enabled (disabled in CI)
+  // Auto-refresh if enabled (disabled in CI and production)
   useEffect(() => {
     const isCI = process.env.NEXT_PUBLIC_CI === 'true'
+    const isProd = process.env.NODE_ENV === 'production'
     
-    if (params?.autoRefresh && !isCI) {
+    if (params?.autoRefresh && !isCI && !isProd) {
       const interval = setInterval(refresh, 30000) // 30 seconds
       console.log('🔄 Content auto-refresh enabled: 30s interval')
       return () => clearInterval(interval)
     } else if (params?.autoRefresh && isCI) {
       console.log('🧪 [CI] Content auto-refresh disabled for CI environment')
+    } else if (params?.autoRefresh && isProd) {
+      console.log('🚀 [PROD] Content auto-refresh disabled for production environment')
     }
   }, [params?.autoRefresh, refresh])
 
@@ -317,18 +323,21 @@ export function useSystemHealth(autoRefresh = false) {
     fetchData()
   }, [fetchData])
 
-  // Auto-refresh if enabled (disabled in CI)
+  // Auto-refresh if enabled (disabled in CI and production)
   useEffect(() => {
     const isCI = process.env.NEXT_PUBLIC_CI === 'true'
+    const isProd = process.env.NODE_ENV === 'production'
     
-    if (autoRefresh && !isCI) {
+    if (autoRefresh && !isCI && !isProd) {
       const interval = setInterval(refresh, 60000) // 1 minute
       console.log('🔄 System health auto-refresh enabled: 60s interval')
       return () => clearInterval(interval)
     } else if (autoRefresh && isCI) {
       console.log('🧪 [CI] System health auto-refresh disabled for CI environment')
+    } else if (autoRefresh && isProd) {
+      console.log('🚀 [PROD] System health auto-refresh disabled for production environment')
     }
-  }, [autoRefresh, refresh, isCI])
+  }, [autoRefresh, refresh])
 
   return { 
     data, 
