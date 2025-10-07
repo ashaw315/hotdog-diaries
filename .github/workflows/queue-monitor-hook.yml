@@ -1,0 +1,157 @@
+name: Queue Monitor Hook
+
+on:
+  workflow_call:
+    inputs:
+      trigger_source:
+        description: 'Source that triggered this hook'
+        required: true
+        type: string
+      post_count:
+        description: 'Number of posts just made'
+        required: false
+        default: '1'
+        type: string
+    secrets:
+      SITE_URL:
+        required: true
+      AUTH_TOKEN:
+        required: true
+
+jobs:
+  queue-monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Queue Health After Posting
+        id: health-check
+        run: |
+          echo "🩺 Checking queue health after posting from ${{ inputs.trigger_source }}..."
+          
+          # Get current queue health
+          HEALTH_RESPONSE=$(curl -s -w "HTTP_CODE:%{http_code}" -L \
+            "${{ secrets.SITE_URL }}/api/admin/queue-health" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            --retry 2 --retry-delay 5 2>&1 || true)
+          
+          # Extract HTTP code and response body
+          HTTP_CODE=$(echo "$HEALTH_RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d':' -f2)
+          RESPONSE_BODY=$(echo "$HEALTH_RESPONSE" | sed 's/HTTP_CODE:[0-9]*$//')
+          
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "✅ Queue health check successful"
+            
+            # Extract key metrics
+            HEALTH_STATUS=$(echo "$RESPONSE_BODY" | jq -r '.health.status // "unknown"')
+            DAYS_CONTENT=$(echo "$RESPONSE_BODY" | jq -r '.queue.daysOfContent // 0')
+            APPROVED_CONTENT=$(echo "$RESPONSE_BODY" | jq -r '.queue.totalApproved // 0')
+            NEEDS_SCANNING=$(echo "$RESPONSE_BODY" | jq -r '.queue.needsScanning // false')
+            
+            echo "📊 Queue Status: $HEALTH_STATUS"
+            echo "📅 Days of Content: $DAYS_CONTENT"
+            echo "✅ Approved Content: $APPROVED_CONTENT"
+            echo "🔍 Needs Scanning: $NEEDS_SCANNING"
+            
+            # Set outputs for auto-scan decision
+            echo "health_status=$HEALTH_STATUS" >> $GITHUB_OUTPUT
+            echo "days_content=$DAYS_CONTENT" >> $GITHUB_OUTPUT
+            echo "approved_content=$APPROVED_CONTENT" >> $GITHUB_OUTPUT
+            echo "needs_scanning=$NEEDS_SCANNING" >> $GITHUB_OUTPUT
+            echo "should_auto_scan=false" >> $GITHUB_OUTPUT
+            
+            # Determine if we should trigger auto-scan
+            if [[ "$HEALTH_STATUS" == "critical" ]] || [[ "$HEALTH_STATUS" == "emergency" ]]; then
+              echo "🚨 CRITICAL/EMERGENCY: Auto-scan will be triggered"
+              echo "should_auto_scan=true" >> $GITHUB_OUTPUT
+            elif [[ "$NEEDS_SCANNING" == "true" ]] && [[ "${DAYS_CONTENT%.*}" -lt 3 ]]; then
+              echo "⚠️ WARNING: Low content - auto-scan will be triggered"
+              echo "should_auto_scan=true" >> $GITHUB_OUTPUT
+            else
+              echo "✅ Queue is healthy - no auto-scan needed"
+            fi
+            
+          else
+            echo "❌ Queue health check failed with HTTP $HTTP_CODE"
+            echo "Response: $RESPONSE_BODY"
+            # Don't fail the hook, just log the issue
+            echo "should_auto_scan=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger Auto-Scan if Needed
+        if: steps.health-check.outputs.should_auto_scan == 'true'
+        run: |
+          HEALTH_STATUS="${{ steps.health-check.outputs.health_status }}"
+          DAYS_CONTENT="${{ steps.health-check.outputs.days_content }}"
+          
+          echo "🚀 Triggering auto-scan due to low queue..."
+          echo "Health Status: $HEALTH_STATUS"
+          echo "Days of Content: $DAYS_CONTENT"
+          
+          # Determine scan mode based on urgency
+          if [[ "$HEALTH_STATUS" == "emergency" ]]; then
+            SCAN_MODE="emergency"
+            echo "🆘 Using EMERGENCY mode"
+          elif [[ "$HEALTH_STATUS" == "critical" ]]; then
+            SCAN_MODE="emergency"
+            echo "🚨 Using EMERGENCY mode for critical status"
+          else
+            SCAN_MODE="auto"
+            echo "🤖 Using AUTO mode"
+          fi
+          
+          # Trigger auto-scan
+          AUTO_SCAN_RESPONSE=$(curl -s -w "HTTP_CODE:%{http_code}" -L -X POST \
+            "${{ secrets.SITE_URL }}/api/admin/auto-scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"mode\": \"$SCAN_MODE\", \"triggeredBy\": \"queue-monitor-hook-${{ inputs.trigger_source }}\"}" \
+            --retry 2 --retry-delay 10 2>&1 || true)
+          
+          # Extract results
+          AUTO_HTTP_CODE=$(echo "$AUTO_SCAN_RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d':' -f2)
+          AUTO_RESPONSE_BODY=$(echo "$AUTO_SCAN_RESPONSE" | sed 's/HTTP_CODE:[0-9]*$//')
+          
+          if [[ "$AUTO_HTTP_CODE" == "200" ]]; then
+            echo "✅ Auto-scan triggered successfully"
+            
+            # Extract scan results
+            TRIGGERED=$(echo "$AUTO_RESPONSE_BODY" | jq -r '.summary.totalTriggered // 0')
+            ERRORS=$(echo "$AUTO_RESPONSE_BODY" | jq -r '.summary.totalErrors // 0')
+            
+            echo "📊 Auto-scan Results:"
+            echo "  - Triggered: $TRIGGERED scans"
+            echo "  - Errors: $ERRORS"
+            
+            if [[ "$TRIGGERED" -gt 0 ]]; then
+              echo "🎯 Platforms scanned:"
+              echo "$AUTO_RESPONSE_BODY" | jq -r '.triggeredScans[]? // empty' | sed 's/^/  - /'
+            fi
+            
+            if [[ "$ERRORS" -gt 0 ]]; then
+              echo "⚠️ Scan errors occurred:"
+              echo "$AUTO_RESPONSE_BODY" | jq -r '.errors[]? // empty' | sed 's/^/  - /'
+            fi
+            
+          else
+            echo "❌ Auto-scan failed with HTTP $AUTO_HTTP_CODE"
+            echo "Response: $AUTO_RESPONSE_BODY"
+            # Don't fail the hook - the original posting was successful
+          fi
+
+      - name: Log Hook Completion
+        if: always()
+        run: |
+          HEALTH_STATUS="${{ steps.health-check.outputs.health_status || 'unknown' }}"
+          SHOULD_SCAN="${{ steps.health-check.outputs.should_auto_scan || 'false' }}"
+          
+          echo "📋 Queue Monitor Hook Summary:"
+          echo "  - Triggered by: ${{ inputs.trigger_source }}"
+          echo "  - Posts made: ${{ inputs.post_count }}"
+          echo "  - Queue health: $HEALTH_STATUS"
+          echo "  - Auto-scan triggered: $SHOULD_SCAN"
+          echo "  - Hook completed: $(date -u)"
+          
+          if [[ "$SHOULD_SCAN" == "true" ]]; then
+            echo "✅ Queue monitoring and auto-replenishment completed"
+          else
+            echo "✅ Queue monitoring completed - no action needed"
+          fi

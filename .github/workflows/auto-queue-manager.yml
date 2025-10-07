@@ -1,0 +1,226 @@
+name: Auto Queue Manager
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Scan mode'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - emergency
+          - status-only
+      force:
+        description: 'Force scan regardless of recommendations'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  refresh-token:
+    uses: ./.github/workflows/token-refresh.yml
+    secrets:
+      SITE_URL: ${{ secrets.SITE_URL }}
+      SERVICE_ACCOUNT_SECRET: ${{ secrets.SERVICE_ACCOUNT_SECRET }}
+      REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+      AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+
+  auto-queue-manager:
+    needs: refresh-token
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Queue Health
+        id: queue-health
+        env:
+          AUTH_TOKEN: ${{ needs.refresh-token.outputs.auth_token }}
+        run: |
+          echo "🩺 Checking queue health..."
+          
+          # Get current queue health status
+          HEALTH_RESPONSE=$(curl -s -w "HTTP_CODE:%{http_code}" -L \
+            "${{ secrets.SITE_URL }}/api/admin/queue-health" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            --retry 2 --retry-delay 5 2>&1 || true)
+          
+          # Extract HTTP code and response body
+          HTTP_CODE=$(echo "$HEALTH_RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d':' -f2)
+          RESPONSE_BODY=$(echo "$HEALTH_RESPONSE" | sed 's/HTTP_CODE:[0-9]*$//')
+          
+          echo "Queue Health HTTP Status: $HTTP_CODE"
+          
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "✅ Queue health check successful"
+            
+            # Extract key metrics using jq
+            HEALTH_STATUS=$(echo "$RESPONSE_BODY" | jq -r '.health.status // "unknown"')
+            DAYS_CONTENT=$(echo "$RESPONSE_BODY" | jq -r '.queue.daysOfContent // 0')
+            APPROVED_CONTENT=$(echo "$RESPONSE_BODY" | jq -r '.queue.totalApproved // 0')
+            
+            echo "📊 Queue Status: $HEALTH_STATUS"
+            echo "📅 Days of Content: $DAYS_CONTENT"
+            echo "✅ Approved Content: $APPROVED_CONTENT"
+            
+            # Set outputs for next step
+            echo "health_status=$HEALTH_STATUS" >> $GITHUB_OUTPUT
+            echo "days_content=$DAYS_CONTENT" >> $GITHUB_OUTPUT
+            echo "approved_content=$APPROVED_CONTENT" >> $GITHUB_OUTPUT
+            echo "health_check_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Queue health check failed with HTTP $HTTP_CODE"
+            echo "Response: $RESPONSE_BODY"
+            echo "health_check_success=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine Scan Mode
+        id: scan-mode
+        run: |
+          # Get input mode or default to auto
+          INPUT_MODE="${{ github.event.inputs.mode || 'auto' }}"
+          FORCE_SCAN="${{ github.event.inputs.force || 'false' }}"
+          
+          # Get health metrics from previous step
+          HEALTH_STATUS="${{ steps.queue-health.outputs.health_status }}"
+          DAYS_CONTENT="${{ steps.queue-health.outputs.days_content }}"
+          APPROVED_CONTENT="${{ steps.queue-health.outputs.approved_content }}"
+          
+          echo "🎯 Determining scan mode..."
+          echo "Input mode: $INPUT_MODE"
+          echo "Health status: $HEALTH_STATUS"
+          echo "Days of content: $DAYS_CONTENT"
+          echo "Force scan: $FORCE_SCAN"
+          
+          # Determine final scan mode based on health
+          FINAL_MODE="$INPUT_MODE"
+          
+          if [[ "$HEALTH_STATUS" == "emergency" ]] || [[ "${APPROVED_CONTENT%.*}" -eq 0 ]]; then
+            FINAL_MODE="emergency"
+            echo "🚨 EMERGENCY: Queue is empty - forcing emergency mode"
+          elif [[ "$HEALTH_STATUS" == "critical" ]] && [[ "$INPUT_MODE" == "auto" ]]; then
+            FINAL_MODE="emergency" 
+            echo "⚠️ CRITICAL: Queue is very low - upgrading to emergency mode"
+          elif [[ "$FORCE_SCAN" == "true" ]]; then
+            echo "🔧 Force scan enabled - proceeding with requested mode"
+          fi
+          
+          echo "final_mode=$FINAL_MODE" >> $GITHUB_OUTPUT
+          echo "should_scan=true" >> $GITHUB_OUTPUT
+          echo "📋 Final scan mode: $FINAL_MODE"
+
+      - name: Execute Auto-Scan
+        if: steps.scan-mode.outputs.should_scan == 'true'
+        env:
+          AUTH_TOKEN: ${{ needs.refresh-token.outputs.auth_token }}
+        run: |
+          SCAN_MODE="${{ steps.scan-mode.outputs.final_mode }}"
+          
+          echo "🚀 Executing auto-scan with mode: $SCAN_MODE"
+          
+          # Build request payload
+          if [[ "$SCAN_MODE" == "emergency" ]]; then
+            PAYLOAD='{"mode": "emergency"}'
+          elif [[ "$SCAN_MODE" == "status-only" ]]; then
+            PAYLOAD='{"mode": "status-only"}'
+          else
+            PAYLOAD='{"mode": "auto"}'
+          fi
+          
+          echo "📤 Request payload: $PAYLOAD"
+          
+          # Execute auto-scan
+          SCAN_RESPONSE=$(curl -s -w "HTTP_CODE:%{http_code}" -L -X POST \
+            "${{ secrets.SITE_URL }}/api/admin/auto-scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            --retry 3 --retry-delay 10 2>&1 || true)
+          
+          # Extract results
+          HTTP_CODE=$(echo "$SCAN_RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d':' -f2)
+          RESPONSE_BODY=$(echo "$SCAN_RESPONSE" | sed 's/HTTP_CODE:[0-9]*$//')
+          
+          echo "Auto-Scan HTTP Status: $HTTP_CODE"
+          
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "✅ Auto-scan completed successfully"
+            
+            # Extract scan results
+            TRIGGERED=$(echo "$RESPONSE_BODY" | jq -r '.summary.totalTriggered // 0')
+            SKIPPED=$(echo "$RESPONSE_BODY" | jq -r '.summary.totalSkipped // 0') 
+            ERRORS=$(echo "$RESPONSE_BODY" | jq -r '.summary.totalErrors // 0')
+            DAYS_AFTER=$(echo "$RESPONSE_BODY" | jq -r '.summary.queueDaysAfter // 0')
+            
+            echo "📊 Scan Results:"
+            echo "  - Triggered: $TRIGGERED scans"
+            echo "  - Skipped: $SKIPPED scans"
+            echo "  - Errors: $ERRORS"
+            echo "  - Days of content after: $DAYS_AFTER"
+            
+            # Show triggered scans
+            TRIGGERED_SCANS=$(echo "$RESPONSE_BODY" | jq -r '.triggeredScans[]? // empty')
+            if [[ -n "$TRIGGERED_SCANS" ]]; then
+              echo "🎯 Triggered scans:"
+              echo "$TRIGGERED_SCANS" | sed 's/^/  - /'
+            fi
+            
+            # Show any errors
+            SCAN_ERRORS=$(echo "$RESPONSE_BODY" | jq -r '.errors[]? // empty')
+            if [[ -n "$SCAN_ERRORS" ]]; then
+              echo "⚠️ Scan errors:"
+              echo "$SCAN_ERRORS" | sed 's/^/  - /'
+            fi
+            
+          else
+            echo "❌ Auto-scan failed with HTTP $HTTP_CODE"
+            echo "Response: $RESPONSE_BODY"
+            exit 1
+          fi
+
+      - name: Final Health Check
+        if: success()
+        env:
+          AUTH_TOKEN: ${{ needs.refresh-token.outputs.auth_token }}
+        run: |
+          echo "🔄 Performing final health check..."
+          
+          # Brief delay to allow scan results to process
+          sleep 30
+          
+          # Get updated queue health
+          FINAL_HEALTH=$(curl -s -L \
+            "${{ secrets.SITE_URL }}/api/admin/queue-health" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            --retry 2 2>/dev/null | jq -r '.health.status // "unknown"')
+          
+          FINAL_DAYS=$(curl -s -L \
+            "${{ secrets.SITE_URL }}/api/admin/queue-health" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            --retry 2 2>/dev/null | jq -r '.queue.daysOfContent // 0')
+          
+          echo "📈 Final queue status: $FINAL_HEALTH"
+          echo "📅 Final days of content: $FINAL_DAYS"
+          
+          if [[ "$FINAL_HEALTH" == "healthy" ]] || [[ "$FINAL_HEALTH" == "warning" ]]; then
+            echo "✅ Queue is in acceptable condition"
+          else
+            echo "⚠️ Queue still needs attention: $FINAL_HEALTH"
+          fi
+
+      - name: Handle Failure
+        if: failure()
+        run: |
+          echo "❌ CRITICAL: Auto queue manager failed"
+          echo ""
+          echo "🔧 TROUBLESHOOTING STEPS:"
+          echo "  1. Check AUTH_TOKEN in GitHub secrets"
+          echo "  2. Verify Vercel deployment status"
+          echo "  3. Check API endpoint availability"
+          echo "  4. Review platform API credentials"
+          echo ""
+          echo "📞 IMMEDIATE ACTIONS:"
+          echo "  - Manual content approval may be needed"
+          echo "  - Consider running emergency replenishment"
+          echo "  - Check individual platform scan workflows"
