@@ -4,6 +4,7 @@ import { EdgeAuthUtils } from '@/lib/auth-edge'
 import { db } from '@/lib/db'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { buildSafeSelectClause, verifyTableColumns } from '@/lib/db-schema-utils'
 
 interface ContentQueueItem {
   id: number
@@ -226,57 +227,87 @@ export async function GET(request: NextRequest) {
       const healthCheck = await db.healthCheck()
       console.log('[AdminQueueAPI] Database health:', healthCheck)
       
+      // Verify schema and build safe column list
+      console.log('[AdminQueueAPI] Verifying database schema...')
+      const columns = await verifyTableColumns('content_queue')
+      console.log('[AdminQueueAPI] Available columns:', columns.length)
+      
+      // Build safe SELECT clause based on existing columns
+      const desiredColumns = [
+        'id',
+        'content_text',
+        'content_type',
+        'source_platform',
+        'original_url',
+        'original_author',
+        'content_image_url',
+        'content_video_url',
+        'scraped_at',
+        'is_posted',
+        'is_approved',
+        'admin_notes',
+        'created_at',
+        'updated_at',
+        'confidence_score',
+        'content_status',
+        'reviewed_at',
+        'reviewed_by',
+        'rejection_reason'
+      ]
+      
+      const safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns)
+      console.log('[AdminQueueAPI] Safe SELECT clause built')
+      
       let contentQuery: string
       let countQuery: string
       const queryParams = [limit, actualOffset]
       
-      // Build WHERE clause based on filters
+      // Build WHERE clause based on filters and available columns
       let whereConditions: string[] = []
+      const hasIsApproved = columns.includes('is_approved')
+      const hasIsPosted = columns.includes('is_posted')
+      const hasAdminNotes = columns.includes('admin_notes')
       
       if (status !== 'all') {
         if (status === 'pending') {
-          whereConditions.push('is_approved = FALSE AND is_posted = FALSE')
+          if (hasIsApproved && hasIsPosted) {
+            whereConditions.push('is_approved = FALSE AND is_posted = FALSE')
+          } else if (hasIsPosted) {
+            whereConditions.push('is_posted = FALSE')
+          }
         } else if (status === 'approved') {
-          whereConditions.push('is_approved = TRUE AND is_posted = FALSE')
+          if (hasIsApproved && hasIsPosted) {
+            whereConditions.push('is_approved = TRUE AND is_posted = FALSE')
+          } else if (hasIsApproved) {
+            whereConditions.push('is_approved = TRUE')
+          }
         } else if (status === 'rejected') {
-          whereConditions.push('is_approved = FALSE AND (admin_notes LIKE \'%Rejected%\' OR admin_notes LIKE \'%rejected%\')')
+          if (hasIsApproved && hasAdminNotes) {
+            whereConditions.push('is_approved = FALSE AND (admin_notes LIKE \'%Rejected%\' OR admin_notes LIKE \'%rejected%\')')
+          } else if (hasIsApproved) {
+            whereConditions.push('is_approved = FALSE')
+          }
         } else if (status === 'posted') {
-          whereConditions.push('is_posted = TRUE')
+          if (hasIsPosted) {
+            whereConditions.push('is_posted = TRUE')
+          }
         }
       }
       
-      if (platform !== 'all') {
+      if (platform !== 'all' && columns.includes('source_platform')) {
         whereConditions.push(`source_platform = '${platform}'`)
       }
       
       const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
+      const orderBy = columns.includes('created_at') ? 'ORDER BY created_at DESC' : 'ORDER BY id DESC'
       
       console.log(`[AdminQueueAPI] Building query with WHERE: ${whereClause}`)
       
       contentQuery = `
-        SELECT 
-          id,
-          content_text,
-          content_type,
-          source_platform,
-          original_url,
-          original_author,
-          content_image_url,
-          content_video_url,
-          scraped_at,
-          is_posted,
-          is_approved,
-          admin_notes,
-          created_at,
-          updated_at,
-          confidence_score,
-          content_status,
-          reviewed_at,
-          reviewed_by,
-          rejection_reason
+        SELECT ${safeSelectClause}
         FROM content_queue
         ${whereClause}
-        ORDER BY created_at DESC
+        ${orderBy}
         LIMIT $1 OFFSET $2
       `
       

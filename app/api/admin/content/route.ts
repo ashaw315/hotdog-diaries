@@ -4,6 +4,7 @@ import { EdgeAuthUtils } from '@/lib/auth-edge'
 import { db } from '@/lib/db'
 import { mockAdminDataIfCI } from '@/app/api/admin/_testMock'
 import { USE_MOCK_DATA } from '@/lib/env'
+import { buildSafeSelectClause, verifyTableColumns } from '@/lib/db-schema-utils'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   console.log('[AdminContentAPI] GET /api/admin/content request received')
@@ -68,6 +69,38 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const healthCheck = await db.healthCheck()
     console.log('[AdminContentAPI] Database health:', healthCheck)
     
+    // Verify schema and build safe column list
+    console.log('[AdminContentAPI] Verifying database schema...')
+    const contentQueueColumns = await verifyTableColumns('content_queue')
+    const postedContentColumns = await verifyTableColumns('posted_content')
+    
+    console.log('[AdminContentAPI] Available columns in content_queue:', contentQueueColumns.length)
+    console.log('[AdminContentAPI] Available columns in posted_content:', postedContentColumns.length)
+    
+    // Build safe SELECT clause based on existing columns
+    const desiredColumns = [
+      'id',
+      'content_text',
+      'content_type',
+      'source_platform',
+      'original_url',
+      'original_author',
+      'content_image_url',
+      'content_video_url',
+      'scraped_at',
+      'is_posted',
+      'is_approved',
+      'admin_notes',
+      'created_at',
+      'updated_at',
+      'confidence_score',
+      'content_hash',
+      'is_rejected'
+    ]
+    
+    const safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns, 'cq')
+    console.log('[AdminContentAPI] Safe SELECT clause built with fallbacks for missing columns')
+    
     let contentQuery: string
     let countQuery: string
     const queryParams = [limit, actualOffset]
@@ -76,23 +109,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // Query content_queue joined with posted_content for posted content
       console.log('[AdminContentAPI] Filtering for posted content (JOIN with posted_content)')
       
+      // Add posted_at only if it exists in posted_content
+      const postedAtClause = postedContentColumns.includes('posted_at') 
+        ? 'pc.posted_at' 
+        : 'NULL AS posted_at'
+      
       contentQuery = `
         SELECT 
-          cq.id,
-          cq.content_text,
-          cq.content_type,
-          cq.source_platform,
-          cq.original_url,
-          cq.original_author,
-          cq.content_image_url,
-          cq.content_video_url,
-          cq.scraped_at,
-          cq.is_posted,
-          cq.is_approved,
-          cq.admin_notes,
-          cq.created_at,
-          cq.updated_at,
-          pc.posted_at
+          ${safeSelectClause},
+          ${postedAtClause}
         FROM content_queue cq
         JOIN posted_content pc ON pc.content_queue_id = cq.id
         WHERE pc.posted_at IS NOT NULL
@@ -110,14 +135,40 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     } else {
       // Query content_queue only for other statuses
       let whereClause = '1=1'
-      let orderBy = 'cq.scraped_at DESC'
+      let orderBy = contentQueueColumns.includes('scraped_at') 
+        ? 'cq.scraped_at DESC' 
+        : 'cq.created_at DESC'
+      
+      // Build WHERE clauses based on available columns
+      const hasAdminNotes = contentQueueColumns.includes('admin_notes')
+      const hasIsApproved = contentQueueColumns.includes('is_approved')
+      const hasIsPosted = contentQueueColumns.includes('is_posted')
       
       if (status === 'pending') {
-        whereClause = 'cq.is_approved = FALSE AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id) AND (cq.admin_notes IS NULL OR cq.admin_notes NOT LIKE \'%Rejected%\')'
+        if (hasIsApproved) {
+          whereClause = 'cq.is_approved = FALSE'
+          if (hasAdminNotes) {
+            whereClause += ' AND (cq.admin_notes IS NULL OR cq.admin_notes NOT LIKE \'%Rejected%\')'
+          }
+        } else if (hasIsPosted) {
+          whereClause = 'cq.is_posted = FALSE'
+        }
+        whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
       } else if (status === 'approved') {
-        whereClause = 'cq.is_approved = TRUE AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
+        if (hasIsApproved) {
+          whereClause = 'cq.is_approved = TRUE'
+        } else {
+          whereClause = '1=1' // Fallback if column doesn't exist
+        }
+        whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
       } else if (status === 'rejected') {
-        whereClause = 'cq.is_approved = FALSE AND cq.admin_notes LIKE \'%Rejected%\''
+        if (hasIsApproved && hasAdminNotes) {
+          whereClause = 'cq.is_approved = FALSE AND cq.admin_notes LIKE \'%Rejected%\''
+        } else if (hasIsApproved) {
+          whereClause = 'cq.is_approved = FALSE'
+        } else {
+          whereClause = '1=0' // No rejected items if columns don't exist
+        }
       }
       // For 'all' or any other value, keep whereClause as '1=1'
       
@@ -125,20 +176,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       
       contentQuery = `
         SELECT 
-          cq.id,
-          cq.content_text,
-          cq.content_type,
-          cq.source_platform,
-          cq.original_url,
-          cq.original_author,
-          cq.content_image_url,
-          cq.content_video_url,
-          cq.scraped_at,
-          cq.is_posted,
-          cq.is_approved,
-          cq.admin_notes,
-          cq.created_at,
-          cq.updated_at,
+          ${safeSelectClause},
           NULL as posted_at
         FROM content_queue cq
         WHERE ${whereClause}
@@ -204,21 +242,51 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       message: `Retrieved ${content.length} content items`
     })
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('[AdminContentAPI] Database error:', err)
     console.error('[AdminContentAPI] Error details:', {
       name: err?.name,
       message: err?.message,
       code: err?.code,
-      stack: err?.stack
+      stack: err?.stack,
+      detail: err?.detail,
+      hint: err?.hint,
+      position: err?.position
     })
     
-    // Check if this is a table/column missing error
-    if (err?.message?.includes('relation') && err?.message?.includes('does not exist')) {
-      console.error('[AdminContentAPI] Schema mismatch detected - table/column missing')
+    // Specific error handling for PostgreSQL column errors
+    if (err?.code === '42703') {
+      // Column does not exist
+      const columnMatch = err.message.match(/column ["']?(\w+\.)?(\w+)["']? does not exist/i)
+      const missingColumn = columnMatch ? columnMatch[2] : 'unknown'
+      
+      console.error(`[AdminContentAPI] Missing column detected: ${missingColumn}`)
+      console.error('[AdminContentAPI] Attempting to recover with schema fallback...')
+      
       return NextResponse.json({ 
-        error: 'Database schema mismatch', 
-        details: 'Missing table or column in database'
+        error: 'Database column missing', 
+        message: `Column '${missingColumn}' does not exist in the database`,
+        code: err.code,
+        recovery: 'The API will use NULL fallbacks for missing columns'
+      }, { status: 500 })
+    }
+    
+    // Check if this is a table missing error
+    if (err?.code === '42P01' || (err?.message?.includes('relation') && err?.message?.includes('does not exist'))) {
+      console.error('[AdminContentAPI] Table missing - critical schema error')
+      return NextResponse.json({ 
+        error: 'Database table missing', 
+        message: err?.message,
+        code: err?.code || '42P01'
+      }, { status: 500 })
+    }
+    
+    // Generic database errors
+    if (err?.code) {
+      return NextResponse.json({ 
+        error: 'Database error',
+        message: process.env.NODE_ENV === 'development' ? err?.message : 'A database error occurred',
+        code: err.code
       }, { status: 500 })
     }
     
