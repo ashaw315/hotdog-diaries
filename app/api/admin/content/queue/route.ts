@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { NextAuthUtils } from '@/lib/auth'
-import { createSimpleClient } from '@/utils/supabase/server'
+import { cookies } from 'next/headers'
+import { EdgeAuthUtils } from '@/lib/auth-edge'
+import { db } from '@/lib/db'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
@@ -32,34 +33,31 @@ interface ContentQueueItem {
 
 export async function PATCH(request: NextRequest) {
   try {
-    // Use same auth method as /api/admin/me (which works)
-    let userId: string | null = null
-    let username: string | null = null
+    console.log('[AdminQueueAPI] PATCH /api/admin/content/queue request received')
 
-    // TEMPORARY: Check for test token in Authorization header (same as /api/admin/me)
-    const authHeader = request.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7)
-      try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString())
-        if (decoded.username === 'admin' && decoded.id === 1) {
-          userId = '1'
-          username = 'admin'
-        }
-      } catch (e) {
-        // Fall through to normal auth
+    // Cookie-based authentication (same as main content route)
+    const cookieStore = cookies()
+    const token = cookieStore.get('auth')?.value
+
+    if (!token) {
+      console.warn('[AdminQueueAPI] No token found in cookies')
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Verify JWT token
+    let user
+    try {
+      user = await EdgeAuthUtils.verifyJWT(token)
+      if (!user) {
+        console.warn('[AdminQueueAPI] Token verification returned null')
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
       }
+    } catch (error) {
+      console.error('[AdminQueueAPI] Token verification error:', error)
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    // If not using test token, get from middleware headers
-    if (!userId) {
-      userId = request.headers.get('x-user-id')
-      username = request.headers.get('x-username')
-    }
-
-    if (!userId || !username) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    console.log('[AdminQueueAPI] User verified:', user.username)
 
     const { searchParams } = new URL(request.url)
     const contentId = searchParams.get('id')
@@ -71,50 +69,69 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const { content_text, content_status, reviewed_by, rejection_reason } = body
 
-    // Use Supabase for the update
-    const supabase = createSimpleClient()
-    
-    // Build update object
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    }
-    
+    // Build update query dynamically based on provided fields
+    const updateFields: string[] = []
+    const queryParams: (string | number | boolean)[] = []
+    let paramCount = 1
+
     if (content_text !== undefined) {
-      updateData.content_text = content_text
+      updateFields.push(`content_text = $${paramCount}`)
+      queryParams.push(content_text)
+      paramCount++
     }
-    
+
     if (content_status !== undefined) {
-      updateData.content_status = content_status
+      updateFields.push(`content_status = $${paramCount}`)
+      queryParams.push(content_status)
+      paramCount++
       
       // Update approved status based on content_status
       if (content_status === 'approved') {
-        updateData.is_approved = true
+        updateFields.push(`is_approved = $${paramCount}`)
+        queryParams.push(true)
+        paramCount++
       } else if (content_status === 'rejected') {
-        updateData.is_approved = false
+        updateFields.push(`is_approved = $${paramCount}`)
+        queryParams.push(false)
+        paramCount++
       }
     }
-    
+
     if (reviewed_by !== undefined) {
-      updateData.reviewed_by = reviewed_by
-      updateData.reviewed_at = new Date().toISOString()
-    }
-    
-    if (rejection_reason !== undefined) {
-      updateData.rejection_reason = rejection_reason
+      updateFields.push(`reviewed_by = $${paramCount}`)
+      queryParams.push(reviewed_by)
+      paramCount++
+      
+      updateFields.push(`reviewed_at = $${paramCount}`)
+      queryParams.push(new Date())
+      paramCount++
     }
 
-    const { data, error } = await supabase
-      .from('content_queue')
-      .update(updateData)
-      .eq('id', parseInt(contentId))
-      .select()
-      .single()
-    
-    if (error) {
-      throw new Error(`Database update failed: ${error.message}`)
+    if (rejection_reason !== undefined) {
+      updateFields.push(`rejection_reason = $${paramCount}`)
+      queryParams.push(rejection_reason)
+      paramCount++
     }
-    
-    const result = { rows: [data] }
+
+    if (updateFields.length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    updateFields.push(`updated_at = $${paramCount}`)
+    queryParams.push(new Date())
+    paramCount++
+
+    // Add ID parameter last
+    queryParams.push(parseInt(contentId))
+
+    const updateQuery = `
+      UPDATE content_queue 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    `
+
+    const result = await db.query(updateQuery, queryParams)
     
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 })
@@ -127,7 +144,7 @@ export async function PATCH(request: NextRequest) {
       { 
         contentId: parseInt(contentId),
         updatedFields: Object.keys(body),
-        user: username 
+        user: user.username 
       }
     )
 
@@ -136,16 +153,27 @@ export async function PATCH(request: NextRequest) {
       content: result.rows[0]
     })
 
-  } catch (error) {
+  } catch (err: any) {
+    console.error('[AdminQueueAPI] PATCH error:', err)
+    console.error('[AdminQueueAPI] PATCH error details:', {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      stack: err?.stack
+    })
+    
     await logToDatabase(
       LogLevel.ERROR,
       'Failed to update content',
       'AdminAPI',
-      { error: error instanceof Error ? error.message : 'Unknown error' }
+      { error: err instanceof Error ? err.message : 'Unknown error' }
     )
 
     return NextResponse.json(
-      { error: 'Failed to update content' },
+      { 
+        error: 'Failed to update content',
+        details: process.env.NODE_ENV === 'development' ? err?.message : undefined
+      },
       { status: 500 }
     )
   }
@@ -153,150 +181,147 @@ export async function PATCH(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Use same auth method as /api/admin/me (which works)
-    let userId: string | null = null
-    let username: string | null = null
+    console.log('[AdminQueueAPI] GET /api/admin/content/queue request received')
+    console.log('[AdminQueueAPI] Environment:', process.env.NODE_ENV)
+    console.log('[AdminQueueAPI] Database URL set:', Boolean(process.env.DATABASE_URL))
 
-    // TEMPORARY: Check for test token in Authorization header (same as /api/admin/me)
-    const authHeader = request.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.substring(7)
-      try {
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString())
-        if (decoded.username === 'admin' && decoded.id === 1) {
-          userId = '1'
-          username = 'admin'
-        }
-      } catch (e) {
-        // Fall through to normal auth
+    // Cookie-based authentication (same as main content route)
+    const cookieStore = cookies()
+    const token = cookieStore.get('auth')?.value
+
+    if (!token) {
+      console.warn('[AdminQueueAPI] No token found in cookies')
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Verify JWT token
+    let user
+    try {
+      user = await EdgeAuthUtils.verifyJWT(token)
+      if (!user) {
+        console.warn('[AdminQueueAPI] Token verification returned null')
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
       }
+    } catch (error) {
+      console.error('[AdminQueueAPI] Token verification error:', error)
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    // If not using test token, get from middleware headers
-    if (!userId) {
-      userId = request.headers.get('x-user-id')
-      username = request.headers.get('x-username')
-    }
+    console.log('[AdminQueueAPI] User verified:', user.username)
 
-    if (!userId || !username) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+    // Parse query parameters
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status') || 'all'
-    const platform = searchParams.get('platform') || 'all'
-    const sortBy = searchParams.get('sort') || 'created_at'
-    const order = searchParams.get('order') || 'desc'
+    const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
-
-    // Use Supabase for the query
-    const supabase = createSimpleClient()
-    console.log('🔧 [AdminQueue] Starting database query...')
+    const status = searchParams.get('status') || 'all'
+    const platform = searchParams.get('platform') || 'all'
     
+    const actualOffset = offset || (page - 1) * limit
+    
+    console.log(`[AdminQueueAPI] Query params - status: ${status}, platform: ${platform}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
+
     try {
-      // Start with the simplest possible query
-      console.log('🔍 [AdminQueue] Testing basic table access...')
+      // Check database connection and log current state
+      const healthCheck = await db.healthCheck()
+      console.log('[AdminQueueAPI] Database health:', healthCheck)
       
-      // Test 1: Check if table exists at all
-      const { data: tableTest, error: tableError } = await supabase
-        .from('content_queue')
-        .select('id')
-        .limit(1)
+      let contentQuery: string
+      let countQuery: string
+      const queryParams = [limit, actualOffset]
       
-      if (tableError) {
-        console.error('❌ [AdminQueue] Table access failed:', tableError)
-        
-        // Try alternative table names
-        const tableNames = ['posts', 'content', 'queued_content', 'hotdog_content']
-        for (const tableName of tableNames) {
-          console.log(`🔍 [AdminQueue] Trying table: ${tableName}`)
-          const { data: altData, error: altError } = await supabase
-            .from(tableName)
-            .select('id')
-            .limit(1)
-          
-          if (!altError) {
-            console.log(`✅ [AdminQueue] Found working table: ${tableName}`)
-            return NextResponse.json({
-              error: `Table 'content_queue' not found, but '${tableName}' exists`,
-              suggestion: `Update your code to use table '${tableName}' instead`,
-              availableTable: tableName
-            }, { status: 500 })
-          }
-        }
-        
-        return NextResponse.json({
-          error: 'No content tables found',
-          details: {
-            message: tableError.message,
-            hint: tableError.hint,
-            code: tableError.code
-          },
-          suggestion: 'Check Supabase dashboard for table structure'
-        }, { status: 500 })
-      }
+      // Build WHERE clause based on filters
+      let whereConditions: string[] = []
       
-      console.log('✅ [AdminQueue] Table exists, building query...')
-      
-      // Use simple query without complex joins that might be causing issues
-      let query = supabase
-        .from('content_queue')
-        .select('*', { count: 'exact' })
-
-      // Apply filters
       if (status !== 'all') {
-        query = query.eq('content_status', status)
+        if (status === 'pending') {
+          whereConditions.push('is_approved = FALSE AND is_posted = FALSE')
+        } else if (status === 'approved') {
+          whereConditions.push('is_approved = TRUE AND is_posted = FALSE')
+        } else if (status === 'rejected') {
+          whereConditions.push('is_approved = FALSE AND (admin_notes LIKE \'%Rejected%\' OR admin_notes LIKE \'%rejected%\')')
+        } else if (status === 'posted') {
+          whereConditions.push('is_posted = TRUE')
+        }
       }
-
+      
       if (platform !== 'all') {
-        query = query.eq('source_platform', platform)
-      }
-
-      // Apply sorting
-      const validSortFields = ['created_at', 'updated_at', 'scraped_at', 'content_status', 'confidence_score']
-      const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at'
-      const ascending = order === 'asc'
-      
-      query = query.order(sortField, { ascending })
-
-      // Apply pagination
-      query = query.range(offset, offset + limit - 1)
-
-      const { data, error, count } = await query
-      
-      if (error) {
-        console.error('❌ [AdminQueue] Database error:', error)
-        console.error('❌ [AdminQueue] Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
-        
-        return NextResponse.json({
-          error: 'Database query failed',
-          details: {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          }
-        }, { status: 500 })
+        whereConditions.push(`source_platform = '${platform}'`)
       }
       
-      console.log('✅ [AdminQueue] Query successful, found:', data?.length || 0, 'items')
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
       
-      // Log sample data structure if we have items
-      if (data && data.length > 0) {
-        console.log('📊 [AdminQueue] Sample item keys:', Object.keys(data[0]))
-      } else {
-        console.log('📭 [AdminQueue] No content found in database')
-      }
+      console.log(`[AdminQueueAPI] Building query with WHERE: ${whereClause}`)
       
-      const total = count || 0
+      contentQuery = `
+        SELECT 
+          id,
+          content_text,
+          content_type,
+          source_platform,
+          original_url,
+          original_author,
+          content_image_url,
+          content_video_url,
+          scraped_at,
+          is_posted,
+          is_approved,
+          admin_notes,
+          created_at,
+          updated_at,
+          confidence_score,
+          content_status,
+          reviewed_at,
+          reviewed_by,
+          rejection_reason
+        FROM content_queue
+        ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+      `
+      
+      countQuery = `
+        SELECT COUNT(*) as total
+        FROM content_queue
+        ${whereClause}
+      `
+      
+      console.log(`[AdminQueueAPI] Executing content query for status: ${status}, platform: ${platform}`)
+      console.log(`[AdminQueueAPI] SQL Query:`, contentQuery)
+      console.log(`[AdminQueueAPI] Query Parameters:`, queryParams)
+      
+      // Execute content query
+      const contentResult = await db.query(contentQuery, queryParams)
+      console.log(`[AdminQueueAPI] Query success: ${contentResult.rows.length} rows`)
+      
+      // Execute count query
+      const countResult = await db.query(countQuery)
+      const total = parseInt(countResult.rows[0].total)
+      
+      console.log(`[AdminQueueAPI] Total count: ${total}`)
 
-      console.log('✅ [AdminQueue] Returning response with', data?.length || 0, 'items')
+      // Map rows to response format
+      const content = contentResult.rows.map(row => ({
+        id: row.id,
+        content_text: row.content_text,
+        content_type: row.content_type,
+        source_platform: row.source_platform,
+        original_url: row.original_url,
+        original_author: row.original_author,
+        content_image_url: row.content_image_url,
+        content_video_url: row.content_video_url,
+        scraped_at: row.scraped_at,
+        is_posted: row.is_posted,
+        is_approved: row.is_approved,
+        admin_notes: row.admin_notes,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        confidence_score: row.confidence_score,
+        content_status: row.content_status,
+        reviewed_at: row.reviewed_at,
+        reviewed_by: row.reviewed_by,
+        rejection_reason: row.rejection_reason
+      }))
 
       try {
         await logToDatabase(
@@ -306,36 +331,51 @@ export async function GET(request: NextRequest) {
           { 
             status, 
             platform, 
-            count: data?.length || 0,
+            count: content.length,
             total,
-            user: username 
+            user: user.username 
           }
         )
       } catch (logError) {
-        console.warn('⚠️ [AdminQueue] Logging failed:', logError)
+        console.warn('⚠️ [AdminQueueAPI] Logging failed:', logError)
         // Don't fail the request just because logging failed
       }
 
+      console.log(`[AdminQueueAPI] Successfully returning ${content.length} content items`)
       return NextResponse.json({
-        content: data || [],
+        success: true,
+        content,
         pagination: {
-          total,
+          page,
           limit,
-          offset,
-          hasMore: offset + limit < total
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasMore: actualOffset + content.length < total
         },
-        debug: {
-          querySuccessful: true,
-          itemCount: data?.length || 0,
-          totalCount: total
-        }
+        filter: { status, platform }
       })
       
-    } catch (queryError) {
-      console.error('❌ [AdminQueue] Query execution error:', queryError)
-      return NextResponse.json({
-        error: 'Query execution failed',
-        details: queryError instanceof Error ? queryError.message : String(queryError)
+    } catch (err) {
+      console.error('[AdminQueueAPI] Database error:', err)
+      console.error('[AdminQueueAPI] Error details:', {
+        name: err?.name,
+        message: err?.message,
+        code: err?.code,
+        stack: err?.stack
+      })
+      
+      // Check if this is a table/column missing error
+      if (err?.message?.includes('relation') && err?.message?.includes('does not exist')) {
+        console.error('[AdminQueueAPI] Schema mismatch detected - table/column missing')
+        return NextResponse.json({ 
+          error: 'Database schema mismatch', 
+          details: 'Missing table or column in database'
+        }, { status: 500 })
+      }
+      
+      return NextResponse.json({ 
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? err?.message : undefined
       }, { status: 500 })
     }
 
