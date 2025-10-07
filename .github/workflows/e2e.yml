@@ -85,6 +85,20 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: nextjs-build
+          path: .
+
+      - name: Verify build artifacts
+        run: |
+          echo "🧩 Checking for .next directory..."
+          if [ ! -d ".next" ]; then
+            echo "❌ ERROR: .next directory not found. Build artifacts missing."
+            echo "📁 Current directory contents:"
+            ls -la
+            exit 1
+          fi
+          echo "✅ Found .next build directory."
+          echo "📊 .next directory size:"
+          du -sh .next
 
       - name: Restore dependencies
         run: |
@@ -127,13 +141,39 @@ jobs:
           npm run db:init || echo "Database init completed"
           npm run admin:create || echo "Admin user creation completed"
 
+      - name: Verify server readiness
+        run: |
+          echo "🔍 Final pre-start verification..."
+          if [ ! -d ".next" ]; then
+            echo "❌ CRITICAL: .next directory missing before server start!"
+            echo "📦 Attempting emergency build..."
+            npm run build
+          fi
+          echo "✅ Server prerequisites met."
+
       - name: Start Next.js server
         run: |
+          echo "🚀 Starting Next.js production server..."
           npm start &
+          SERVER_PID=$!
+          echo "Server started with PID: $SERVER_PID"
           sleep 10  # Give server time to start
+          
+          # Wait for server with timeout
+          TIMEOUT=60
+          COUNTER=0
           until curl -f http://127.0.0.1:3000/api/health 2>/dev/null; do
             sleep 2
-            echo "Waiting for server..."
+            COUNTER=$((COUNTER + 2))
+            echo "⏳ Waiting for server... ($COUNTER/$TIMEOUT seconds)"
+            if [ $COUNTER -ge $TIMEOUT ]; then
+              echo "❌ Server failed to start within $TIMEOUT seconds"
+              echo "📋 Server process status:"
+              ps aux | grep -E "next|node" | head -5
+              echo "📋 Last 50 lines of npm debug log (if exists):"
+              [ -f npm-debug.log ] && tail -50 npm-debug.log
+              exit 1
+            fi
           done
           echo "✅ Server is ready!"
         
@@ -176,6 +216,20 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: nextjs-build
+          path: .
+
+      - name: Verify build artifacts
+        run: |
+          echo "🧩 Checking for .next directory..."
+          if [ ! -d ".next" ]; then
+            echo "❌ ERROR: .next directory not found. Build artifacts missing."
+            echo "📁 Current directory contents:"
+            ls -la
+            exit 1
+          fi
+          echo "✅ Found .next build directory."
+          echo "📊 .next directory size:"
+          du -sh .next
 
       - name: Restore dependencies
         run: |
@@ -218,13 +272,39 @@ jobs:
           npm run db:init || echo "Database init completed"
           npm run admin:create || echo "Admin user creation completed"
 
+      - name: Verify server readiness
+        run: |
+          echo "🔍 Final pre-start verification..."
+          if [ ! -d ".next" ]; then
+            echo "❌ CRITICAL: .next directory missing before server start!"
+            echo "📦 Attempting emergency build..."
+            npm run build
+          fi
+          echo "✅ Server prerequisites met."
+
       - name: Start Next.js server
         run: |
+          echo "🚀 Starting Next.js production server..."
           npm start &
+          SERVER_PID=$!
+          echo "Server started with PID: $SERVER_PID"
           sleep 10  # Give server time to start
+          
+          # Wait for server with timeout
+          TIMEOUT=60
+          COUNTER=0
           until curl -f http://127.0.0.1:3000/api/health 2>/dev/null; do
             sleep 2
-            echo "Waiting for server..."
+            COUNTER=$((COUNTER + 2))
+            echo "⏳ Waiting for server... ($COUNTER/$TIMEOUT seconds)"
+            if [ $COUNTER -ge $TIMEOUT ]; then
+              echo "❌ Server failed to start within $TIMEOUT seconds"
+              echo "📋 Server process status:"
+              ps aux | grep -E "next|node" | head -5
+              echo "📋 Last 50 lines of npm debug log (if exists):"
+              [ -f npm-debug.log ] && tail -50 npm-debug.log
+              exit 1
+            fi
           done
           echo "✅ Server is ready!"
         
