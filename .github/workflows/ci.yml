@@ -101,7 +101,7 @@ jobs:
         run: |
           echo "🔍 CI Environment Check:"
           echo "NODE_ENV: $NODE_ENV"
-          echo "DATABASE_URL set: $([ -n '${{ secrets.DATABASE_URL }}' ] && echo 'true' || echo 'false')"
+          echo "DATABASE_URL set: $([ -n \"${{ secrets.DATABASE_URL }}\" ] && echo 'true' || echo 'false')"
           echo "POSTGRES_URL set: $([ -n '$POSTGRES_URL' ] && echo 'true' || echo 'false')"
           echo ""
           echo "🔧 Running comprehensive diagnostic..."
