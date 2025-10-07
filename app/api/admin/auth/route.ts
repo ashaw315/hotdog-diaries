@@ -12,9 +12,91 @@ import {
 /**
  * Consolidated Authentication Endpoint
  * 
+ * GET /api/admin/auth - Verify authentication (token/cookie)
  * POST /api/admin/auth - Login
  * DELETE /api/admin/auth - Logout
  */
+
+async function verifyHandler(request: NextRequest): Promise<NextResponse> {
+  try {
+    console.log(`[AuthAPI] Verifying token via GET /auth at ${new Date().toISOString()}`)
+    
+    // Extract token from Authorization header or cookies
+    const authHeader = request.headers.get('authorization')
+    let token = authHeader?.replace('Bearer ', '')
+    
+    // If no authorization header, try to get from cookies (primary method)
+    if (!token) {
+      token = EdgeAuthUtils.getAuthTokenFromRequest(request)
+      console.log(`[AuthAPI] Token from cookies: ${token ? 'present' : 'not found'}`)
+    } else {
+      console.log(`[AuthAPI] Token from Authorization header: present`)
+    }
+
+    if (!token) {
+      console.log(`[AuthAPI] No authentication token found`)
+      return NextResponse.json({
+        success: false,
+        message: "Not authenticated"
+      }, { status: 401 })
+    }
+
+    // Verify the JWT token
+    try {
+      const decoded = AuthService.verifyJWT(token)
+      console.log(`[AuthAPI] Token verified for user: ${decoded.username}`)
+      
+      // Get fresh user data from database
+      const user = await AdminService.getAdminById(decoded.userId)
+      
+      if (!user) {
+        console.log(`[AuthAPI] User not found in database: ${decoded.userId}`)
+        return NextResponse.json({
+          success: false,
+          message: "User not found"
+        }, { status: 401 })
+      }
+
+      if (!user.is_active) {
+        console.log(`[AuthAPI] User account is not active: ${user.username}`)
+        return NextResponse.json({
+          success: false,
+          message: "Account disabled"
+        }, { status: 401 })
+      }
+
+      console.log(`[AuthAPI] Authentication verification successful for: ${user.username}`)
+      
+      return NextResponse.json({
+        success: true,
+        data: {
+          valid: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            lastLogin: user.last_login_at
+          }
+        },
+        message: "Token verified"
+      })
+
+    } catch (tokenError) {
+      console.log(`[AuthAPI] Token verification failed: ${tokenError.message}`)
+      return NextResponse.json({
+        success: false,
+        message: "Invalid or expired token"
+      }, { status: 401 })
+    }
+
+  } catch (error) {
+    console.error(`[AuthAPI] Token verification error:`, error)
+    return NextResponse.json({
+      success: false,
+      message: "Authentication verification failed"
+    }, { status: 500 })
+  }
+}
 
 async function loginHandler(request: NextRequest): Promise<NextResponse> {
   try {
@@ -110,6 +192,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     validateRequestMethod(request, ['POST'])
     return await loginHandler(request)
+  } catch (error) {
+    return await handleApiError(error, request, '/api/admin/auth')
+  }
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  try {
+    validateRequestMethod(request, ['GET'])
+    return await verifyHandler(request)
   } catch (error) {
     return await handleApiError(error, request, '/api/admin/auth')
   }
