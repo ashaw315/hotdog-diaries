@@ -1,0 +1,237 @@
+# 🌭 Hotdog Diaries — Playwright E2E Workflow
+# Runs full end-to-end tests on Next.js app with caching & automatic recovery
+
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_ENV: test
+  CI: true
+  DISABLE_EXTERNAL_INTEGRATIONS: true
+  ADMIN_USERNAME: admin
+  ADMIN_PASSWORD: StrongAdminPass123!
+  JWT_SECRET: test-jwt-secret-for-e2e-testing-only-do-not-use-in-production
+  DATABASE_URL_SQLITE: ./ci-test.db
+  PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+
+jobs:
+  build-app:
+    name: Build Application
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialize test database
+        run: |
+          # Create minimal test database and admin user
+          npm run db:init || echo "Database init completed"
+          npm run admin:create || echo "Admin user creation completed"
+
+      - name: Build Next.js application
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: |
+            .next/
+            node_modules/
+            package.json
+            package-lock.json
+          retention-days: 1
+
+  test-chromium:
+    name: E2E Tests (Chromium)
+    runs-on: ubuntu-latest
+    needs: build-app
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: |
+          npx playwright install --with-deps chromium
+          # Fallback: reinstall if browsers missing
+          if ! npx playwright install-deps chromium 2>/dev/null; then
+            echo "Reinstalling Playwright browsers due to cache miss"
+            npx playwright install --with-deps chromium --force
+          fi
+
+      - name: Initialize test environment
+        run: |
+          npm run db:init || echo "Database init completed"
+          npm run admin:create || echo "Admin user creation completed"
+
+      - name: Start Next.js server
+        run: |
+          npm start &
+          sleep 10  # Give server time to start
+          until curl -f http://127.0.0.1:3000/api/health 2>/dev/null; do
+            sleep 2
+            echo "Waiting for server..."
+          done
+          echo "✅ Server is ready!"
+        
+      - name: Run Playwright tests (Chromium)
+        run: npx playwright test --project=chromium --reporter=github --retries=1
+        
+      - name: Upload Playwright report (Chromium)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-chromium
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test results (Chromium)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-chromium
+          path: test-results/
+          retention-days: 7
+
+  test-firefox:
+    name: E2E Tests (Firefox)
+    runs-on: ubuntu-latest
+    needs: build-app
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: |
+          npx playwright install --with-deps firefox
+          # Fallback: reinstall if browsers missing
+          if ! npx playwright install-deps firefox 2>/dev/null; then
+            echo "Reinstalling Playwright browsers due to cache miss"
+            npx playwright install --with-deps firefox --force
+          fi
+
+      - name: Initialize test environment
+        run: |
+          npm run db:init || echo "Database init completed"
+          npm run admin:create || echo "Admin user creation completed"
+
+      - name: Start Next.js server
+        run: |
+          npm start &
+          sleep 10  # Give server time to start
+          until curl -f http://127.0.0.1:3000/api/health 2>/dev/null; do
+            sleep 2
+            echo "Waiting for server..."
+          done
+          echo "✅ Server is ready!"
+        
+      - name: Run Playwright tests (Firefox)
+        run: npx playwright test --project=firefox --reporter=github --retries=1
+        
+      - name: Upload Playwright report (Firefox)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-firefox
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test results (Firefox)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-firefox
+          path: test-results/
+          retention-days: 7
+
+  # Summary job that provides overall status
+  e2e-summary:
+    name: E2E Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-chromium, test-firefox]
+    if: always()
+    timeout-minutes: 2
+    
+    steps:
+      - name: Check test results
+        run: |
+          echo "🎭 Playwright E2E Test Results Summary"
+          echo "======================================"
+          echo "Chromium Tests: ${{ needs.test-chromium.result }}"
+          echo "Firefox Tests: ${{ needs.test-firefox.result }}"
+          
+          if [[ "${{ needs.test-chromium.result }}" == "success" && "${{ needs.test-firefox.result }}" == "success" ]]; then
+            echo "✅ All E2E tests passed!"
+            exit 0
+          elif [[ "${{ needs.test-chromium.result }}" == "failure" || "${{ needs.test-firefox.result }}" == "failure" ]]; then
+            echo "❌ Some E2E tests failed. Check individual job logs."
+            exit 1
+          else
+            echo "⚠️ E2E tests completed with unexpected status."
+            exit 1
+          fi
