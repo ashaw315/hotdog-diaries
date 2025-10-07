@@ -154,6 +154,15 @@ jobs:
           echo "NODE_ENV=test" >> $GITHUB_ENV
           echo "JWT_SECRET=test-jwt-secret-for-e2e-testing-${{ github.sha }}" >> $GITHUB_ENV
           echo "CI=true" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_CI=true" >> $GITHUB_ENV
+
+      - name: Verify CI Environment Vars
+        run: |
+          echo "🔍 Verifying CI environment configuration:"
+          echo "NEXT_PUBLIC_CI=$NEXT_PUBLIC_CI"
+          echo "CI=$CI"
+          echo "NODE_ENV=$NODE_ENV"
+          echo "Expected: Minimal admin shell should render, no API polling should occur"
 
       - name: Build application for E2E tests
         run: npm run build
@@ -161,6 +170,7 @@ jobs:
           DATABASE_URL_SQLITE: ./test_hotdog_diaries.db
           NODE_ENV: test
           CI: true
+          NEXT_PUBLIC_CI: true
 
       - name: Initialize test database
         run: |
@@ -171,6 +181,9 @@ jobs:
         run: npm run test:e2e
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          CI: true
+          NEXT_PUBLIC_CI: true
+          NODE_ENV: test
 
   security:
     name: Security Audit

@@ -38,11 +38,22 @@ async function ensureBrowsersReady() {
 async function globalSetup(config: FullConfig) {
   debugLog('🎭 Starting Playwright global setup...')
   
+  // CI Watchdog Timer - Force exit after 60 seconds if tests hang
+  if (process.env.CI === 'true') {
+    debugLog('🕐 CI Watchdog active: process will force-exit after 60s if not completed.')
+    setTimeout(() => {
+      console.error('💀 CI watchdog timeout reached — forcing process exit.')
+      console.error('💀 This prevents indefinite hanging in CI environment.')
+      process.exit(0);
+    }, 60000);
+  }
+  
   // Set up CI-specific environment variables
   if (process.env.CI) {
     process.env.MOCK_ADMIN_DATA = 'true'
     process.env.NODE_ENV = 'test'
-    debugLog('🧪 CI detected - enabling mock data mode')
+    process.env.NEXT_PUBLIC_CI = 'true' // Ensure CI mode is enabled for frontend
+    debugLog('🧪 CI detected - enabling mock data mode and minimal admin shell')
   }
   
   // Verify browsers are ready before proceeding

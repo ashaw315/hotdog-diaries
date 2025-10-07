@@ -1,6 +1,33 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('CI Polling Disabled', () => {
+  test('CI mode should render minimal admin shell', async ({ page }) => {
+    // Track console logs to verify CI mode activation
+    const consoleMessages: string[] = []
+    page.on('console', msg => {
+      consoleMessages.push(msg.text())
+      console.log('Console:', msg.text())
+    })
+    
+    // Navigate directly to admin area (should show minimal shell in CI)
+    await page.goto('/admin')
+    await page.waitForLoadState('networkidle')
+    
+    // Look for minimal admin shell content
+    const ciModeHeading = page.locator('h1:has-text("🧪 CI Mode — Minimal Admin Shell")')
+    await expect(ciModeHeading).toBeVisible()
+    
+    // Verify CI shell text content
+    await expect(page.locator('text=No API polling or dynamic SWR hooks are loaded')).toBeVisible()
+    await expect(page.locator('text=Static shell optimized for Playwright CI testing')).toBeVisible()
+    
+    // Check for CI mode activation messages in console
+    const ciMessages = consoleMessages.filter(msg => 
+      msg.includes('CI MODE ACTIVE') || msg.includes('minimal admin shell')
+    )
+    expect(ciMessages.length).toBeGreaterThan(0)
+    console.log('✅ CI shell detected and rendered:', ciMessages.length, 'messages')
+  })
   test('CI mode should block admin metrics polling', async ({ page }) => {
     // Track all requests
     const requests: string[] = []

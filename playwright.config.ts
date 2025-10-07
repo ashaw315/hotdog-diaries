@@ -32,9 +32,11 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run start:test',
-    url: HEALTH_URL,
+    url: process.env.NEXT_PUBLIC_CI === 'true'
+      ? `${BASE_URL}`
+      : HEALTH_URL,
     reuseExistingServer: true,
-    timeout: 120000,
+    timeout: 60000, // Reduced timeout to match CI watchdog
     stdout: 'pipe',
     stderr: 'pipe',
     env: { 
