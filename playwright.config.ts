@@ -37,6 +37,11 @@ export default defineConfig({
     timeout: 120000,
     stdout: 'pipe',
     stderr: 'pipe',
+    env: { 
+      CI: 'true', 
+      DISABLE_HEALTH_LOOPS: 'true',
+      NODE_ENV: 'test'
+    },
   },
 
   projects: [

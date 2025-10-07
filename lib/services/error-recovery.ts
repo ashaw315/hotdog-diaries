@@ -544,6 +544,12 @@ export class ErrorRecoveryService {
   }
 
   private startRecoveryMonitoring(): void {
+    // Skip background monitoring loops in CI/test environments
+    if (process.env.CI || process.env.DISABLE_HEALTH_LOOPS === 'true') {
+      console.log('🧪 [CI] Skipping background health checks and monitoring loops')
+      return
+    }
+
     // Monitor system health and trigger recovery actions as needed
     setInterval(async () => {
       try {

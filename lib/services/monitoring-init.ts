@@ -261,8 +261,9 @@ export class MonitoringInitializationService {
 // Export singleton instance
 export const monitoringInit = new MonitoringInitializationService()
 
-// Auto-initialize in production environments
-if (process.env.NODE_ENV === 'production' || process.env.AUTO_INIT_MONITORING === 'true') {
+// Auto-initialize in production environments (but skip in CI/test environments)
+if ((process.env.NODE_ENV === 'production' || process.env.AUTO_INIT_MONITORING === 'true') && 
+    !process.env.CI && process.env.DISABLE_HEALTH_LOOPS !== 'true') {
   // Initialize after a short delay to allow other services to start
   setTimeout(async () => {
     try {
@@ -271,4 +272,6 @@ if (process.env.NODE_ENV === 'production' || process.env.AUTO_INIT_MONITORING ==
       console.error('[MonitoringInit] Auto-initialization failed:', error)
     }
   }, 5000) // 5 second delay
+} else if (process.env.CI || process.env.DISABLE_HEALTH_LOOPS === 'true') {
+  console.log('🧪 [CI] Skipping background health checks and monitoring loops')
 }

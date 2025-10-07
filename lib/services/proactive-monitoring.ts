@@ -80,6 +80,13 @@ export class ProactiveMonitoringService {
       return
     }
 
+    // Skip background monitoring loops in CI/test environments
+    if (process.env.CI || process.env.DISABLE_HEALTH_LOOPS === 'true') {
+      console.log('🧪 [CI] Skipping background health checks and monitoring loops')
+      await loggingService.logInfo('ProactiveMonitoringService', 'Proactive monitoring disabled in CI/test environment')
+      return
+    }
+
     this.isActive = true
     
     await loggingService.logInfo('ProactiveMonitoringService', 'Starting proactive monitoring')
