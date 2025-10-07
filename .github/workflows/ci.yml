@@ -37,6 +37,12 @@ jobs:
       - name: Run unit tests with coverage
         run: npm run test:coverage
 
+      - name: Verify API Error Handling
+        run: |
+          echo "🔍 Verifying API Route Error Handling..."
+          npm test -- __tests__/api/errorHandling.test.ts --verbose --silent=false
+          echo "✅ API error handling verification completed"
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         if: success()
