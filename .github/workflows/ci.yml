@@ -313,7 +313,7 @@ jobs:
           echo "**Current Errors**: $(npm run type-check:strict 2>&1 | grep -c 'error TS' || echo 'Error counting failed')" >> ts-error-report.md
           echo "" >> ts-error-report.md
           echo "### Top Error Categories:" >> ts-error-report.md
-          npm run type-check:strict 2>&1 | grep "error TS" | sed 's/.*error TS\([0-9]*\).*/TS\1/' | sort | uniq -c | sort -rn | head -5 >> ts-error-report.md || echo "Error analysis failed" >> ts-error-report.md
+          npm run type-check:strict 2>&1 | grep "error TS" | sed 's/.*error TS\\([0-9]*\\).*/TS\\1/' | sort | uniq -c | sort -rn | head -5 >> ts-error-report.md || echo "Error analysis failed" >> ts-error-report.md
 
       - name: Upload TypeScript Error Report
         uses: actions/upload-artifact@v4
