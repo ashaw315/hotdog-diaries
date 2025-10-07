@@ -14,7 +14,7 @@ test.describe('Content Approval Workflow', () => {
         await page.goto(url)
         
         // Check if this page has content management features
-        const hasContentFeatures = await page.locator('text=/approve|reject|content.*queue|pending/i').isVisible({ timeout: 3000 })
+        const hasContentFeatures = await page.getByText(/approve|reject|content.*queue|pending/i).isVisible({ timeout: 3000 })
         
         if (hasContentFeatures) {
           foundContentPage = true
@@ -29,11 +29,13 @@ test.describe('Content Approval Workflow', () => {
     if (!foundContentPage) {
       // Fallback to admin dashboard
       await page.goto('/admin')
-      await expect(page.locator('text=/content|queue|manage/i')).toBeVisible()
+      await expect(page.getByText(/content|queue|manage/i)).toBeVisible()
     }
     
     // Should see content items or empty state
-    const hasContent = await page.locator('text=/approve|reject|pending/i, table, .content-item').isVisible({ timeout: 5000 })
+    const hasContent = await page.getByText(/approve|reject|pending/i).or(
+      page.locator('table, .content-item')
+    ).isVisible({ timeout: 5000 })
     
     if (hasContent) {
       console.log('✅ Content queue loaded with items')
@@ -53,7 +55,9 @@ test.describe('Content Approval Workflow', () => {
         await page.goto(url)
         
         // Look for approve buttons
-        const approveButton = page.locator('button:has-text(/approve/i), [data-action="approve"]').first()
+        const approveButton = page.getByRole('button', { name: /approve/i }).or(
+          page.locator('[data-action="approve"]')
+        ).first()
         
         if (await approveButton.isVisible({ timeout: 3000 })) {
           console.log(`✅ Found approve button at ${url}`)
@@ -62,7 +66,7 @@ test.describe('Content Approval Workflow', () => {
           await approveButton.click()
           
           // Look for success message or state change
-          await expect(page.locator('text=/approved|success/i')).toBeVisible({ timeout: 5000 })
+          await expect(page.getByText(/approved|success/i)).toBeVisible({ timeout: 5000 })
           console.log('✅ Content approval successful')
           return
         }
@@ -85,7 +89,9 @@ test.describe('Content Approval Workflow', () => {
         await page.goto(url)
         
         // Look for reject buttons
-        const rejectButton = page.locator('button:has-text(/reject/i), [data-action="reject"]').first()
+        const rejectButton = page.getByRole('button', { name: /reject/i }).or(
+          page.locator('[data-action="reject"]')
+        ).first()
         
         if (await rejectButton.isVisible({ timeout: 3000 })) {
           console.log(`✅ Found reject button at ${url}`)
@@ -94,7 +100,7 @@ test.describe('Content Approval Workflow', () => {
           await rejectButton.click()
           
           // Look for success message or state change
-          await expect(page.locator('text=/rejected|success/i')).toBeVisible({ timeout: 5000 })
+          await expect(page.getByText(/rejected|success/i)).toBeVisible({ timeout: 5000 })
           console.log('✅ Content rejection successful')
           return
         }
@@ -129,7 +135,7 @@ test.describe('Content Approval Workflow', () => {
           await page.waitForTimeout(1000)
           
           // Look for detail elements
-          const hasDetails = await page.locator('text=/content.*text|source.*platform|confidence|created/i').isVisible()
+          const hasDetails = await page.getByText(/content.*text|source.*platform|confidence|created/i).isVisible()
           
           if (hasDetails) {
             console.log('✅ Content details displayed')
@@ -154,7 +160,9 @@ test.describe('Content Approval Workflow', () => {
         await page.goto(url)
         
         // Look for filter controls
-        const filterControls = page.locator('select, button:has-text(/filter/i), [data-filter]')
+        const filterControls = page.locator('select, [data-filter]').or(
+          page.getByRole('button', { name: /filter/i })
+        )
         const filterCount = await filterControls.count()
         
         if (filterCount > 0) {

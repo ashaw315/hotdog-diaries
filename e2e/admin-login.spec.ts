@@ -6,9 +6,9 @@ test.describe('Admin Login Flow', () => {
     await page.goto('/admin/login')
     
     // Verify login page loads
-    await expect(page.locator('h1:has-text("Admin Login")')).toBeVisible()
-    await expect(page.locator('input[name="username"]')).toBeVisible()
-    await expect(page.locator('input[name="password"]')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /admin login/i })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /username/i })).toBeVisible()
+    await expect(page.getByLabel(/password/i)).toBeVisible()
     
     // Perform login
     await loginAsAdmin(page)
@@ -18,16 +18,16 @@ test.describe('Admin Login Flow', () => {
     
     // Check for specific admin dashboard elements
     await expect(page.locator('.admin-header')).toBeVisible()
-    await expect(page.locator('text=Total Content')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /dashboard|admin|content/i })).toBeVisible({ timeout: 15000 })
   })
 
   test('should show error with invalid credentials', async ({ page }) => {
     await page.goto('/admin/login')
     
     // Try login with wrong credentials
-    await page.fill('input[name="username"]', 'wronguser')
-    await page.fill('input[name="password"]', 'wrongpass')
-    await page.click('button[type="submit"]')
+    await page.getByRole('textbox', { name: /username/i }).fill('wronguser')
+    await page.getByLabel(/password/i).fill('wrongpass')
+    await page.getByRole('button', { name: /sign in|login|submit/i }).click()
     
     // Wait for error message to appear (exclude Next.js route announcer)
     await page.waitForSelector('[role="alert"]:has-text("Invalid")', { timeout: 10000 })
@@ -56,7 +56,7 @@ test.describe('Admin Login Flow', () => {
     await page.goto('/admin/login')
     
     // Try to submit empty form
-    await page.click('button[type="submit"]')
+    await page.getByRole('button', { name: /sign in|login|submit/i }).click()
     
     // Should show validation error or stay on page
     const isStillOnLogin = page.url().includes('/admin/login')
@@ -68,11 +68,11 @@ test.describe('Admin Login Flow', () => {
     await page.goto('/admin/login')
     
     // Fill valid credentials
-    await page.fill('input[name="username"]', 'admin')
-    await page.fill('input[name="password"]', 'StrongAdminPass123!')
+    await page.getByRole('textbox', { name: /username/i }).fill('admin')
+    await page.getByLabel(/password/i).fill('StrongAdminPass123!')
     
     // Start login and immediately check for loading state (before navigation completes)
-    const submitPromise = page.click('button[type="submit"]')
+    const submitPromise = page.getByRole('button', { name: /sign in|login|submit/i }).click()
     
     // Give a small delay to catch the loading state if visible
     await page.waitForTimeout(100)

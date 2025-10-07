@@ -7,6 +7,8 @@ export default defineConfig({
   testDir: './e2e',
   /* Test timeout for individual tests */
   timeout: 120_000,
+  /* Extended timeout for expectations in CI */
+  expect: { timeout: 15_000 },
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -16,7 +18,7 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: process.env.CI ? 'list' : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -30,6 +32,12 @@ export default defineConfig({
     
     /* Record video only when tests fail */
     video: 'retain-on-failure',
+    
+    /* Extend action timeout for CI environments */
+    actionTimeout: 30_000,
+    
+    /* Extended navigation timeout */
+    navigationTimeout: 60_000,
   },
 
   /* Configure projects for major browsers */

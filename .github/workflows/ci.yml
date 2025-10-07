@@ -110,8 +110,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox
+      - name: Install Playwright browsers and dependencies
+        run: |
+          echo "🎭 Installing Playwright browsers..."
+          npx playwright install --with-deps
+          echo "✅ Playwright browsers installed successfully"
 
       - name: Create test environment
         run: |
@@ -120,6 +123,8 @@ jobs:
           echo "JWT_SECRET=test-jwt-secret-for-e2e-testing-${{ github.sha }}" >> $GITHUB_ENV
           echo "ADMIN_USERNAME=admin" >> $GITHUB_ENV
           echo "ADMIN_PASSWORD=StrongAdminPass123!" >> $GITHUB_ENV
+          echo "ADMIN_EMAIL=admin@hotdogdiaries.com" >> $GITHUB_ENV
+          echo "ADMIN_FULL_NAME=Test Administrator" >> $GITHUB_ENV
           echo "CI=true" >> $GITHUB_ENV
 
       - name: Build application for E2E tests

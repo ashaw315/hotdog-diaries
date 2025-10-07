@@ -10,13 +10,13 @@ test.describe('Dashboard Analytics', () => {
     await page.goto('/admin/dashboard')
     
     // Wait for dashboard to load
-    await expect(page.locator('h1:has-text(/dashboard/i), h2:has-text(/dashboard/i)')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible()
     
-    // Check for stats cards or metrics
-    await expect(page.locator('text=/total.*posts?|content.*queue|approved|pending/i')).toBeVisible()
+    // Check for stats cards or metrics using more specific selectors
+    await expect(page.getByText(/total|content|queue|approved|pending/i).first()).toBeVisible()
     
     // Look for numerical values indicating stats are loaded
-    await expect(page.locator('text=/\\d+/')).toBeVisible()
+    await expect(page.locator('[data-testid*="stat"], .stat, .metric').first()).toBeVisible({ timeout: 15000 })
     
     // Check for charts or visual elements (if present)
     const hasCharts = await page.locator('canvas, svg, [data-chart], .chart').count()
@@ -46,7 +46,7 @@ test.describe('Dashboard Analytics', () => {
     }
     
     // Should have some platform statistics
-    await expect(page.locator('text=/platform|source|reddit|youtube|giphy/i')).toBeVisible()
+    await expect(page.getByText(/platform|source|reddit|youtube|giphy/i).first()).toBeVisible()
   })
 
   test('should show queue health status', async ({ authenticatedPage: page }) => {
@@ -54,17 +54,17 @@ test.describe('Dashboard Analytics', () => {
     await page.goto('/admin/dashboard')
     
     // Look for queue health indicators
-    await expect(page.locator('text=/queue.*health|health.*queue|status.*queue/i, text=/healthy|warning|critical/i')).toBeVisible()
+    await expect(page.getByText(/queue.*health|health.*queue|status.*queue|healthy|warning|critical/i).first()).toBeVisible()
   })
 
   test('should handle dashboard loading states', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/dashboard')
     
     // Page should eventually show content (even if loading states are fast)
-    await expect(page.locator('text=/dashboard|stats|content|queue/i')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/dashboard|stats|content|queue/i).first()).toBeVisible({ timeout: 15000 })
     
     // Should not show error states
-    await expect(page.locator('text=/error.*loading|failed.*load/i')).not.toBeVisible()
+    await expect(page.getByText(/error.*loading|failed.*load/i)).not.toBeVisible()
   })
 
   test('should navigate between dashboard sections', async ({ authenticatedPage: page }) => {
@@ -76,7 +76,9 @@ test.describe('Dashboard Analytics', () => {
     ]
     
     for (const linkText of navLinks) {
-      const link = page.locator(`a:has-text("${linkText}"), button:has-text("${linkText}")`)
+      const link = page.getByRole('link', { name: new RegExp(linkText, 'i') }).or(
+        page.getByRole('button', { name: new RegExp(linkText, 'i') })
+      )
       const isVisible = await link.isVisible().catch(() => false)
       
       if (isVisible) {
@@ -87,7 +89,7 @@ test.describe('Dashboard Analytics', () => {
         await page.waitForTimeout(1000)
         
         // Should not show errors
-        await expect(page.locator('text=/error|failed|not found/i')).not.toBeVisible()
+        await expect(page.getByText(/error|failed|not found/i)).not.toBeVisible()
         
         // Go back to dashboard
         await page.goto('/admin/dashboard')

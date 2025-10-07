@@ -5,10 +5,10 @@ test.describe('Basic Smoke Tests', () => {
     await page.goto('/admin/login')
     
     // Check that login page loads
-    await expect(page.locator('h1:has-text("Admin Login")')).toBeVisible()
-    await expect(page.locator('input[name="username"]')).toBeVisible()
-    await expect(page.locator('input[name="password"]')).toBeVisible()
-    await expect(page.locator('button[type="submit"]')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /admin login/i })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /username/i })).toBeVisible()
+    await expect(page.getByLabel(/password/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: /sign in|login|submit/i })).toBeVisible()
     
     console.log('✅ Login page loads correctly')
   })
@@ -17,11 +17,11 @@ test.describe('Basic Smoke Tests', () => {
     await page.goto('/admin/login')
     
     // Fill in test credentials
-    await page.fill('input[name="username"]', 'admin')
-    await page.fill('input[name="password"]', 'StrongAdminPass123!')
+    await page.getByRole('textbox', { name: /username/i }).fill('admin')
+    await page.getByLabel(/password/i).fill('StrongAdminPass123!')
     
     // Submit the form
-    await page.click('button[type="submit"]')
+    await page.getByRole('button', { name: /sign in|login|submit/i }).click()
     
     // Wait a moment for response
     await page.waitForTimeout(3000)
@@ -65,14 +65,14 @@ test.describe('Basic Smoke Tests', () => {
     await page.waitForTimeout(500)
     
     // Should still show login form
-    await expect(page.locator('input[name="username"]')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /username/i })).toBeVisible()
     
     // Test desktop viewport
     await page.setViewportSize({ width: 1200, height: 800 })
     await page.waitForTimeout(500)
     
     // Should still show login form
-    await expect(page.locator('input[name="username"]')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /username/i })).toBeVisible()
     
     console.log('✅ Responsive design working')
   })

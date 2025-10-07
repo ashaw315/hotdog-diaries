@@ -15,11 +15,11 @@ export async function loginAsAdmin(page: Page) {
   await page.goto('/admin/login')
   
   // Wait for the form to be visible
-  await expect(page.locator('h1:has-text("Admin Login")')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /admin login/i })).toBeVisible()
   
-  // Fill in credentials using the correct selectors
-  await page.fill('input[name="username"]', ADMIN_CREDENTIALS.username)
-  await page.fill('input[name="password"]', ADMIN_CREDENTIALS.password)
+  // Fill in credentials using role-based selectors
+  await page.getByRole('textbox', { name: /username/i }).fill(ADMIN_CREDENTIALS.username)
+  await page.getByLabel(/password/i).fill(ADMIN_CREDENTIALS.password)
   
   // Click submit and wait for navigation away from login page
   await Promise.all([
@@ -28,8 +28,8 @@ export async function loginAsAdmin(page: Page) {
       const url = window.location.href
       return url.includes('/admin') && !url.includes('/admin/login')
     }, { timeout: 30000 }),
-    // Click the submit button  
-    page.click('button[type="submit"]')
+    // Click the submit button using role selector
+    page.getByRole('button', { name: /sign in|login|submit/i }).click()
   ])
   
   // Verify we successfully navigated away from login page
@@ -49,8 +49,8 @@ export async function loginAsAdmin(page: Page) {
   // Verify we're logged in by checking for specific admin header (more reliable)
   await expect(page.locator('.admin-header')).toBeVisible({ timeout: 15000 })
   
-  // Also verify we can see the navigation
-  await expect(page.locator('a[href="/admin"]:has-text("Dashboard")')).toBeVisible({ timeout: 5000 })
+  // Also verify we can see admin navigation
+  await expect(page.getByRole('link', { name: /dashboard|admin/i })).toBeVisible({ timeout: 5000 })
   
   // Wait for dashboard content to load (not just loading state)
   await page.waitForFunction(() => {
@@ -68,8 +68,8 @@ export async function loginAsAdmin(page: Page) {
 
 // Helper function to logout
 export async function logout(page: Page) {
-  // Check if logout button exists and click it
-  const logoutBtn = page.locator('button:has-text("logout"), a:has-text("logout")')
+  // Check if logout button exists and click it using role-based selector
+  const logoutBtn = page.getByRole('button', { name: /logout|sign out/i }).or(page.getByRole('link', { name: /logout|sign out/i }))
   if (await logoutBtn.isVisible()) {
     await logoutBtn.click()
     await page.waitForURL('/admin/login')

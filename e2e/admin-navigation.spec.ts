@@ -22,7 +22,7 @@ test.describe('Admin Navigation and Core Flows', () => {
         await page.waitForTimeout(1000)
         
         // Should not show 404 or major errors
-        const hasError = await page.locator('text=/not found|404|error.*loading/i').isVisible()
+        const hasError = await page.getByText(/not found|404|error.*loading/i).isVisible()
         expect(hasError).toBe(false)
         
         // Should show some relevant content
@@ -49,7 +49,7 @@ test.describe('Admin Navigation and Core Flows', () => {
       expect(currentUrl).not.toContain('/admin/login')
       
       // Should not show "unauthorized" or "login required" messages
-      await expect(page.locator('text=/unauthorized|login.*required|access.*denied/i')).not.toBeVisible()
+      await expect(page.getByText(/unauthorized|login.*required|access.*denied/i)).not.toBeVisible()
       
       console.log(`✅ Authentication maintained on ${adminPage}`)
     }
@@ -106,7 +106,7 @@ test.describe('Admin Navigation and Core Flows', () => {
     
     if (!foundNav) {
       // At minimum, should have some admin-related text
-      await expect(page.locator('text=/admin|dashboard|content|hotdog/i')).toBeVisible()
+      await expect(page.getByText(/admin|dashboard|content|hotdog/i).first()).toBeVisible()
       console.log('✅ Basic admin interface detected')
     }
   })
@@ -114,33 +114,27 @@ test.describe('Admin Navigation and Core Flows', () => {
   test('should handle logout functionality', async ({ authenticatedPage: page }) => {
     await page.goto('/admin')
     
-    // Look for logout button/link
-    const logoutSelectors = [
-      'button:has-text(/logout/i)',
-      'a:has-text(/logout/i)',
-      '[data-action="logout"]',
-      'text=Logout'
-    ]
+    // Look for logout button/link using role-based selectors
+    const logoutBtn = page.getByRole('button', { name: /logout|sign out/i }).or(
+      page.getByRole('link', { name: /logout|sign out/i })
+    ).or(
+      page.locator('[data-action="logout"]')
+    )
     
     let loggedOut = false
-    for (const selector of logoutSelectors) {
-      try {
-        const logoutElement = page.locator(selector)
+    try {
+      if (await logoutBtn.isVisible({ timeout: 2000 })) {
+        console.log('✅ Found logout element')
         
-        if (await logoutElement.isVisible({ timeout: 2000 })) {
-          console.log(`✅ Found logout element: ${selector}`)
-          
-          await logoutElement.click()
-          
-          // Should redirect to login page
-          await expect(page).toHaveURL('/admin/login', { timeout: 5000 })
-          console.log('✅ Logout successful')
-          loggedOut = true
-          break
-        }
-      } catch (e) {
-        continue
+        await logoutBtn.click()
+        
+        // Should redirect to login page
+        await expect(page).toHaveURL('/admin/login', { timeout: 5000 })
+        console.log('✅ Logout successful')
+        loggedOut = true
       }
+    } catch (e) {
+      // Continue to fallback if logout not found
     }
     
     if (!loggedOut) {
@@ -163,7 +157,7 @@ test.describe('Admin Navigation and Core Flows', () => {
       await page.waitForTimeout(500)
       
       // Should still show admin content
-      await expect(page.locator('text=/admin|dashboard|content/i')).toBeVisible()
+      await expect(page.getByText(/admin|dashboard|content/i).first()).toBeVisible()
       
       // Should not show horizontal scrollbars (basic responsive check)
       const bodyWidth = await page.evaluate(() => document.body.scrollWidth)
@@ -186,7 +180,7 @@ test.describe('Admin Navigation and Core Flows', () => {
     await page.goto('/admin/dashboard')
     
     // Wait for main content to be visible
-    await expect(page.locator('text=/dashboard|admin|content/i')).toBeVisible()
+    await expect(page.getByText(/dashboard|admin|content/i).first()).toBeVisible()
     
     const loadTime = Date.now() - startTime
     
