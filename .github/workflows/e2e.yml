@@ -111,10 +111,8 @@ jobs:
           ls -la
           
           if [ ! -d ".next" ]; then
-            echo "❌ ERROR: .next directory not found. Running fallback build..."
-            echo "📦 Installing dependencies first..."
+            echo "⚠️ .next directory not found, running fallback build"
             npm ci
-            echo "🏗️ Running build..."
             npm run build
           else
             echo "✅ Found .next build directory."
@@ -163,56 +161,16 @@ jobs:
           npm run db:init || echo "Database init completed"
           npm run admin:create || echo "Admin user creation completed"
 
-      - name: Final build verification
+      - name: Verify .next build
         run: |
-          echo "🔍 Final pre-start verification..."
           if [ ! -d ".next" ]; then
-            echo "❌ CRITICAL: .next directory still missing!"
-            echo "📁 Directory listing:"
-            ls -la
-            echo "🔧 Attempting final build..."
-            npm run build || exit 1
+            echo "⚠️ .next missing, running fallback build"
+            npm run build
           fi
-          
-          if [ ! -d ".next/standalone" ] && [ ! -d ".next/server" ]; then
-            echo "⚠️ Warning: .next directory structure may be incomplete"
-            ls -la .next/
-          fi
-          
-          echo "✅ Build directory confirmed."
+          echo "✅ .next directory confirmed"
 
-      - name: Start Next.js server
-        run: |
-          echo "🚀 Starting Next.js production server..."
-          npm start &
-          SERVER_PID=$!
-          echo "Server started with PID: $SERVER_PID"
-          sleep 10  # Give server time to start
-          
-          # Wait for server with timeout
-          TIMEOUT=60
-          COUNTER=0
-          until curl -f http://127.0.0.1:3000/api/health 2>/dev/null; do
-            sleep 2
-            COUNTER=$((COUNTER + 2))
-            echo "⏳ Waiting for server... ($COUNTER/$TIMEOUT seconds)"
-            if [ $COUNTER -ge $TIMEOUT ]; then
-              echo "❌ Server failed to start within $TIMEOUT seconds"
-              echo "📋 Server process status:"
-              ps aux | grep -E "next|node" | head -5
-              echo "📋 Current directory:"
-              pwd
-              echo "📋 Directory contents:"
-              ls -la
-              echo "📋 .next directory contents:"
-              ls -la .next/ || echo ".next directory not found"
-              exit 1
-            fi
-          done
-          echo "✅ Server is ready!"
-        
       - name: Run Playwright tests (Chromium)
-        run: npx playwright test --project=chromium --reporter=github --retries=1
+        run: npx playwright test --project=chromium --reporter=github
         working-directory: ./
         
       - name: Upload Playwright report (Chromium)
@@ -259,10 +217,8 @@ jobs:
           ls -la
           
           if [ ! -d ".next" ]; then
-            echo "❌ ERROR: .next directory not found. Running fallback build..."
-            echo "📦 Installing dependencies first..."
+            echo "⚠️ .next directory not found, running fallback build"
             npm ci
-            echo "🏗️ Running build..."
             npm run build
           else
             echo "✅ Found .next build directory."
@@ -311,56 +267,16 @@ jobs:
           npm run db:init || echo "Database init completed"
           npm run admin:create || echo "Admin user creation completed"
 
-      - name: Final build verification
+      - name: Verify .next build
         run: |
-          echo "🔍 Final pre-start verification..."
           if [ ! -d ".next" ]; then
-            echo "❌ CRITICAL: .next directory still missing!"
-            echo "📁 Directory listing:"
-            ls -la
-            echo "🔧 Attempting final build..."
-            npm run build || exit 1
+            echo "⚠️ .next missing, running fallback build"
+            npm run build
           fi
-          
-          if [ ! -d ".next/standalone" ] && [ ! -d ".next/server" ]; then
-            echo "⚠️ Warning: .next directory structure may be incomplete"
-            ls -la .next/
-          fi
-          
-          echo "✅ Build directory confirmed."
+          echo "✅ .next directory confirmed"
 
-      - name: Start Next.js server
-        run: |
-          echo "🚀 Starting Next.js production server..."
-          npm start &
-          SERVER_PID=$!
-          echo "Server started with PID: $SERVER_PID"
-          sleep 10  # Give server time to start
-          
-          # Wait for server with timeout
-          TIMEOUT=60
-          COUNTER=0
-          until curl -f http://127.0.0.1:3000/api/health 2>/dev/null; do
-            sleep 2
-            COUNTER=$((COUNTER + 2))
-            echo "⏳ Waiting for server... ($COUNTER/$TIMEOUT seconds)"
-            if [ $COUNTER -ge $TIMEOUT ]; then
-              echo "❌ Server failed to start within $TIMEOUT seconds"
-              echo "📋 Server process status:"
-              ps aux | grep -E "next|node" | head -5
-              echo "📋 Current directory:"
-              pwd
-              echo "📋 Directory contents:"
-              ls -la
-              echo "📋 .next directory contents:"
-              ls -la .next/ || echo ".next directory not found"
-              exit 1
-            fi
-          done
-          echo "✅ Server is ready!"
-        
       - name: Run Playwright tests (Firefox)
-        run: npx playwright test --project=firefox --reporter=github --retries=1
+        run: npx playwright test --project=firefox --reporter=github
         working-directory: ./
         
       - name: Upload Playwright report (Firefox)

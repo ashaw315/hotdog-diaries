@@ -12,6 +12,7 @@
     "build": "next build",
     "build:prod": "npm run cleanup && next build",
     "start": "next start",
+    "start:test": "next start --port 3000",
     "lint": "next lint --max-warnings=800",
     "lint:ci": "next lint --max-warnings=800",
     "type-check": "tsc --noEmit || true",

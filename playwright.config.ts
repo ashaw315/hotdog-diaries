@@ -97,12 +97,13 @@ export default defineConfig({
     // },
   ],
 
-  /* Run production build before starting the tests */
+  /* Run production server for tests - Playwright manages this automatically */
   webServer: {
-    command: 'npm run build && next start -p 3000',
+    command: 'npm run start:test',
+    port: 3000,
     url: 'http://127.0.0.1:3000/api/health', // ✅ Use health endpoint for readiness check
-    reuseExistingServer: !process.env.CI,
-    timeout: 240_000, // 4 minutes to allow for cold starts in CI
+    reuseExistingServer: true, // ✅ Reuse existing server if already running (prevents port conflicts)
+    timeout: 120_000, // 2 minutes for server startup
     stdout: 'pipe',
     stderr: 'pipe',
   },
