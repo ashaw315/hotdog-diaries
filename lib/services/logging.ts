@@ -442,6 +442,13 @@ export class LoggingService {
       return
     }
 
+    // Skip database operations in CI/test environments
+    if (process.env.CI || process.env.DISABLE_HEALTH_LOOPS === 'true') {
+      console.log(`🧪 [CI] Skipping log buffer flush for ${this.logBuffer.length} entries`)
+      this.logBuffer = [] // Clear buffer
+      return
+    }
+
     const logsToFlush = [...this.logBuffer]
     this.logBuffer = []
 

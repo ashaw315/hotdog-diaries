@@ -431,6 +431,12 @@ export class AlertService {
    * Store alert in database
    */
   private async storeAlert(alert: Alert): Promise<string> {
+    // Skip database operations in CI/test environments
+    if (process.env.CI || process.env.DISABLE_HEALTH_LOOPS === 'true') {
+      console.log(`🧪 [CI] Skipping alert storage: ${alert.title}`)
+      return 'ci-mock-alert-id'
+    }
+
     const result = await insert('system_alerts')
       .values({
         type: alert.type,
