@@ -73,6 +73,20 @@ const nextConfig = {
   
   // Performance optimizations
   webpack: (config, { isServer, dev, webpack }) => {
+    // Safe fallback for path-to-regexp issues
+    try {
+      // Pre-emptively patch any problematic path-to-regexp imports
+      if (config.resolve && config.resolve.fallback) {
+        config.resolve.fallback = {
+          ...config.resolve.fallback,
+          'path-to-regexp': false
+        }
+      } else if (config.resolve) {
+        config.resolve.fallback = { 'path-to-regexp': false }
+      }
+    } catch (pathResolverError) {
+      console.warn('🚨 Path resolver fallback applied:', pathResolverError.message?.substring(0, 100))
+    }
     // Prevent legacy imports from breaking Vercel builds
     // These aliases block any accidental imports of problematic packages
     config.resolve.alias = {
