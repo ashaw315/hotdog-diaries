@@ -257,7 +257,8 @@ export class AdminApiClient {
     try {
       const response = await fetch(url, {
         ...options,
-        headers
+        headers,
+        credentials: 'include' // Ensure cookies are sent for authentication
       })
 
       console.log('Response status:', response.status, response.statusText)

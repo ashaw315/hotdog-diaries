@@ -30,7 +30,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Cookie-based authentication
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get('auth')?.value
 
   if (!token) {
@@ -108,8 +108,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       'is_valid_hotdog'
     ]
     
-    const safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns, 'cq')
-    console.log('[AdminContentAPI] Safe SELECT clause built with fallbacks for missing columns')
+    // Development mode bypass for schema detection issues
+    let safeSelectClause: string
+    if (process.env.NODE_ENV === 'development' && contentQueueColumns.length === 0) {
+      console.log('[AdminContentAPI] Development mode: using direct column selection due to schema detection failure')
+      safeSelectClause = `
+        cq.id, cq.content_text, cq.content_type, cq.source_platform, cq.original_url, 
+        cq.original_author, cq.content_image_url, cq.content_video_url, cq.scraped_at,
+        cq.is_posted, cq.is_approved, cq.admin_notes, cq.created_at, cq.updated_at,
+        cq.confidence_score, cq.content_hash, cq.is_rejected, cq.status, cq.scheduled_for,
+        cq.content_status, cq.reviewed_at, cq.reviewed_by, cq.rejection_reason
+      `.trim()
+    } else {
+      safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns, 'cq')
+      console.log('[AdminContentAPI] Safe SELECT clause built with fallbacks for missing columns')
+    }
     
     let contentQuery: string
     let countQuery: string
@@ -184,7 +197,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const hasStatus = contentQueueColumns.includes('status')
         const hasScheduledFor = contentQueueColumns.includes('scheduled_for')
         
-        if (hasStatus) {
+        // Development mode bypass for schema detection issues
+        if (process.env.NODE_ENV === 'development' && contentQueueColumns.length === 0) {
+          console.log('[AdminContentAPI] Development mode: bypassing schema detection for scheduled status')
+          whereClause = 'cq.status = \'scheduled\''
+        } else if (hasStatus) {
           whereClause = 'cq.status = \'scheduled\''
         } else if (hasScheduledFor) {
           whereClause = 'cq.scheduled_for IS NOT NULL'
@@ -224,6 +241,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const total = parseInt(countResult.rows[0].total)
     
     console.log(`[AdminContentAPI] Total count: ${total}`)
+    
+    // 🧩 Diagnostic logging for scheduled content
+    console.group('🧩 [Diagnostics] Scheduled Query Result')
+    console.log('Requested status:', status)
+    console.log('Rows returned from DB:', contentResult.rows.length)
+    console.log('First row sample:', contentResult.rows[0])
+    if (status === 'scheduled') {
+      console.log('Scheduled content IDs:', contentResult.rows.map(r => r.id))
+      console.log('Scheduled times:', contentResult.rows.map(r => r.scheduled_for))
+    }
+    console.groupEnd()
 
     // Map rows to response format
     const content = contentResult.rows.map(row => ({
@@ -268,6 +296,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
       filter: status
     }
+
+    // 🧩 Additional diagnostic logging for response
+    console.group('🧩 [Diagnostics] Response Data')
+    console.log('Mapped content length:', content.length)
+    console.log('Response structure:', { 
+      hasContent: !!responseData.content,
+      contentLength: responseData.content.length,
+      filter: responseData.filter,
+      total: responseData.pagination.total
+    })
+    if (status === 'scheduled' && content.length > 0) {
+      console.log('First mapped scheduled item:', content[0])
+    }
+    console.groupEnd()
 
     console.log(`[AdminContentAPI] Successfully returning ${content.length} content items`)
     return NextResponse.json({
@@ -335,7 +377,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     console.log('[AdminContentAPI] POST /api/admin/content request received')
 
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const token = cookieStore.get('auth')?.value
 
     if (!token) {
@@ -444,7 +486,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
     console.log('[AdminContentAPI] PUT /api/admin/content request received')
 
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const token = cookieStore.get('auth')?.value
 
     if (!token) {
