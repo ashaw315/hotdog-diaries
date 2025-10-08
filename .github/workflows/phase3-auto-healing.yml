@@ -1,0 +1,274 @@
+name: 'Phase 3 CI Auto-Healing: Security & Build Diagnostics'
+
+on:
+  workflow_call:
+    inputs:
+      trigger_deep_remediation:
+        description: 'Force deep remediation even if not triggered by failures'
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      remediation_applied:
+        description: 'Whether Phase 3 auto-healing was applied'
+        value: ${{ jobs.deep-remediation.outputs.remediation_applied }}
+      security_score_improvement:
+        description: 'Security score improvement from remediation'
+        value: ${{ jobs.deep-remediation.outputs.security_improvement }}
+      build_diagnostic_available:
+        description: 'Whether build diagnostics were generated'
+        value: ${{ jobs.deep-remediation.outputs.build_diagnostics }}
+
+  workflow_dispatch:
+    inputs:
+      force_aggressive_mode:
+        description: 'Use aggressive security remediation'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=4096'
+
+jobs:
+  deep-remediation:
+    name: 'Phase 3: Deep Security & Build Remediation'
+    runs-on: ubuntu-latest
+    if: failure() || inputs.trigger_deep_remediation
+    
+    outputs:
+      remediation_applied: ${{ steps.remediation-summary.outputs.applied }}
+      security_improvement: ${{ steps.remediation-summary.outputs.security_score }}
+      build_diagnostics: ${{ steps.remediation-summary.outputs.build_report }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Setup Node.js with caching
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefer-offline --no-audit --no-fund
+          npm install --no-save tsx
+
+      - name: Phase 3.1 - Security Deep Remediation
+        id: security-remediation
+        continue-on-error: true
+        run: |
+          echo "🛡️ Running Phase 3 Security Deep Remediation..."
+          
+          # Set aggressive mode based on input or critical vulnerability count
+          AGGRESSIVE_FLAG=""
+          if [[ "${{ inputs.force_aggressive_mode }}" == "true" ]]; then
+            AGGRESSIVE_FLAG="--aggressive"
+          fi
+          
+          # Run security deep fix
+          npx tsx scripts/securityDeepFix.ts $AGGRESSIVE_FLAG || true
+          
+          # Check if remediation was effective
+          if [[ -f "reports/security-deep-fix.md" ]]; then
+            echo "security_report_generated=true" >> $GITHUB_OUTPUT
+            
+            # Extract effectiveness score if available
+            if grep -q "Effectiveness Score:" reports/security-deep-fix.md; then
+              EFFECTIVENESS=$(grep "Effectiveness Score:" reports/security-deep-fix.md | head -1 | grep -oE '[0-9]+' || echo "0")
+              echo "effectiveness_score=$EFFECTIVENESS" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Phase 3.2 - Build Failure Diagnostics
+        id: build-diagnostics
+        continue-on-error: true
+        run: |
+          echo "🏗️ Running Phase 3 Build Failure Diagnostics..."
+          
+          # Run build diagnostics with comprehensive logging
+          npx tsx scripts/analyzeBuildFailure.ts --verbose --save-logs || true
+          
+          # Check if diagnostics were generated
+          if [[ -f "reports/build-diagnostics.md" ]]; then
+            echo "build_report_generated=true" >> $GITHUB_OUTPUT
+            
+            # Check if quick fixes were identified
+            if grep -q "Quick Fixes" reports/build-diagnostics.md; then
+              QUICK_FIXES=$(grep -c "Quick Fixes" reports/build-diagnostics.md || echo "0")
+              echo "quick_fixes_available=$QUICK_FIXES" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Phase 3.3 - Apply Quick Fixes
+        id: apply-quick-fixes
+        if: steps.build-diagnostics.outputs.quick_fixes_available > 0
+        continue-on-error: true
+        run: |
+          echo "⚡ Applying automated quick fixes..."
+          
+          # Clear Next.js cache if build issues detected
+          if [[ -d ".next" ]]; then
+            echo "🧹 Clearing Next.js cache..."
+            rm -rf .next
+            echo "cache_cleared=true" >> $GITHUB_OUTPUT
+          fi
+          
+          # Reinstall dependencies if dependency issues detected
+          if grep -q "dependency" reports/build-diagnostics.md; then
+            echo "📦 Reinstalling dependencies..."
+            rm -f package-lock.json
+            npm install
+            echo "dependencies_reinstalled=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Phase 3.4 - Re-run Critical Checks
+        id: post-remediation-check
+        continue-on-error: true
+        run: |
+          echo "🔄 Re-running critical checks after remediation..."
+          
+          # Re-run the main gatekeeper to measure improvement
+          npx tsx scripts/checkCriticalFailures.ts --report-only || true
+          
+          # Extract final health score
+          if [[ -f "reports/ci-health-gate.md" ]]; then
+            if grep -q "Confidence Score:" reports/ci-health-gate.md; then
+              FINAL_SCORE=$(grep "Confidence Score:" reports/ci-health-gate.md | head -1 | grep -oE '[0-9]+' || echo "0")
+              echo "final_health_score=$FINAL_SCORE" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Summarize Remediation Results
+        id: remediation-summary
+        run: |
+          echo "📊 Summarizing Phase 3 Auto-Healing Results..."
+          
+          APPLIED="false"
+          SECURITY_SCORE="0"
+          BUILD_REPORT="false"
+          
+          # Check if security remediation was applied
+          if [[ "${{ steps.security-remediation.outputs.security_report_generated }}" == "true" ]]; then
+            APPLIED="true"
+            SECURITY_SCORE="${{ steps.security-remediation.outputs.effectiveness_score }}"
+          fi
+          
+          # Check if build diagnostics were generated
+          if [[ "${{ steps.build-diagnostics.outputs.build_report_generated }}" == "true" ]]; then
+            BUILD_REPORT="true"
+          fi
+          
+          echo "applied=$APPLIED" >> $GITHUB_OUTPUT
+          echo "security_score=$SECURITY_SCORE" >> $GITHUB_OUTPUT
+          echo "build_report=$BUILD_REPORT" >> $GITHUB_OUTPUT
+          
+          # Create summary for GitHub
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🛡️ Phase 3 Auto-Healing Summary
+          
+          ### Security Deep Remediation
+          - **Applied:** ${{ steps.security-remediation.outputs.security_report_generated == 'true' && '✅ Yes' || '❌ No' }}
+          - **Effectiveness Score:** ${{ steps.security-remediation.outputs.effectiveness_score || 'N/A' }}/100
+          
+          ### Build Diagnostics
+          - **Generated:** ${{ steps.build-diagnostics.outputs.build_report_generated == 'true' && '✅ Yes' || '❌ No' }}
+          - **Quick Fixes Available:** ${{ steps.build-diagnostics.outputs.quick_fixes_available || '0' }}
+          
+          ### Quick Fixes Applied
+          - **Cache Cleared:** ${{ steps.apply-quick-fixes.outputs.cache_cleared == 'true' && '✅ Yes' || '❌ No' }}
+          - **Dependencies Reinstalled:** ${{ steps.apply-quick-fixes.outputs.dependencies_reinstalled == 'true' && '✅ Yes' || '❌ No' }}
+          
+          ### Final Health Score
+          - **Post-Remediation Score:** ${{ steps.post-remediation-check.outputs.final_health_score || 'N/A' }}/100
+          
+          ### 📋 Generated Reports
+          - Security Deep Fix: `reports/security-deep-fix.md`
+          - Build Diagnostics: `reports/build-diagnostics.md`
+          - CI Health Gate: `reports/ci-health-gate.md`
+          EOF
+
+      - name: Upload Remediation Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase3-auto-healing-reports
+          path: |
+            reports/security-deep-fix.md
+            reports/build-diagnostics.md
+            reports/security-manual-review.md
+            reports/build-log.txt
+          retention-days: 30
+
+      - name: Comment on PR with Remediation Results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const securityReportExists = fs.existsSync('reports/security-deep-fix.md');
+            const buildReportExists = fs.existsSync('reports/build-diagnostics.md');
+            
+            let comment = '## 🛡️ Phase 3 Auto-Healing Results\n\n';
+            
+            if (securityReportExists || buildReportExists) {
+              comment += '### 📊 Remediation Summary\n';
+              comment += `- **Security Remediation:** ${securityReportExists ? '✅ Applied' : '❌ Not needed'}\n`;
+              comment += `- **Build Diagnostics:** ${buildReportExists ? '✅ Generated' : '❌ Not needed'}\n`;
+              comment += `- **Effectiveness Score:** ${{ steps.security-remediation.outputs.effectiveness_score || 'N/A' }}/100\n\n`;
+              
+              comment += '### 📋 Available Reports\n';
+              if (securityReportExists) comment += '- 🛡️ Security Deep Fix Report\n';
+              if (buildReportExists) comment += '- 🏗️ Build Diagnostics Report\n';
+              comment += '\n> Reports are available in the workflow artifacts.\n';
+            } else {
+              comment += '✅ **No deep remediation required** - Initial CI checks were sufficient.\n';
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  trigger-recheck:
+    name: 'Re-run CI After Remediation'
+    runs-on: ubuntu-latest
+    needs: deep-remediation
+    if: needs.deep-remediation.outputs.remediation_applied == 'true'
+    
+    steps:
+      - name: Trigger Repository Dispatch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event_type: 'post-remediation-check',
+              client_payload: {
+                security_improvement: '${{ needs.deep-remediation.outputs.security_improvement }}',
+                build_diagnostics: '${{ needs.deep-remediation.outputs.build_diagnostic_available }}',
+                triggered_by: 'phase3-auto-healing'
+              }
+            });
+
+      - name: Add Remediation Success Label
+        if: needs.deep-remediation.outputs.security_improvement >= 70
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.payload.pull_request) {
+              github.rest.issues.addLabels({
+                issue_number: context.payload.pull_request.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: ['auto-healing-applied', 'security-improved']
+              });
+            }

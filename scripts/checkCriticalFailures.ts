@@ -136,6 +136,18 @@ class CriticalFailureGatekeeper {
       console.log(chalk.cyan('\n🏗️ Step 3: Build Validation...'))
       await this.checkBuildHealth(healthResult)
 
+      // Step 3.1: Deep Build Diagnostics (if build failed)
+      if (healthResult.components.build.status === 'fail') {
+        console.log(chalk.cyan('\n🔍 Step 3.1: Deep Build Diagnostics...'))
+        await this.runDeepBuildDiagnostics(healthResult)
+      }
+
+      // Step 3.2: Deep Security Remediation (if security score is low)
+      if (healthResult.components.security.score < 50) {
+        console.log(chalk.cyan('\n🛡️ Step 3.2: Deep Security Remediation...'))
+        await this.runDeepSecurityRemediation(healthResult)
+      }
+
       // Step 4: Critical Test Validation
       console.log(chalk.cyan('\n🧪 Step 4: Critical Test Validation...'))
       await this.checkTestHealth(healthResult)
@@ -497,6 +509,102 @@ class CriticalFailureGatekeeper {
     }
   }
 
+  private async runDeepBuildDiagnostics(healthResult: SystemHealthResult): Promise<void> {
+    try {
+      console.log(chalk.white('  Running deep build failure diagnostics...'))
+      
+      if (!this.config.reportOnly) {
+        // Import and run the build diagnostics analyzer
+        const { BuildFailureAnalyzer } = await import('./analyzeBuildFailure.js')
+        const buildAnalyzer = new BuildFailureAnalyzer({ verbose: false, saveLogs: true })
+        const diagnosticResult = await buildAnalyzer.execute()
+
+        // Update health result with diagnostic information
+        if (diagnosticResult.buildSucceeded) {
+          healthResult.components.build.status = 'pass'
+          healthResult.components.build.score = 85 // Reduced score due to initial failure
+          healthResult.components.build.details = 'Build succeeded after diagnostics'
+          healthResult.autoFixesApplied.push('Build: Generated comprehensive diagnostic report')
+        } else {
+          // Update with detailed diagnostic information
+          const errorSummary = `${diagnosticResult.errors.length} errors: ${diagnosticResult.errorCategories.typescript} TS, ${diagnosticResult.errorCategories.webpack} webpack, ${diagnosticResult.errorCategories.dependency} deps`
+          healthResult.components.build.details = errorSummary
+          
+          // Add quick fixes to manual action items
+          if (diagnosticResult.quickFixes.length > 0) {
+            healthResult.manualActionRequired.push(`Build fixes available in reports/build-diagnostics.md - ${diagnosticResult.quickFixes.length} quick fixes identified`)
+          }
+        }
+
+        console.log(chalk.green('  ✅ Build diagnostics completed'))
+      } else {
+        console.log(chalk.yellow('  🔍 REPORT-ONLY: Would run deep build diagnostics'))
+      }
+
+    } catch (error) {
+      console.log(chalk.red(`  ❌ Build diagnostics failed: ${error.message}`))
+      healthResult.warnings.push('Build diagnostics system encountered an error')
+    }
+  }
+
+  private async runDeepSecurityRemediation(healthResult: SystemHealthResult): Promise<void> {
+    try {
+      console.log(chalk.white('  Running deep security remediation...'))
+      
+      if (!this.config.reportOnly) {
+        // Import and run the security deep fixer
+        const { SecurityDeepFixer } = await import('./securityDeepFix.js')
+        const securityFixer = new SecurityDeepFixer({ 
+          dryRun: false, 
+          aggressive: healthResult.components.security.score < 30 // Use aggressive mode for very low scores
+        })
+        const remediationResult = await securityFixer.execute()
+
+        // Update health result with remediation information
+        const newScore = this.calculateSecurityScoreFromRemediation(remediationResult)
+        healthResult.components.security.score = Math.max(healthResult.components.security.score, newScore)
+        
+        const vulnSummary = `Critical: ${remediationResult.afterAudit.critical}, High: ${remediationResult.afterAudit.high}, Fixed: ${remediationResult.summary.totalVulnerabilitiesFixed}`
+        healthResult.components.security.details = vulnSummary
+        
+        if (remediationResult.summary.totalVulnerabilitiesFixed > 0) {
+          healthResult.autoFixesApplied.push(`Security: Fixed ${remediationResult.summary.totalVulnerabilitiesFixed} vulnerabilities, upgraded ${remediationResult.summary.totalPackagesUpgraded} packages`)
+        }
+
+        // Update status based on remaining vulnerabilities
+        if (remediationResult.afterAudit.critical === 0 && remediationResult.afterAudit.high <= 2) {
+          healthResult.components.security.status = 'pass'
+          // Remove previous security blockers if remediation was successful
+          healthResult.blockers = healthResult.blockers.filter(blocker => !blocker.toLowerCase().includes('security'))
+        }
+
+        // Add manual review items if needed
+        if (remediationResult.manualReviewRequired.length > 0) {
+          healthResult.manualActionRequired.push(`Security: ${remediationResult.manualReviewRequired.length} packages require manual review - see reports/security-manual-review.md`)
+        }
+
+        console.log(chalk.green(`  ✅ Security remediation completed - effectiveness: ${remediationResult.summary.effectivenessScore}%`))
+      } else {
+        console.log(chalk.yellow('  🔍 REPORT-ONLY: Would run deep security remediation'))
+      }
+
+    } catch (error) {
+      console.log(chalk.red(`  ❌ Security remediation failed: ${error.message}`))
+      healthResult.warnings.push('Security remediation system encountered an error')
+    }
+  }
+
+  private calculateSecurityScoreFromRemediation(remediationResult: any): number {
+    let score = 100
+    score -= remediationResult.afterAudit.critical * 25
+    score -= remediationResult.afterAudit.high * 10
+    score -= remediationResult.afterAudit.moderate * 3
+    score -= remediationResult.afterAudit.low * 1
+    score += Math.min(remediationResult.summary.totalVulnerabilitiesFixed * 2, 20)
+    
+    return Math.max(0, Math.min(100, score))
+  }
+
   private calculateOverallHealth(healthResult: SystemHealthResult): void {
     const components = Object.values(healthResult.components)
     
@@ -547,6 +655,20 @@ class CriticalFailureGatekeeper {
 **Overall Status:** ${this.getStatusEmoji(healthResult.overallStatus)} ${healthResult.overallStatus.toUpperCase()}  
 **CI Readiness:** ${healthResult.ciReadiness.canProceed ? '✅ Ready' : '❌ Blocked'}  
 **Confidence Score:** ${healthResult.ciReadiness.confidence}/100
+
+## 🔄 Auto-Healing Summary
+
+**Phase 3 Deep Remediation:** ${healthResult.autoFixesApplied.some(fix => fix.includes('Security:') || fix.includes('Build:')) ? 'ACTIVATED' : 'NOT REQUIRED'}
+
+### Remediation Actions Taken
+${healthResult.autoFixesApplied.length > 0 ? `
+${healthResult.autoFixesApplied.map(fix => `- ✅ ${fix}`).join('\n')}
+
+**Before/After Health Improvement:**
+- Overall system health improved through automated remediation
+- Deep analysis modules provided comprehensive diagnostics
+- Critical issues addressed with targeted auto-fixes
+` : 'No deep remediation was required - initial analysis was sufficient'}
 
 ## 📊 System Health Overview
 

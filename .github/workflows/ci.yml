@@ -113,6 +113,15 @@ jobs:
           echo ""
           echo "📄 Detailed reports available in artifacts"
 
+  phase3-auto-healing:
+    name: Phase 3 Auto-Healing
+    needs: stability-check
+    if: failure() && needs.stability-check.outputs.ci-ready == 'false'
+    uses: ./.github/workflows/phase3-auto-healing.yml
+    with:
+      trigger_deep_remediation: true
+    secrets: inherit
+
   test:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
