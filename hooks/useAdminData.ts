@@ -205,6 +205,30 @@ export function useContentData(params?: {
 
   const refresh = useCallback(() => fetchData(), [fetchData])
 
+  // Client-side fallback sorting for scheduled content
+  useEffect(() => {
+    if (params?.status === 'scheduled' && data?.length > 0) {
+      console.log('🧩 [useContentData] Applying client-side chronological sorting for scheduled content')
+      const sorted = [...data].sort((a, b) => {
+        const timeA = a.scheduled_post_time || a.scheduled_for
+        const timeB = b.scheduled_post_time || b.scheduled_for
+        
+        if (!timeA && !timeB) return 0
+        if (!timeA) return 1
+        if (!timeB) return -1
+        
+        return new Date(timeA).getTime() - new Date(timeB).getTime()
+      })
+      
+      // Only update if order actually changed to avoid infinite loops
+      const orderChanged = sorted.some((item, index) => item.id !== data[index]?.id)
+      if (orderChanged) {
+        console.log('🧩 [useContentData] Sorted order changed, updating data')
+        setData(sorted)
+      }
+    }
+  }, [params?.status, data])
+
   // Update content status
   const updateContentStatus = useCallback(async (
     id: number, 

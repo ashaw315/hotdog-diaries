@@ -24,6 +24,7 @@ interface QueuedContent {
   reviewed_by: string | null
   rejection_reason: string | null
   scheduled_for: string | null
+  scheduled_post_time: string | null
   confidence_score: number | null
   is_spam: boolean | null
   is_inappropriate: boolean | null
@@ -281,6 +282,17 @@ export default function ContentQueue() {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
+    })
+  }
+
+  const formatScheduledDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
     })
   }
 
@@ -730,9 +742,24 @@ export default function ContentQueue() {
         }
         
         .tag-scheduled-time {
-          background: #e0f2fe;
-          color: #01579b;
+          background: linear-gradient(135deg, #e3f2ff 0%, #cce7ff 100%);
+          color: #0066cc;
           font-weight: 600;
+          border: 1px solid #b3d9ff;
+          border-radius: 0.5rem;
+          padding: 0.375rem 0.75rem;
+          font-size: 0.875rem;
+          box-shadow: 0 1px 3px rgba(0, 102, 204, 0.12);
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+
+        .tag-scheduled-time:hover {
+          background: linear-gradient(135deg, #cce7ff 0%, #b3d9ff 100%);
+          box-shadow: 0 2px 6px rgba(0, 102, 204, 0.2);
+          transform: translateY(-1px);
         }
         
         .content-text {
@@ -1058,9 +1085,9 @@ export default function ContentQueue() {
                                 </span>
                               )}
                               {/* Scheduled status badge */}
-                              {item.scheduled_for && (
+                              {(item.scheduled_for || item.scheduled_post_time) && (
                                 <span className="content-tag tag-scheduled-time">
-                                  ⏰ Scheduled for {formatDate(new Date(item.scheduled_for))}
+                                  ⏰ Scheduled for {formatScheduledDate(item.scheduled_post_time || item.scheduled_for)}
                                 </span>
                               )}
                             </div>
@@ -1115,8 +1142,8 @@ export default function ContentQueue() {
                           <div className="timestamps">
                             <div>Created: {formatDate(new Date(item.created_at))}</div>
                             <div>Updated: {formatDate(new Date(item.updated_at))}</div>
-                            {item.scheduled_for && (
-                              <div>Scheduled: {formatDate(new Date(item.scheduled_for))}</div>
+                            {(item.scheduled_for || item.scheduled_post_time) && (
+                              <div>Scheduled: {formatDate(new Date(item.scheduled_post_time || item.scheduled_for))}</div>
                             )}
                             {item.reviewed_at && (
                               <div>Reviewed: {formatDate(new Date(item.reviewed_at))}</div>

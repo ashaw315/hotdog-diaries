@@ -98,6 +98,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       'is_rejected',
       'status',
       'scheduled_for',
+      'scheduled_post_time',
       'content_status',
       'reviewed_at',
       'reviewed_by',
@@ -117,7 +118,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         cq.original_author, cq.content_image_url, cq.content_video_url, cq.scraped_at,
         cq.is_posted, cq.is_approved, cq.admin_notes, cq.created_at, cq.updated_at,
         cq.confidence_score, cq.content_hash, cq.is_rejected, cq.status, cq.scheduled_for,
-        cq.content_status, cq.reviewed_at, cq.reviewed_by, cq.rejection_reason
+        cq.scheduled_post_time, cq.content_status, cq.reviewed_at, cq.reviewed_by, cq.rejection_reason
       `.trim()
     } else {
       safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns, 'cq')
@@ -202,19 +203,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // Production schema detection (Supabase uses different field names)
         if (hasContentStatus && hasScheduledPostTime) {
           // Production schema: content_status + scheduled_post_time
-          whereClause = `(cq.content_status = 'scheduled' OR cq.scheduled_post_time IS NOT NULL)`
+          whereClause = `(cq.content_status = 'scheduled' OR (cq.scheduled_post_time IS NOT NULL AND cq.is_approved = TRUE))`
+          orderBy = 'cq.scheduled_post_time ASC'
           console.log('[AdminContentAPI] Using production schema for scheduled content')
+          console.log('🧩 [ContentAPI] ORDER BY scheduled_post_time ASC applied for scheduled filter')
         } else if (process.env.NODE_ENV === 'development' && contentQueueColumns.length === 0) {
           console.log('[AdminContentAPI] Development mode: bypassing schema detection for scheduled status')
           // Include both status='scheduled' AND items with scheduled_for set
           whereClause = `(cq.status = 'scheduled' OR (cq.scheduled_for IS NOT NULL AND cq.status = 'approved'))`
+          orderBy = 'cq.scheduled_for ASC'
+          console.log('🧩 [ContentAPI] ORDER BY scheduled_for ASC applied for scheduled filter (dev mode)')
         } else if (hasStatus && hasScheduledFor) {
           // Development schema: status + scheduled_for
           whereClause = `(cq.status = 'scheduled' OR (cq.scheduled_for IS NOT NULL AND cq.status = 'approved'))`
+          orderBy = 'cq.scheduled_for ASC'
+          console.log('🧩 [ContentAPI] ORDER BY scheduled_for ASC applied for scheduled filter')
         } else if (hasStatus) {
           whereClause = 'cq.status = \'scheduled\''
         } else if (hasScheduledFor) {
           whereClause = 'cq.scheduled_for IS NOT NULL'
+          orderBy = 'cq.scheduled_for ASC'
+          console.log('🧩 [ContentAPI] ORDER BY scheduled_for ASC applied for scheduled filter')
         } else {
           whereClause = '1=0' // No scheduled items if columns don't exist
         }
@@ -294,6 +303,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       content_status: row.content_status || (row.status || 'discovered'),
       status: row.status || row.content_status || 'discovered',
       scheduled_for: row.scheduled_for || row.scheduled_post_time,
+      scheduled_post_time: row.scheduled_post_time,
       reviewed_at: row.reviewed_at,
       reviewed_by: row.reviewed_by,
       rejection_reason: row.rejection_reason,
