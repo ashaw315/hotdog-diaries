@@ -65,6 +65,18 @@ export default function ContentQueue() {
     autoRefresh: true
   })
 
+  // 🧩 Diagnostic logging for queue rendering
+  useEffect(() => {
+    console.group('🧩 [Queue Render] ContentQueue useEffect')
+    console.log('Current filter:', filterBy)
+    console.log('Hook status filter:', getHookStatus(filterBy))
+    console.log('Queue data length:', queuedContent?.length)
+    console.log('Queue first item:', queuedContent?.[0])
+    console.log('Loading state:', isLoading)
+    console.log('Error state:', contentError)
+    console.groupEnd()
+  }, [filterBy, queuedContent, isLoading, contentError])
+
   // Refresh when sort or filter changes
   useEffect(() => {
     refresh()

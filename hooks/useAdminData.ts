@@ -152,15 +152,49 @@ export function useContentData(params?: {
       setLoading(true)
       setError(null)
       
+      // 🧩 Diagnostic logging for queue data flow
+      console.group('🧩 [Queue Data Flow] useContentData fetchData')
+      console.log('Request params:', params)
+      
       const response = await adminApi.getContent(params) as PaginatedResponse<ContentItem>
       
+      console.log('Raw API response:', response)
+      console.log('Response success:', response.success)
+      console.log('Response data structure:', {
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        hasNestedContent: response.data && typeof response.data === 'object' && 'content' in response.data,
+        dataKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : null
+      })
+      
       if (response.success && response.data) {
-        setData(response.data)
-        setPagination(response.pagination)
+        // 🧠 Fix: Handle both flattened and nested API response structures
+        const contentData = Array.isArray(response.data)
+          ? response.data
+          : response.data?.content || []
+        const paginationData = response.data?.pagination || response.pagination
+
+        console.log('Extracted content data:', {
+          contentLength: contentData.length,
+          firstItem: contentData[0],
+          pagination: paginationData
+        })
+        console.log('✅ useContentData loaded items:', contentData.length)
+        
+        setData(contentData)
+        setPagination(paginationData)
+        console.groupEnd()
       } else {
+        console.warn('⚠️ useContentData: No data received', response)
+        console.groupEnd()
         throw new Error(response.error || 'Failed to fetch content data')
       }
     } catch (err) {
+      console.group('❌ useContentData Error')
+      console.error('Fetch error details:', err)
+      console.groupEnd()
+      
       const errorMessage = ApiHelpers.handleError(err)
       setError(errorMessage)
       console.error('Content fetch error:', err)

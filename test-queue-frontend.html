@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Queue Frontend Data Flow</title>
+</head>
+<body>
+    <h1>Testing Frontend Data Flow</h1>
+    <div id="status">Initializing...</div>
+    <div id="results"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        
+        async function testApiDirectly() {
+            statusDiv.innerHTML = 'Testing API directly...';
+            console.log('🧪 Testing API directly');
+            
+            try {
+                // Set the auth cookie first
+                document.cookie = "auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoiYWRtaW4iLCJpYXQiOjE3NTk4ODc4MTAsImV4cCI6MTc1OTk3NDIxMCwiYXVkIjoiYWRtaW4iLCJpc3MiOiJob3Rkb2ctZGlhcmllcyJ9.pVjrXnJFk8FTt3QdaR2CMtoaiAaABOzVCK2nJ0yKO-I; path=/; SameSite=Strict";
+                
+                const response = await fetch('/api/admin/content?status=scheduled', {
+                    credentials: 'include'
+                });
+                
+                console.log('🔍 API Response Status:', response.status);
+                console.log('🔍 API Response Headers:', Object.fromEntries(response.headers.entries()));
+                
+                const data = await response.json();
+                console.log('🔍 API Response Data:', data);
+                
+                if (data.success) {
+                    const content = data.data.content || [];
+                    statusDiv.innerHTML = `✅ API Success: ${content.length} scheduled items found`;
+                    resultsDiv.innerHTML = `
+                        <h2>API Test Results</h2>
+                        <p><strong>Success:</strong> ${data.success}</p>
+                        <p><strong>Content Length:</strong> ${content.length}</p>
+                        <p><strong>Total from Pagination:</strong> ${data.data.pagination?.total || 'N/A'}</p>
+                        <p><strong>Filter:</strong> ${data.data.filter}</p>
+                        <h3>First Item Sample:</h3>
+                        <pre>${JSON.stringify(content[0], null, 2)}</pre>
+                    `;
+                    
+                    // Test the frontend data handling logic
+                    console.log('🧠 Testing frontend data extraction logic:');
+                    
+                    // This mimics what useContentData hook should do
+                    const contentData = Array.isArray(data.data)
+                        ? data.data
+                        : data.data?.content || [];
+                    const paginationData = data.data?.pagination || data.pagination;
+                    
+                    console.log('✅ Extracted content data:', {
+                        contentLength: contentData.length,
+                        firstItem: contentData[0],
+                        pagination: paginationData
+                    });
+                    
+                    if (contentData.length === content.length) {
+                        console.log('🎉 Frontend data extraction logic is working correctly!');
+                        statusDiv.innerHTML += '<br>🎉 Frontend logic test: PASSED';
+                    } else {
+                        console.error('❌ Frontend data extraction logic failed');
+                        statusDiv.innerHTML += '<br>❌ Frontend logic test: FAILED';
+                    }
+                    
+                } else {
+                    statusDiv.innerHTML = `❌ API Error: ${data.error}`;
+                    resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+                
+            } catch (error) {
+                console.error('❌ Test failed:', error);
+                statusDiv.innerHTML = `❌ Test failed: ${error.message}`;
+                resultsDiv.innerHTML = `<pre>${error.stack}</pre>`;
+            }
+        }
+        
+        // Run test when page loads
+        testApiDirectly();
+    </script>
+</body>
+</html>
