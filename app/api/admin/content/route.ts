@@ -200,7 +200,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // Development mode bypass for schema detection issues
         if (process.env.NODE_ENV === 'development' && contentQueueColumns.length === 0) {
           console.log('[AdminContentAPI] Development mode: bypassing schema detection for scheduled status')
-          whereClause = 'cq.status = \'scheduled\''
+          // Include both status='scheduled' AND items with scheduled_for set
+          whereClause = `(cq.status = 'scheduled' OR (cq.scheduled_for IS NOT NULL AND cq.status = 'approved'))`
+        } else if (hasStatus && hasScheduledFor) {
+          // If both columns exist, check both conditions
+          whereClause = `(cq.status = 'scheduled' OR (cq.scheduled_for IS NOT NULL AND cq.status = 'approved'))`
         } else if (hasStatus) {
           whereClause = 'cq.status = \'scheduled\''
         } else if (hasScheduledFor) {
@@ -208,6 +212,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         } else {
           whereClause = '1=0' // No scheduled items if columns don't exist
         }
+        
+        console.log('🧩 [ContentAPI] Scheduled filter - hasStatus:', hasStatus, 'hasScheduledFor:', hasScheduledFor)
       }
       // For 'all' or any other value, keep whereClause as '1=1'
       
@@ -228,6 +234,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         FROM content_queue cq
         WHERE ${whereClause}
       `
+      
+      // Enhanced diagnostic logging
+      console.log('🧩 [ContentAPI] Final WHERE Clause:', whereClause)
+      console.log('🧩 [ContentAPI] Detected Columns:', contentQueueColumns.length, 
+        contentQueueColumns.includes('status') ? '(has status)' : '', 
+        contentQueueColumns.includes('scheduled_for') ? '(has scheduled_for)' : '')
     }
     
     console.log(`[AdminContentAPI] Executing content query for status: ${status}`)
@@ -235,6 +247,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Execute content query
     const contentResult = await db.query(contentQuery, queryParams)
     console.log(`[AdminContentAPI] Query success: ${contentResult.rows.length} rows`)
+    console.log('🧩 [ContentAPI] Row Count Returned:', contentResult.rows.length)
     
     // Execute count query
     const countResult = await db.query(countQuery)
