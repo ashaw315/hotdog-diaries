@@ -729,6 +729,12 @@ export default function ContentQueue() {
           color: #991b1b;
         }
         
+        .tag-scheduled-time {
+          background: #e0f2fe;
+          color: #01579b;
+          font-weight: 600;
+        }
+        
         .content-text {
           margin: 12px 0;
           color: #374151;
@@ -1049,6 +1055,12 @@ export default function ContentQueue() {
                                   item.confidence_score >= 0.6 ? 'tag-confidence-med' : 'tag-confidence-low'
                                 }`}>
                                   {Math.round(item.confidence_score * 100)}% confidence
+                                </span>
+                              )}
+                              {/* Scheduled status badge */}
+                              {item.scheduled_for && (
+                                <span className="content-tag tag-scheduled-time">
+                                  ⏰ Scheduled for {formatDate(new Date(item.scheduled_for))}
                                 </span>
                               )}
                             </div>

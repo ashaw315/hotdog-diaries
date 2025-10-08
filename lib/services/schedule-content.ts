@@ -83,7 +83,8 @@ async function getRecentlyPostedPlatforms(lookbackDays: number = 1): Promise<str
 }
 
 /**
- * Select content with platform diversity enforcement
+ * Select content with weighted platform diversity enforcement
+ * Ensures roughly even distribution across all platforms
  */
 function selectDiverseContent(
   contentByPlatform: Record<string, ContentItem[]>, 
@@ -91,56 +92,80 @@ function selectDiverseContent(
   count: number
 ): ContentItem[] {
   const selected: ContentItem[] = []
-  const usedPlatforms = new Set<string>()
   const availablePlatforms = Object.keys(contentByPlatform).filter(
     platform => contentByPlatform[platform].length > 0
   )
 
-  // First pass: select from platforms not used recently
-  const unusedPlatforms = availablePlatforms.filter(
-    platform => !recentPlatforms.includes(platform)
+  if (availablePlatforms.length === 0) {
+    return selected
+  }
+
+  console.log(`🎯 Implementing weighted platform balancing for ${count} posts across ${availablePlatforms.length} platforms`)
+
+  // Calculate target count per platform for balanced selection
+  const totalAvailable = availablePlatforms.reduce(
+    (sum, platform) => sum + contentByPlatform[platform].length, 0
   )
+  const targetPerPlatform = Math.max(1, Math.floor(count / availablePlatforms.length))
+  
+  console.log(`📊 Target per platform: ${targetPerPlatform}, Total available: ${totalAvailable}`)
 
-  for (const platform of unusedPlatforms) {
-    if (selected.length >= count) break
-    if (usedPlatforms.has(platform)) continue
+  // Initialize platform usage tracking
+  const platformUsage = new Map<string, number>()
+  availablePlatforms.forEach(platform => platformUsage.set(platform, 0))
 
-    const platformContent = contentByPlatform[platform]
-    if (platformContent.length > 0) {
-      selected.push(platformContent[0]) // Take highest priority/score content
-      usedPlatforms.add(platform)
+  // Create a working copy of content to avoid mutation
+  const workingContent = { ...contentByPlatform }
+  Object.keys(workingContent).forEach(platform => {
+    workingContent[platform] = [...workingContent[platform]]
+  })
+
+  // Weighted selection algorithm - ensures roughly even distribution
+  while (selected.length < count && Object.values(workingContent).some(arr => arr.length > 0)) {
+    // Sort platforms by current usage (ascending) to prioritize underused platforms
+    const sortedPlatforms = availablePlatforms
+      .filter(platform => workingContent[platform].length > 0)
+      .sort((a, b) => {
+        const usageA = platformUsage.get(a) || 0
+        const usageB = platformUsage.get(b) || 0
+        
+        // Primary sort: by usage count (less used first)
+        if (usageA !== usageB) {
+          return usageA - usageB
+        }
+        
+        // Secondary sort: prioritize platforms not used recently
+        const aIsRecent = recentPlatforms.includes(a)
+        const bIsRecent = recentPlatforms.includes(b)
+        if (aIsRecent !== bIsRecent) {
+          return aIsRecent ? 1 : -1
+        }
+        
+        // Tertiary sort: by available content count (more available first)
+        return workingContent[b].length - workingContent[a].length
+      })
+
+    if (sortedPlatforms.length === 0) {
+      break
+    }
+
+    // Select from the platform with lowest usage
+    const nextPlatform = sortedPlatforms[0]
+    const candidate = workingContent[nextPlatform].shift() // Remove from working set
+
+    if (candidate) {
+      selected.push(candidate)
+      platformUsage.set(nextPlatform, (platformUsage.get(nextPlatform) || 0) + 1)
+      
+      console.log(`✅ Selected from ${nextPlatform}: "${candidate.content_text?.substring(0, 30)}..." (usage now: ${platformUsage.get(nextPlatform)})`)
     }
   }
 
-  // Second pass: if we need more content, use other platforms (avoiding consecutive same platforms)
-  if (selected.length < count) {
-    for (const platform of availablePlatforms) {
-      if (selected.length >= count) break
-      if (usedPlatforms.has(platform)) continue
-
-      const platformContent = contentByPlatform[platform]
-      if (platformContent.length > 0) {
-        selected.push(platformContent[0])
-        usedPlatforms.add(platform)
-      }
-    }
-  }
-
-  // Third pass: if still need content, allow reuse of platforms
-  if (selected.length < count) {
-    for (const platform of availablePlatforms) {
-      if (selected.length >= count) break
-
-      const platformContent = contentByPlatform[platform]
-      const availableFromPlatform = platformContent.filter(
-        content => !selected.some(sel => sel.id === content.id)
-      )
-
-      if (availableFromPlatform.length > 0) {
-        selected.push(availableFromPlatform[0])
-      }
-    }
-  }
+  // Log final distribution
+  const finalDistribution = Object.fromEntries(
+    availablePlatforms.map(platform => [platform, platformUsage.get(platform) || 0])
+  )
+  console.log(`🎯 Final platform distribution:`, finalDistribution)
 
   return selected
 }
@@ -306,8 +331,24 @@ export async function scheduleNextBatch(
     console.log(`   📅 Days scheduled: ${result.summary.totalDays}`)
     console.log(`   🎯 Platform distribution:`, result.summary.platformDistribution)
 
+    // Enhanced diversity diagnostics
+    console.log(`\n🧮 Diversity Analysis:`)
+    const platforms = Object.keys(result.summary.platformDistribution)
+    const counts = Object.values(result.summary.platformDistribution)
+    const maxCount = Math.max(...counts)
+    const minCount = Math.min(...counts)
+    const variance = maxCount - minCount
+    
+    console.table(result.summary.platformDistribution)
+    console.log(`   📊 Platform variance: ${variance} (max: ${maxCount}, min: ${minCount})`)
+    console.log(`   🎯 Diversity score: ${variance <= 1 ? 'EXCELLENT' : variance <= 2 ? 'GOOD' : 'NEEDS_IMPROVEMENT'}`)
+    
+    if (variance > 2) {
+      console.log(`   ⚠️  Platform imbalance detected - consider content rebalancing`)
+    }
+
     if (result.errors.length > 0) {
-      console.log(`⚠️ Warnings/Errors:`)
+      console.log(`\n⚠️ Warnings/Errors:`)
       result.errors.forEach(error => console.log(`   - ${error}`))
     }
 
