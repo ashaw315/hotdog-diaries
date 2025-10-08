@@ -442,8 +442,8 @@ class CriticalFailureGatekeeper {
     try {
       console.log(chalk.white('  Running critical tests...'))
       
-      // Run basic smoke tests only to avoid blocking CI on slow tests
-      const testOutput = execSync('npm test -- --testPathPatterns="(smoke|critical)" --passWithNoTests', {
+      // Run Jest tests only (excluding Playwright specs)
+      const testOutput = execSync('npm test -- --testPathPatterns="(smoke|critical)" --testPathIgnorePatterns="e2e/" --passWithNoTests', {
         cwd: this.projectRoot,
         encoding: 'utf8',
         stdio: 'pipe',

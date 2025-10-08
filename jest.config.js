@@ -24,6 +24,8 @@ const customJestConfig = {
     '__tests__/regression/framework.ts',
     'node_modules/',
     '.next/',
+    'e2e/', // Exclude Playwright tests from Jest execution
+    '**/*.spec.ts', // Exclude Playwright spec files
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',

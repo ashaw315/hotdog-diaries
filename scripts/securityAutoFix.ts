@@ -344,7 +344,7 @@ class SecurityAutoFixer {
 
 ${summary.autoFixed.packages.length > 0 ? `
 ### 📦 Fixed Packages
-${summary.autoFixed.packages.map(pkg => `- \\`${pkg}\\``).join('\n')}
+${summary.autoFixed.packages.map(pkg => `- \`${pkg}\``).join('\n')}
 ` : ''}
 
 ## ⚠️ Remaining Vulnerabilities
