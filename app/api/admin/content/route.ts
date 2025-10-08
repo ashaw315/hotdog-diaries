@@ -196,14 +196,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // Check for scheduled content based on available columns
         const hasStatus = contentQueueColumns.includes('status')
         const hasScheduledFor = contentQueueColumns.includes('scheduled_for')
+        const hasContentStatus = contentQueueColumns.includes('content_status')
+        const hasScheduledPostTime = contentQueueColumns.includes('scheduled_post_time')
         
-        // Development mode bypass for schema detection issues
-        if (process.env.NODE_ENV === 'development' && contentQueueColumns.length === 0) {
+        // Production schema detection (Supabase uses different field names)
+        if (hasContentStatus && hasScheduledPostTime) {
+          // Production schema: content_status + scheduled_post_time
+          whereClause = `(cq.content_status = 'scheduled' OR cq.scheduled_post_time IS NOT NULL)`
+          console.log('[AdminContentAPI] Using production schema for scheduled content')
+        } else if (process.env.NODE_ENV === 'development' && contentQueueColumns.length === 0) {
           console.log('[AdminContentAPI] Development mode: bypassing schema detection for scheduled status')
           // Include both status='scheduled' AND items with scheduled_for set
           whereClause = `(cq.status = 'scheduled' OR (cq.scheduled_for IS NOT NULL AND cq.status = 'approved'))`
         } else if (hasStatus && hasScheduledFor) {
-          // If both columns exist, check both conditions
+          // Development schema: status + scheduled_for
           whereClause = `(cq.status = 'scheduled' OR (cq.scheduled_for IS NOT NULL AND cq.status = 'approved'))`
         } else if (hasStatus) {
           whereClause = 'cq.status = \'scheduled\''
@@ -213,7 +219,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           whereClause = '1=0' // No scheduled items if columns don't exist
         }
         
-        console.log('🧩 [ContentAPI] Scheduled filter - hasStatus:', hasStatus, 'hasScheduledFor:', hasScheduledFor)
+        console.log('🧩 [ContentAPI] Scheduled filter - hasContentStatus:', hasContentStatus, 'hasScheduledPostTime:', hasScheduledPostTime, 'hasStatus:', hasStatus, 'hasScheduledFor:', hasScheduledFor)
       }
       // For 'all' or any other value, keep whereClause as '1=1'
       
@@ -286,8 +292,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       post_order: row.id, // Use id as post_order for compatibility
       // Additional fields for ContentQueue interface
       content_status: row.content_status || (row.status || 'discovered'),
-      status: row.status || 'discovered',
-      scheduled_for: row.scheduled_for,
+      status: row.status || row.content_status || 'discovered',
+      scheduled_for: row.scheduled_for || row.scheduled_post_time,
       reviewed_at: row.reviewed_at,
       reviewed_by: row.reviewed_by,
       rejection_reason: row.rejection_reason,
