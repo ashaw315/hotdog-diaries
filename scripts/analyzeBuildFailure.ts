@@ -153,6 +153,20 @@ class BuildFailureAnalyzer {
       suggestionTemplate: 'Install missing types package or add module declaration'
     },
 
+    // Next.js/Path-specific Errors
+    {
+      pattern: /Can not repeat "path" without a prefix and suffix/gi,
+      type: 'syntax',
+      severity: 'high',
+      suggestionTemplate: 'Replace .repeat() usage with path.join() or fix variable naming conflict with "path" module'
+    },
+    {
+      pattern: /repeat.*?path/gi,
+      type: 'syntax',
+      severity: 'moderate',
+      suggestionTemplate: 'Check for .repeat() method usage on path-related variables - consider using proper path manipulation'
+    },
+
     // Memory Errors
     {
       pattern: /JavaScript heap out of memory/gi,
@@ -296,14 +310,13 @@ class BuildFailureAnalyzer {
     try {
       console.log(chalk.white('  Running Next.js build with debug logging...'))
       
-      const buildOutput = execSync('npx next build --no-telemetry --debug', {
+      const buildOutput = execSync('npx next build', {
         cwd: this.projectRoot,
         encoding: 'utf8',
         stdio: 'pipe',
         env: {
           ...process.env,
           NODE_ENV: 'production',
-          NEXT_DEBUG: '1',
           DEBUG: 'next:*'
         }
       })
@@ -331,6 +344,19 @@ class BuildFailureAnalyzer {
   private parseErrorsFromLog(log: string): BuildError[] {
     const errors: BuildError[] = []
     const lines = log.split('\n')
+
+    // Phase 4.1: Special diagnostic for "repeat path" error
+    if (log.includes('repeat "path"')) {
+      console.log(chalk.yellow('💡 Likely cause: malformed template or .repeat() misuse in cleanup-prod.js or next.config.js'))
+      console.log(chalk.yellow('🔧 Suggested fix: replace .repeat() with path.join() or ensure variable not named "path"'))
+      
+      errors.push({
+        type: 'syntax',
+        severity: 'high',
+        message: 'Next.js path repeat error detected',
+        suggestion: 'Check for .repeat() method conflicts with Node.js path module - likely in config files or cleanup scripts'
+      })
+    }
 
     for (const line of lines) {
       for (const pattern of this.errorPatterns) {
@@ -552,7 +578,7 @@ class BuildFailureAnalyzer {
     const logContent = `# Build Log - ${timestamp}
 
 ## Command
-npx next build --no-telemetry --debug
+npx next build
 
 ## Environment
 - Node.js: ${process.version}
