@@ -155,7 +155,7 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/api/:path*',
+        source: '/api/(.*)',
         headers: [
           {
             key: 'Cache-Control',
@@ -164,7 +164,7 @@ const nextConfig = {
         ],
       },
       {
-        source: '/:path*\\.(png|jpg|jpeg|gif|webp|svg|ico)',
+        source: '/:filename*\\.(png|jpg|jpeg|gif|webp|svg|ico)',
         headers: [
           {
             key: 'Cache-Control',
@@ -180,12 +180,12 @@ const nextConfig = {
     if (process.env.NODE_ENV === 'production') {
       return [
         {
-          source: '/test-:path*',
+          source: '/test-(.*)',
           destination: '/',
           permanent: true,
         },
         {
-          source: '/api/test/:path*',
+          source: '/api/test/(.*)',
           destination: '/api/health',
           permanent: true,
         }

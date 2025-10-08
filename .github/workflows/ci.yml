@@ -38,6 +38,9 @@ jobs:
       - name: 🔧 Patch legacy path resolver
         run: npx tsx scripts/patchPathResolver.ts
 
+      - name: 🛡️ Validate route patterns
+        run: npx tsx scripts/validateRoutes.ts
+
       - name: 🔍 Audit for legacy dependencies
         run: |
           echo "🔍 Scanning for problematic legacy dependencies..."
@@ -211,6 +214,9 @@ jobs:
 
       - name: 🔧 Patch legacy path resolver (build phase)
         run: npx tsx scripts/patchPathResolver.ts
+
+      - name: 🛡️ Validate route patterns (build phase)
+        run: npx tsx scripts/validateRoutes.ts
 
       - name: 🔍 Pre-build dependency audit
         run: |
