@@ -95,7 +95,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       'updated_at',
       'confidence_score',
       'content_hash',
-      'is_rejected'
+      'is_rejected',
+      'status',
+      'scheduled_for',
+      'content_status',
+      'reviewed_at',
+      'reviewed_by',
+      'rejection_reason',
+      'is_spam',
+      'is_inappropriate',
+      'is_unrelated',
+      'is_valid_hotdog'
     ]
     
     const safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns, 'cq')
@@ -169,6 +179,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         } else {
           whereClause = '1=0' // No rejected items if columns don't exist
         }
+      } else if (status === 'scheduled') {
+        // Check for scheduled content based on available columns
+        const hasStatus = contentQueueColumns.includes('status')
+        const hasScheduledFor = contentQueueColumns.includes('scheduled_for')
+        
+        if (hasStatus) {
+          whereClause = 'cq.status = \'scheduled\''
+        } else if (hasScheduledFor) {
+          whereClause = 'cq.scheduled_for IS NOT NULL'
+        } else {
+          whereClause = '1=0' // No scheduled items if columns don't exist
+        }
       }
       // For 'all' or any other value, keep whereClause as '1=1'
       
@@ -220,7 +242,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       admin_notes: row.admin_notes,
       created_at: row.created_at,
       updated_at: row.updated_at,
-      post_order: row.id // Use id as post_order for compatibility
+      post_order: row.id, // Use id as post_order for compatibility
+      // Additional fields for ContentQueue interface
+      content_status: row.content_status || (row.status || 'discovered'),
+      status: row.status || 'discovered',
+      scheduled_for: row.scheduled_for,
+      reviewed_at: row.reviewed_at,
+      reviewed_by: row.reviewed_by,
+      rejection_reason: row.rejection_reason,
+      confidence_score: row.confidence_score,
+      is_spam: row.is_spam,
+      is_inappropriate: row.is_inappropriate,
+      is_unrelated: row.is_unrelated,
+      is_valid_hotdog: row.is_valid_hotdog
     }))
 
     const responseData = {

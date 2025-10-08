@@ -328,7 +328,7 @@ export class AdminApiClient {
   async getContent(params?: {
     page?: number
     limit?: number
-    status?: 'pending' | 'approved' | 'rejected' | 'posted'
+    status?: 'pending' | 'approved' | 'scheduled' | 'rejected' | 'posted'
     platform?: string
     type?: string
   }): Promise<PaginatedResponse<ContentItem>> {

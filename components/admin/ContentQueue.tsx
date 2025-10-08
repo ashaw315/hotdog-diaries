@@ -34,7 +34,7 @@ interface QueuedContent {
 export default function ContentQueue() {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   const [sortBy, setSortBy] = useState<'created_at' | 'updated_at' | 'scraped_at' | 'confidence_score'>('created_at')
-  const [filterBy, setFilterBy] = useState<'all' | 'discovered' | 'pending_review' | 'approved' | 'rejected'>('all')
+  const [filterBy, setFilterBy] = useState<'all' | 'discovered' | 'pending_review' | 'approved' | 'scheduled' | 'rejected'>('all')
   const [editingContent, setEditingContent] = useState<number | null>(null)
   const [editText, setEditText] = useState<string>('')
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
@@ -44,6 +44,7 @@ export default function ContentQueue() {
     switch (filter) {
       case 'pending_review': return 'pending'
       case 'approved': return 'approved'
+      case 'scheduled': return 'scheduled'
       case 'rejected': return 'rejected'
       case 'posted': return 'posted'
       default: return undefined
@@ -899,6 +900,7 @@ export default function ContentQueue() {
                     <option value="discovered">Discovered</option>
                     <option value="pending_review">Pending Review</option>
                     <option value="approved">Approved</option>
+                    <option value="scheduled">Scheduled</option>
                     <option value="rejected">Rejected</option>
                   </select>
                 </div>

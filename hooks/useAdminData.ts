@@ -137,7 +137,7 @@ export function useDashboardData(refreshInterval = 5 * 60 * 1000): UseAsyncState
 export function useContentData(params?: {
   page?: number
   limit?: number
-  status?: 'pending' | 'approved' | 'rejected' | 'posted'
+  status?: 'pending' | 'approved' | 'scheduled' | 'rejected' | 'posted'
   platform?: string
   type?: string
   autoRefresh?: boolean
