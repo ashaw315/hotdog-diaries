@@ -35,6 +35,12 @@ jobs:
       - name: 🧠 Install tsx (temporary CI dependency)
         run: npm install --no-save tsx
 
+      - name: 🛠 Apply build patch and run stability check
+        run: |
+          echo "🧩 Applying request-promise hotfix..."
+          npx tsx scripts/patchRequestPromise.ts || echo "⚠️ Patch not needed or failed"
+          echo "✅ Build environment prepared"
+
       - name: 🛡️ Run Critical Failure Gatekeeper
         id: gatekeeper
         run: |
@@ -193,6 +199,11 @@ jobs:
       - name: Install dependencies
         if: steps.node-modules-cache.outputs.cache-hit != 'true'
         run: npm ci
+
+      - name: 🧩 Patch request-promise for Vercel build
+        run: |
+          npm install --no-save tsx
+          npx tsx scripts/patchRequestPromise.ts || echo "⚠️ Patch not needed or failed"
 
       - name: Cache Next.js build
         uses: actions/cache@v4

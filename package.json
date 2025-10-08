@@ -92,6 +92,7 @@
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "request-promise-native": "^1.0.9",
     "simple-git": "^3.28.0",
     "snoowrap": "^1.15.2",
     "sqlite": "^5.1.1",

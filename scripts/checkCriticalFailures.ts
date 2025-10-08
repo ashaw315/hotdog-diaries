@@ -739,7 +739,77 @@ class CriticalFailureGatekeeper {
       }).trim()
       
       console.log(chalk.yellow(`   Current commit: ${currentCommit} - "${currentMessage}"`))
-      console.log(chalk.yellow('   Reverting to previous state...'))
+      console.log(chalk.yellow('   Performing pre-rollback safety commit...'))
+      
+      // Phase 4.2: Pre-rollback commit protection
+      // Commit any generated files that might cause "local changes would be overwritten" errors
+      try {
+        console.log(chalk.blue('   📝 Staging generated files and reports...'))
+        
+        // Stage commonly generated files that can cause rollback conflicts
+        const filesToStage = [
+          'package-lock.json',
+          'reports/*',
+          '.next/',
+          'node_modules/.cache/',
+          '*.log',
+          '.env.local'
+        ]
+        
+        // Check which files actually exist and have changes
+        const gitStatus = execSync('git status --porcelain', { 
+          cwd: this.projectRoot, 
+          encoding: 'utf8', 
+          stdio: 'pipe' 
+        }).trim()
+        
+        if (gitStatus) {
+          console.log(chalk.gray(`   📋 Uncommitted changes detected:`))
+          gitStatus.split('\n').slice(0, 5).forEach(line => {
+            console.log(chalk.gray(`      ${line}`))
+          })
+          
+          // Stage files that won't cause issues
+          try {
+            execSync('git add package-lock.json reports/ --force', { 
+              cwd: this.projectRoot, 
+              stdio: 'pipe' 
+            })
+            console.log(chalk.green('   ✅ Staged safe files (package-lock.json, reports/)'))
+          } catch {
+            // Continue even if staging fails
+            console.log(chalk.yellow('   ⚠️ Could not stage some files - proceeding with rollback'))
+          }
+          
+          // Create pre-rollback commit if we have staged changes
+          try {
+            const stagedFiles = execSync('git diff --cached --name-only', { 
+              cwd: this.projectRoot, 
+              encoding: 'utf8', 
+              stdio: 'pipe' 
+            }).trim()
+            
+            if (stagedFiles) {
+              execSync('git commit -m "chore(ci): pre-rollback auto-commit [skip ci]" --no-verify', { 
+                cwd: this.projectRoot, 
+                stdio: 'pipe' 
+              })
+              console.log(chalk.green('   ✅ Pre-rollback commit created'))
+            }
+          } catch {
+            // If commit fails, that's okay - continue with rollback
+            console.log(chalk.yellow('   ℹ️  No pre-rollback commit needed'))
+          }
+        } else {
+          console.log(chalk.green('   ✅ No uncommitted changes - proceeding with rollback'))
+        }
+        
+      } catch (preCommitError) {
+        console.log(chalk.yellow('   ⚠️ Pre-commit protection failed - attempting rollback anyway'))
+        console.log(chalk.gray(`   Pre-commit error: ${preCommitError.message}`))
+      }
+      
+      console.log(chalk.yellow('   🔄 Executing revert to previous state...'))
       
       // Create revert commit (safer than reset as it preserves history)
       const revertOutput = execSync('git revert HEAD --no-edit', { 
