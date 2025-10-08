@@ -12,6 +12,14 @@
  * Usage: tsx scripts/testAutoHealing.ts [--full] [--lint-only] [--security-only]
  */
 
+// Safety pre-check: Ensure tsx dependency is available
+try {
+  require.resolve('tsx')
+} catch {
+  console.error('❌ Missing dependency: tsx. Run `npm install --no-save tsx` before execution.')
+  process.exit(127)
+}
+
 import { execSync } from 'child_process'
 import { writeFile, readFile, mkdir, pathExists, remove } from 'fs-extra'
 import { join } from 'path'

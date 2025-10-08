@@ -11,6 +11,7 @@ jobs:
     name: CI Stability & Auto-Healing
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     outputs:
       ci-ready: ${{ steps.gatekeeper.outputs.ci-ready }}
       auto-fixes-applied: ${{ steps.gatekeeper.outputs.auto-fixes-applied }}
@@ -22,22 +23,25 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: 🧩 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm ci
 
-      - name: Run Critical Failure Gatekeeper
+      - name: 🧠 Install tsx (temporary CI dependency)
+        run: npm install --no-save tsx
+
+      - name: 🛡️ Run Critical Failure Gatekeeper
         id: gatekeeper
         run: |
           echo "🛡️ Running CI Stability & Auto-Healing System..."
           
           # Run the gatekeeper system
-          tsx scripts/checkCriticalFailures.ts || GATEKEEPER_EXIT=$?
+          npx tsx scripts/checkCriticalFailures.ts || GATEKEEPER_EXIT=$?
           
           # Check if auto-fixes were applied
           if [ -f "reports/ci-health-gate.md" ]; then
