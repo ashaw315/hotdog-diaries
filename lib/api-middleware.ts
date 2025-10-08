@@ -211,3 +211,21 @@ export async function verifyAdminAuth(request: NextRequest): Promise<{
     }
   }
 }
+
+/**
+ * Authenticate admin user from request
+ * Throws an error if authentication fails
+ */
+export async function authenticateAdmin(request: NextRequest): Promise<JWTPayload> {
+  const authResult = await verifyAdminAuth(request)
+  
+  if (!authResult.success) {
+    throw createApiError(
+      authResult.error || 'Authentication required',
+      401,
+      'UNAUTHORIZED'
+    )
+  }
+  
+  return authResult.payload!
+}

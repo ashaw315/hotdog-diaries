@@ -58,6 +58,10 @@ export interface ContentQueue {
   admin_notes?: string
   created_at: Date
   updated_at: Date
+  // New scheduling fields
+  scheduled_for?: Date | string
+  status: ContentStatus
+  priority: number
 }
 
 export interface PostedContent {
@@ -116,6 +120,13 @@ export enum LogLevel {
   WARNING = 'warning',
   ERROR = 'error',
   FATAL = 'fatal'
+}
+
+export enum ContentStatus {
+  APPROVED = 'approved',
+  SCHEDULED = 'scheduled',
+  POSTED = 'posted',
+  FAILED = 'failed'
 }
 
 // API Request/Response Types
@@ -185,7 +196,36 @@ export interface ContentItem {
   is_posted?: boolean
   is_approved?: boolean
   content_status?: string
+  // New scheduling fields
+  scheduled_for?: Date | string
+  status?: ContentStatus | string
+  priority?: number
   [key: string]: unknown // Allow additional properties
+}
+
+// Scheduling-specific types
+export interface ScheduledContentItem extends ContentItem {
+  scheduled_for: Date | string
+  status: ContentStatus
+  priority: number
+}
+
+export interface ContentScheduleRequest {
+  postsPerDay?: number
+  startDate?: Date | string
+  endDate?: Date | string
+  platforms?: string[]
+}
+
+export interface ContentScheduleResult {
+  scheduled: ScheduledContentItem[]
+  skipped: ContentItem[]
+  errors: string[]
+  summary: {
+    totalScheduled: number
+    totalDays: number
+    platformDistribution: Record<string, number>
+  }
 }
 
 // API Error types
