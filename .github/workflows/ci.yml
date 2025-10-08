@@ -35,7 +35,7 @@ jobs:
         if: steps.node-modules-cache.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: ESLint Check (Baseline: 800 warnings max)
+      - name: "ESLint Check (Baseline: 800 warnings max)"
         run: npm run lint:ci
 
       - name: TypeScript Check (Non-blocking baseline)
