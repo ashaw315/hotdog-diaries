@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build:prod",
+  "buildCommand": "rm -rf node_modules .next && npm ci && npm run build:prod",
   "outputDirectory": ".next",
   "functions": {
     "app/api/cron/scan-content/route.ts": {
@@ -18,7 +18,8 @@
   },
   "build": {
     "env": {
-      "NODE_ENV": "production"
+      "NODE_ENV": "production",
+      "VERCEL_FORCE_NO_BUILD_CACHE": "1"
     }
   },
   "headers": [

@@ -35,6 +35,12 @@ jobs:
       - name: 🧠 Install tsx (temporary CI dependency)
         run: npm install --no-save tsx
 
+      - name: 🔍 Audit for legacy dependencies
+        run: |
+          echo "🔍 Scanning for problematic legacy dependencies..."
+          npx tsx scripts/findOffender.ts || (echo "❌ Legacy modules found – aborting build" && exit 1)
+          echo "✅ Dependency audit passed"
+
       - name: 🛠 Prepare build environment
         run: |
           echo "🧩 Build environment check..."
@@ -200,10 +206,12 @@ jobs:
         if: steps.node-modules-cache.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: 🧩 Verify modern dependency layer
+      - name: 🔍 Pre-build dependency audit
         run: |
-          echo "🧩 Verifying dependency layer stability..."
-          echo "✅ Using modern got-based HTTP client (no legacy request-promise)"
+          echo "🔍 Running pre-build dependency audit..."
+          npx tsx scripts/findOffender.ts || (echo "❌ Legacy dependencies detected in build phase" && exit 1)
+          echo "✅ Build dependency layer verified clean"
+          echo "✅ Using modern got-based HTTP client"
           echo "✅ Build layer hardened with webpack externals"
 
       - name: Cache Next.js build

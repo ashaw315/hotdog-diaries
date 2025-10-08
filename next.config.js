@@ -33,6 +33,9 @@ if (isCI) {
 }
 
 const nextConfig = {
+  // Fix workspace root detection for build
+  outputFileTracingRoot: process.cwd(),
+  
   // Production optimizations
   productionBrowserSourceMaps: false,
   // swcMinify is deprecated in Next.js 15 - SWC is enabled by default
@@ -70,6 +73,19 @@ const nextConfig = {
   
   // Performance optimizations
   webpack: (config, { isServer, dev, webpack }) => {
+    // Prevent legacy imports from breaking Vercel builds
+    // These aliases block any accidental imports of problematic packages
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'path-template': false,
+      'request-promise': false,
+      'request-promise-native': false,
+      'request-promise-core': false,
+      'cls-bluebird': false,
+      'continuation-local-storage': false,
+      'snoowrap': false
+    }
+    
     // Ignore pg-native module warnings
     if (isServer) {
       config.externals.push('pg-native')
