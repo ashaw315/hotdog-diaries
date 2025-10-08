@@ -40,6 +40,21 @@ const PLATFORM_COLORS: { [key: string]: string } = {
   unknown: 'bg-gray-100 text-gray-600'
 }
 
+function getPlatformColor(platform: string): { bg: string; text: string } {
+  const colors: { [key: string]: { bg: string; text: string } } = {
+    reddit: { bg: '#fff7ed', text: '#9a3412' },
+    bluesky: { bg: '#eff6ff', text: '#1e40af' },
+    tumblr: { bg: '#faf5ff', text: '#7c2d12' },
+    lemmy: { bg: '#ecfdf5', text: '#065f46' },
+    giphy: { bg: '#fdf2f8', text: '#be185d' },
+    imgur: { bg: '#f9fafb', text: '#374151' },
+    pixabay: { bg: '#f0fdf4', text: '#15803d' },
+    youtube: { bg: '#fef2f2', text: '#dc2626' },
+    emergency: { bg: '#fffbeb', text: '#92400e' }
+  }
+  return colors[platform] || colors.imgur
+}
+
 const CONTENT_TYPE_ICONS: { [key: string]: string } = {
   image: '🖼️',
   video: '🎥',
@@ -127,17 +142,14 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <Calendar className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Daily Scheduled Content</h3>
+      <div className="schedule-admin-card">
+        <div className="schedule-admin-card-header">
+          <h2>📅 Daily Scheduled Content</h2>
         </div>
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-12 bg-gray-100 rounded"></div>
-            ))}
+        <div className="schedule-admin-card-body">
+          <div className="schedule-loading">
+            <div className="schedule-spinner"></div>
+            <span style={{ marginLeft: 'var(--spacing-sm)' }}>Loading daily schedule...</span>
           </div>
         </div>
       </div>
@@ -146,20 +158,18 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg border border-red-200 p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <Calendar className="w-5 h-5 text-red-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Daily Scheduled Content</h3>
+      <div className="schedule-admin-card">
+        <div className="schedule-admin-card-header">
+          <h2>📅 Daily Scheduled Content</h2>
         </div>
-        <div className="text-center py-8">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Try Again
-          </button>
+        <div className="schedule-admin-card-body">
+          <div className="schedule-error">
+            <h2>📅 Schedule Error</h2>
+            <p>{error}</p>
+            <button onClick={handleRefresh}>
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -172,191 +182,374 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
   const diversityStatus = getDiversityStatus(data.summary.diversity_score)
   
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="schedule-admin-card">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
-          <Calendar className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Daily Scheduled Content</h3>
-        </div>
-        <div className="flex items-center space-x-3">
-          <span className="text-sm text-gray-500">{data.date}</span>
-          <button
-            onClick={handleRefresh}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-            title="Refresh"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">Total Posts</p>
-              <p className="text-2xl font-bold text-blue-900">{data.summary.total_posts}</p>
-            </div>
-            <Clock className="w-8 h-8 text-blue-400" />
-          </div>
-        </div>
-        
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Platforms</p>
-              <p className="text-2xl font-bold text-green-900">{Object.keys(data.summary.platforms).length}</p>
-            </div>
-            <div className="text-2xl">🌐</div>
-          </div>
-        </div>
-        
-        <div className="bg-purple-50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-purple-600">Diversity Score</p>
-              <p className="text-2xl font-bold text-purple-900">{data.summary.diversity_score}%</p>
-            </div>
-            <div className={`flex items-center ${diversityStatus.color}`}>
-              {diversityStatus.icon}
-            </div>
+      <div className="schedule-admin-card-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>📅 Daily Scheduled Content</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+            <span style={{ 
+              fontSize: 'var(--font-size-sm)', 
+              color: 'var(--color-text-secondary)' 
+            }}>
+              {data.date}
+            </span>
+            <button
+              onClick={handleRefresh}
+              className="schedule-btn schedule-btn-secondary"
+              title="Refresh"
+              style={{ padding: 'var(--spacing-xs)' }}
+            >
+              <Eye className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
+      
+      <div className="schedule-admin-card-body">
+        {/* Summary Stats */}
+        <div className="schedule-queue-summary">
+          <div className="schedule-queue-stat">
+            <div className="schedule-queue-number">{data.summary.total_posts}</div>
+            <p className="schedule-queue-label">Total Posts</p>
+          </div>
+          
+          <div className="schedule-queue-stat">
+            <div className="schedule-queue-number">{Object.keys(data.summary.platforms).length}</div>
+            <p className="schedule-queue-label">Platforms</p>
+          </div>
+          
+          <div className="schedule-queue-stat">
+            <div className="schedule-queue-number">{data.summary.diversity_score}%</div>
+            <p className="schedule-queue-label">Diversity Score</p>
+          </div>
+        </div>
 
-      {/* Diversity Status */}
-      <div className={`flex items-center space-x-2 mb-6 p-3 rounded-lg ${
-        data.summary.diversity_score >= 60 ? 'bg-green-50' : 'bg-yellow-50'
-      }`}>
-        <span className={diversityStatus.color}>{diversityStatus.icon}</span>
-        <span className={`font-medium ${diversityStatus.color}`}>{diversityStatus.label}</span>
-        {data.summary.diversity_score < 60 && (
-          <span className="text-sm text-gray-600">
-            - Consider adding more variety in platforms or content types
-          </span>
+        {/* Diversity Status */}
+        <div className={`schedule-status-indicator ${
+          data.summary.diversity_score >= 80 ? 'enabled' : 
+          data.summary.diversity_score >= 60 ? 'warning' : 'disabled'
+        }`} style={{ 
+          width: '100%', 
+          justifyContent: 'flex-start',
+          marginBottom: 'var(--spacing-lg)' 
+        }}>
+          <span className="schedule-status-dot"></span>
+          <span>{diversityStatus.label}</span>
+          {data.summary.diversity_score < 60 && (
+            <span style={{ 
+              fontSize: 'var(--font-size-xs)', 
+              marginLeft: 'var(--spacing-sm)',
+              opacity: 0.8
+            }}>
+              - Consider adding more variety in platforms or content types
+            </span>
+          )}
+        </div>
+
+        {/* Scheduled Content List */}
+        {data.scheduled_content.length === 0 ? (
+          <div className="schedule-empty-state">
+            <h3>📅 No Content Scheduled</h3>
+            <p>No content scheduled for {data.date}</p>
+            <p style={{ fontSize: 'var(--font-size-sm)', marginTop: 'var(--spacing-xs)' }}>
+              Content will appear here once scheduling is completed
+            </p>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 'var(--spacing-lg)' }}>
+            <h4 style={{ 
+              fontSize: 'var(--font-size-lg)', 
+              fontWeight: 'var(--font-weight-semibold)',
+              color: 'var(--color-text-primary)',
+              marginBottom: 'var(--spacing-md)'
+            }}>
+              Scheduled Posts ({data.scheduled_content.length})
+            </h4>
+            
+            <div style={{ 
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--border-radius-md)',
+              overflow: 'hidden'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ 
+                  backgroundColor: 'var(--color-card-header)',
+                  borderBottom: '1px solid var(--color-border)'
+                }}>
+                  <tr>
+                    <th style={{ 
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      textAlign: 'left',
+                      fontSize: 'var(--font-size-xs)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-secondary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Time
+                    </th>
+                    <th style={{ 
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      textAlign: 'left',
+                      fontSize: 'var(--font-size-xs)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-secondary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Platform
+                    </th>
+                    <th style={{ 
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      textAlign: 'left',
+                      fontSize: 'var(--font-size-xs)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-secondary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Type
+                    </th>
+                    <th style={{ 
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      textAlign: 'left',
+                      fontSize: 'var(--font-size-xs)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-secondary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Source
+                    </th>
+                    <th style={{ 
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      textAlign: 'left',
+                      fontSize: 'var(--font-size-xs)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-secondary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Content
+                    </th>
+                    <th style={{ 
+                      padding: 'var(--spacing-sm) var(--spacing-md)',
+                      textAlign: 'left',
+                      fontSize: 'var(--font-size-xs)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-secondary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody style={{ backgroundColor: 'white' }}>
+                  {data.scheduled_content.map((item, index) => (
+                    <tr 
+                      key={item.id} 
+                      style={{ 
+                        borderBottom: index < data.scheduled_content.length - 1 ? '1px solid var(--color-border)' : 'none',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50, #f9fafb)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                    >
+                      <td style={{ 
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        whiteSpace: 'nowrap',
+                        fontSize: 'var(--font-size-sm)',
+                        fontWeight: 'var(--font-weight-medium)',
+                        color: 'var(--color-text-primary)'
+                      }}>
+                        {formatTime(item.scheduled_time)}
+                      </td>
+                      <td style={{ 
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: 'var(--spacing-xs) var(--spacing-sm)',
+                          borderRadius: 'var(--border-radius-full)',
+                          fontSize: 'var(--font-size-xs)',
+                          fontWeight: 'var(--font-weight-medium)',
+                          backgroundColor: getPlatformColor(item.platform).bg,
+                          color: getPlatformColor(item.platform).text
+                        }}>
+                          {item.platform}
+                        </span>
+                      </td>
+                      <td style={{ 
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                          <span style={{ fontSize: 'var(--font-size-lg)' }}>
+                            {CONTENT_TYPE_ICONS[item.content_type] || '📄'}
+                          </span>
+                          <span style={{ 
+                            fontSize: 'var(--font-size-sm)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'capitalize'
+                          }}>
+                            {item.content_type}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ 
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        fontSize: 'var(--font-size-sm)',
+                        color: 'var(--color-text-primary)',
+                        maxWidth: '150px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {item.source}
+                      </td>
+                      <td style={{ 
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        fontSize: 'var(--font-size-sm)',
+                        color: 'var(--color-text-secondary)',
+                        maxWidth: '200px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {item.title || 'No preview available'}
+                      </td>
+                      <td style={{ 
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        <span className={`schedule-status-indicator ${
+                          item.status === 'posted' ? 'enabled' : 'warning'
+                        }`} style={{ padding: 'var(--spacing-xs) var(--spacing-sm)' }}>
+                          <span className="schedule-status-dot"></span>
+                          {item.status === 'posted' ? 'Posted' : 'Scheduled'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Platform & Content Type Breakdown */}
+        {data.summary.total_posts > 0 && (
+          <div style={{ 
+            marginTop: 'var(--spacing-xl)',
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+            gap: 'var(--spacing-xl)'
+          }}>
+            {/* Platform Distribution */}
+            <div>
+              <h4 style={{ 
+                fontSize: 'var(--font-size-lg)', 
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--color-text-primary)',
+                marginBottom: 'var(--spacing-md)'
+              }}>
+                Platform Distribution
+              </h4>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 'var(--spacing-sm)' 
+              }}>
+                {Object.entries(data.summary.platforms).map(([platform, count]) => (
+                  <div 
+                    key={platform} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between' 
+                    }}
+                  >
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: 'var(--spacing-xs) var(--spacing-sm)',
+                      borderRadius: 'var(--border-radius-full)',
+                      fontSize: 'var(--font-size-xs)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      backgroundColor: getPlatformColor(platform).bg,
+                      color: getPlatformColor(platform).text
+                    }}>
+                      {platform}
+                    </span>
+                    <span style={{ 
+                      fontSize: 'var(--font-size-sm)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-primary)'
+                    }}>
+                      {count} posts
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Content Type Distribution */}
+            <div>
+              <h4 style={{ 
+                fontSize: 'var(--font-size-lg)', 
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--color-text-primary)',
+                marginBottom: 'var(--spacing-md)'
+              }}>
+                Content Type Distribution
+              </h4>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 'var(--spacing-sm)' 
+              }}>
+                {Object.entries(data.summary.content_types).map(([type, count]) => (
+                  <div 
+                    key={type} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between' 
+                    }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 'var(--spacing-sm)' 
+                    }}>
+                      <span style={{ fontSize: 'var(--font-size-lg)' }}>
+                        {CONTENT_TYPE_ICONS[type] || '📄'}
+                      </span>
+                      <span style={{ 
+                        fontSize: 'var(--font-size-sm)',
+                        textTransform: 'capitalize',
+                        color: 'var(--color-text-primary)'
+                      }}>
+                        {type}
+                      </span>
+                    </div>
+                    <span style={{ 
+                      fontSize: 'var(--font-size-sm)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-primary)'
+                    }}>
+                      {count} posts
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </div>
-
-      {/* Scheduled Content List */}
-      {data.scheduled_content.length === 0 ? (
-        <div className="text-center py-8">
-          <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No content scheduled for {data.date}</p>
-          <p className="text-sm text-gray-400 mt-2">
-            Content will appear here once scheduling is completed
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <h4 className="font-medium text-gray-900 mb-3">
-            Scheduled Posts ({data.scheduled_content.length})
-          </h4>
-          
-          <div className="overflow-hidden">
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Time
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Platform
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Source
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Content
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {data.scheduled_content.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {formatTime(item.scheduled_time)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        PLATFORM_COLORS[item.platform] || PLATFORM_COLORS.unknown
-                      }`}>
-                        {item.platform}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center space-x-1">
-                        <span className="text-lg">{CONTENT_TYPE_ICONS[item.content_type] || '📄'}</span>
-                        <span className="text-sm text-gray-600 capitalize">{item.content_type}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 truncate max-w-32">
-                      {item.source}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-48">
-                      {item.title || 'No preview available'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.status === 'posted' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {item.status === 'posted' ? '✅ Posted' : '📅 Scheduled'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Platform & Content Type Breakdown */}
-      {data.summary.total_posts > 0 && (
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Platform Distribution */}
-          <div>
-            <h4 className="font-medium text-gray-900 mb-3">Platform Distribution</h4>
-            <div className="space-y-2">
-              {Object.entries(data.summary.platforms).map(([platform, count]) => (
-                <div key={platform} className="flex items-center justify-between">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    PLATFORM_COLORS[platform] || PLATFORM_COLORS.unknown
-                  }`}>
-                    {platform}
-                  </span>
-                  <span className="text-sm font-medium text-gray-900">{count} posts</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Content Type Distribution */}
-          <div>
-            <h4 className="font-medium text-gray-900 mb-3">Content Type Distribution</h4>
-            <div className="space-y-2">
-              {Object.entries(data.summary.content_types).map(([type, count]) => (
-                <div key={type} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{CONTENT_TYPE_ICONS[type] || '📄'}</span>
-                    <span className="text-sm capitalize text-gray-900">{type}</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{count} posts</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
