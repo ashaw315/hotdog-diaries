@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { createSimpleClient } from '@/utils/supabase/server'
+import { parseISO, startOfDay, endOfDay, addHours, format } from 'date-fns'
 
 interface DailyScheduleItem {
   id: string
@@ -10,6 +11,7 @@ interface DailyScheduleItem {
   scheduled_time: string
   title?: string
   confidence_score?: number
+  status?: 'scheduled' | 'posted'
 }
 
 interface DailyScheduleResponse {
@@ -65,17 +67,34 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const dateParam = searchParams.get('date')
     
-    // Default to today if no date provided
-    const targetDate = dateParam || new Date().toISOString().split('T')[0] // YYYY-MM-DD format
-    
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+    // Default to today if no date provided, normalize date input
+    let targetDate: Date
+    try {
+      if (dateParam) {
+        // Validate and parse provided date
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+          return NextResponse.json({
+            error: 'Invalid date format. Use YYYY-MM-DD format.'
+          }, { status: 400 })
+        }
+        targetDate = parseISO(dateParam)
+      } else {
+        targetDate = new Date()
+      }
+    } catch (error) {
       return NextResponse.json({
-        error: 'Invalid date format. Use YYYY-MM-DD format.'
+        error: 'Invalid date provided. Use YYYY-MM-DD format.'
       }, { status: 400 })
     }
     
+    // Create expanded time window to handle timezone variations
+    // 12-hour buffer ensures content scheduled in different timezones is captured
+    const startWindow = addHours(startOfDay(targetDate), -6).toISOString()
+    const endWindow = addHours(endOfDay(targetDate), +6).toISOString()
+    const targetDateStr = format(targetDate, 'yyyy-MM-dd')
+    
     let scheduledContent: DailyScheduleItem[] = []
+    let postedContent: DailyScheduleItem[] = []
     
     // Determine database type
     const isVercel = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres')) && process.env.NODE_ENV === 'production'
@@ -86,7 +105,8 @@ export async function GET(request: NextRequest) {
       await db.connect()
       
       try {
-        const result = await db.query(`
+        // Query for scheduled content with expanded time window
+        const scheduledResult = await db.query(`
           SELECT 
             cq.id,
             cq.source_platform as platform,
@@ -94,21 +114,54 @@ export async function GET(request: NextRequest) {
             cq.original_author as source,
             cq.scheduled_for as scheduled_time,
             SUBSTR(cq.content_text, 1, 100) as title,
-            cq.confidence_score
+            cq.confidence_score,
+            'scheduled' as status
           FROM content_queue cq
-          WHERE cq.status = 'scheduled'
-            AND DATE(cq.scheduled_for) = ?
+          WHERE (cq.status = 'scheduled' OR cq.is_approved = 1)
+            AND (
+              DATE(cq.scheduled_for) = ?
+              OR (cq.scheduled_for >= ? AND cq.scheduled_for <= ?)
+            )
           ORDER BY cq.scheduled_for ASC
-        `, [targetDate])
+        `, [targetDateStr, startWindow, endWindow])
         
-        scheduledContent = (result.rows || []).map((row: any) => ({
+        // Query for content that was already posted on this date
+        const postedResult = await db.query(`
+          SELECT DISTINCT
+            cq.id,
+            cq.source_platform as platform,
+            cq.content_type,
+            cq.original_author as source,
+            pc.posted_at as scheduled_time,
+            SUBSTR(cq.content_text, 1, 100) as title,
+            cq.confidence_score,
+            'posted' as status
+          FROM content_queue cq
+          JOIN posted_content pc ON cq.id = pc.content_queue_id
+          WHERE DATE(pc.posted_at) = ?
+          ORDER BY pc.posted_at ASC
+        `, [targetDateStr])
+        
+        scheduledContent = (scheduledResult.rows || []).map((row: any) => ({
           id: String(row.id),
           platform: row.platform || 'unknown',
           content_type: mapContentType(row.content_type),
           source: row.source || 'Unknown Source',
           scheduled_time: row.scheduled_time,
           title: row.title,
-          confidence_score: row.confidence_score
+          confidence_score: row.confidence_score,
+          status: row.status
+        }))
+        
+        postedContent = (postedResult.rows || []).map((row: any) => ({
+          id: String(row.id),
+          platform: row.platform || 'unknown',
+          content_type: mapContentType(row.content_type),
+          source: row.source || 'Unknown Source',
+          scheduled_time: row.scheduled_time,
+          title: row.title,
+          confidence_score: row.confidence_score,
+          status: row.status
         }))
         
       } catch (error) {
@@ -121,7 +174,8 @@ export async function GET(request: NextRequest) {
       const supabase = createSimpleClient()
       
       try {
-        const { data, error } = await supabase
+        // Query for scheduled content with expanded time window
+        const { data: scheduledData, error: scheduledError } = await supabase
           .from('content_queue')
           .select(`
             id,
@@ -130,24 +184,60 @@ export async function GET(request: NextRequest) {
             original_author,
             scheduled_for,
             content_text,
-            confidence_score
+            confidence_score,
+            status
           `)
-          .eq('status', 'scheduled')
-          .gte('scheduled_for', `${targetDate}T00:00:00.000Z`)
-          .lt('scheduled_for', `${targetDate}T23:59:59.999Z`)
+          .or(`status.eq.scheduled,is_approved.eq.true`)
+          .gte('scheduled_for', startWindow)
+          .lte('scheduled_for', endWindow)
           .order('scheduled_for', { ascending: true })
         
-        if (error) {
-          console.error('Supabase query error:', error)
+        // Query for posted content
+        const { data: postedData, error: postedError } = await supabase
+          .from('posted_content')
+          .select(`
+            content_queue_id,
+            posted_at,
+            content_queue (
+              id,
+              source_platform,
+              content_type,
+              original_author,
+              content_text,
+              confidence_score
+            )
+          `)
+          .gte('posted_at', `${targetDateStr}T00:00:00.000Z`)
+          .lt('posted_at', `${targetDateStr}T23:59:59.999Z`)
+          .order('posted_at', { ascending: true })
+        
+        if (scheduledError) {
+          console.error('Supabase scheduled query error:', scheduledError)
         } else {
-          scheduledContent = (data || []).map((row: any) => ({
+          scheduledContent = (scheduledData || []).map((row: any) => ({
             id: String(row.id),
             platform: row.source_platform || 'unknown',
             content_type: mapContentType(row.content_type),
             source: row.original_author || 'Unknown Source',
             scheduled_time: row.scheduled_for,
             title: row.content_text?.substring(0, 100),
-            confidence_score: row.confidence_score
+            confidence_score: row.confidence_score,
+            status: 'scheduled'
+          }))
+        }
+        
+        if (postedError) {
+          console.error('Supabase posted query error:', postedError)
+        } else {
+          postedContent = (postedData || []).map((row: any) => ({
+            id: String(row.content_queue.id),
+            platform: row.content_queue.source_platform || 'unknown',
+            content_type: mapContentType(row.content_queue.content_type),
+            source: row.content_queue.original_author || 'Unknown Source',
+            scheduled_time: row.posted_at,
+            title: row.content_queue.content_text?.substring(0, 100),
+            confidence_score: row.content_queue.confidence_score,
+            status: 'posted'
           }))
         }
       } catch (error) {
@@ -155,12 +245,61 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Calculate summary statistics
-    const totalPosts = scheduledContent.length
+    // Combine scheduled and posted content, removing duplicates
+    const allContent = [...scheduledContent]
+    const scheduledIds = new Set(scheduledContent.map(item => item.id))
+    
+    // Add posted content that isn't already in scheduled content
+    postedContent.forEach(item => {
+      if (!scheduledIds.has(item.id)) {
+        allContent.push(item)
+      }
+    })
+    
+    // Sort by scheduled/posted time
+    allContent.sort((a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime())
+    
+    // If no results found, try fallback query for nearby dates
+    if (allContent.length === 0) {
+      console.log(`No content found for ${targetDateStr}, attempting fallback query...`)
+      
+      if (isSqlite) {
+        await db.connect()
+        try {
+          const fallbackResult = await db.query(`
+            SELECT 
+              cq.id,
+              cq.source_platform as platform,
+              cq.content_type,
+              cq.original_author as source,
+              cq.scheduled_for as scheduled_time,
+              SUBSTR(cq.content_text, 1, 100) as title,
+              cq.confidence_score
+            FROM content_queue cq
+            WHERE cq.scheduled_for > datetime('now', '-2 days')
+              AND cq.scheduled_for < datetime('now', '+7 days')
+              AND (cq.status = 'scheduled' OR cq.is_approved = 1)
+            ORDER BY ABS(julianday(cq.scheduled_for) - julianday(?)) ASC
+            LIMIT 10
+          `, [targetDate.toISOString()])
+          
+          if (fallbackResult.rows && fallbackResult.rows.length > 0) {
+            console.log(`Fallback query found ${fallbackResult.rows.length} nearby items`)
+          }
+        } catch (error) {
+          console.error('Fallback query error:', error)
+        } finally {
+          await db.disconnect()
+        }
+      }
+    }
+    
+    // Calculate summary statistics using combined content
+    const totalPosts = allContent.length
     const platforms: { [platform: string]: number } = {}
     const contentTypes: { [type: string]: number } = {}
     
-    scheduledContent.forEach(item => {
+    allContent.forEach(item => {
       // Count platforms
       platforms[item.platform] = (platforms[item.platform] || 0) + 1
       
@@ -171,8 +310,8 @@ export async function GET(request: NextRequest) {
     const diversityScore = calculateDiversityScore(platforms, contentTypes, totalPosts)
     
     const response: DailyScheduleResponse = {
-      date: targetDate,
-      scheduled_content: scheduledContent,
+      date: targetDateStr,
+      scheduled_content: allContent,
       summary: {
         total_posts: totalPosts,
         platforms,
