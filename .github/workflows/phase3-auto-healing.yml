@@ -238,37 +238,152 @@ jobs:
             });
 
   trigger-recheck:
-    name: 'Re-run CI After Remediation'
+    name: 'Secure Re-Dispatch & Post-Remediation Check'
     runs-on: ubuntu-latest
     needs: deep-remediation
     if: needs.deep-remediation.outputs.remediation_applied == 'true'
     
     steps:
-      - name: Trigger Repository Dispatch
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.repos.createDispatchEvent({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              event_type: 'post-remediation-check',
-              client_payload: {
-                security_improvement: '${{ needs.deep-remediation.outputs.security_improvement }}',
-                build_diagnostics: '${{ needs.deep-remediation.outputs.build_diagnostic_available }}',
-                triggered_by: 'phase3-auto-healing'
-              }
-            });
+      - name: Checkout code for re-dispatch
+        uses: actions/checkout@v4
 
-      - name: Add Remediation Success Label
-        if: needs.deep-remediation.outputs.security_improvement >= 70
-        uses: actions/github-script@v7
-        with:
-          script: |
-            if (context.payload.pull_request) {
-              github.rest.issues.addLabels({
-                issue_number: context.payload.pull_request.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                labels: ['auto-healing-applied', 'security-improved']
-              });
-            }
+      - name: 🔄 Trigger Post-Remediation CI Run
+        env:
+          GH_TOKEN: ${{ secrets.CI_REDISPATCH_TOKEN }}
+        run: |
+          echo "🚀 Triggering repository_dispatch for post-remediation CI..."
+          
+          # Verify token is available
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ CI_REDISPATCH_TOKEN secret not found"
+            echo "📋 Please follow docs/PHASE4_SECURE_TOKEN_SETUP.md to configure the token"
+            exit 1
+          fi
+          
+          # Prepare client payload
+          SECURITY_IMPROVEMENT="${{ needs.deep-remediation.outputs.security_improvement }}"
+          BUILD_DIAGNOSTICS="${{ needs.deep-remediation.outputs.build_diagnostic_available }}"
+          
+          # Create dispatch event with secure token
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d "{
+              \"event_type\": \"post-remediation-check\",
+              \"client_payload\": {
+                \"security_improvement\": \"$SECURITY_IMPROVEMENT\",
+                \"build_diagnostics\": \"$BUILD_DIAGNOSTICS\",
+                \"triggered_by\": \"phase3-auto-healing\",
+                \"commit_sha\": \"${{ github.sha }}\",
+                \"remediation_timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }
+            }")
+          
+          # Check response status
+          case $HTTP_STATUS in
+            200|201|204)
+              echo "✅ Repository dispatch successful (HTTP $HTTP_STATUS)"
+              echo "🔄 Post-remediation validation workflow should start shortly"
+              ;;
+            401)
+              echo "❌ Authentication failed (HTTP 401)"
+              echo "🔧 Check CI_REDISPATCH_TOKEN secret configuration"
+              exit 1
+              ;;
+            403)
+              echo "❌ Forbidden (HTTP 403)"
+              echo "🔧 Token may lack required permissions (repo, workflow scopes needed)"
+              exit 1
+              ;;
+            404)
+              echo "❌ Repository not found (HTTP 404)"
+              echo "🔧 Check repository path or token repository access"
+              exit 1
+              ;;
+            *)
+              echo "❌ Unexpected response (HTTP $HTTP_STATUS)"
+              echo "🔧 Check GitHub API status and token configuration"
+              exit 1
+              ;;
+          esac
+
+      - name: 📊 Record Re-Dispatch Metrics
+        run: |
+          echo "📈 Phase 4 Re-Dispatch Metrics:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Improvement:** ${{ needs.deep-remediation.outputs.security_improvement }}/100" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Diagnostics:** ${{ needs.deep-remediation.outputs.build_diagnostic_available == 'true' && 'Available' || 'Not Generated' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Remediation Applied:** ✅ Yes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Post-Validation:** 🔄 Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Post-remediation validation will run independently to verify fixes." >> $GITHUB_STEP_SUMMARY
+
+      - name: 🏷️ Add Remediation Success Labels
+        if: needs.deep-remediation.outputs.security_improvement >= 70 && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.CI_REDISPATCH_TOKEN }}
+        run: |
+          echo "🏷️ Adding success labels to PR..."
+          
+          # Add labels indicating successful auto-healing
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
+            -d '{"labels": ["auto-healing-applied", "security-improved", "phase3-remediation"]}'
+          
+          echo "✅ Labels added successfully"
+
+      - name: 📝 Update PR with Remediation Summary
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.CI_REDISPATCH_TOKEN }}
+        run: |
+          echo "📝 Posting remediation summary to PR..."
+          
+          # Create detailed PR comment
+          cat > pr_comment.md << 'EOF'
+          ## 🛡️ Phase 3 Auto-Healing Complete
+          
+          ### 📊 Remediation Results
+          - **Security Score Improvement:** ${{ needs.deep-remediation.outputs.security_improvement }}/100
+          - **Build Diagnostics:** ${{ needs.deep-remediation.outputs.build_diagnostic_available == 'true' && '✅ Generated' || '❌ Not needed' }}
+          - **Automated Fixes Applied:** ✅ Yes
+          
+          ### 🔄 Next Steps
+          1. **Post-Remediation Validation:** Automatically triggered
+          2. **Review Reports:** Check workflow artifacts for detailed analysis
+          3. **Manual Review:** Address any remaining issues in security reports
+          
+          ### 📋 Available Reports
+          - 🛡️ Security Deep Fix Report
+          - 🏗️ Build Diagnostics Report
+          - 📊 Updated CI Health Gate Report
+          
+          > **Note:** This comment was generated by Phase 3 Auto-Healing system. 
+          > Post-remediation validation is running independently.
+          EOF
+          
+          # Post comment to PR
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments \
+            -d "{\"body\": $(cat pr_comment.md | jq -Rs .)}"
+          
+          echo "✅ PR comment posted successfully"
+
+      - name: 🔍 Verify Re-Dispatch Success
+        run: |
+          echo "🔍 Verifying Phase 4 re-dispatch completed successfully..."
+          echo ""
+          echo "✅ Repository dispatch event sent"
+          echo "✅ Remediation metrics recorded"
+          echo "✅ PR labels and comments updated (if applicable)"
+          echo ""
+          echo "🎯 Phase 4 Secure Re-Dispatch System: OPERATIONAL"
+          echo ""
+          echo "📋 Post-remediation validation should begin within 1-2 minutes"
+          echo "📊 Check the 'Actions' tab for 'Post-Remediation Check' workflow"

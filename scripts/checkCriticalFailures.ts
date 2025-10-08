@@ -631,6 +631,166 @@ class CriticalFailureGatekeeper {
         : `${healthResult.blockers.length} blocking issues prevent CI completion`,
       confidence
     }
+
+    // Phase 4: Check for rollback requirements when health is critically low
+    this.checkRollbackRequirements(healthResult)
+  }
+
+  /**
+   * Phase 4: Rollback Safety Check
+   * Initiates emergency rollback when health score is critically low
+   */
+  private checkRollbackRequirements(healthResult: SystemHealthResult): void {
+    const healthScore = healthResult.ciReadiness.confidence
+    
+    console.log(chalk.cyan(`\n🧪 Phase 4: Rollback Safety Check (Health Score: ${healthScore}/100)`))
+    
+    // Rollback threshold: health score < 30 AND CI still blocked
+    if (healthScore < 30 && !healthResult.ciReadiness.canProceed) {
+      console.log(chalk.red('🚨 CRITICAL HEALTH DETECTED - Rollback required!'))
+      console.log(chalk.yellow(`   Health Score: ${healthScore}/100 (< 30 threshold)`))
+      console.log(chalk.yellow(`   CI Blocked: ${!healthResult.ciReadiness.canProceed}`))
+      console.log(chalk.yellow(`   Blockers: ${healthResult.blockers.length}`))
+      
+      // Check if we're in a safe environment to perform rollback
+      const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
+      const hasGitRepo = this.checkGitRepository()
+      
+      if (!hasGitRepo) {
+        console.log(chalk.red('⚠️ No git repository detected - rollback not possible'))
+        healthResult.warnings.push('Rollback required but no git repository found')
+        return
+      }
+      
+      if (this.config.reportOnly) {
+        console.log(chalk.yellow('🔍 REPORT-ONLY MODE: Would initiate rollback but skipping in report mode'))
+        healthResult.manualActionRequired.push('⚠️ ROLLBACK REQUIRED: Health critically low - manual rollback recommended')
+        return
+      }
+      
+      try {
+        console.log(chalk.red('🧨 Health critically low — initiating emergency rollback...'))
+        
+        // Add rollback information to health result
+        healthResult.manualActionRequired.push('🚨 EMERGENCY ROLLBACK: Health score fell below 30 - automatic rollback initiated')
+        healthResult.warnings.push(`Rollback triggered due to health score ${healthScore} < 30`)
+        
+        // Perform the rollback
+        this.performEmergencyRollback(healthResult)
+        
+      } catch (rollbackError) {
+        console.error(chalk.red('❌ Emergency rollback failed:'), rollbackError.message)
+        healthResult.warnings.push('Emergency rollback failed - manual intervention required')
+        healthResult.manualActionRequired.push('🚨 CRITICAL: Automatic rollback failed - immediate manual rollback required')
+      }
+      
+    } else if (healthScore < 50) {
+      console.log(chalk.yellow(`⚠️ Low health detected (${healthScore}/100) but above rollback threshold`))
+      healthResult.warnings.push(`Health score ${healthScore}/100 is concerning but above rollback threshold (30)`)
+    } else {
+      console.log(chalk.green(`✅ Health score ${healthScore}/100 is acceptable`))
+    }
+  }
+
+  /**
+   * Check if we're in a valid git repository
+   */
+  private checkGitRepository(): boolean {
+    try {
+      execSync('git rev-parse --git-dir', { 
+        cwd: this.projectRoot, 
+        stdio: 'pipe' 
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Perform emergency rollback to previous commit
+   */
+  private performEmergencyRollback(healthResult: SystemHealthResult): void {
+    console.log(chalk.red('🔄 Executing emergency rollback sequence...'))
+    
+    try {
+      // Check if there are any commits to revert
+      const hasCommits = execSync('git log --oneline -n 2', { 
+        cwd: this.projectRoot, 
+        encoding: 'utf8', 
+        stdio: 'pipe' 
+      })
+      
+      if (hasCommits.split('\n').length < 2) {
+        throw new Error('Not enough commits for rollback - only initial commit exists')
+      }
+      
+      // Get current commit info for logging
+      const currentCommit = execSync('git rev-parse --short HEAD', { 
+        cwd: this.projectRoot, 
+        encoding: 'utf8', 
+        stdio: 'pipe' 
+      }).trim()
+      
+      const currentMessage = execSync('git log -1 --pretty=format:"%s"', { 
+        cwd: this.projectRoot, 
+        encoding: 'utf8', 
+        stdio: 'pipe' 
+      }).trim()
+      
+      console.log(chalk.yellow(`   Current commit: ${currentCommit} - "${currentMessage}"`))
+      console.log(chalk.yellow('   Reverting to previous state...'))
+      
+      // Create revert commit (safer than reset as it preserves history)
+      const revertOutput = execSync('git revert HEAD --no-edit', { 
+        cwd: this.projectRoot, 
+        encoding: 'utf8', 
+        stdio: 'pipe' 
+      })
+      
+      console.log(chalk.green('✅ Revert commit created successfully'))
+      
+      // Check if we're in CI and can push
+      const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true'
+      if (isCI) {
+        console.log(chalk.yellow('🔄 Attempting to push rollback to remote...'))
+        
+        try {
+          // Force push the rollback (use with caution)
+          execSync('git push origin HEAD --force-with-lease', { 
+            cwd: this.projectRoot, 
+            encoding: 'utf8', 
+            stdio: 'pipe' 
+          })
+          
+          console.log(chalk.green('✅ Rollback pushed to remote repository'))
+          healthResult.autoFixesApplied.push('🔄 Emergency rollback: Reverted to previous commit and pushed to remote')
+          
+        } catch (pushError) {
+          console.log(chalk.yellow('⚠️ Could not push rollback to remote - manual push may be required'))
+          console.log(chalk.yellow(`   Push error: ${pushError.message}`))
+          healthResult.warnings.push('Rollback completed locally but could not push to remote')
+          healthResult.manualActionRequired.push('Push rollback to remote: git push origin HEAD --force-with-lease')
+        }
+      } else {
+        console.log(chalk.yellow('ℹ️ Local environment detected - rollback applied locally only'))
+        healthResult.autoFixesApplied.push('🔄 Emergency rollback: Reverted to previous commit (local only)')
+        healthResult.manualActionRequired.push('Review rollback and push to remote if needed: git push origin HEAD')
+      }
+      
+      const newCommit = execSync('git rev-parse --short HEAD', { 
+        cwd: this.projectRoot, 
+        encoding: 'utf8', 
+        stdio: 'pipe' 
+      }).trim()
+      
+      console.log(chalk.green(`🎯 Emergency rollback completed successfully`))
+      console.log(chalk.green(`   New commit: ${newCommit} (revert of ${currentCommit})`))
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Rollback execution failed:'), error.message)
+      throw error
+    }
   }
 
   private calculateConfidenceScore(healthResult: SystemHealthResult): number {
@@ -658,7 +818,8 @@ class CriticalFailureGatekeeper {
 
 ## 🔄 Auto-Healing Summary
 
-**Phase 3 Deep Remediation:** ${healthResult.autoFixesApplied.some(fix => fix.includes('Security:') || fix.includes('Build:')) ? 'ACTIVATED' : 'NOT REQUIRED'}
+**Phase 3 Deep Remediation:** ${healthResult.autoFixesApplied.some(fix => fix.includes('Security:') || fix.includes('Build:')) ? 'ACTIVATED' : 'NOT REQUIRED'}  
+**Phase 4 Rollback System:** ${healthResult.autoFixesApplied.some(fix => fix.includes('🔄 Emergency rollback')) ? 'ROLLBACK EXECUTED' : healthResult.manualActionRequired.some(action => action.includes('ROLLBACK REQUIRED')) ? 'ROLLBACK REQUIRED' : 'STANDBY'}
 
 ### Remediation Actions Taken
 ${healthResult.autoFixesApplied.length > 0 ? `
@@ -668,7 +829,37 @@ ${healthResult.autoFixesApplied.map(fix => `- ✅ ${fix}`).join('\n')}
 - Overall system health improved through automated remediation
 - Deep analysis modules provided comprehensive diagnostics
 - Critical issues addressed with targeted auto-fixes
+${healthResult.autoFixesApplied.some(fix => fix.includes('🔄 Emergency rollback')) ? '- **Emergency rollback executed** due to critically low health score' : ''}
 ` : 'No deep remediation was required - initial analysis was sufficient'}
+
+### 🔄 Rollback Safety Status
+${(() => {
+  const hasRollback = healthResult.autoFixesApplied.some(fix => fix.includes('🔄 Emergency rollback'))
+  const requiresRollback = healthResult.manualActionRequired.some(action => action.includes('ROLLBACK REQUIRED'))
+  const healthScore = healthResult.ciReadiness.confidence
+  
+  if (hasRollback) {
+    return `- **Status:** 🚨 ROLLBACK EXECUTED
+- **Trigger:** Health score ${healthScore}/100 fell below critical threshold (30)
+- **Action:** Automatic revert to previous commit completed
+- **Safety:** Git history preserved with revert commit`
+  } else if (requiresRollback) {
+    return `- **Status:** ⚠️ ROLLBACK REQUIRED
+- **Trigger:** Health score ${healthScore}/100 below critical threshold (30)
+- **Action:** Manual rollback recommended
+- **Safety:** Auto-rollback skipped (report-only mode or git unavailable)`
+  } else if (healthScore < 50) {
+    return `- **Status:** ⚠️ MONITORING
+- **Health Score:** ${healthScore}/100 (concerning but above rollback threshold)
+- **Threshold:** Rollback triggers at < 30
+- **Action:** Continue monitoring system health`
+  } else {
+    return `- **Status:** ✅ HEALTHY
+- **Health Score:** ${healthScore}/100 (above rollback threshold)
+- **Threshold:** Rollback triggers at < 30
+- **Action:** No rollback action required`
+  }
+})()}
 
 ## 📊 System Health Overview
 
