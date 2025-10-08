@@ -40,7 +40,14 @@
     "generate:service-token": "tsx scripts/generate-service-token.ts",
     "db:audit": "tsx scripts/db-audit.ts",
     "admin:debug": "curl -s http://localhost:3000/api/admin/debug | jq .",
-    "postbuild": "echo 'Skipping Vercel DB setup during build'"
+    "postbuild": "echo 'Skipping Vercel DB setup during build'",
+    "ci:lint-fix": "tsx scripts/fixLintErrors.ts",
+    "ci:security-fix": "tsx scripts/securityAutoFix.ts",
+    "ci:stability-check": "tsx scripts/checkCriticalFailures.ts",
+    "ci:stability-check-report": "tsx scripts/checkCriticalFailures.ts --report-only",
+    "ci:health": "tsx scripts/checkCriticalFailures.ts --report-only",
+    "test:auto-healing": "tsx scripts/testAutoHealing.ts",
+    "test:auto-healing-full": "tsx scripts/testAutoHealing.ts --full"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
