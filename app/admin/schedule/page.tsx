@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import DailyScheduleOverview from '@/components/admin/schedule/DailyScheduleOverview'
 import './admin-schedule.css'
 
 interface ScheduleData {
@@ -44,6 +45,7 @@ export default function SchedulePage() {
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
 
   const fetchScheduleData = async () => {
     try {
@@ -349,6 +351,38 @@ export default function SchedulePage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Daily Schedule Overview */}
+      <div style={{ marginTop: 'var(--spacing-xl)' }}>
+        <DailyScheduleOverview 
+          selectedDate={selectedDate}
+          onRefresh={fetchScheduleData}
+        />
+      </div>
+
+      {/* Date Selector */}
+      <div style={{ marginTop: 'var(--spacing-lg)', textAlign: 'center' }}>
+        <label htmlFor="date-selector" style={{ 
+          display: 'block', 
+          marginBottom: 'var(--spacing-sm)', 
+          fontSize: 'var(--font-size-sm)',
+          color: 'var(--color-text-secondary)'
+        }}>
+          View scheduled content for:
+        </label>
+        <input
+          id="date-selector"
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="schedule-form-input"
+          style={{ 
+            width: 'auto',
+            margin: '0 auto',
+            textAlign: 'center'
+          }}
+        />
       </div>
     </div>
   )
