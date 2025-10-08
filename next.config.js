@@ -75,6 +75,32 @@ const nextConfig = {
       config.externals.push('pg-native')
       // Fix "self is not defined" error in server builds
       config.output.globalObject = 'this'
+      
+      // Harden build layer by excluding problematic legacy dependencies
+      // This prevents tree-shaking issues and build-time imports of server-only modules
+      config.externals.push({
+        // Exclude legacy HTTP clients that cause build issues
+        'request': 'commonjs request',
+        'request-promise': 'commonjs request-promise', 
+        'request-promise-native': 'commonjs request-promise-native',
+        
+        // Exclude legacy auth/crypto modules that don't work in edge runtime
+        'cls-bluebird': 'commonjs cls-bluebird',
+        'continuation-local-storage': 'commonjs continuation-local-storage',
+        
+        // Exclude Node.js-specific modules that break in Vercel Edge Runtime
+        'fs-extra': 'commonjs fs-extra',
+        'node-fetch': 'commonjs node-fetch',
+        
+        // Exclude old social media SDKs that have compatibility issues
+        'snoowrap': 'commonjs snoowrap',
+        'tumblr.js': 'commonjs tumblr.js',
+        
+        // Exclude modules with native dependencies
+        'bufferutil': 'commonjs bufferutil',
+        'utf-8-validate': 'commonjs utf-8-validate',
+        'canvas': 'commonjs canvas'
+      })
     }
     
     // Production optimizations
