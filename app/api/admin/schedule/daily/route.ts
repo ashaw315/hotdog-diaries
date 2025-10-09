@@ -14,6 +14,13 @@ interface DailyScheduleItem {
   status?: 'scheduled' | 'posted'
 }
 
+interface NextPost {
+  time: string
+  platform: string
+  content_type: 'image' | 'video' | 'text' | 'link'
+  source: string
+}
+
 interface DailyScheduleResponse {
   date: string
   scheduled_content: DailyScheduleItem[]
@@ -22,6 +29,8 @@ interface DailyScheduleResponse {
     platforms: { [platform: string]: number }
     content_types: { [type: string]: number }
     diversity_score: number
+    upcoming_count?: number
+    next_post?: NextPost | null
   }
 }
 
@@ -66,6 +75,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const dateParam = searchParams.get('date')
+    const includeUpcoming = searchParams.get('includeUpcoming') !== 'false' // Default true
     
     // Default to today if no date provided, normalize date input
     let targetDate: Date
@@ -147,7 +157,7 @@ export async function GET(request: NextRequest) {
           platform: row.platform || 'unknown',
           content_type: mapContentType(row.content_type),
           source: row.source || 'Unknown Source',
-          scheduled_time: row.scheduled_time,
+          scheduled_time: row.scheduled_time ? new Date(row.scheduled_time).toISOString() : row.scheduled_time,
           title: row.title,
           confidence_score: row.confidence_score,
           status: row.status
@@ -158,7 +168,7 @@ export async function GET(request: NextRequest) {
           platform: row.platform || 'unknown',
           content_type: mapContentType(row.content_type),
           source: row.source || 'Unknown Source',
-          scheduled_time: row.scheduled_time,
+          scheduled_time: row.scheduled_time ? new Date(row.scheduled_time).toISOString() : row.scheduled_time,
           title: row.title,
           confidence_score: row.confidence_score,
           status: row.status
@@ -309,6 +319,58 @@ export async function GET(request: NextRequest) {
     
     const diversityScore = calculateDiversityScore(platforms, contentTypes, totalPosts)
     
+    // Calculate upcoming posts if requested
+    let upcomingCount = 0
+    let nextPost: NextPost | null = null
+    
+    if (includeUpcoming) {
+      const now = new Date()
+      const currentDate = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD format
+      const isToday = targetDateStr === currentDate
+      
+      if (isToday) {
+        // Filter upcoming posts (scheduled but not yet posted, and time is in the future)
+        const upcomingPosts = allContent.filter(item => {
+          const scheduledTime = new Date(item.scheduled_time)
+          return scheduledTime > now && item.status === 'scheduled'
+        })
+        
+        upcomingCount = upcomingPosts.length
+        
+        // Find the next post (earliest upcoming post)
+        if (upcomingPosts.length > 0) {
+          const sortedUpcoming = upcomingPosts.sort((a, b) => 
+            new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime()
+          )
+          
+          const next = sortedUpcoming[0]
+          nextPost = {
+            time: next.scheduled_time,
+            platform: next.platform,
+            content_type: next.content_type,
+            source: next.source
+          }
+        }
+      } else if (new Date(targetDateStr) > new Date(currentDate)) {
+        // For future dates, show the first scheduled post of that day as "next"
+        if (allContent.length > 0) {
+          const sortedContent = allContent.sort((a, b) => 
+            new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime()
+          )
+          
+          const first = sortedContent[0]
+          nextPost = {
+            time: first.scheduled_time,
+            platform: first.platform,
+            content_type: first.content_type,
+            source: first.source
+          }
+          upcomingCount = allContent.filter(item => item.status === 'scheduled').length
+        }
+      }
+      // For past dates, we don't show upcoming posts
+    }
+    
     const response: DailyScheduleResponse = {
       date: targetDateStr,
       scheduled_content: allContent,
@@ -316,7 +378,11 @@ export async function GET(request: NextRequest) {
         total_posts: totalPosts,
         platforms,
         content_types: contentTypes,
-        diversity_score: diversityScore
+        diversity_score: diversityScore,
+        ...(includeUpcoming && { 
+          upcoming_count: upcomingCount,
+          next_post: nextPost 
+        })
       }
     }
 

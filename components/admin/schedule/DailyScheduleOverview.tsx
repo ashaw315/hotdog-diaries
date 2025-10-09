@@ -14,6 +14,13 @@ interface DailyScheduleItem {
   status?: 'scheduled' | 'posted'
 }
 
+interface NextPost {
+  time: string
+  platform: string
+  content_type: 'image' | 'video' | 'text' | 'link'
+  source: string
+}
+
 interface DailyScheduleData {
   date: string
   scheduled_content: DailyScheduleItem[]
@@ -22,6 +29,8 @@ interface DailyScheduleData {
     platforms: { [platform: string]: number }
     content_types: { [type: string]: number }
     diversity_score: number
+    upcoming_count?: number
+    next_post?: NextPost | null
   }
 }
 
@@ -72,6 +81,37 @@ function formatTime(isoString: string): string {
     })
   } catch {
     return 'Invalid time'
+  }
+}
+
+function formatDistanceToNow(date: Date): string {
+  try {
+    const now = new Date()
+    const diffMs = date.getTime() - now.getTime()
+    
+    if (diffMs <= 0) {
+      return 'just passed'
+    }
+    
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (diffDays > 0) {
+      return `in ${diffDays} day${diffDays > 1 ? 's' : ''}`
+    } else if (diffHours > 0) {
+      const remainingMinutes = diffMinutes % 60
+      if (remainingMinutes > 0) {
+        return `in ${diffHours}h ${remainingMinutes}m`
+      }
+      return `in ${diffHours} hour${diffHours > 1 ? 's' : ''}`
+    } else if (diffMinutes > 0) {
+      return `in ${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`
+    } else {
+      return 'in less than a minute'
+    }
+  } catch {
+    return 'unknown'
   }
 }
 
@@ -219,6 +259,13 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
             <p className="schedule-queue-label">Platforms</p>
           </div>
           
+          {data.summary.upcoming_count !== undefined && (
+            <div className="schedule-queue-stat">
+              <div className="schedule-queue-number">{data.summary.upcoming_count}</div>
+              <p className="schedule-queue-label">Upcoming Posts</p>
+            </div>
+          )}
+          
           <div className="schedule-queue-stat">
             <div className="schedule-queue-number">{data.summary.diversity_score}%</div>
             <p className="schedule-queue-label">Diversity Score</p>
@@ -246,6 +293,86 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
             </span>
           )}
         </div>
+
+        {/* Next Scheduled Post Section */}
+        {data.summary.next_post && (
+          <div className="schedule-admin-card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+            <div className="schedule-admin-card-header">
+              <h3 style={{ 
+                fontSize: 'var(--font-size-lg)', 
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--color-text-primary)',
+                margin: 0
+              }}>
+                ⏰ Next Scheduled Post
+              </h3>
+            </div>
+            <div className="schedule-admin-card-body">
+              <p style={{ 
+                fontSize: 'var(--font-size-lg)',
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--color-text-primary)',
+                margin: '0 0 var(--spacing-sm) 0'
+              }}>
+                <strong>{formatTime(data.summary.next_post.time)}</strong>{' '}
+                <span style={{ 
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  fontWeight: 'var(--font-weight-normal)'
+                }}>
+                  ({formatDistanceToNow(new Date(data.summary.next_post.time))})
+                </span>
+              </p>
+              
+              <div style={{ 
+                display: 'flex', 
+                gap: 'var(--spacing-sm)', 
+                marginTop: 'var(--spacing-sm)',
+                marginBottom: 'var(--spacing-sm)'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: 'var(--spacing-xs) var(--spacing-sm)',
+                  borderRadius: 'var(--border-radius-full)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 'var(--font-weight-medium)',
+                  backgroundColor: getPlatformColor(data.summary.next_post.platform).bg,
+                  color: getPlatformColor(data.summary.next_post.platform).text,
+                  border: '1px solid var(--color-border)'
+                }}>
+                  {data.summary.next_post.platform}
+                </span>
+                
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-xs)',
+                  padding: 'var(--spacing-xs) var(--spacing-sm)',
+                  borderRadius: 'var(--border-radius-full)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 'var(--font-weight-medium)',
+                  backgroundColor: 'var(--color-gray-100, #f3f4f6)',
+                  color: 'var(--color-text-secondary)',
+                  border: '1px solid var(--color-border)'
+                }}>
+                  <span style={{ fontSize: 'var(--font-size-sm)' }}>
+                    {CONTENT_TYPE_ICONS[data.summary.next_post.content_type] || '📄'}
+                  </span>
+                  {data.summary.next_post.content_type}
+                </span>
+              </div>
+              
+              <p style={{ 
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-secondary)',
+                margin: 0
+              }}>
+                Source: {data.summary.next_post.source}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Scheduled Content List */}
         {data.scheduled_content.length === 0 ? (
