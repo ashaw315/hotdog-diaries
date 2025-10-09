@@ -156,16 +156,29 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
       setLoading(true)
       setError(null)
       
-      const response = await fetch(`/api/admin/schedule/daily?date=${targetDate}`)
+      // Environment-safe base URL for deployment parity
+      const baseUrl = 
+        process.env.NEXT_PUBLIC_BASE_URL ?? 
+        (typeof window === 'undefined' 
+          ? 'https://hotdog-diaries.vercel.app' 
+          : '')
+      
+      const apiUrl = `${baseUrl}/api/admin/schedule/daily?date=${targetDate}`
+      console.log("🌐 Fetching from:", apiUrl)
+      
+      const response = await fetch(apiUrl, {
+        cache: 'no-store',
+      })
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`Schedule API failed: ${response.status}`)
       }
       
       const dailyData: DailyScheduleData = await response.json()
+      console.log("✅ Daily schedule fetched", dailyData)
       setData(dailyData)
     } catch (err) {
-      console.error('Error fetching daily schedule:', err)
+      console.error("❌ Schedule fetch failed:", err)
       setError(err instanceof Error ? err.message : 'Failed to fetch daily schedule')
     } finally {
       setLoading(false)
