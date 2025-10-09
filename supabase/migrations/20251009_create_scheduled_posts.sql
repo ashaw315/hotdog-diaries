@@ -1,4 +1,4 @@
--- Create table in public schema
+-- public.scheduled_posts (idempotent)
 create table if not exists public.scheduled_posts (
   id bigserial primary key,
   content_id bigint not null,
@@ -14,20 +14,34 @@ create table if not exists public.scheduled_posts (
   updated_at timestamptz not null default now()
 );
 
--- Optional—if you have public.content_queue(id)
+-- Conditional FK to content_queue(id) if present
 do $
 begin
   if exists (
     select 1 from information_schema.tables
     where table_schema = 'public' and table_name = 'content_queue'
   ) then
+    -- Drop if exists first to avoid duplicate constraint errors when re-running
+    if exists (
+      select 1
+      from information_schema.table_constraints
+      where table_name='scheduled_posts'
+        and table_schema='public'
+        and constraint_name='scheduled_posts_content_fk'
+    ) then
+      alter table public.scheduled_posts
+        drop constraint scheduled_posts_content_fk;
+    end if;
+
     alter table public.scheduled_posts
       add constraint scheduled_posts_content_fk
-      foreign key (content_id) references public.content_queue(id) on delete cascade;
+      foreign key (content_id)
+      references public.content_queue(id)
+      on delete cascade;
   end if;
 end $;
 
--- Indexes for day + slot + content lookups
+-- Helpful indexes
 create index if not exists idx_scheduled_posts_day
   on public.scheduled_posts (date_trunc('day', scheduled_post_time));
 
@@ -37,25 +51,43 @@ create index if not exists idx_scheduled_posts_slot
 create index if not exists idx_scheduled_posts_content
   on public.scheduled_posts (content_id);
 
--- RLS (optional—service role bypasses RLS anyway)
+-- RLS + policies (service role bypasses RLS)
 alter table public.scheduled_posts enable row level security;
 
--- Allow authenticated reads if you ever need client-side; otherwise omit and use service role on server
-create policy "scheduled_posts select for authenticated"
-  on public.scheduled_posts
-  for select
-  to authenticated
-  using (true);
+do $
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public'
+      and tablename='scheduled_posts'
+      and policyname='scheduled_posts select for authenticated'
+  ) then
+    create policy "scheduled_posts select for authenticated"
+      on public.scheduled_posts
+      for select
+      to authenticated
+      using (true);
+  end if;
+end $;
 
--- Service-role writes/reads (service role bypasses RLS, but ok to include)
-create policy "scheduled_posts all for service-role"
-  on public.scheduled_posts
-  for all
-  to service_role
-  using (true)
-  with check (true);
+do $
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public'
+      and tablename='scheduled_posts'
+      and policyname='scheduled_posts all for service-role'
+  ) then
+    create policy "scheduled_posts all for service-role"
+      on public.scheduled_posts
+      for all
+      to service_role
+      using (true)
+      with check (true);
+  end if;
+end $;
 
--- Keep updated_at fresh
+-- updated_at trigger
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $
 begin
@@ -68,5 +100,5 @@ create trigger trg_scheduled_posts_updated_at
 before update on public.scheduled_posts
 for each row execute procedure public.set_updated_at();
 
--- Nudge PostgREST to refresh schema (safe if hosted)
+-- Force PostgREST to reload schema cache
 select pg_notify('pgrst', 'reload schema');

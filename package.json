@@ -48,7 +48,8 @@
     "ci:health": "npx tsx scripts/checkCriticalFailures.ts --report-only",
     "test:auto-healing": "npx tsx scripts/testAutoHealing.ts",
     "test:auto-healing-full": "npx tsx scripts/testAutoHealing.ts --full",
-    "validate:ci-fix": "npx tsx scripts/validateCIFix.ts"
+    "validate:ci-fix": "npx tsx scripts/validateCIFix.ts",
+    "schedule:day": "tsx scripts/generateScheduleForDate.ts"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
