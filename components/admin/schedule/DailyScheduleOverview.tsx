@@ -65,8 +65,10 @@ interface ForecastSlot {
   slot_index: number
   time_local: string
   iso: string
-  status: 'posted' | 'upcoming' | 'projected'
+  status: 'posted' | 'upcoming' | 'missed'
   content: ForecastItem | null
+  scheduled_post_time?: string
+  actual_posted_at?: string | null
   reasoning: string
 }
 
@@ -75,9 +77,10 @@ interface ForecastData {
   timezone: 'America/New_York'
   slots: ForecastSlot[]
   summary: {
+    total: number
     posted: number
     upcoming: number
-    projected: number
+    missed: number
     platforms: Record<string, number>
     content_types: Record<string, number>
     diversity_score: number
@@ -877,7 +880,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                   color: 'var(--color-text-secondary)',
                   margin: 'var(--spacing-xs) 0 0 0'
                 }}>
-                  Deterministic content selection for {forecast.date} • Diversity Score: {forecast.summary.diversity_score}%
+                  Deterministic content selection for {forecast.date} • Posted: {forecast.summary.posted}, Upcoming: {forecast.summary.upcoming}, Missed: {forecast.summary.missed} • Diversity Score: {forecast.summary.diversity_score}%
                 </p>
               </div>
               <div className="schedule-admin-card-body">
@@ -982,6 +985,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                               <span className={`schedule-status-indicator ${
                                 slot.status === 'posted' ? 'enabled' : 
                                 slot.status === 'upcoming' ? 'warning' : 
+                                slot.status === 'missed' ? 'disabled' :
                                 'disabled'
                               }`} style={{ 
                                 padding: 'var(--spacing-xs) var(--spacing-sm)' 
@@ -989,6 +993,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                                 <span className="schedule-status-dot"></span>
                                 {slot.status === 'posted' ? '✅ Posted' : 
                                  slot.status === 'upcoming' ? '🕒 Upcoming' : 
+                                 slot.status === 'missed' ? '⏳ Missed' :
                                  '🔮 Projected'}
                               </span>
                             </td>
