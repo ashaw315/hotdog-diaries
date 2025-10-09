@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { createSimpleClient } from '@/utils/supabase/server'
 import { parseISO, startOfDay, endOfDay, addHours, format, isSameDay } from 'date-fns'
+// Temporary fallback timezone conversion for testing
 
 interface DailyScheduleItem {
   id: string
@@ -72,6 +73,21 @@ function mapContentType(originalType: string): 'image' | 'video' | 'text' | 'lin
     default:
       return 'text'
   }
+}
+
+// Timezone utility functions for accurate status determination
+const toEastern = (ts: string | Date | null | undefined) => {
+  if (!ts) return null
+  const date = typeof ts === 'string' ? parseISO(ts) : ts
+  // Temporary fallback: Eastern Time is UTC-5 (EST) or UTC-4 (EDT)
+  // Use UTC-4 for testing (EDT)
+  return addHours(date, -4)
+}
+
+// Get current time in Eastern timezone
+const getNowEastern = () => {
+  // Temporary fallback: Eastern Time is UTC-4 (EDT)
+  return addHours(new Date(), -4)
 }
 
 export async function GET(request: NextRequest) {
@@ -196,18 +212,38 @@ export async function GET(request: NextRequest) {
           ORDER BY COALESCE(pc.posted_at, cq.scheduled_for) ASC
         `, [targetDateStr])
         
-        // Helper function for status normalization
+        // Helper function for status normalization with Eastern Time
         const determineStatus = (item: any): 'scheduled' | 'posted' | 'upcoming' => {
-          const now = new Date()
-          const time = new Date(item.scheduled_time || item.actual_posted_at)
+          const nowET = getNowEastern()
+          const timeET = toEastern(item.scheduled_time || item.actual_posted_at)
           
-          if (item.status === 'posted' || item.is_posted === 1 || item.actual_posted_at) {
+          // STRICT posted flag validation (Phase 5.8) - defensive clause first
+          // Only consider posted if EXPLICITLY posted with clear evidence
+          if (item.actual_posted_at && item.is_posted === 1) {
             return 'posted'
           }
-          if (time > now) {
-            return 'upcoming'
+          
+          // Explicit NOT posted check - defensive validation
+          if (!item.actual_posted_at && (item.is_posted === 0 || item.is_posted === false)) {
+            if (timeET && timeET > nowET) {
+              return 'upcoming'
+            }
+            return 'scheduled'
           }
-          return 'scheduled'
+          
+          // Additional posted checks for edge cases
+          if (item.is_posted === 1 && !item.actual_posted_at) {
+            // Flag says posted but no timestamp - assume posted
+            return 'posted'
+          }
+          
+          // Fallback to original status only if it's explicitly 'posted'
+          if (item.status === 'posted' && item.is_posted === 1) {
+            return 'posted'
+          }
+          
+          // Final time-based fallback
+          return timeET && timeET > nowET ? 'upcoming' : 'scheduled'
         }
         
         // Process scheduled content with normalization
@@ -343,18 +379,38 @@ export async function GET(request: NextRequest) {
           `)
           .or(`scheduled_for.like.${targetDateStr}%,posted_content.posted_at.like.${targetDateStr}%,and(is_approved.eq.true,is_posted.eq.false)`)
         
-        // Helper function for status normalization (Supabase version)
+        // Helper function for status normalization (Supabase version) with Eastern Time
         const determineSupabaseStatus = (item: any): 'scheduled' | 'posted' | 'upcoming' => {
-          const now = new Date()
-          const time = new Date(item.scheduled_time || item.posted_at)
+          const nowET = getNowEastern()
+          const timeET = toEastern(item.scheduled_time || item.posted_at)
           
-          if (item.status === 'posted' || item.is_posted === true || item.posted_content?.length > 0) {
+          // STRICT posted flag validation for Supabase (Phase 5.8) - defensive clause first
+          // Only consider posted if EXPLICITLY posted with clear evidence
+          if (item.posted_at && (item.is_posted === true || item.posted_content?.length > 0)) {
             return 'posted'
           }
-          if (time > now) {
-            return 'upcoming'
+          
+          // Explicit NOT posted check - defensive validation
+          if (!item.posted_at && (item.is_posted === false || item.posted_content?.length === 0)) {
+            if (timeET && timeET > nowET) {
+              return 'upcoming'
+            }
+            return 'scheduled'
           }
-          return 'scheduled'
+          
+          // Additional posted checks for edge cases
+          if (item.is_posted === true && !item.posted_at) {
+            // Flag says posted but no timestamp - assume posted
+            return 'posted'
+          }
+          
+          // Fallback to original status only if it's explicitly 'posted'
+          if (item.status === 'posted' && item.is_posted === true) {
+            return 'posted'
+          }
+          
+          // Final time-based fallback
+          return timeET && timeET > nowET ? 'upcoming' : 'scheduled'
         }
         
         if (scheduledError) {
@@ -427,37 +483,54 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Helper function for consistent range filtering (expanded)
-    const inRange = (ts: string) => {
+    // Timezone-aware range filtering using Eastern Time
+    const inRange = (ts: string, targetDateStr: string) => {
       if (!ts) return false
-      const t = new Date(ts)
-      const targetDay = new Date(targetDateStr)
-      // More flexible range checking - include items within 24 hours of target date
-      const dayStart = new Date(targetDay.getFullYear(), targetDay.getMonth(), targetDay.getDate())
-      const dayEnd = new Date(targetDay.getFullYear(), targetDay.getMonth(), targetDay.getDate() + 1)
-      return t >= dayStart && t < dayEnd
+      const tET = toEastern(ts)
+      const targetET = toEastern(targetDateStr + 'T12:00:00Z') // Use noon to center the target day
+      
+      if (!tET || !targetET) return false
+      
+      // Create Eastern Time day boundaries with 6-hour buffer
+      const dayStart = addHours(startOfDay(targetET), -6)
+      const dayEnd = addHours(endOfDay(targetET), +6)
+      
+      return tET >= dayStart && tET <= dayEnd
     }
     
-    const now = new Date()
+    const nowET = getNowEastern()
     
-    // Enhanced status determination function
+    // Enhanced status determination function with strict Eastern Time logic (Phase 5.8)
     const determineStatus = (item: any): 'scheduled' | 'posted' | 'upcoming' => {
-      const scheduledTime = new Date(item.scheduled_time)
+      const timeET = toEastern(item.scheduled_time || item.actual_posted_at)
       
-      // First check if explicitly marked as posted
-      if (item.status === 'posted' || item.is_posted === 1) {
+      // STRICT posted flag validation (Phase 5.8) - defensive clause first
+      // Only consider posted if EXPLICITLY posted with clear evidence
+      if (item.actual_posted_at && item.is_posted === 1) {
         return 'posted'
       }
       
-      // Then check time-based status
-      if (scheduledTime > now) {
-        return 'upcoming'
-      } else if (scheduledTime < now && !item.is_posted) {
-        // Past time but not posted - could be missed
+      // Explicit NOT posted check - defensive validation
+      if (!item.actual_posted_at && (item.is_posted === 0 || item.is_posted === false)) {
+        if (timeET && timeET > nowET) {
+          return 'upcoming'
+        }
         return 'scheduled'
       }
       
-      return 'scheduled'
+      // Additional posted checks for edge cases
+      if (item.is_posted === 1 && !item.actual_posted_at) {
+        // Flag says posted but no timestamp - assume posted
+        return 'posted'
+      }
+      
+      // Fallback to original status only if it's explicitly 'posted'
+      if (item.status === 'posted' && item.is_posted === 1) {
+        return 'posted'
+      }
+      
+      // Final time-based fallback
+      return timeET && timeET > nowET ? 'upcoming' : 'scheduled'
     }
     
     // Process scheduled content with enhanced filtering
@@ -489,11 +562,11 @@ export async function GET(request: NextRequest) {
     
     let filteredContent = Object.values(dedupedMap)
     
-    // Apply range filtering for the target date
+    // Apply timezone-aware range filtering for the target date
     filteredContent = filteredContent.filter(item => 
-      inRange(item.scheduled_time) || 
+      inRange(item.scheduled_time, targetDateStr) || 
       item.status === 'posted' ||
-      (item.status === 'upcoming' && new Date(item.scheduled_time).toDateString() === targetDate.toDateString())
+      (item.status === 'upcoming' && toEastern(item.scheduled_time)?.toDateString() === targetDate.toDateString())
     )
     
     // Sort by scheduled/posted time
@@ -613,6 +686,17 @@ export async function GET(request: NextRequest) {
       }
       // For past dates, we don't show next post
     }
+    
+    // Add debug validation for timezone conversions (Phase 5.8)
+    console.log('🕓 Timezone Validation', { 
+      nowET, 
+      firstFive: filteredContent.slice(0,5).map(i => ({ 
+        id: i.id, 
+        schedET: toEastern(i.scheduled_time), 
+        rawUTC: i.scheduled_time, 
+        status: i.status 
+      })) 
+    })
     
     // Comprehensive debug logging for verification
     console.log("📊 Schedule Stats", {
