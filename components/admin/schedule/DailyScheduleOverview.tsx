@@ -51,6 +51,39 @@ interface ProjectedScheduleData {
   total_slots: number
 }
 
+interface ForecastItem {
+  id: string
+  platform: string
+  content_type: 'image' | 'video' | 'text' | 'link'
+  source?: string
+  title?: string
+  url?: string
+  confidence: number
+}
+
+interface ForecastSlot {
+  slot_index: number
+  time_local: string
+  iso: string
+  status: 'posted' | 'upcoming' | 'projected'
+  content: ForecastItem | null
+  reasoning: string
+}
+
+interface ForecastData {
+  date: string
+  timezone: 'America/New_York'
+  slots: ForecastSlot[]
+  summary: {
+    posted: number
+    upcoming: number
+    projected: number
+    platforms: Record<string, number>
+    content_types: Record<string, number>
+    diversity_score: number
+  }
+}
+
 interface DailyScheduleOverviewProps {
   selectedDate?: string
   onRefresh?: () => void
@@ -157,8 +190,10 @@ function getDiversityStatus(score: number): { label: string; color: string; icon
 export default function DailyScheduleOverview({ selectedDate, onRefresh }: DailyScheduleOverviewProps) {
   const [data, setData] = useState<DailyScheduleData | null>(null)
   const [projected, setProjected] = useState<ProjectedScheduleData | null>(null)
+  const [forecast, setForecast] = useState<ForecastData | null>(null)
   const [loading, setLoading] = useState(true)
   const [projectedLoading, setProjectedLoading] = useState(true)
+  const [forecastLoading, setForecastLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const targetDate = selectedDate || new Date().toISOString().split('T')[0]
@@ -166,6 +201,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
   useEffect(() => {
     fetchDailySchedule()
     fetchProjectedSchedule()
+    fetchForecast()
   }, [targetDate])
 
   const fetchDailySchedule = async () => {
@@ -235,9 +271,43 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
     }
   }
 
+  const fetchForecast = async () => {
+    try {
+      setForecastLoading(true)
+      
+      // Environment-safe base URL for deployment parity
+      const baseUrl = 
+        process.env.NEXT_PUBLIC_BASE_URL ?? 
+        (typeof window === 'undefined' 
+          ? 'https://hotdog-diaries.vercel.app' 
+          : '')
+      
+      const apiUrl = `${baseUrl}/api/admin/schedule/forecast?date=${targetDate}`
+      console.log("🔮 Fetching forecast from:", apiUrl)
+      
+      const response = await fetch(apiUrl, {
+        cache: 'no-store',
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Forecast API failed: ${response.status}`)
+      }
+      
+      const forecastData: ForecastData = await response.json()
+      console.log("✅ Forecast fetched", forecastData)
+      setForecast(forecastData)
+    } catch (err) {
+      console.error("❌ Forecast fetch failed:", err)
+      // Don't set error for forecast, just log it
+    } finally {
+      setForecastLoading(false)
+    }
+  }
+
   const handleRefresh = () => {
     fetchDailySchedule()
     fetchProjectedSchedule()
+    fetchForecast()
     onRefresh?.()
   }
 
@@ -784,6 +854,229 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Forecast Section (What Will Post) */}
+        {forecast && forecast.slots.length > 0 && (
+          <div style={{ marginTop: 'var(--spacing-xl)' }}>
+            <div className="schedule-admin-card">
+              <div className="schedule-admin-card-header">
+                <h4 style={{ 
+                  fontSize: 'var(--font-size-lg)', 
+                  fontWeight: 'var(--font-weight-semibold)',
+                  color: 'var(--color-text-primary)',
+                  margin: 0
+                }}>
+                  🔮 Forecast - What Will Post ({forecast.slots.length} slots)
+                </h4>
+                <p style={{
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  margin: 'var(--spacing-xs) 0 0 0'
+                }}>
+                  Deterministic content selection for {forecast.date} • Diversity Score: {forecast.summary.diversity_score}%
+                </p>
+              </div>
+              <div className="schedule-admin-card-body">
+                {forecastLoading ? (
+                  <div className="schedule-loading">
+                    <div className="schedule-spinner"></div>
+                    <span style={{ marginLeft: 'var(--spacing-sm)' }}>Loading forecast...</span>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--border-radius-md)',
+                    overflow: 'hidden'
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ 
+                        backgroundColor: 'var(--color-card-header)',
+                        borderBottom: '1px solid var(--color-border)'
+                      }}>
+                        <tr>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Time
+                          </th>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Status
+                          </th>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Platform/Type
+                          </th>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Content
+                          </th>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Selection Reasoning
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody style={{ backgroundColor: 'white' }}>
+                        {forecast.slots.map((slot, index) => (
+                          <tr 
+                            key={slot.slot_index} 
+                            style={{ 
+                              borderBottom: index < forecast.slots.length - 1 ? '1px solid var(--color-border)' : 'none',
+                              transition: 'background-color 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50, #f9fafb)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                          >
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              whiteSpace: 'nowrap',
+                              fontSize: 'var(--font-size-sm)',
+                              fontWeight: 'var(--font-weight-medium)',
+                              color: 'var(--color-text-primary)'
+                            }}>
+                              {slot.time_local}
+                            </td>
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <span className={`schedule-status-indicator ${
+                                slot.status === 'posted' ? 'enabled' : 
+                                slot.status === 'upcoming' ? 'warning' : 
+                                'disabled'
+                              }`} style={{ 
+                                padding: 'var(--spacing-xs) var(--spacing-sm)' 
+                              }}>
+                                <span className="schedule-status-dot"></span>
+                                {slot.status === 'posted' ? '✅ Posted' : 
+                                 slot.status === 'upcoming' ? '🕒 Upcoming' : 
+                                 '🔮 Projected'}
+                              </span>
+                            </td>
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {slot.content ? (
+                                <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: 'var(--spacing-xs) var(--spacing-sm)',
+                                    borderRadius: 'var(--border-radius-full)',
+                                    fontSize: 'var(--font-size-xs)',
+                                    fontWeight: 'var(--font-weight-medium)',
+                                    backgroundColor: getPlatformColor(slot.content.platform).bg,
+                                    color: getPlatformColor(slot.content.platform).text
+                                  }}>
+                                    {slot.content.platform}
+                                  </span>
+                                  <span style={{ 
+                                    fontSize: 'var(--font-size-lg)',
+                                    marginRight: 'var(--spacing-xs)'
+                                  }}>
+                                    {CONTENT_TYPE_ICONS[slot.content.content_type] || '📄'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span style={{ 
+                                  fontSize: 'var(--font-size-sm)',
+                                  color: 'var(--color-text-secondary)',
+                                  fontStyle: 'italic'
+                                }}>
+                                  No content available
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              fontSize: 'var(--font-size-sm)',
+                              color: 'var(--color-text-secondary)',
+                              maxWidth: '200px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {slot.content ? (
+                                <div>
+                                  <div style={{ 
+                                    fontWeight: 'var(--font-weight-medium)', 
+                                    color: 'var(--color-text-primary)',
+                                    marginBottom: 'var(--spacing-xs)'
+                                  }}>
+                                    {slot.content.title ? 
+                                      (slot.content.title.length > 50 ? 
+                                        slot.content.title.substring(0, 50) + '...' : 
+                                        slot.content.title) : 
+                                      'No preview'
+                                    }
+                                  </div>
+                                  {slot.content.source && (
+                                    <div style={{ 
+                                      fontSize: 'var(--font-size-xs)',
+                                      color: 'var(--color-text-secondary)'
+                                    }}>
+                                      by {slot.content.source}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                'No content scheduled'
+                              )}
+                            </td>
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              fontSize: 'var(--font-size-xs)',
+                              color: 'var(--color-text-secondary)',
+                              maxWidth: '180px',
+                              lineHeight: '1.4'
+                            }}>
+                              {slot.reasoning}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           </div>
