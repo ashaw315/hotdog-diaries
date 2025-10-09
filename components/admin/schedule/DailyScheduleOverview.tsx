@@ -37,6 +37,20 @@ interface DailyScheduleData {
   }
 }
 
+interface ProjectedSlot {
+  time: string
+  iso: string
+  status: 'pending'
+  hour: number
+}
+
+interface ProjectedScheduleData {
+  date: string
+  projected_schedule: ProjectedSlot[]
+  timezone: string
+  total_slots: number
+}
+
 interface DailyScheduleOverviewProps {
   selectedDate?: string
   onRefresh?: () => void
@@ -142,13 +156,16 @@ function getDiversityStatus(score: number): { label: string; color: string; icon
 
 export default function DailyScheduleOverview({ selectedDate, onRefresh }: DailyScheduleOverviewProps) {
   const [data, setData] = useState<DailyScheduleData | null>(null)
+  const [projected, setProjected] = useState<ProjectedScheduleData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [projectedLoading, setProjectedLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const targetDate = selectedDate || new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     fetchDailySchedule()
+    fetchProjectedSchedule()
   }, [targetDate])
 
   const fetchDailySchedule = async () => {
@@ -185,8 +202,42 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
     }
   }
 
+  const fetchProjectedSchedule = async () => {
+    try {
+      setProjectedLoading(true)
+      
+      // Environment-safe base URL for deployment parity
+      const baseUrl = 
+        process.env.NEXT_PUBLIC_BASE_URL ?? 
+        (typeof window === 'undefined' 
+          ? 'https://hotdog-diaries.vercel.app' 
+          : '')
+      
+      const apiUrl = `${baseUrl}/api/admin/schedule/projected?date=${targetDate}`
+      console.log("📅 Fetching projected schedule from:", apiUrl)
+      
+      const response = await fetch(apiUrl, {
+        cache: 'no-store',
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Projected schedule API failed: ${response.status}`)
+      }
+      
+      const projectedData: ProjectedScheduleData = await response.json()
+      console.log("✅ Projected schedule fetched", projectedData)
+      setProjected(projectedData)
+    } catch (err) {
+      console.error("❌ Projected schedule fetch failed:", err)
+      // Don't set error for projected schedule, just log it
+    } finally {
+      setProjectedLoading(false)
+    }
+  }
+
   const handleRefresh = () => {
     fetchDailySchedule()
+    fetchProjectedSchedule()
     onRefresh?.()
   }
 
@@ -733,6 +784,129 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Projected Schedule Section */}
+        {projected && projected.projected_schedule.length > 0 && (
+          <div style={{ marginTop: 'var(--spacing-xl)' }}>
+            <div className="schedule-admin-card">
+              <div className="schedule-admin-card-header">
+                <h4 style={{ 
+                  fontSize: 'var(--font-size-lg)', 
+                  fontWeight: 'var(--font-weight-semibold)',
+                  color: 'var(--color-text-primary)',
+                  margin: 0
+                }}>
+                  📅 Projected Posts ({projected.total_slots})
+                </h4>
+                <p style={{
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  margin: 'var(--spacing-xs) 0 0 0'
+                }}>
+                  Expected posting schedule for {projected.date}
+                </p>
+              </div>
+              <div className="schedule-admin-card-body">
+                {projectedLoading ? (
+                  <div className="schedule-loading">
+                    <div className="schedule-spinner"></div>
+                    <span style={{ marginLeft: 'var(--spacing-sm)' }}>Loading projected schedule...</span>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--border-radius-md)',
+                    overflow: 'hidden'
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ 
+                        backgroundColor: 'var(--color-card-header)',
+                        borderBottom: '1px solid var(--color-border)'
+                      }}>
+                        <tr>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Time
+                          </th>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Status
+                          </th>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Expected Cron Job
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody style={{ backgroundColor: 'white' }}>
+                        {projected.projected_schedule.map((slot, index) => (
+                          <tr 
+                            key={slot.iso} 
+                            style={{ 
+                              borderBottom: index < projected.projected_schedule.length - 1 ? '1px solid var(--color-border)' : 'none',
+                              transition: 'background-color 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50, #f9fafb)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                          >
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              whiteSpace: 'nowrap',
+                              fontSize: 'var(--font-size-sm)',
+                              fontWeight: 'var(--font-weight-medium)',
+                              color: 'var(--color-text-primary)'
+                            }}>
+                              {slot.time}
+                            </td>
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <span className="schedule-status-indicator warning" style={{ 
+                                padding: 'var(--spacing-xs) var(--spacing-sm)' 
+                              }}>
+                                <span className="schedule-status-dot"></span>
+                                🕒 Pending
+                              </span>
+                            </td>
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              fontSize: 'var(--font-size-sm)',
+                              color: 'var(--color-text-secondary)'
+                            }}>
+                              Automatic posting at {slot.time}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           </div>
