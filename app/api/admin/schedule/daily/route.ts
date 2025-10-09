@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { createSimpleClient } from '@/utils/supabase/server'
-import { parseISO, startOfDay, endOfDay, addHours, format } from 'date-fns'
+import { parseISO, startOfDay, endOfDay, addHours, format, isSameDay } from 'date-fns'
 
 interface DailyScheduleItem {
   id: string
@@ -29,7 +29,10 @@ interface DailyScheduleResponse {
     platforms: { [platform: string]: number }
     content_types: { [type: string]: number }
     diversity_score: number
-    upcoming_count?: number
+    posted_count: number
+    scheduled_count: number
+    upcoming_count: number
+    total_today: number
     next_post?: NextPost | null
   }
 }
@@ -99,8 +102,10 @@ export async function GET(request: NextRequest) {
     
     // Create expanded time window to handle timezone variations
     // 12-hour buffer ensures content scheduled in different timezones is captured
-    const startWindow = addHours(startOfDay(targetDate), -6).toISOString()
-    const endWindow = addHours(endOfDay(targetDate), +6).toISOString()
+    const startWindow = addHours(startOfDay(targetDate), -6)
+    const endWindow = addHours(endOfDay(targetDate), +6)
+    const startWindowStr = startWindow.toISOString()
+    const endWindowStr = endWindow.toISOString()
     const targetDateStr = format(targetDate, 'yyyy-MM-dd')
     
     let scheduledContent: DailyScheduleItem[] = []
@@ -125,17 +130,16 @@ export async function GET(request: NextRequest) {
             cq.scheduled_for as scheduled_time,
             SUBSTR(cq.content_text, 1, 100) as title,
             cq.confidence_score,
-            'scheduled' as status
+            cq.status,
+            cq.is_posted
           FROM content_queue cq
-          WHERE (cq.status = 'scheduled' OR cq.is_approved = 1)
-            AND (
-              DATE(cq.scheduled_for) = ?
-              OR (cq.scheduled_for >= ? AND cq.scheduled_for <= ?)
-            )
+          WHERE cq.scheduled_for >= ? 
+            AND cq.scheduled_for <= ?
+            AND (cq.status = 'scheduled' OR cq.is_approved = 1)
           ORDER BY cq.scheduled_for ASC
-        `, [targetDateStr, startWindow, endWindow])
+        `, [startWindowStr, endWindowStr])
         
-        // Query for content that was already posted on this date
+        // Query for content that was already posted within the time window
         const postedResult = await db.query(`
           SELECT DISTINCT
             cq.id,
@@ -145,12 +149,14 @@ export async function GET(request: NextRequest) {
             pc.posted_at as scheduled_time,
             SUBSTR(cq.content_text, 1, 100) as title,
             cq.confidence_score,
-            'posted' as status
+            'posted' as status,
+            1 as is_posted
           FROM content_queue cq
           JOIN posted_content pc ON cq.id = pc.content_queue_id
-          WHERE DATE(pc.posted_at) = ?
+          WHERE pc.posted_at >= ? 
+            AND pc.posted_at <= ?
           ORDER BY pc.posted_at ASC
-        `, [targetDateStr])
+        `, [startWindowStr, endWindowStr])
         
         scheduledContent = (scheduledResult.rows || []).map((row: any) => ({
           id: String(row.id),
@@ -255,19 +261,57 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Combine scheduled and posted content, removing duplicates
-    const allContent = [...scheduledContent]
-    const scheduledIds = new Set(scheduledContent.map(item => item.id))
+    // Normalize and merge all content with proper status assignment
+    const now = new Date()
     
-    // Add posted content that isn't already in scheduled content
-    postedContent.forEach(item => {
-      if (!scheduledIds.has(item.id)) {
-        allContent.push(item)
+    // Process scheduled content with proper status determination
+    const processedScheduled = scheduledContent.map(item => {
+      const scheduledTime = new Date(item.scheduled_time)
+      let status: 'scheduled' | 'posted' | 'upcoming' = 'scheduled'
+      
+      // Determine actual status based on current time and posted flag
+      if (item.status === 'posted') {
+        status = 'posted'
+      } else if (scheduledTime > now && isSameDay(scheduledTime, targetDate)) {
+        status = 'upcoming'
+      } else if (scheduledTime <= now) {
+        // Past scheduled time but not marked as posted
+        status = 'scheduled'
       }
+      
+      return { ...item, status }
     })
+    
+    // Process posted content
+    const processedPosted = postedContent.map(item => ({
+      ...item,
+      status: 'posted' as const
+    }))
+    
+    // Combine all content
+    const combined = [
+      ...processedScheduled,
+      ...processedPosted
+    ]
+    
+    // Deduplicate by ID (last entry wins)
+    const dedupedMap = combined.reduce((acc, cur) => {
+      acc[cur.id] = cur
+      return acc
+    }, {} as Record<string, DailyScheduleItem>)
+    
+    const allContent = Object.values(dedupedMap)
     
     // Sort by scheduled/posted time
     allContent.sort((a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime())
+    
+    // Filter to only content actually on target date (considering timezone buffer)
+    const filteredContent = allContent.filter(item => {
+      const itemDate = new Date(item.scheduled_time)
+      return isSameDay(itemDate, targetDate) || 
+             (itemDate >= startWindow && itemDate <= endWindow && 
+              Math.abs(itemDate.getDate() - targetDate.getDate()) <= 1)
+    })
     
     // If no results found, try fallback query for nearby dates
     if (allContent.length === 0) {
@@ -304,38 +348,45 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Calculate summary statistics using combined content
-    const totalPosts = allContent.length
+    // Calculate summary statistics using filtered content
+    const totalPosts = filteredContent.length
     const platforms: { [platform: string]: number } = {}
     const contentTypes: { [type: string]: number } = {}
     
-    allContent.forEach(item => {
+    // Count statuses
+    let postedCount = 0
+    let scheduledCount = 0
+    let upcomingCount = 0
+    
+    filteredContent.forEach(item => {
       // Count platforms
       platforms[item.platform] = (platforms[item.platform] || 0) + 1
       
       // Count content types
       contentTypes[item.content_type] = (contentTypes[item.content_type] || 0) + 1
+      
+      // Count by status
+      if (item.status === 'posted') {
+        postedCount++
+      } else if (item.status === 'upcoming') {
+        upcomingCount++
+      } else if (item.status === 'scheduled') {
+        scheduledCount++
+      }
     })
     
     const diversityScore = calculateDiversityScore(platforms, contentTypes, totalPosts)
     
-    // Calculate upcoming posts if requested
-    let upcomingCount = 0
+    // Calculate next post if requested
     let nextPost: NextPost | null = null
     
     if (includeUpcoming) {
-      const now = new Date()
       const currentDate = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD format
       const isToday = targetDateStr === currentDate
       
-      if (isToday) {
-        // Filter upcoming posts (scheduled but not yet posted, and time is in the future)
-        const upcomingPosts = allContent.filter(item => {
-          const scheduledTime = new Date(item.scheduled_time)
-          return scheduledTime > now && item.status === 'scheduled'
-        })
-        
-        upcomingCount = upcomingPosts.length
+      if (isToday || new Date(targetDateStr) > new Date(currentDate)) {
+        // Find upcoming posts (status = 'upcoming')
+        const upcomingPosts = filteredContent.filter(item => item.status === 'upcoming')
         
         // Find the next post (earliest upcoming post)
         if (upcomingPosts.length > 0) {
@@ -350,37 +401,33 @@ export async function GET(request: NextRequest) {
             content_type: next.content_type,
             source: next.source
           }
-        }
-      } else if (new Date(targetDateStr) > new Date(currentDate)) {
-        // For future dates, show the first scheduled post of that day as "next"
-        if (allContent.length > 0) {
-          const sortedContent = allContent.sort((a, b) => 
-            new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime()
-          )
-          
-          const first = sortedContent[0]
+        } else if (new Date(targetDateStr) > new Date(currentDate) && filteredContent.length > 0) {
+          // For future dates with no upcoming, show first scheduled item
+          const first = filteredContent[0]
           nextPost = {
             time: first.scheduled_time,
             platform: first.platform,
             content_type: first.content_type,
             source: first.source
           }
-          upcomingCount = allContent.filter(item => item.status === 'scheduled').length
         }
       }
-      // For past dates, we don't show upcoming posts
+      // For past dates, we don't show next post
     }
     
     const response: DailyScheduleResponse = {
       date: targetDateStr,
-      scheduled_content: allContent,
+      scheduled_content: filteredContent,
       summary: {
         total_posts: totalPosts,
         platforms,
         content_types: contentTypes,
         diversity_score: diversityScore,
+        posted_count: postedCount,
+        scheduled_count: scheduledCount,
+        upcoming_count: upcomingCount,
+        total_today: totalPosts,
         ...(includeUpcoming && { 
-          upcoming_count: upcomingCount,
           next_post: nextPost 
         })
       }

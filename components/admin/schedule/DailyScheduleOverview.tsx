@@ -29,7 +29,10 @@ interface DailyScheduleData {
     platforms: { [platform: string]: number }
     content_types: { [type: string]: number }
     diversity_score: number
-    upcoming_count?: number
+    posted_count: number
+    scheduled_count: number
+    upcoming_count: number
+    total_today: number
     next_post?: NextPost | null
   }
 }
@@ -250,25 +253,23 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
         {/* Summary Stats */}
         <div className="schedule-queue-summary">
           <div className="schedule-queue-stat">
-            <div className="schedule-queue-number">{data.summary.total_posts}</div>
+            <div className="schedule-queue-number">{data.summary.total_today}</div>
             <p className="schedule-queue-label">Total Posts</p>
+          </div>
+          
+          <div className="schedule-queue-stat posted">
+            <div className="schedule-queue-number">{data.summary.posted_count}</div>
+            <p className="schedule-queue-label">Posted</p>
+          </div>
+          
+          <div className="schedule-queue-stat">
+            <div className="schedule-queue-number">{data.summary.upcoming_count}</div>
+            <p className="schedule-queue-label">Upcoming</p>
           </div>
           
           <div className="schedule-queue-stat">
             <div className="schedule-queue-number">{Object.keys(data.summary.platforms).length}</div>
             <p className="schedule-queue-label">Platforms</p>
-          </div>
-          
-          {data.summary.upcoming_count !== undefined && (
-            <div className="schedule-queue-stat">
-              <div className="schedule-queue-number">{data.summary.upcoming_count}</div>
-              <p className="schedule-queue-label">Upcoming Posts</p>
-            </div>
-          )}
-          
-          <div className="schedule-queue-stat">
-            <div className="schedule-queue-number">{data.summary.diversity_score}%</div>
-            <p className="schedule-queue-label">Diversity Score</p>
           </div>
         </div>
 
@@ -369,6 +370,31 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                 margin: 0
               }}>
                 Source: {data.summary.next_post.source}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming Posts Today Subsection */}
+        {data.summary.upcoming_count > 1 && (
+          <div className="schedule-admin-card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+            <div className="schedule-admin-card-header">
+              <h4 style={{ 
+                fontSize: 'var(--font-size-md)', 
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--color-text-primary)',
+                margin: 0
+              }}>
+                📅 Upcoming Posts Today
+              </h4>
+            </div>
+            <div className="schedule-admin-card-body">
+              <p style={{ 
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-secondary)',
+                margin: 0
+              }}>
+                {data.summary.upcoming_count - (data.summary.next_post ? 1 : 0)} more posts scheduled after the next one
               </p>
             </div>
           </div>
@@ -553,10 +579,14 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                         whiteSpace: 'nowrap'
                       }}>
                         <span className={`schedule-status-indicator ${
-                          item.status === 'posted' ? 'enabled' : 'warning'
+                          item.status === 'posted' ? 'enabled' : 
+                          item.status === 'upcoming' ? 'warning' : 
+                          'disabled'
                         }`} style={{ padding: 'var(--spacing-xs) var(--spacing-sm)' }}>
                           <span className="schedule-status-dot"></span>
-                          {item.status === 'posted' ? 'Posted' : 'Scheduled'}
+                          {item.status === 'posted' ? '✅ Posted' : 
+                           item.status === 'upcoming' ? '🕒 Upcoming' : 
+                           '📅 Scheduled'}
                         </span>
                       </td>
                     </tr>
