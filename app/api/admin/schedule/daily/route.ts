@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       await db.connect()
       
       try {
-        // Query for scheduled content with expanded time window
+        // Expanded query for scheduled content with broader conditions
         const scheduledResult = await db.query(`
           SELECT 
             cq.id,
@@ -131,12 +131,21 @@ export async function GET(request: NextRequest) {
             SUBSTR(cq.content_text, 1, 100) as title,
             cq.confidence_score,
             cq.status,
-            cq.is_posted
+            cq.is_posted,
+            cq.is_approved,
+            cq.created_at
           FROM content_queue cq
-          WHERE cq.scheduled_for >= ? 
-            AND cq.scheduled_for <= ?
-            AND (cq.status = 'scheduled' OR cq.is_approved = 1)
-          ORDER BY cq.scheduled_for ASC
+          WHERE (
+            (cq.scheduled_for >= ? AND cq.scheduled_for <= ?)
+            OR (cq.is_approved = 1 AND cq.is_posted = 0)
+            OR (cq.status IN ('scheduled', 'pending', 'approved'))
+          )
+          AND (
+            cq.scheduled_for IS NOT NULL 
+            OR cq.is_approved = 1
+            OR cq.status IN ('scheduled', 'pending', 'approved')
+          )
+          ORDER BY cq.scheduled_for ASC, cq.created_at ASC
         `, [startWindowStr, endWindowStr])
         
         // Query for content that was already posted within the time window
@@ -150,7 +159,9 @@ export async function GET(request: NextRequest) {
             SUBSTR(cq.content_text, 1, 100) as title,
             cq.confidence_score,
             'posted' as status,
-            1 as is_posted
+            1 as is_posted,
+            cq.is_approved,
+            pc.scheduled_time as original_scheduled_time
           FROM content_queue cq
           JOIN posted_content pc ON cq.id = pc.content_queue_id
           WHERE pc.posted_at >= ? 
@@ -158,27 +169,109 @@ export async function GET(request: NextRequest) {
           ORDER BY pc.posted_at ASC
         `, [startWindowStr, endWindowStr])
         
+        // Additional cross-table fallback for missed items
+        const crossTableResult = await db.query(`
+          SELECT 
+            cq.id,
+            cq.source_platform as platform,
+            cq.content_type,
+            cq.original_author as source,
+            COALESCE(pc.posted_at, cq.scheduled_for) as scheduled_time,
+            SUBSTR(cq.content_text, 1, 100) as title,
+            cq.confidence_score,
+            CASE 
+              WHEN pc.id IS NOT NULL THEN 'posted'
+              WHEN cq.scheduled_for > datetime('now') THEN 'upcoming'
+              ELSE 'scheduled'
+            END as status,
+            COALESCE(cq.is_posted, 0) as is_posted,
+            cq.is_approved,
+            pc.posted_at as actual_posted_at
+          FROM content_queue cq
+          LEFT JOIN posted_content pc ON cq.id = pc.content_queue_id
+          WHERE (
+            DATE(COALESCE(pc.posted_at, cq.scheduled_for)) = DATE(?)
+            OR (cq.is_approved = 1 AND cq.is_posted = 0)
+          )
+          ORDER BY COALESCE(pc.posted_at, cq.scheduled_for) ASC
+        `, [targetDateStr])
+        
+        // Helper function for status normalization
+        const determineStatus = (item: any): 'scheduled' | 'posted' | 'upcoming' => {
+          const now = new Date()
+          const time = new Date(item.scheduled_time || item.actual_posted_at)
+          
+          if (item.status === 'posted' || item.is_posted === 1 || item.actual_posted_at) {
+            return 'posted'
+          }
+          if (time > now) {
+            return 'upcoming'
+          }
+          return 'scheduled'
+        }
+        
+        // Process scheduled content with normalization
         scheduledContent = (scheduledResult.rows || []).map((row: any) => ({
           id: String(row.id),
           platform: row.platform || 'unknown',
           content_type: mapContentType(row.content_type),
           source: row.source || 'Unknown Source',
-          scheduled_time: row.scheduled_time ? new Date(row.scheduled_time).toISOString() : row.scheduled_time,
+          scheduled_time: row.scheduled_time ? new Date(row.scheduled_time).toISOString() : new Date().toISOString(),
           title: row.title,
           confidence_score: row.confidence_score,
-          status: row.status
+          status: determineStatus(row)
         }))
         
+        // Process posted content with normalization
         postedContent = (postedResult.rows || []).map((row: any) => ({
           id: String(row.id),
           platform: row.platform || 'unknown',
           content_type: mapContentType(row.content_type),
           source: row.source || 'Unknown Source',
-          scheduled_time: row.scheduled_time ? new Date(row.scheduled_time).toISOString() : row.scheduled_time,
+          scheduled_time: row.scheduled_time ? new Date(row.scheduled_time).toISOString() : new Date().toISOString(),
           title: row.title,
           confidence_score: row.confidence_score,
-          status: row.status
+          status: 'posted' as const
         }))
+        
+        // Process cross-table results as additional source
+        const crossTableContent = (crossTableResult.rows || []).map((row: any) => ({
+          id: String(row.id),
+          platform: row.platform || 'unknown',
+          content_type: mapContentType(row.content_type),
+          source: row.source || 'Unknown Source',
+          scheduled_time: row.scheduled_time ? new Date(row.scheduled_time).toISOString() : new Date().toISOString(),
+          title: row.title,
+          confidence_score: row.confidence_score,
+          status: determineStatus(row)
+        }))
+        
+        // Combine all sources with deduplication preference: crossTable > posted > scheduled
+        const allSources = [
+          ...scheduledContent.map(item => ({ ...item, source_type: 'scheduled' })),
+          ...postedContent.map(item => ({ ...item, source_type: 'posted' })),
+          ...crossTableContent.map(item => ({ ...item, source_type: 'crossTable' }))
+        ]
+        
+        // Deduplicate by ID, preferring crossTable > posted > scheduled
+        const dedupedMap = allSources.reduce((acc, cur) => {
+          const existing = acc[cur.id]
+          if (!existing || 
+              (cur.source_type === 'crossTable') ||
+              (cur.source_type === 'posted' && existing.source_type === 'scheduled')) {
+            acc[cur.id] = cur
+          }
+          return acc
+        }, {} as Record<string, any>)
+        
+        // Use the deduplicated content as both scheduled and posted
+        const deduplicatedContent = Object.values(dedupedMap).map(item => {
+          const { source_type, ...cleanItem } = item
+          return cleanItem
+        })
+        
+        scheduledContent = deduplicatedContent.filter(item => item.status !== 'posted')
+        postedContent = deduplicatedContent.filter(item => item.status === 'posted')
         
       } catch (error) {
         console.error('SQLite query error:', error)
@@ -186,11 +279,11 @@ export async function GET(request: NextRequest) {
         await db.disconnect()
       }
     } else {
-      // Use Supabase for production
+      // Use Supabase for production with enhanced queries
       const supabase = createSimpleClient()
       
       try {
-        // Query for scheduled content with expanded time window
+        // Expanded query for scheduled content with broader conditions
         const { data: scheduledData, error: scheduledError } = await supabase
           .from('content_queue')
           .select(`
@@ -201,31 +294,68 @@ export async function GET(request: NextRequest) {
             scheduled_for,
             content_text,
             confidence_score,
-            status
+            status,
+            is_posted,
+            is_approved
           `)
-          .or(`status.eq.scheduled,is_approved.eq.true`)
-          .gte('scheduled_for', startWindow)
-          .lte('scheduled_for', endWindow)
+          .or(`scheduled_for.gte.${startWindow.toISOString()},scheduled_for.lte.${endWindow.toISOString()},and(is_approved.eq.true,is_posted.eq.false),status.in.(scheduled,pending,approved)`)
           .order('scheduled_for', { ascending: true })
         
-        // Query for posted content
+        // Query for posted content with cross-table join
         const { data: postedData, error: postedError } = await supabase
           .from('posted_content')
           .select(`
             content_queue_id,
             posted_at,
+            scheduled_time,
             content_queue (
               id,
               source_platform,
               content_type,
               original_author,
               content_text,
-              confidence_score
+              confidence_score,
+              is_approved
             )
           `)
-          .gte('posted_at', `${targetDateStr}T00:00:00.000Z`)
-          .lt('posted_at', `${targetDateStr}T23:59:59.999Z`)
+          .gte('posted_at', startWindow.toISOString())
+          .lte('posted_at', endWindow.toISOString())
           .order('posted_at', { ascending: true })
+        
+        // Additional cross-table query for comprehensive coverage
+        const { data: crossTableData, error: crossTableError } = await supabase
+          .from('content_queue')
+          .select(`
+            id,
+            source_platform,
+            content_type,
+            original_author,
+            scheduled_for,
+            content_text,
+            confidence_score,
+            status,
+            is_posted,
+            is_approved,
+            posted_content (
+              posted_at,
+              scheduled_time
+            )
+          `)
+          .or(`scheduled_for.like.${targetDateStr}%,posted_content.posted_at.like.${targetDateStr}%,and(is_approved.eq.true,is_posted.eq.false)`)
+        
+        // Helper function for status normalization (Supabase version)
+        const determineSupabaseStatus = (item: any): 'scheduled' | 'posted' | 'upcoming' => {
+          const now = new Date()
+          const time = new Date(item.scheduled_time || item.posted_at)
+          
+          if (item.status === 'posted' || item.is_posted === true || item.posted_content?.length > 0) {
+            return 'posted'
+          }
+          if (time > now) {
+            return 'upcoming'
+          }
+          return 'scheduled'
+        }
         
         if (scheduledError) {
           console.error('Supabase scheduled query error:', scheduledError)
@@ -235,10 +365,10 @@ export async function GET(request: NextRequest) {
             platform: row.source_platform || 'unknown',
             content_type: mapContentType(row.content_type),
             source: row.original_author || 'Unknown Source',
-            scheduled_time: row.scheduled_for,
+            scheduled_time: row.scheduled_for || new Date().toISOString(),
             title: row.content_text?.substring(0, 100),
             confidence_score: row.confidence_score,
-            status: 'scheduled'
+            status: determineSupabaseStatus(row)
           }))
         }
         
@@ -253,49 +383,94 @@ export async function GET(request: NextRequest) {
             scheduled_time: row.posted_at,
             title: row.content_queue.content_text?.substring(0, 100),
             confidence_score: row.content_queue.confidence_score,
-            status: 'posted'
+            status: 'posted' as const
           }))
         }
+        
+        // Process cross-table results
+        if (!crossTableError && crossTableData) {
+          const crossTableContent = crossTableData.map((row: any) => ({
+            id: String(row.id),
+            platform: row.source_platform || 'unknown',
+            content_type: mapContentType(row.content_type),
+            source: row.original_author || 'Unknown Source',
+            scheduled_time: row.posted_content?.[0]?.posted_at || row.scheduled_for || new Date().toISOString(),
+            title: row.content_text?.substring(0, 100),
+            confidence_score: row.confidence_score,
+            status: determineSupabaseStatus({
+              ...row,
+              posted_at: row.posted_content?.[0]?.posted_at,
+              scheduled_time: row.posted_content?.[0]?.posted_at || row.scheduled_for
+            })
+          }))
+          
+          // Merge with existing data, prioritizing cross-table results
+          const allSupabaseContent = [
+            ...scheduledContent,
+            ...postedContent,
+            ...crossTableContent
+          ]
+          
+          // Deduplicate by ID
+          const dedupedSupabaseMap = allSupabaseContent.reduce((acc, cur) => {
+            acc[cur.id] = cur
+            return acc
+          }, {} as Record<string, any>)
+          
+          const deduplicatedSupabaseContent = Object.values(dedupedSupabaseMap)
+          scheduledContent = deduplicatedSupabaseContent.filter(item => item.status !== 'posted')
+          postedContent = deduplicatedSupabaseContent.filter(item => item.status === 'posted')
+        }
+        
       } catch (error) {
         console.error('Supabase connection error:', error)
       }
     }
     
-    // Helper function for consistent range filtering
+    // Helper function for consistent range filtering (expanded)
     const inRange = (ts: string) => {
+      if (!ts) return false
       const t = new Date(ts)
-      return t >= startWindow && t <= endWindow
+      const targetDay = new Date(targetDateStr)
+      // More flexible range checking - include items within 24 hours of target date
+      const dayStart = new Date(targetDay.getFullYear(), targetDay.getMonth(), targetDay.getDate())
+      const dayEnd = new Date(targetDay.getFullYear(), targetDay.getMonth(), targetDay.getDate() + 1)
+      return t >= dayStart && t < dayEnd
     }
     
     const now = new Date()
     
-    // Process scheduled content with proper status determination
-    const processedScheduled = scheduledContent
-      .filter(item => inRange(item.scheduled_time))
-      .map(item => {
-        const scheduledTime = new Date(item.scheduled_time)
-        let status: 'scheduled' | 'posted' | 'upcoming' = 'scheduled'
-        
-        // Determine actual status based on current time and posted flag
-        if (item.status === 'posted') {
-          status = 'posted'
-        } else if (scheduledTime > now) {
-          status = 'upcoming'
-        } else {
-          // Past scheduled time but not marked as posted
-          status = 'scheduled'
-        }
-        
-        return { ...item, status }
-      })
+    // Enhanced status determination function
+    const determineStatus = (item: any): 'scheduled' | 'posted' | 'upcoming' => {
+      const scheduledTime = new Date(item.scheduled_time)
+      
+      // First check if explicitly marked as posted
+      if (item.status === 'posted' || item.is_posted === 1) {
+        return 'posted'
+      }
+      
+      // Then check time-based status
+      if (scheduledTime > now) {
+        return 'upcoming'
+      } else if (scheduledTime < now && !item.is_posted) {
+        // Past time but not posted - could be missed
+        return 'scheduled'
+      }
+      
+      return 'scheduled'
+    }
     
-    // Process posted content with consistent range filtering
-    const processedPosted = postedContent
-      .filter(item => inRange(item.scheduled_time))
-      .map(item => ({
-        ...item,
-        status: 'posted' as const
-      }))
+    // Process scheduled content with enhanced filtering
+    const processedScheduled = scheduledContent.map(item => ({
+      ...item,
+      status: determineStatus(item)
+    }))
+    
+    // Process posted content
+    const processedPosted = postedContent.map(item => ({
+      ...item,
+      status: 'posted' as const
+    }))
     
     // Combine all content using unified dataset logic  
     const combined = [
@@ -303,46 +478,78 @@ export async function GET(request: NextRequest) {
       ...processedPosted
     ]
     
-    // Deduplicate by ID (last entry wins) 
+    // Deduplicate by ID, keeping the most accurate status
     const dedupedMap = combined.reduce((acc, cur) => {
-      acc[cur.id] = cur
+      const existing = acc[cur.id]
+      if (!existing || cur.status === 'posted' || (existing.status !== 'posted' && cur.status === 'upcoming')) {
+        acc[cur.id] = cur
+      }
       return acc
     }, {} as Record<string, DailyScheduleItem>)
     
-    const filteredContent = Object.values(dedupedMap)
+    let filteredContent = Object.values(dedupedMap)
+    
+    // Apply range filtering for the target date
+    filteredContent = filteredContent.filter(item => 
+      inRange(item.scheduled_time) || 
+      item.status === 'posted' ||
+      (item.status === 'upcoming' && new Date(item.scheduled_time).toDateString() === targetDate.toDateString())
+    )
     
     // Sort by scheduled/posted time
     filteredContent.sort((a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime())
     
-    // If no results found, try fallback query for nearby dates
+    // Enhanced fallback for missing day data with range expansion
     if (filteredContent.length === 0) {
-      console.log(`No content found for ${targetDateStr}, attempting fallback query...`)
+      console.log(`No content found for ${targetDateStr}, attempting expanded fallback query...`)
       
       if (isSqlite) {
         await db.connect()
         try {
+          // Fallback with expanded date range
           const fallbackResult = await db.query(`
             SELECT 
               cq.id,
               cq.source_platform as platform,
               cq.content_type,
               cq.original_author as source,
-              cq.scheduled_for as scheduled_time,
+              COALESCE(pc.posted_at, cq.scheduled_for) as scheduled_time,
               SUBSTR(cq.content_text, 1, 100) as title,
-              cq.confidence_score
+              cq.confidence_score,
+              CASE 
+                WHEN pc.id IS NOT NULL THEN 'posted'
+                WHEN cq.scheduled_for > datetime('now') THEN 'upcoming'
+                ELSE 'scheduled'
+              END as status
             FROM content_queue cq
-            WHERE cq.scheduled_for > datetime('now', '-2 days')
-              AND cq.scheduled_for < datetime('now', '+7 days')
-              AND (cq.status = 'scheduled' OR cq.is_approved = 1)
-            ORDER BY ABS(julianday(cq.scheduled_for) - julianday(?)) ASC
-            LIMIT 10
-          `, [targetDate.toISOString()])
+            LEFT JOIN posted_content pc ON cq.id = pc.content_queue_id
+            WHERE (
+              cq.scheduled_for BETWEEN datetime(?, '-1 day') AND datetime(?, '+1 day')
+              OR pc.posted_at BETWEEN datetime(?, '-1 day') AND datetime(?, '+1 day')
+              OR (cq.is_approved = 1 AND cq.is_posted = 0)
+            )
+            ORDER BY ABS(julianday(COALESCE(pc.posted_at, cq.scheduled_for)) - julianday(?)) ASC
+            LIMIT 20
+          `, [targetDateStr, targetDateStr, targetDateStr, targetDateStr, targetDate.toISOString()])
           
           if (fallbackResult.rows && fallbackResult.rows.length > 0) {
-            console.log(`Fallback query found ${fallbackResult.rows.length} nearby items`)
+            console.log(`📊 Fallback query found ${fallbackResult.rows.length} nearby items`)
+            const fallbackItems = fallbackResult.rows.map((row: any) => ({
+              id: String(row.id),
+              platform: row.platform || 'unknown',
+              content_type: mapContentType(row.content_type),
+              source: row.source || 'Unknown Source',
+              scheduled_time: row.scheduled_time ? new Date(row.scheduled_time).toISOString() : new Date().toISOString(),
+              title: row.title,
+              confidence_score: row.confidence_score,
+              status: row.status as 'scheduled' | 'posted' | 'upcoming'
+            }))
+            
+            // Add fallback items if they're relevant
+            filteredContent.push(...fallbackItems.slice(0, 10))
           }
         } catch (error) {
-          console.error('Fallback query error:', error)
+          console.error('Enhanced fallback query error:', error)
         } finally {
           await db.disconnect()
         }
@@ -405,6 +612,36 @@ export async function GET(request: NextRequest) {
         }
       }
       // For past dates, we don't show next post
+    }
+    
+    // Comprehensive debug logging for verification
+    console.log("📊 Schedule Stats", {
+      total: filteredContent.length,
+      posted: filteredContent.filter(c => c.status === 'posted').length,
+      upcoming: filteredContent.filter(c => c.status === 'upcoming').length,
+      scheduled: filteredContent.filter(c => c.status === 'scheduled').length,
+      date: targetDateStr,
+      startWindow: startWindowStr,
+      endWindow: endWindowStr,
+      platforms: [...platforms],
+      contentTypes: [...types],
+      diversityScore,
+      nextPost: nextPost ? {
+        time: nextPost.time,
+        platform: nextPost.platform,
+        type: nextPost.content_type
+      } : null
+    })
+    
+    // Log detailed content breakdown for debugging
+    if (filteredContent.length > 0) {
+      console.log("📋 Content Breakdown:")
+      filteredContent.slice(0, 5).forEach((item, index) => {
+        console.log(`  ${index + 1}. [${item.status.toUpperCase()}] ${item.platform} - ${item.content_type} at ${item.scheduled_time}`)
+      })
+      if (filteredContent.length > 5) {
+        console.log(`  ... and ${filteredContent.length - 5} more items`)
+      }
     }
     
     const response: DailyScheduleResponse = {
