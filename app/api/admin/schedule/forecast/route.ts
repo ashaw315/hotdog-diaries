@@ -179,8 +179,20 @@ export async function GET(req: NextRequest) {
     const slotUtcIsos = SLOT_LABELS.map(t => slotIsoUtc(date, t))
 
     // 1) Try reading real schedule (scheduled_posts)
-    let scheduled = await readSchedule(startUtc, endUtc)
-    console.log(`📊 Found ${scheduled.length} scheduled items in database`)
+    let scheduled: any[] = []
+    try {
+      scheduled = await readSchedule(startUtc, endUtc)
+      console.log(`📊 Found ${scheduled.length} scheduled items in database`)
+    } catch (e: any) {
+      const msg = String(e?.message || e)
+      if (msg.includes("Could not find the table 'public.scheduled_posts'")) {
+        return NextResponse.json({
+          error: "scheduled_posts table missing in Supabase — run migration 20251009_create_scheduled_posts.sql",
+          hint: "Create table in Supabase SQL editor, then refresh. A pg_notify('pgrst','reload schema') is included in the migration.",
+        }, { status: 503, headers: { 'cache-control': 'no-store' } })
+      }
+      throw e
+    }
 
     // 2) If empty, call real generator (same code the action uses), then re-read
     if (!scheduled.length) {
