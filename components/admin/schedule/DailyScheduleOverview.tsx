@@ -11,7 +11,7 @@ interface DailyScheduleItem {
   scheduled_time: string
   title?: string
   confidence_score?: number
-  status?: 'scheduled' | 'posted'
+  status?: 'scheduled' | 'posted' | 'upcoming'
 }
 
 interface NextPost {
@@ -122,25 +122,19 @@ function getDiversityStatus(score: number): { label: string; color: string; icon
   if (score >= 80) {
     return {
       label: 'Excellent Diversity',
-      color: 'text-green-600',
+      color: 'text-green-500',
       icon: <CheckCircle2 className="w-4 h-4" />
     }
-  } else if (score >= 60) {
+  } else if (score >= 50) {
     return {
       label: 'Good Diversity',
-      color: 'text-blue-600',
+      color: 'text-yellow-500',
       icon: <TrendingUp className="w-4 h-4" />
-    }
-  } else if (score >= 40) {
-    return {
-      label: 'Moderate Diversity',
-      color: 'text-yellow-600',
-      icon: <AlertCircle className="w-4 h-4" />
     }
   } else {
     return {
       label: 'Low Diversity',
-      color: 'text-red-600',
+      color: 'text-red-500',
       icon: <AlertCircle className="w-4 h-4" />
     }
   }
@@ -273,27 +267,39 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
           </div>
         </div>
 
-        {/* Diversity Status */}
-        <div className={`schedule-status-indicator ${
-          data.summary.diversity_score >= 80 ? 'enabled' : 
-          data.summary.diversity_score >= 60 ? 'warning' : 'disabled'
-        }`} style={{ 
-          width: '100%', 
-          justifyContent: 'flex-start',
-          marginBottom: 'var(--spacing-lg)' 
-        }}>
-          <span className="schedule-status-dot"></span>
-          <span>{diversityStatus.label}</span>
-          {data.summary.diversity_score < 60 && (
-            <span style={{ 
-              fontSize: 'var(--font-size-xs)', 
-              marginLeft: 'var(--spacing-sm)',
-              opacity: 0.8
-            }}>
-              - Consider adding more variety in platforms or content types
-            </span>
-          )}
-        </div>
+        {/* Zero Content Alert */}
+        {data.summary.total_today === 0 ? (
+          <div className="schedule-status-indicator disabled" style={{ 
+            width: '100%', 
+            justifyContent: 'center',
+            marginBottom: 'var(--spacing-lg)' 
+          }}>
+            <span className="schedule-status-dot"></span>
+            <span>No content scheduled or posted for this date</span>
+          </div>
+        ) : (
+          /* Diversity Status */
+          <div className={`schedule-status-indicator ${
+            data.summary.diversity_score >= 80 ? 'enabled' : 
+            data.summary.diversity_score >= 50 ? 'warning' : 'disabled'
+          }`} style={{ 
+            width: '100%', 
+            justifyContent: 'flex-start',
+            marginBottom: 'var(--spacing-lg)' 
+          }}>
+            <span className="schedule-status-dot"></span>
+            <span>{diversityStatus.label} ({data.summary.diversity_score}%)</span>
+            {data.summary.diversity_score < 50 && (
+              <span style={{ 
+                fontSize: 'var(--font-size-xs)', 
+                marginLeft: 'var(--spacing-sm)',
+                opacity: 0.8
+              }}>
+                - Consider adding more variety in platforms or content types
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Next Scheduled Post Section */}
         {data.summary.next_post && (

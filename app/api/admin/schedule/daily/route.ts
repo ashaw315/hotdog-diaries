@@ -261,60 +261,61 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Normalize and merge all content with proper status assignment
+    // Helper function for consistent range filtering
+    const inRange = (ts: string) => {
+      const t = new Date(ts)
+      return t >= startWindow && t <= endWindow
+    }
+    
     const now = new Date()
     
     // Process scheduled content with proper status determination
-    const processedScheduled = scheduledContent.map(item => {
-      const scheduledTime = new Date(item.scheduled_time)
-      let status: 'scheduled' | 'posted' | 'upcoming' = 'scheduled'
-      
-      // Determine actual status based on current time and posted flag
-      if (item.status === 'posted') {
-        status = 'posted'
-      } else if (scheduledTime > now && isSameDay(scheduledTime, targetDate)) {
-        status = 'upcoming'
-      } else if (scheduledTime <= now) {
-        // Past scheduled time but not marked as posted
-        status = 'scheduled'
-      }
-      
-      return { ...item, status }
-    })
+    const processedScheduled = scheduledContent
+      .filter(item => inRange(item.scheduled_time))
+      .map(item => {
+        const scheduledTime = new Date(item.scheduled_time)
+        let status: 'scheduled' | 'posted' | 'upcoming' = 'scheduled'
+        
+        // Determine actual status based on current time and posted flag
+        if (item.status === 'posted') {
+          status = 'posted'
+        } else if (scheduledTime > now) {
+          status = 'upcoming'
+        } else {
+          // Past scheduled time but not marked as posted
+          status = 'scheduled'
+        }
+        
+        return { ...item, status }
+      })
     
-    // Process posted content
-    const processedPosted = postedContent.map(item => ({
-      ...item,
-      status: 'posted' as const
-    }))
+    // Process posted content with consistent range filtering
+    const processedPosted = postedContent
+      .filter(item => inRange(item.scheduled_time))
+      .map(item => ({
+        ...item,
+        status: 'posted' as const
+      }))
     
-    // Combine all content
+    // Combine all content using unified dataset logic  
     const combined = [
       ...processedScheduled,
       ...processedPosted
     ]
     
-    // Deduplicate by ID (last entry wins)
+    // Deduplicate by ID (last entry wins) 
     const dedupedMap = combined.reduce((acc, cur) => {
       acc[cur.id] = cur
       return acc
     }, {} as Record<string, DailyScheduleItem>)
     
-    const allContent = Object.values(dedupedMap)
+    const filteredContent = Object.values(dedupedMap)
     
     // Sort by scheduled/posted time
-    allContent.sort((a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime())
-    
-    // Filter to only content actually on target date (considering timezone buffer)
-    const filteredContent = allContent.filter(item => {
-      const itemDate = new Date(item.scheduled_time)
-      return isSameDay(itemDate, targetDate) || 
-             (itemDate >= startWindow && itemDate <= endWindow && 
-              Math.abs(itemDate.getDate() - targetDate.getDate()) <= 1)
-    })
+    filteredContent.sort((a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime())
     
     // If no results found, try fallback query for nearby dates
-    if (allContent.length === 0) {
+    if (filteredContent.length === 0) {
       console.log(`No content found for ${targetDateStr}, attempting fallback query...`)
       
       if (isSqlite) {
@@ -348,34 +349,25 @@ export async function GET(request: NextRequest) {
       }
     }
     
+    // Recalculate diversity after filtering using combined data
+    const platforms = new Set(filteredContent.map(c => c.platform))
+    const types = new Set(filteredContent.map(c => c.content_type))
+    
+    const platformScore = Math.min((platforms.size / 5) * 50, 50) // 5 unique platforms = 50 points
+    const typeScore = Math.min((types.size / 4) * 50, 50)        // 4 types = 50 points  
+    const diversityScore = Math.round(platformScore + typeScore)
+    
     // Calculate summary statistics using filtered content
     const totalPosts = filteredContent.length
-    const platforms: { [platform: string]: number } = {}
-    const contentTypes: { [type: string]: number } = {}
     
     // Count statuses
-    let postedCount = 0
-    let scheduledCount = 0
-    let upcomingCount = 0
+    const postedCount = filteredContent.filter(c => c.status === 'posted').length
+    const scheduledCount = filteredContent.filter(c => c.status === 'scheduled').length
+    const upcomingCount = filteredContent.filter(c => c.status === 'upcoming').length
     
-    filteredContent.forEach(item => {
-      // Count platforms
-      platforms[item.platform] = (platforms[item.platform] || 0) + 1
-      
-      // Count content types
-      contentTypes[item.content_type] = (contentTypes[item.content_type] || 0) + 1
-      
-      // Count by status
-      if (item.status === 'posted') {
-        postedCount++
-      } else if (item.status === 'upcoming') {
-        upcomingCount++
-      } else if (item.status === 'scheduled') {
-        scheduledCount++
-      }
-    })
-    
-    const diversityScore = calculateDiversityScore(platforms, contentTypes, totalPosts)
+    // Build platform and content type distributions
+    const platformCounts = Object.fromEntries([...platforms].map(p => [p, filteredContent.filter(c => c.platform === p).length]))
+    const contentTypeCounts = Object.fromEntries([...types].map(t => [t, filteredContent.filter(c => c.content_type === t).length]))
     
     // Calculate next post if requested
     let nextPost: NextPost | null = null
@@ -417,11 +409,13 @@ export async function GET(request: NextRequest) {
     
     const response: DailyScheduleResponse = {
       date: targetDateStr,
-      scheduled_content: filteredContent,
+      scheduled_content: filteredContent.sort(
+        (a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime()
+      ),
       summary: {
         total_posts: totalPosts,
-        platforms,
-        content_types: contentTypes,
+        platforms: platformCounts,
+        content_types: contentTypeCounts,
         diversity_score: diversityScore,
         posted_count: postedCount,
         scheduled_count: scheduledCount,
