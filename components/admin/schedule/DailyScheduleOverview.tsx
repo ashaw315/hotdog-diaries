@@ -213,8 +213,19 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
   }
 
   if (!data) {
-    return null
+    return (
+      <div className="schedule-admin-card">
+        <div className="schedule-admin-card-header">
+          <h2>📅 Daily Scheduled Content</h2>
+        </div>
+        <div className="schedule-admin-card-body">
+          <p>Loading daily schedule...</p>
+        </div>
+      </div>
+    )
   }
+  
+  const displayedContent = data?.scheduled_content ?? []
 
   const diversityStatus = getDiversityStatus(data.summary.diversity_score)
   
@@ -406,8 +417,9 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
           </div>
         )}
 
+
         {/* Scheduled Content List */}
-        {data.scheduled_content.length === 0 ? (
+        {displayedContent.length === 0 ? (
           <div className="schedule-empty-state">
             <h3>📅 No Content Scheduled</h3>
             <p>No content scheduled for {data.date}</p>
@@ -423,7 +435,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
               color: 'var(--color-text-primary)',
               marginBottom: 'var(--spacing-md)'
             }}>
-              Scheduled Posts ({data.scheduled_content.length})
+              Scheduled Posts ({displayedContent.length})
             </h4>
             
             <div style={{ 
@@ -506,11 +518,11 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                   </tr>
                 </thead>
                 <tbody style={{ backgroundColor: 'white' }}>
-                  {data.scheduled_content.map((item, index) => (
+                  {displayedContent.map((item, index) => (
                     <tr 
                       key={item.id} 
                       style={{ 
-                        borderBottom: index < data.scheduled_content.length - 1 ? '1px solid var(--color-border)' : 'none',
+                        borderBottom: index < displayedContent.length - 1 ? '1px solid var(--color-border)' : 'none',
                         transition: 'background-color 0.2s ease'
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50, #f9fafb)'}
@@ -604,7 +616,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
         )}
 
         {/* Platform & Content Type Breakdown */}
-        {data.summary.total_posts > 0 && (
+        {data.summary.total_today > 0 && (
           <div style={{ 
             marginTop: 'var(--spacing-xl)',
             display: 'grid', 
