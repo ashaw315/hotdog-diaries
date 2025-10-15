@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Clock, Calendar, TrendingUp, AlertCircle, CheckCircle2, Eye } from 'lucide-react'
+import { Clock, Calendar, TrendingUp, AlertCircle, CheckCircle2, Eye, RefreshCw, Zap } from 'lucide-react'
 
 interface DailyScheduleItem {
   id: string
@@ -65,7 +65,7 @@ interface ForecastSlot {
   slot_index: number
   time_local: string
   iso: string
-  status: 'posted' | 'upcoming' | 'missed'
+  status: 'posted' | 'upcoming' | 'missed' | 'projected'
   content: ForecastItem | null
   scheduled_post_time?: string
   actual_posted_at?: string | null
@@ -198,6 +198,12 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
   const [projectedLoading, setProjectedLoading] = useState(true)
   const [forecastLoading, setForecastLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Refill functionality state
+  const [refillLoading, setRefillLoading] = useState(false)
+  const [showTokenModal, setShowTokenModal] = useState(false)
+  const [tokenInput, setTokenInput] = useState('')
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const targetDate = selectedDate || new Date().toISOString().split('T')[0]
 
@@ -206,6 +212,35 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
     fetchProjectedSchedule()
     fetchForecast()
   }, [targetDate])
+
+  // Clear toast after 3 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
+
+  // Get auth token from environment or session storage
+  const getAuthToken = (): string | null => {
+    // Try environment variable first
+    if (process.env.NEXT_PUBLIC_ADMIN_TOKEN) {
+      return process.env.NEXT_PUBLIC_ADMIN_TOKEN
+    }
+    
+    // Try session storage
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('admin_token')
+    }
+    
+    return null
+  }
+
+  // Check if forecast is healthy (all 6 slots have content and time)
+  const isScheduleHealthy = (): boolean => {
+    if (!forecast || forecast.slots.length !== 6) return false
+    return !forecast.slots.some(s => !s.content || !s.iso)
+  }
 
   const fetchDailySchedule = async () => {
     try {
@@ -307,6 +342,92 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
     }
   }
 
+  // Refill today's schedule
+  const handleRefillToday = async () => {
+    const token = getAuthToken()
+    
+    if (!token) {
+      setShowTokenModal(true)
+      return
+    }
+
+    try {
+      setRefillLoading(true)
+      
+      const baseUrl = 
+        process.env.NEXT_PUBLIC_BASE_URL ?? 
+        (typeof window === 'undefined' 
+          ? 'https://hotdog-diaries.vercel.app' 
+          : '')
+
+      const response = await fetch(`${baseUrl}/api/admin/schedule/forecast/refill?date=${targetDate}`, {
+        method: 'POST',
+        headers: {
+          'x-admin-token': token,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.status === 401) {
+        setShowTokenModal(true)
+        setToast({ type: 'error', message: 'Invalid authentication token. Please enter a valid token.' })
+        return
+      }
+
+      if (response.status === 503) {
+        const errorData = await response.json().catch(() => ({}))
+        if (errorData.error?.includes('table missing')) {
+          setToast({ 
+            type: 'error', 
+            message: 'Database table missing. Check /api/admin/schedule/forecast/health for setup instructions.' 
+          })
+          return
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Refill failed with status ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('✅ Refill result:', result)
+      
+      setToast({ type: 'success', message: `Successfully refilled ${result.filled || 0} slots for ${targetDate}` })
+      
+      // Refresh all data after successful refill
+      await Promise.all([
+        fetchDailySchedule(),
+        fetchProjectedSchedule(),
+        fetchForecast()
+      ])
+      
+      onRefresh?.()
+      
+    } catch (error) {
+      console.error('❌ Refill failed:', error)
+      setToast({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Failed to refill schedule' 
+      })
+    } finally {
+      setRefillLoading(false)
+    }
+  }
+
+  // Handle token submission from modal
+  const handleTokenSubmit = () => {
+    if (tokenInput.trim()) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('admin_token', tokenInput.trim())
+      }
+      setShowTokenModal(false)
+      setTokenInput('')
+      // Retry refill with new token
+      handleRefillToday()
+    }
+  }
+
   const handleRefresh = () => {
     fetchDailySchedule()
     fetchProjectedSchedule()
@@ -365,9 +486,96 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
   const displayedContent = data?.scheduled_content ?? []
 
   const diversityStatus = getDiversityStatus(data.summary.diversity_score)
+  const scheduleHealthy = isScheduleHealthy()
   
   return (
     <div className="schedule-admin-card">
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          padding: 'var(--spacing-md)',
+          borderRadius: 'var(--border-radius-md)',
+          backgroundColor: toast.type === 'success' ? '#16a34a' : '#ef4444',
+          color: 'white',
+          fontWeight: 'var(--font-weight-medium)',
+          zIndex: 1000,
+          maxWidth: '400px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+        }}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* Token Modal */}
+      {showTokenModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1001
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: 'var(--spacing-xl)',
+            borderRadius: 'var(--border-radius-md)',
+            width: '90%',
+            maxWidth: '500px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 var(--spacing-md) 0',
+              fontSize: 'var(--font-size-lg)',
+              fontWeight: 'var(--font-weight-semibold)'
+            }}>
+              🔐 Admin Authentication Required
+            </h3>
+            <p style={{ 
+              margin: '0 0 var(--spacing-lg) 0',
+              color: 'var(--color-text-secondary)',
+              fontSize: 'var(--font-size-sm)'
+            }}>
+              Please enter your admin authentication token to use the refill feature:
+            </p>
+            <input
+              type="password"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              placeholder="Enter admin token..."
+              style={{
+                width: '100%',
+                padding: 'var(--spacing-sm)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--border-radius-sm)',
+                fontSize: 'var(--font-size-sm)',
+                marginBottom: 'var(--spacing-lg)'
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && handleTokenSubmit()}
+            />
+            <div style={{ display: 'flex', gap: 'var(--spacing-md)', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowTokenModal(false)}
+                className="schedule-btn schedule-btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTokenSubmit}
+                className="schedule-btn schedule-btn-primary"
+                disabled={!tokenInput.trim()}
+              >
+                Save & Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="schedule-admin-card-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -389,6 +597,85 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Refill Controls & Health Banner */}
+      <div style={{ 
+        padding: 'var(--spacing-md)',
+        borderBottom: '1px solid var(--color-border)',
+        backgroundColor: 'var(--color-gray-50, #f9fafb)'
+      }}>
+        {/* Controls Row */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 'var(--spacing-md)',
+          marginBottom: 'var(--spacing-md)'
+        }}>
+          <button
+            onClick={handleRefillToday}
+            disabled={refillLoading}
+            className="schedule-btn schedule-btn-primary"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 'var(--spacing-xs)',
+              fontSize: 'var(--font-size-sm)'
+            }}
+          >
+            {refillLoading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4" />
+            )}
+            {refillLoading ? 'Refilling...' : 'Refill Today'}
+          </button>
+          <span style={{ 
+            fontSize: 'var(--font-size-xs)', 
+            color: 'var(--color-text-secondary)' 
+          }}>
+            Date: {targetDate}
+          </span>
+        </div>
+
+        {/* Health Banner */}
+        {forecast && forecast.slots.length > 0 && (
+          <div>
+            {!scheduleHealthy ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-sm)',
+                padding: 'var(--spacing-sm) var(--spacing-md)',
+                backgroundColor: '#fef3c7',
+                color: '#92400e',
+                borderRadius: 'var(--border-radius-sm)',
+                border: '1px solid #f59e0b',
+                fontSize: 'var(--font-size-sm)'
+              }}>
+                <AlertCircle className="w-4 h-4" />
+                <span>
+                  Incomplete schedule for {targetDate}. Click 'Refill Today' to fill missing slots.
+                </span>
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-sm)',
+                padding: 'var(--spacing-sm) var(--spacing-md)',
+                backgroundColor: '#dcfce7',
+                color: '#15803d',
+                borderRadius: 'var(--border-radius-sm)',
+                border: '1px solid #16a34a',
+                fontSize: 'var(--font-size-sm)'
+              }}>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Live feed parity ✓</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       <div className="schedule-admin-card-body">
