@@ -132,10 +132,14 @@ async function readSchedule(startUtc: string, endUtc: string, dateYYYYMMDD?: str
     }
     
     // Fallback: range filter on scheduled_post_time OR actual_posted_at
+    // Use a broader 24-hour range to catch all content for the ET day
+    const dayStart = dateYYYYMMDD + 'T00:00:00Z'
+    const dayEnd = dateYYYYMMDD + 'T23:59:59Z'
+    
     const { data, error } = await supabase
       .from('scheduled_posts')
       .select('content_id, platform, content_type, source, title, scheduled_post_time, scheduled_slot_index, actual_posted_at, reasoning')
-      .or(`and(scheduled_post_time.gte.${startUtc},scheduled_post_time.lte.${endUtc}),and(actual_posted_at.gte.${startUtc},actual_posted_at.lte.${endUtc})`)
+      .or(`and(scheduled_post_time.gte.${dayStart},scheduled_post_time.lte.${dayEnd}),and(actual_posted_at.gte.${dayStart},actual_posted_at.lte.${dayEnd})`)
       .order('scheduled_post_time', { ascending: true })
     
     if (error) throw error
