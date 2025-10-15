@@ -131,12 +131,11 @@ async function readSchedule(startUtc: string, endUtc: string, dateYYYYMMDD?: str
       }
     }
     
-    // Fallback: range filter on scheduled_post_time
+    // Fallback: range filter on scheduled_post_time OR actual_posted_at
     const { data, error } = await supabase
       .from('scheduled_posts')
       .select('content_id, platform, content_type, source, title, scheduled_post_time, scheduled_slot_index, actual_posted_at, reasoning')
-      .gte('scheduled_post_time', startUtc)
-      .lte('scheduled_post_time', endUtc)
+      .or(`and(scheduled_post_time.gte.${startUtc},scheduled_post_time.lte.${endUtc}),and(actual_posted_at.gte.${startUtc},actual_posted_at.lte.${endUtc})`)
       .order('scheduled_post_time', { ascending: true })
     
     if (error) throw error
@@ -213,18 +212,37 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const date = searchParams.get('date') || format(toET(new Date()), 'yyyy-MM-dd')
+    const debug = searchParams.get('debug') === '1'
     
     console.log(`🔮 Phase 5.12 Forecast for ${date} - Reading from real schedule`)
 
     // Time window for queries
     const { startUtc, endUtc } = dayUtcRange(date)
     const slotUtcIsos = SLOT_LABELS.map(t => slotIsoUtc(date, t))
+    
+    // Debug logging for Task A
+    console.log(`🕒 ET day → UTC window conversion:`, {
+      input_date: date,
+      utc_start: startUtc,
+      utc_end: endUtc
+    })
 
     // 1) Try reading real schedule (scheduled_posts)
     let scheduled: any[] = []
     try {
       scheduled = await readSchedule(startUtc, endUtc, date)
       console.log(`📊 Found ${scheduled.length} scheduled items in database`)
+      
+      // Debug logging - raw scheduled_posts rows
+      if (debug) {
+        console.log(`🔍 Raw scheduled_posts rows:`, scheduled.map(s => ({
+          id: s.id,
+          slot_index: s.scheduled_slot_index,
+          content_id: s.content_id,
+          scheduled_post_time: s.scheduled_post_time,
+          actual_posted_at: s.actual_posted_at
+        })))
+      }
     } catch (e: any) {
       const msg = String(e?.message || e)
       if (msg.includes("Could not find the table 'public.scheduled_posts'")) {
@@ -385,7 +403,21 @@ export async function GET(req: NextRequest) {
       date,
       timezone: TZ,
       slots: enrichedSlots,
-      summary
+      summary,
+      ...(debug && {
+        debug: {
+          input_date: date,
+          utc_start: startUtc,
+          utc_end: endUtc,
+          raw_scheduled_posts: scheduled.map(s => ({
+            id: s.id,
+            slot_index: s.scheduled_slot_index,
+            content_id: s.content_id,
+            scheduled_post_time: s.scheduled_post_time,
+            actual_posted_at: s.actual_posted_at
+          }))
+        }
+      })
     }
 
     console.log(`🔮 Phase 5.12 Forecast complete:`, {
