@@ -87,8 +87,8 @@ function statusForSlot(utcIso: string, postedAtUtc: string | null) {
   return utcIso <= nowUtc ? 'missed' : 'upcoming'
 }
 
-// Database-agnostic query functions
-async function readSchedule(startUtc: string, endUtc: string) {
+// Database-agnostic query functions with graceful fallback for scheduled_day
+async function readSchedule(startUtc: string, endUtc: string, dateYYYYMMDD?: string) {
   const isVercel = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres')) && process.env.NODE_ENV === 'production'
   const isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV && !process.env.DATABASE_URL?.includes('postgres')
   
@@ -108,8 +108,30 @@ async function readSchedule(startUtc: string, endUtc: string) {
       await db.disconnect()
     }
   } else {
-    // Supabase
+    // Supabase with graceful fallback for scheduled_day column
     const supabase = createSimpleClient()
+    
+    // First attempt: use scheduled_day if available and date provided
+    if (dateYYYYMMDD) {
+      try {
+        const { data, error, status } = await supabase
+          .from('scheduled_posts')
+          .select('content_id, platform, content_type, source, title, scheduled_post_time, scheduled_slot_index, actual_posted_at, reasoning')
+          .eq('scheduled_day', dateYYYYMMDD)
+          .order('scheduled_slot_index', { ascending: true })
+
+        if (error && status !== 406) throw error;
+        if (data) return data;
+      } catch (e: any) {
+        const msg = (e?.message || '').toLowerCase();
+        const missingCol = msg.includes('column') && msg.includes('scheduled_day') && msg.includes('does not exist');
+        if (!missingCol) throw e;
+        
+        console.log(`⚠️ scheduled_day column missing in forecast, falling back to UTC time range filter`);
+      }
+    }
+    
+    // Fallback: range filter on scheduled_post_time
     const { data, error } = await supabase
       .from('scheduled_posts')
       .select('content_id, platform, content_type, source, title, scheduled_post_time, scheduled_slot_index, actual_posted_at, reasoning')
@@ -181,7 +203,7 @@ export async function GET(req: NextRequest) {
     // 1) Try reading real schedule (scheduled_posts)
     let scheduled: any[] = []
     try {
-      scheduled = await readSchedule(startUtc, endUtc)
+      scheduled = await readSchedule(startUtc, endUtc, date)
       console.log(`📊 Found ${scheduled.length} scheduled items in database`)
     } catch (e: any) {
       const msg = String(e?.message || e)
@@ -199,7 +221,7 @@ export async function GET(req: NextRequest) {
       console.log(`📅 No schedule found for ${date}, generating...`)
       try {
         await generateDailySchedule(date)
-        scheduled = await readSchedule(startUtc, endUtc)
+        scheduled = await readSchedule(startUtc, endUtc, date)
         console.log(`✅ Generated and found ${scheduled.length} scheduled items`)
       } catch (err) {
         console.warn('Forecast: generator failed or not present', err)

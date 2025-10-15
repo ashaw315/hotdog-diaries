@@ -34,32 +34,96 @@ async function getSupabaseCandidates(supabase: any, excludeIds: number[] = [], l
 }
 
 async function getSupabaseScheduledPosts(supabase: any, dateYYYYMMDD: string) {
-  const { data, error } = await supabase
+  // First attempt: fast path using scheduled_day
+  try {
+    const { data, error, status } = await supabase
+      .from('scheduled_posts')
+      .select('*')
+      .eq('scheduled_day', dateYYYYMMDD)
+      .order('scheduled_slot_index', { ascending: true });
+
+    if (error && status !== 406) throw error;
+    if (data) return data;
+  } catch (e: any) {
+    const msg = (e?.message || '').toLowerCase();
+    const missingCol = msg.includes('column') && msg.includes('scheduled_day') && msg.includes('does not exist');
+    if (!missingCol) throw e;
+    
+    console.log(`⚠️ scheduled_day column missing, falling back to UTC time range filter`);
+  }
+
+  // Fallback: range filter on scheduled_post_time if column missing
+  const [startUTC, endUTC] = getUtcWindowForEtDate(dateYYYYMMDD);
+  const { data: data2, error: err2, status: status2 } = await supabase
     .from('scheduled_posts')
     .select('*')
-    .eq('scheduled_day', dateYYYYMMDD)
+    .gte('scheduled_post_time', startUTC)
+    .lt('scheduled_post_time', endUTC)
     .order('scheduled_slot_index', { ascending: true });
-  
-  if (error) throw error;
-  return data ?? [];
+
+  if (err2 && status2 !== 406) throw err2;
+  return data2 || [];
+}
+
+// helper: 00:00–24:00 ET → UTC window
+function getUtcWindowForEtDate(dateStrET: string): [string, string] {
+  // dateStrET is YYYY-MM-DD in ET
+  // Compute ET start/end, then convert to UTC ISO strings.
+  const et = new Date(`${dateStrET}T00:00:00-05:00`); // EST fallback, could be -04:00 EDT
+  const start = new Date(et);
+  const end = new Date(et); 
+  end.setDate(end.getDate() + 1);
+  return [start.toISOString(), end.toISOString()];
 }
 
 async function upsertScheduledPostSupabase(supabase: any, row: any) {
   // Ensure we have a scheduled_day field for the upsert
+  // Extract ET date from UTC scheduled_post_time if not already provided
+  let scheduledDay = row.scheduled_day;
+  if (!scheduledDay && row.scheduled_post_time) {
+    // Convert UTC to ET date (simple approach)
+    const utcDate = new Date(row.scheduled_post_time);
+    const etDate = new Date(utcDate.getTime() - (5 * 60 * 60 * 1000)); // EST offset
+    scheduledDay = etDate.toISOString().split('T')[0];
+  }
+  
   const upsertRow = {
     ...row,
-    scheduled_day: row.scheduled_day || row.scheduled_post_time?.split('T')[0],
+    scheduled_day: scheduledDay,
     updated_at: new Date().toISOString()
   };
   
-  const { data, error } = await supabase
-    .from('scheduled_posts')
-    .upsert([upsertRow], { onConflict: 'scheduled_day,scheduled_slot_index' })
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data;
+  // Try with scheduled_day constraint first
+  try {
+    const { data, error } = await supabase
+      .from('scheduled_posts')
+      .upsert([upsertRow], { onConflict: 'scheduled_day,scheduled_slot_index' })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (e: any) {
+    const msg = (e?.message || '').toLowerCase();
+    const missingConstraint = msg.includes('scheduled_day') && (msg.includes('does not exist') || msg.includes('violates'));
+    
+    if (missingConstraint) {
+      console.log(`⚠️ scheduled_day constraint not available, falling back to basic upsert`);
+      // Fallback: upsert without the scheduled_day constraint
+      const fallbackRow = { ...upsertRow };
+      delete fallbackRow.scheduled_day; // Remove the problematic field
+      
+      const { data, error } = await supabase
+        .from('scheduled_posts')
+        .upsert([fallbackRow])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }
+    throw e;
+  }
 }
 
 async function updateContentQueueSupabase(supabase: any, contentId: number, scheduledTime: string) {
