@@ -146,6 +146,16 @@ async function updateContentQueueSupabase(supabase: any, contentId: number, sche
 const POSTS_PER_DAY = 6
 const SLOT_TIMES_ET = ['08:00', '12:00', '15:00', '18:00', '21:00', '23:30'] // Eastern Time
 
+// Enhanced Diversity Rules - "Make Diversity Real"
+const MAX_PER_PLATFORM_PER_DAY = 2
+const MIN_SAME_PLATFORM_SPACING = 2 // at least 2 slots apart
+const PLATFORM_COOLDOWN_DAYS = 1    // avoid repeating yesterday's last platform as today's first
+const TYPE_ALTERNATION_WEIGHT = 1.25 // prefer alternation, not hard rule
+const UNDER_REPRESENTED_BOOST = 1.4  // boost platforms with 0 usage
+const SPACING_PENALTY_ADJACENT = 0.2 // heavy penalty for adjacent same platform
+const SPACING_PENALTY_NEAR = 0.6     // moderate penalty for within spacing window
+const YESTERDAY_COOLDOWN_PENALTY = 0.5 // penalty for repeating yesterday's last platform
+
 // Timezone utility functions (Phase 5.12 compatibility)
 const toET = (dateInput: Date | string): Date => {
   const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput
@@ -358,24 +368,50 @@ function toEasternISO(dateYYYYMMDD: string, hhmmET: string): string {
 }
 
 /**
- * Progressive relaxation levels for content selection
+ * Get yesterday's last posted platform for cooldown enforcement
  */
-const relaxLevels = [
-  { allowSameTypeTwice: false, allowConsecutivePlatform: false, allowExceedDailyCap: false, name: "strict" },
-  { allowSameTypeTwice: true,  allowConsecutivePlatform: false, allowExceedDailyCap: false, name: "relax-type" },
-  { allowSameTypeTwice: true,  allowConsecutivePlatform: true,  allowExceedDailyCap: false, name: "relax-consecutive" },
-  { allowSameTypeTwice: true,  allowConsecutivePlatform: true,  allowExceedDailyCap: true,  name: "relax-cap" },
-]
+async function getYesterdayLastPlatform(dateYYYYMMDD: string): Promise<string | null> {
+  try {
+    const yesterday = new Date(dateYYYYMMDD)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+    
+    const isSupabase = !!process.env.SUPABASE_URL && process.env.NODE_ENV === 'production'
+    
+    if (isSupabase) {
+      const supabase = createSimpleClient()
+      const { data } = await supabase
+        .from('scheduled_posts')
+        .select('platform')
+        .eq('scheduled_day', yesterdayStr)
+        .eq('scheduled_slot_index', 5) // Last slot of the day
+        .maybeSingle()
+      
+      return data?.platform || null
+    } else {
+      const result = await db.query(`
+        SELECT platform FROM scheduled_posts 
+        WHERE DATE(scheduled_post_time) = ? AND scheduled_slot_index = 5
+        LIMIT 1
+      `, [yesterdayStr])
+      
+      return result.rows[0]?.platform || null
+    }
+  } catch (error) {
+    console.warn('Failed to get yesterday\'s last platform:', error)
+    return null
+  }
+}
 
 /**
- * Pick candidate with progressive constraint relaxation
+ * Enhanced diversity scoring for candidate selection
  */
-function pickCandidateWithRelaxation(
-  candidates: ContentItem[],
-  alreadyChosen: ContentItem[],
+function calculateDiversityScore(
+  candidate: ContentItem,
   slotIndex: number,
-  dateYYYYMMDD: string
-): { candidate: ContentItem | null; level: string } {
+  alreadyChosen: ContentItem[],
+  yesterdayLastPlatform: string | null
+): number {
   const platformUsage = new Map<string, number>()
   const typeUsage = new Map<string, number>()
   
@@ -385,16 +421,116 @@ function pickCandidateWithRelaxation(
     typeUsage.set(item.content_type || 'text', (typeUsage.get(item.content_type || 'text') || 0) + 1)
   })
   
+  const platform = candidate.source_platform
+  const contentType = candidate.content_type || 'text'
+  const baseScore = candidate.confidence_score || 0.5
+  let diversityMultiplier = 1.0
+  
+  // 1. Daily cap enforcement
+  const platformCount = platformUsage.get(platform) || 0
+  if (platformCount >= MAX_PER_PLATFORM_PER_DAY) {
+    return 0 // Hard exclude if cap exceeded
+  }
+  
+  // 2. Platform spacing penalties
+  if (slotIndex > 0) {
+    const lastPlatform = alreadyChosen[slotIndex - 1]?.source_platform
+    if (lastPlatform === platform) {
+      diversityMultiplier *= SPACING_PENALTY_ADJACENT // Adjacent same platform
+    }
+  }
+  
+  if (slotIndex > 1) {
+    const prev2Platform = alreadyChosen[slotIndex - 2]?.source_platform
+    if (prev2Platform === platform) {
+      diversityMultiplier *= SPACING_PENALTY_NEAR // Within spacing window
+    }
+  }
+  
+  // 3. Yesterday cooldown penalty
+  if (yesterdayLastPlatform === platform && slotIndex === 0) {
+    diversityMultiplier *= YESTERDAY_COOLDOWN_PENALTY
+  }
+  
+  // 4. Under-represented platform boost
+  if (platformCount === 0) {
+    diversityMultiplier *= UNDER_REPRESENTED_BOOST
+  }
+  
+  // 5. Type alternation bonus
+  if (slotIndex > 0) {
+    const lastType = alreadyChosen[slotIndex - 1]?.content_type || 'text'
+    if (lastType !== contentType) {
+      diversityMultiplier *= TYPE_ALTERNATION_WEIGHT
+    }
+  }
+  
+  return baseScore * diversityMultiplier
+}
+
+/**
+ * Progressive relaxation levels for content selection - Enhanced
+ */
+const relaxLevels = [
+  { allowSameTypeTwice: false, allowConsecutivePlatform: false, allowExceedDailyCap: false, name: "strict" },
+  { allowSameTypeTwice: true,  allowConsecutivePlatform: false, allowExceedDailyCap: false, name: "relax-type" },
+  { allowSameTypeTwice: true,  allowConsecutivePlatform: true,  allowExceedDailyCap: false, name: "relax-consecutive" },
+  { allowSameTypeTwice: true,  allowConsecutivePlatform: true,  allowExceedDailyCap: true,  name: "relax-cap" },
+]
+
+/**
+ * Pick candidate with enhanced diversity scoring and progressive relaxation
+ */
+async function pickCandidateWithRelaxation(
+  candidates: ContentItem[],
+  alreadyChosen: ContentItem[],
+  slotIndex: number,
+  dateYYYYMMDD: string
+): Promise<{ candidate: ContentItem | null; level: string; score?: number }> {
+  // Get yesterday's last platform for cooldown enforcement
+  const yesterdayLastPlatform = await getYesterdayLastPlatform(dateYYYYMMDD)
+  
+  // Calculate diversity scores for all candidates
+  const scoredCandidates = candidates.map(candidate => ({
+    ...candidate,
+    diversityScore: calculateDiversityScore(candidate, slotIndex, alreadyChosen, yesterdayLastPlatform)
+  })).filter(c => c.diversityScore > 0) // Exclude hard-blocked candidates
+  
+  if (scoredCandidates.length === 0) {
+    return { candidate: null, level: "no-viable-candidates" }
+  }
+  
+  // Try strict diversity-based selection first
+  const strictCandidates = scoredCandidates.filter(c => c.diversityScore >= 0.3) // Minimum viable score
+  
+  if (strictCandidates.length > 0) {
+    const best = strictCandidates.sort((a, b) => b.diversityScore - a.diversityScore)[0]
+    return { 
+      candidate: best, 
+      level: "diversity-optimized",
+      score: best.diversityScore
+    }
+  }
+  
+  // Fall back to progressive relaxation for edge cases
+  const platformUsage = new Map<string, number>()
+  const typeUsage = new Map<string, number>()
+  
+  alreadyChosen.forEach(item => {
+    platformUsage.set(item.source_platform, (platformUsage.get(item.source_platform) || 0) + 1)
+    typeUsage.set(item.content_type || 'text', (typeUsage.get(item.content_type || 'text') || 0) + 1)
+  })
+  
   const lastItem = alreadyChosen[alreadyChosen.length - 1]
   
   // Try each relaxation level
   for (const level of relaxLevels) {
-    let eligibleCandidates = [...candidates]
+    let eligibleCandidates = [...scoredCandidates]
     
     // Filter by platform cap
     if (!level.allowExceedDailyCap) {
       eligibleCandidates = eligibleCandidates.filter(c => 
-        (platformUsage.get(c.source_platform) || 0) < 2
+        (platformUsage.get(c.source_platform) || 0) < MAX_PER_PLATFORM_PER_DAY
       )
     }
     
@@ -413,21 +549,25 @@ function pickCandidateWithRelaxation(
     }
     
     if (eligibleCandidates.length > 0) {
-      // Sort by priority and return best candidate
-      const candidate = eligibleCandidates.sort((a, b) => 
-        (b.confidence_score || 0.5) - (a.confidence_score || 0.5)
-      )[0]
+      // Sort by diversity score (enhanced priority)
+      const candidate = eligibleCandidates.sort((a, b) => b.diversityScore - a.diversityScore)[0]
       
-      return { candidate, level: level.name }
+      return { 
+        candidate, 
+        level: `relaxed-${level.name}`,
+        score: candidate.diversityScore
+      }
     }
   }
   
-  // Fallback: oldest approved item (FIFO)
-  if (candidates.length > 0) {
-    const fallback = candidates.sort((a, b) => 
-      new Date(a.created_at || '1970-01-01').getTime() - new Date(b.created_at || '1970-01-01').getTime()
-    )[0]
-    return { candidate: fallback, level: "fallback-fifo" }
+  // Final fallback: any candidate with highest score
+  if (scoredCandidates.length > 0) {
+    const fallback = scoredCandidates.sort((a, b) => b.diversityScore - a.diversityScore)[0]
+    return { 
+      candidate: fallback, 
+      level: "emergency-fallback",
+      score: fallback.diversityScore
+    }
   }
   
   return { candidate: null, level: "no-candidates" }
@@ -548,8 +688,8 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
       }
       
       if (shouldFill) {
-        // Use progressive relaxation to pick candidate
-        const { candidate, level } = pickCandidateWithRelaxation(
+        // Use enhanced diversity scoring to pick candidate
+        const { candidate, level, score } = await pickCandidateWithRelaxation(
           candidates.filter(c => !alreadyChosen.some(chosen => chosen.id === c.id)),
           alreadyChosen,
           slotIndex,
@@ -568,7 +708,7 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
         
         // Generate UTC time for this slot
         const slotUTC = toEasternISO(dateYYYYMMDD, slotTimeET)
-        const finalReasoning = `${reasoning} (constraint level: ${level})`
+        const finalReasoning = `${reasoning} (constraint level: ${level}, diversity score: ${score?.toFixed(3) || 'N/A'})`
         
         // Write to database (different paths for SQLite vs Supabase)
         if (isSupabase && supabaseClient) {
@@ -640,7 +780,7 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
           level 
         })
         
-        console.log(`✅ Slot ${slotIndex} (${slotTimeET} ET): ${candidate.source_platform} - ${candidate.content_text?.substring(0, 30)}... (${level})`)
+        console.log(`✅ Slot ${slotIndex} (${slotTimeET} ET): ${candidate.source_platform} - ${candidate.content_text?.substring(0, 30)}... (${level}, score: ${score?.toFixed(3) || 'N/A'})`)
       }
     }
     

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { useDashboardData } from '@/hooks/useAdminData'
 import { ContentStatusDashboard } from './ContentStatusDashboard'
+import DiversityAlerts from './DiversityAlerts'
 
 interface DashboardStats {
   totalContent: number
@@ -511,6 +512,9 @@ export default function AdminDashboard() {
               </table>
             </div>
           </div>
+
+          {/* Diversity Alerts */}
+          <DiversityAlerts refreshInterval={30000} />
 
           {/* Content Status Dashboard */}
           <div style={{ marginBottom: '32px' }}>

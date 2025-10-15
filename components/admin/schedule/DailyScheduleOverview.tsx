@@ -1411,13 +1411,27 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                                   </span>
                                 </div>
                               ) : (
-                                <span style={{ 
-                                  fontSize: 'var(--font-size-sm)',
-                                  color: 'var(--color-text-secondary)',
-                                  fontStyle: 'italic'
-                                }}>
-                                  No content available
-                                </span>
+                                <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: 'var(--spacing-xs) var(--spacing-sm)',
+                                    borderRadius: 'var(--border-radius-full)',
+                                    fontSize: 'var(--font-size-xs)',
+                                    fontWeight: 'var(--font-weight-medium)',
+                                    backgroundColor: '#f3f4f6',
+                                    color: '#6b7280',
+                                    border: '1px dashed #d1d5db'
+                                  }}>
+                                    awaiting refill
+                                  </span>
+                                  <span style={{ 
+                                    fontSize: 'var(--font-size-lg)',
+                                    opacity: 0.5
+                                  }}>
+                                    📝
+                                  </span>
+                                </div>
                               )}
                             </td>
                             <td style={{ 
