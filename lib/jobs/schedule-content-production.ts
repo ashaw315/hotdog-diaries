@@ -8,6 +8,76 @@ import { createSimpleClient } from '@/utils/supabase/server'
 import { ContentItem, ScheduledContentItem, ContentScheduleResult, SourcePlatform } from '../../types'
 import { parseISO, format, setHours, setMinutes, setSeconds, addHours, startOfDay, endOfDay } from 'date-fns'
 
+// Supabase helper functions for refill
+async function getSupabaseCandidates(supabase: any, excludeIds: number[] = [], limit = 200) {
+  const sel = `
+    id, source_platform, content_type, content_text, original_author, created_at, confidence_score,
+    is_posted, is_approved, content_status, scheduled_post_time
+  `;
+  
+  let query = supabase
+    .from('content_queue')
+    .select(sel)
+    .eq('is_approved', true)
+    .or('is_posted.is.null,is_posted.eq.false') // treat null/false as not posted
+    .order('confidence_score', { ascending: false })
+    .order('created_at', { ascending: true })
+    .limit(limit);
+  
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+  }
+  
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function getSupabaseScheduledPosts(supabase: any, dateYYYYMMDD: string) {
+  const { data, error } = await supabase
+    .from('scheduled_posts')
+    .select('*')
+    .eq('scheduled_day', dateYYYYMMDD)
+    .order('scheduled_slot_index', { ascending: true });
+  
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function upsertScheduledPostSupabase(supabase: any, row: any) {
+  // Ensure we have a scheduled_day field for the upsert
+  const upsertRow = {
+    ...row,
+    scheduled_day: row.scheduled_day || row.scheduled_post_time?.split('T')[0],
+    updated_at: new Date().toISOString()
+  };
+  
+  const { data, error } = await supabase
+    .from('scheduled_posts')
+    .upsert([upsertRow], { onConflict: 'scheduled_day,scheduled_slot_index' })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+async function updateContentQueueSupabase(supabase: any, contentId: number, scheduledTime: string) {
+  const { data, error } = await supabase
+    .from('content_queue')
+    .update({
+      scheduled_post_time: scheduledTime,
+      content_status: 'scheduled',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', contentId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
 // Scheduling configuration - Phase 5.12 standardized slots
 const POSTS_PER_DAY = 6
 const SLOT_TIMES_ET = ['08:00', '12:00', '15:00', '18:00', '21:00', '23:30'] // Eastern Time
@@ -311,38 +381,69 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
   try {
     const targetDate = parseISO(dateYYYYMMDD + 'T12:00:00Z')
     
-    // 1) Load existing rows for the date from scheduled_posts
-    const existingRows = await db.query(`
-      SELECT * FROM scheduled_posts 
-      WHERE DATE(scheduled_post_time) = ?
-      ORDER BY scheduled_slot_index
-    `, [dateYYYYMMDD])
+    // Detect environment: SQLite vs Supabase
+    const isSupabase = !!process.env.SUPABASE_URL && process.env.NODE_ENV === 'production'
+    console.log(`🔍 Environment: ${isSupabase ? 'Supabase' : 'SQLite'}`)
     
-    console.log(`📊 Found ${existingRows.rows.length} existing scheduled posts for ${dateYYYYMMDD}`)
+    let existingRows: any = { rows: [] }
+    let candidates: ContentItem[] = []
+    let supabaseClient: any = null
     
-    // 2) Get available content pool (exclude already scheduled for this date)
-    const alreadyScheduledIds = existingRows.rows
-      .filter(row => row.content_id)
-      .map(row => row.content_id)
-    
-    const excludeClause = alreadyScheduledIds.length > 0 
-      ? `AND id NOT IN (${alreadyScheduledIds.map(() => '?').join(',')})`
-      : ''
-    
-    const candidatesResult = await db.query(`
-      SELECT * FROM content_queue 
-      WHERE is_approved = TRUE 
-        AND is_posted = FALSE 
-        ${excludeClause}
-      ORDER BY confidence_score DESC, created_at ASC
-    `, alreadyScheduledIds)
-    
-    const candidates = candidatesResult.rows.map(row => ({
-      ...row,
-      status: row.content_status || 'approved',
-      scheduled_for: row.scheduled_post_time,
-      priority: row.confidence_score || 0.5
-    })) as ContentItem[]
+    if (isSupabase) {
+      // Supabase path - use query builder
+      supabaseClient = createSimpleClient()
+      
+      // 1) Load existing scheduled posts 
+      const existingPosts = await getSupabaseScheduledPosts(supabaseClient, dateYYYYMMDD)
+      existingRows = { rows: existingPosts }
+      console.log(`📊 Found ${existingPosts.length} existing scheduled posts for ${dateYYYYMMDD}`)
+      
+      // 2) Get candidate content (exclude already scheduled)
+      const alreadyScheduledIds = existingPosts
+        .filter(row => row.content_id)
+        .map(row => row.content_id)
+      
+      const candidateRows = await getSupabaseCandidates(supabaseClient, alreadyScheduledIds)
+      candidates = candidateRows.map(row => ({
+        ...row,
+        status: row.content_status || 'approved',
+        scheduled_for: row.scheduled_post_time,
+        priority: row.confidence_score || 0.5
+      })) as ContentItem[]
+      
+    } else {
+      // SQLite path - use existing raw SQL (unchanged)
+      existingRows = await db.query(`
+        SELECT * FROM scheduled_posts 
+        WHERE DATE(scheduled_post_time) = ?
+        ORDER BY scheduled_slot_index
+      `, [dateYYYYMMDD])
+      
+      console.log(`📊 Found ${existingRows.rows.length} existing scheduled posts for ${dateYYYYMMDD}`)
+      
+      const alreadyScheduledIds = existingRows.rows
+        .filter(row => row.content_id)
+        .map(row => row.content_id)
+      
+      const excludeClause = alreadyScheduledIds.length > 0 
+        ? `AND id NOT IN (${alreadyScheduledIds.map(() => '?').join(',')})`
+        : ''
+      
+      const candidatesResult = await db.query(`
+        SELECT * FROM content_queue 
+        WHERE is_approved = TRUE 
+          AND is_posted = FALSE 
+          ${excludeClause}
+        ORDER BY confidence_score DESC, created_at ASC
+      `, alreadyScheduledIds)
+      
+      candidates = candidatesResult.rows.map(row => ({
+        ...row,
+        status: row.content_status || 'approved',
+        scheduled_for: row.scheduled_post_time,
+        priority: row.confidence_score || 0.5
+      })) as ContentItem[]
+    }
     
     console.log(`📊 Found ${candidates.length} eligible candidate items`)
     
@@ -392,56 +493,79 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
         )
         
         if (!candidate) {
-          throw new Error(`No candidate found for slot ${slotIndex} even with full relaxation`)
+          console.log(`⚠️ No candidate found for slot ${slotIndex} - skipping write`)
+          slotResults.push({ 
+            slot: slotIndex, 
+            action: 'skipped', 
+            reason: 'no_candidates_available' 
+          })
+          continue
         }
         
         // Generate UTC time for this slot
         const slotUTC = toEasternISO(dateYYYYMMDD, slotTimeET)
         const finalReasoning = `${reasoning} (constraint level: ${level})`
         
-        // UPSERT the row (insert or update based on slot index)
-        if (existingRow) {
-          // Update existing row
-          await db.query(`
-            UPDATE scheduled_posts 
-            SET content_id = ?, platform = ?, content_type = ?, source = ?, title = ?,
-                scheduled_post_time = ?, reasoning = ?, updated_at = datetime('now')
-            WHERE id = ?
-          `, [
-            candidate.id,
-            candidate.source_platform,
-            candidate.content_type || 'text',
-            candidate.original_author || null,
-            candidate.content_text?.substring(0, 100) || null,
-            slotUTC,
-            finalReasoning,
-            existingRow.id
-          ])
+        // Write to database (different paths for SQLite vs Supabase)
+        if (isSupabase && supabaseClient) {
+          // Supabase upsert
+          const upsertRow = {
+            scheduled_day: dateYYYYMMDD,
+            scheduled_slot_index: slotIndex,
+            scheduled_post_time: slotUTC,
+            content_id: candidate.id,
+            platform: candidate.source_platform,
+            content_type: candidate.content_type || 'text',
+            source: candidate.original_author || null,
+            title: candidate.content_text?.substring(0, 100) || null,
+            reasoning: finalReasoning
+          }
+          
+          await upsertScheduledPostSupabase(supabaseClient, upsertRow)
+          await updateContentQueueSupabase(supabaseClient, candidate.id, slotUTC)
+          
         } else {
-          // Insert new row
+          // SQLite path (unchanged)
+          if (existingRow) {
+            await db.query(`
+              UPDATE scheduled_posts 
+              SET content_id = ?, platform = ?, content_type = ?, source = ?, title = ?,
+                  scheduled_post_time = ?, reasoning = ?, updated_at = datetime('now')
+              WHERE id = ?
+            `, [
+              candidate.id,
+              candidate.source_platform,
+              candidate.content_type || 'text',
+              candidate.original_author || null,
+              candidate.content_text?.substring(0, 100) || null,
+              slotUTC,
+              finalReasoning,
+              existingRow.id
+            ])
+          } else {
+            await db.query(`
+              INSERT INTO scheduled_posts (
+                content_id, platform, content_type, source, title,
+                scheduled_post_time, scheduled_slot_index, reasoning
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+              candidate.id,
+              candidate.source_platform,
+              candidate.content_type || 'text',
+              candidate.original_author || null,
+              candidate.content_text?.substring(0, 100) || null,
+              slotUTC,
+              slotIndex,
+              finalReasoning
+            ])
+          }
+          
           await db.query(`
-            INSERT INTO scheduled_posts (
-              content_id, platform, content_type, source, title,
-              scheduled_post_time, scheduled_slot_index, reasoning
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `, [
-            candidate.id,
-            candidate.source_platform,
-            candidate.content_type || 'text',
-            candidate.original_author || null,
-            candidate.content_text?.substring(0, 100) || null,
-            slotUTC,
-            slotIndex,
-            finalReasoning
-          ])
+            UPDATE content_queue 
+            SET scheduled_post_time = ?, content_status = ?, updated_at = datetime('now')
+            WHERE id = ?
+          `, [slotUTC, 'scheduled', candidate.id])
         }
-        
-        // Update content_queue
-        await db.query(`
-          UPDATE content_queue 
-          SET scheduled_post_time = ?, content_status = ?, updated_at = datetime('now')
-          WHERE id = ?
-        `, [slotUTC, 'scheduled', candidate.id])
         
         alreadyChosen.push(candidate)
         slotResults.push({ 
@@ -460,10 +584,15 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
     
     return {
       date: dateYYYYMMDD,
-      filled: slotResults.filter(r => r.action !== 'kept').length,
+      filled: slotResults.filter(r => r.action !== 'kept' && r.action !== 'skipped').length,
       mode,
       forceRefill,
-      slots: slotResults
+      slots: slotResults,
+      debug: {
+        environment: isSupabase ? 'supabase' : 'sqlite',
+        candidates_found: candidates.length,
+        existing_slots: existingRows.rows.length
+      }
     }
 
   } catch (error) {

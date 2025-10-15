@@ -23,12 +23,16 @@ export async function POST(req: Request) {
 
   const url = new URL(req.url)
   const date = url.searchParams.get("date") ?? ""
+  const debug = url.searchParams.get("debug") === "1"
+  
   const parsed = Params.safeParse({ date })
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid date (expected YYYY-MM-DD)" }, { status: 400 })
   }
 
   try {
+    console.log(`🔧 Refill endpoint called for ${parsed.data.date} (debug: ${debug})`)
+    
     // Fill ONLY empty or placeholder slots. Never overwrite posted slots.
     // The generator will be updated to guarantee non-empty rows when filling.
     const result = await generateDailySchedule(parsed.data.date, {
@@ -38,14 +42,80 @@ export async function POST(req: Request) {
       // (generator will enforce this)
     })
 
-    return NextResponse.json(
-      { ok: true, date: parsed.data.date, ...result },
-      { headers: { "cache-control": "no-store" } }
-    )
+    // Extract debug information from the result
+    const debugInfo = {
+      picked: result.slots?.filter(s => s.action === 'created' || s.action === 'updated').length || 0,
+      written: result.filled || 0,
+      skipped: result.slots?.filter(s => s.action === 'skipped').length || 0,
+      constraints: result.slots?.map(s => s.level).filter(Boolean) || [],
+      environment: result.debug?.environment || 'unknown',
+      candidates_found: result.debug?.candidates_found || 0,
+      existing_slots: result.debug?.existing_slots || 0
+    }
+
+    const response = {
+      ok: true,
+      date: parsed.data.date,
+      filled: result.filled,
+      slots: result.slots
+    }
+
+    // Add debug info if requested
+    if (debug) {
+      response.debug = debugInfo
+    }
+
+    console.log(`✅ Refill completed for ${parsed.data.date}: ${result.filled} slots filled`)
+    if (debug) {
+      console.log(`🔍 Debug info:`, debugInfo)
+    }
+
+    return NextResponse.json(response, { 
+      headers: { "cache-control": "no-store" } 
+    })
+    
   } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? "refill failed" },
-      { status: 500, headers: { "cache-control": "no-store" } }
-    )
+    console.error(`❌ Refill failed for ${parsed.data.date}:`, e)
+    
+    // Enhanced error handling with Postgres pattern detection
+    let errorMessage = e?.message ?? "refill failed"
+    let friendlyHint = null
+    
+    // Detect known Postgres/Supabase error patterns
+    if (errorMessage.includes("syntax error at or near") && errorMessage.includes("ORDER")) {
+      friendlyHint = "Raw SQL ORDER BY detected - ensure all queries use Supabase query builder instead of raw SQL"
+      console.log(`💡 Detected raw SQL ORDER BY issue - switching to query builder should fix this`)
+    } else if (errorMessage.includes("relation") && errorMessage.includes("does not exist")) {
+      friendlyHint = "Database table missing - ensure scheduled_posts table exists and is properly migrated"
+    } else if (errorMessage.includes("permission denied")) {
+      friendlyHint = "Database permission issue - check Supabase RLS policies and service role permissions"
+    } else if (errorMessage.includes("duplicate key")) {
+      friendlyHint = "Duplicate constraint violation - this may be expected during concurrent refills"
+    }
+
+    const errorResponse = {
+      ok: false,
+      error: errorMessage,
+      date: parsed.data.date
+    }
+
+    // Add debug info and friendly hint if available
+    if (debug) {
+      errorResponse.debug = {
+        original_error: e?.stack || e?.message,
+        error_type: e?.constructor?.name || 'Unknown',
+        postgres_error: e?.code || null,
+        timestamp: new Date().toISOString()
+      }
+    }
+
+    if (friendlyHint) {
+      errorResponse.hint = friendlyHint
+    }
+
+    return NextResponse.json(errorResponse, { 
+      status: 500, 
+      headers: { "cache-control": "no-store" } 
+    })
   }
 }
