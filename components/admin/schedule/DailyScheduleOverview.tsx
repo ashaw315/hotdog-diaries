@@ -201,6 +201,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
   
   // Refill functionality state
   const [refillLoading, setRefillLoading] = useState(false)
+  const [reconcileLoading, setReconcileLoading] = useState(false)
   const [showTokenModal, setShowTokenModal] = useState(false)
   const [tokenInput, setTokenInput] = useState('')
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -415,6 +416,83 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
     }
   }
 
+  // Reconcile with live feed
+  const handleReconcileToday = async () => {
+    const token = getAuthToken()
+    
+    if (!token) {
+      setShowTokenModal(true)
+      return
+    }
+
+    try {
+      setReconcileLoading(true)
+      
+      const baseUrl = 
+        process.env.NEXT_PUBLIC_BASE_URL ?? 
+        (typeof window !== 'undefined' && window.location.origin.includes('vercel.app') 
+          ? 'https://hotdog-diaries.vercel.app' 
+          : '')
+
+      const response = await fetch(`${baseUrl}/api/admin/schedule/forecast/reconcile?date=${targetDate}`, {
+        method: 'POST',
+        headers: {
+          'x-admin-token': token,
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (response.status === 401) {
+        setToast({ 
+          type: 'error', 
+          message: 'Authentication failed. Please check your token.' 
+        })
+        setShowTokenModal(true)
+        return
+      }
+
+      if (response.status === 503) {
+        const errorData = await response.json().catch(() => ({}))
+        setToast({ 
+          type: 'error', 
+          message: errorData.hint || 'Service temporarily unavailable' 
+        })
+        return
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Reconcile failed with status ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('✅ Reconcile result:', result)
+      
+      setToast({ 
+        type: 'success', 
+        message: `Reconciled ${result.mapped || 0} posts, skipped ${result.skipped || 0} for ${targetDate}` 
+      })
+      
+      // Refresh all data after successful reconcile
+      await Promise.all([
+        fetchDailySchedule(),
+        fetchProjectedSchedule(),
+        fetchForecast()
+      ])
+      
+      onRefresh?.()
+      
+    } catch (error) {
+      console.error('❌ Reconcile failed:', error)
+      setToast({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Failed to reconcile with live feed' 
+      })
+    } finally {
+      setReconcileLoading(false)
+    }
+  }
+
   // Handle token submission from modal
   const handleTokenSubmit = () => {
     if (tokenInput.trim()) {
@@ -423,8 +501,12 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
       }
       setShowTokenModal(false)
       setTokenInput('')
-      // Retry refill with new token
-      handleRefillToday()
+      // Retry the operation that was pending
+      if (refillLoading) {
+        handleRefillToday()
+      } else if (reconcileLoading) {
+        handleReconcileToday()
+      }
     }
   }
 
@@ -614,7 +696,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
         }}>
           <button
             onClick={handleRefillToday}
-            disabled={refillLoading}
+            disabled={refillLoading || reconcileLoading}
             className="schedule-btn schedule-btn-primary"
             style={{ 
               display: 'flex', 
@@ -629,6 +711,25 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
               <Zap className="w-4 h-4" />
             )}
             {refillLoading ? 'Refilling...' : 'Refill Today'}
+          </button>
+          
+          <button
+            onClick={handleReconcileToday}
+            disabled={refillLoading || reconcileLoading}
+            className="schedule-btn schedule-btn-secondary"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 'var(--spacing-xs)',
+              fontSize: 'var(--font-size-sm)'
+            }}
+          >
+            {reconcileLoading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Calendar className="w-4 h-4" />
+            )}
+            {reconcileLoading ? 'Reconciling...' : 'Reconcile with Live Feed'}
           </button>
           <span style={{ 
             fontSize: 'var(--font-size-xs)', 

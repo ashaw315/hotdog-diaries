@@ -189,6 +189,74 @@ function findNearestWithin(schedule: any[], targetUtcIso: string, tolMs: number)
   return best
 }
 
+// Enrich content with full details from content_queue
+async function enrichContentDetails(scheduled: any[]) {
+  const isVercel = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres')) && process.env.NODE_ENV === 'production'
+  const isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV && !process.env.DATABASE_URL?.includes('postgres')
+
+  // Get unique content_ids that need enrichment
+  const contentIds = [...new Set(
+    scheduled
+      .filter(s => s.content_id)
+      .map(s => s.content_id)
+  )]
+
+  if (contentIds.length === 0) return new Map()
+
+  if (isSqlite) {
+    await db.connect()
+    try {
+      const placeholders = contentIds.map(() => '?').join(',')
+      const rows = await db.query(`
+        SELECT id, source_platform, content_type, content_text, original_author,
+               content_image_url, content_video_url, confidence_score
+        FROM content_queue
+        WHERE id IN (${placeholders})
+      `, contentIds)
+      
+      return new Map(rows.rows.map(row => [
+        row.id,
+        {
+          id: String(row.id),
+          platform: row.source_platform,
+          content_type: row.content_type || 'text',
+          title: row.content_text,
+          source: row.original_author,
+          url: row.content_image_url || row.content_video_url,
+          confidence: row.confidence_score || 0.5
+        }
+      ]))
+    } finally {
+      await db.disconnect()
+    }
+  } else {
+    // Supabase
+    const supabase = createSimpleClient()
+    const { data, error } = await supabase
+      .from('content_queue')
+      .select('id, source_platform, content_type, content_text, original_author, content_image_url, content_video_url, confidence_score')
+      .in('id', contentIds)
+
+    if (error) {
+      console.warn('Failed to enrich content details:', error)
+      return new Map()
+    }
+
+    return new Map((data || []).map(row => [
+      row.id,
+      {
+        id: String(row.id),
+        platform: row.source_platform,
+        content_type: row.content_type || 'text',
+        title: row.content_text,
+        source: row.original_author,
+        url: row.content_image_url || row.content_video_url,
+        confidence: row.confidence_score || 0.5
+      }
+    ]))
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -233,6 +301,10 @@ export async function GET(req: NextRequest) {
     const postedMap = await readPostedMap(startUtc, endUtc)
     console.log(`📋 Found ${postedMap.size} posted items for this date range`)
 
+    // 3.5) Enrich scheduled posts with full content details from content_queue
+    const contentDetails = await enrichContentDetails(scheduled)
+    console.log(`🔗 Enriched ${contentDetails.size} content items with full details`)
+
     // 4) Build exact 6 slots result from real schedule
     const slots: ForecastSlot[] = SLOT_LABELS.map((label, idx) => {
       const targetUtc = slotUtcIsos[idx]
@@ -263,7 +335,9 @@ export async function GET(req: NextRequest) {
       const postedAt = postedMap.get(String(entry.content_id)) || null
       const status = statusForSlot(targetUtc, postedAt ?? entry.actual_posted_at ?? null)
 
-      const content: ForecastItem = {
+      // Use enriched content details from content_queue if available, fallback to scheduled_posts fields
+      const enrichedContent = contentDetails.get(entry.content_id)
+      const content: ForecastItem = enrichedContent || {
         id: String(entry.content_id),
         platform: entry.platform,
         content_type: entry.content_type || 'text',
