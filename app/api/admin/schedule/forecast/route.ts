@@ -189,71 +189,73 @@ function findNearestWithin(schedule: any[], targetUtcIso: string, tolMs: number)
   return best
 }
 
+// Helper to pick title from content_queue or scheduled_posts
+function pickTitle(qRow: any, spRow: any): string | null {
+  if (qRow?.content_text) {
+    // Trim to ~140 chars for readability
+    const text = String(qRow.content_text).trim()
+    return text.length > 140 ? text.substring(0, 137) + '...' : text
+  }
+  return spRow?.title || null
+}
+
+// Helper to normalize content from either source
+function normalizeContent(spRow: any, qRow?: any): ForecastItem {
+  return {
+    id: String(qRow?.id ?? spRow.content_id ?? ''),
+    platform: qRow?.source_platform ?? spRow.platform ?? null,
+    content_type: qRow?.content_type ?? spRow.content_type ?? null,
+    source: qRow?.original_author ?? spRow.source ?? null,
+    title: pickTitle(qRow, spRow),
+    url: qRow?.original_url ?? spRow.url ?? null,
+    confidence: qRow?.confidence_score ?? spRow.confidence ?? null,
+  }
+}
+
 // Enrich content with full details from content_queue
 async function enrichContentDetails(scheduled: any[]) {
   const isVercel = !!(process.env.POSTGRES_URL || process.env.DATABASE_URL?.includes('postgres')) && process.env.NODE_ENV === 'production'
   const isSqlite = process.env.NODE_ENV === 'development' && !process.env.USE_POSTGRES_IN_DEV && !process.env.DATABASE_URL?.includes('postgres')
 
-  // Get unique content_ids that need enrichment
-  const contentIds = [...new Set(
+  // Get unique content_ids that need enrichment - cast to numbers and filter out invalid ones
+  const ids = [...new Set(
     scheduled
       .filter(s => s.content_id)
-      .map(s => s.content_id)
+      .map(s => Number(s.content_id))
+      .filter(Boolean)
   )]
 
-  if (contentIds.length === 0) return new Map()
+  if (ids.length === 0) return new Map()
 
   if (isSqlite) {
     await db.connect()
     try {
-      const placeholders = contentIds.map(() => '?').join(',')
+      const placeholders = ids.map(() => '?').join(',')
       const rows = await db.query(`
-        SELECT id, source_platform, content_type, content_text, original_author,
-               content_image_url, content_video_url, confidence_score
+        SELECT id, source_platform, content_type, original_author, content_text, original_url, confidence_score
         FROM content_queue
         WHERE id IN (${placeholders})
-      `, contentIds)
+      `, ids)
       
-      return new Map(rows.rows.map(row => [
-        row.id,
-        {
-          id: String(row.id),
-          platform: row.source_platform,
-          content_type: row.content_type || 'text',
-          title: row.content_text,
-          source: row.original_author,
-          url: row.content_image_url || row.content_video_url,
-          confidence: row.confidence_score || 0.5
-        }
-      ]))
+      return new Map(rows.rows.map(row => [Number(row.id), row]))
     } finally {
       await db.disconnect()
     }
   } else {
-    // Supabase
+    // Supabase - use number[] for .in() and defensive guard against empty array
     const supabase = createSimpleClient()
-    const { data, error } = await supabase
+    const { data: queueRows, error } = await supabase
       .from('content_queue')
-      .select('id, source_platform, content_type, content_text, original_author, content_image_url, content_video_url, confidence_score')
-      .in('id', contentIds)
+      .select('id, source_platform, content_type, original_author, content_text, original_url, confidence_score')
+      .in('id', ids.length ? ids : [-1]) // avoid empty .in()
 
     if (error) {
       console.warn('Failed to enrich content details:', error)
       return new Map()
     }
 
-    return new Map((data || []).map(row => [
-      row.id,
-      {
-        id: String(row.id),
-        platform: row.source_platform,
-        content_type: row.content_type || 'text',
-        title: row.content_text,
-        source: row.original_author,
-        url: row.content_image_url || row.content_video_url,
-        confidence: row.confidence_score || 0.5
-      }
-    ]))
+    // Map by number id for consistent lookup
+    return new Map((queueRows || []).map(row => [Number(row.id), row]))
   }
 }
 
@@ -302,8 +304,8 @@ export async function GET(req: NextRequest) {
     console.log(`📋 Found ${postedMap.size} posted items for this date range`)
 
     // 3.5) Enrich scheduled posts with full content details from content_queue
-    const contentDetails = await enrichContentDetails(scheduled)
-    console.log(`🔗 Enriched ${contentDetails.size} content items with full details`)
+    const queueDataById = await enrichContentDetails(scheduled)
+    console.log(`🔗 Enriched ${queueDataById.size} content items with full details`)
 
     // 4) Build exact 6 slots result from real schedule
     const slots: ForecastSlot[] = SLOT_LABELS.map((label, idx) => {
@@ -335,16 +337,9 @@ export async function GET(req: NextRequest) {
       const postedAt = postedMap.get(String(entry.content_id)) || null
       const status = statusForSlot(targetUtc, postedAt ?? entry.actual_posted_at ?? null)
 
-      // Use enriched content details from content_queue if available, fallback to scheduled_posts fields
-      const enrichedContent = contentDetails.get(entry.content_id)
-      const content: ForecastItem = enrichedContent || {
-        id: String(entry.content_id),
-        platform: entry.platform,
-        content_type: entry.content_type || 'text',
-        source: entry.source,
-        title: entry.title,
-        confidence: 0.8 // Default confidence for scheduled content
-      }
+      // Use normalization helper to combine queue and scheduled data
+      const queueRow = entry.content_id ? queueDataById.get(Number(entry.content_id)) : null
+      const content: ForecastItem = normalizeContent(entry, queueRow)
 
       return {
         slot_index: idx,
