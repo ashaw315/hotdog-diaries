@@ -211,97 +211,263 @@ function selectDiverseContent(
   return selected
 }
 
+// Generator options type
+type GenMode = "refill-missing" | "create-or-reuse"
+type GenerateOptions = { mode?: GenMode; forceRefill?: boolean }
+
+const SLOT_ET_TIMES = ["08:00", "12:00", "15:00", "18:00", "21:00", "23:30"] as const
+
+function toEasternISO(dateYYYYMMDD: string, hhmmET: string): string {
+  const [hh, mm] = hhmmET.split(":").map(Number)
+  const d = new Date(`${dateYYYYMMDD}T${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}:00-04:00`) // EDT fallback
+  return new Date(d).toISOString()
+}
+
 /**
- * Generate daily schedule and populate scheduled_posts table (Phase 5.12)
+ * Progressive relaxation levels for content selection
  */
-export async function generateDailySchedule(dateISO: string): Promise<void> {
-  console.log(`🗓️ Generating deterministic daily schedule for ${dateISO}`)
+const relaxLevels = [
+  { allowSameTypeTwice: false, allowConsecutivePlatform: false, allowExceedDailyCap: false, name: "strict" },
+  { allowSameTypeTwice: true,  allowConsecutivePlatform: false, allowExceedDailyCap: false, name: "relax-type" },
+  { allowSameTypeTwice: true,  allowConsecutivePlatform: true,  allowExceedDailyCap: false, name: "relax-consecutive" },
+  { allowSameTypeTwice: true,  allowConsecutivePlatform: true,  allowExceedDailyCap: true,  name: "relax-cap" },
+]
+
+/**
+ * Pick candidate with progressive constraint relaxation
+ */
+function pickCandidateWithRelaxation(
+  candidates: ContentItem[],
+  alreadyChosen: ContentItem[],
+  slotIndex: number,
+  dateYYYYMMDD: string
+): { candidate: ContentItem | null; level: string } {
+  const platformUsage = new Map<string, number>()
+  const typeUsage = new Map<string, number>()
+  
+  // Count existing usage for the day
+  alreadyChosen.forEach(item => {
+    platformUsage.set(item.source_platform, (platformUsage.get(item.source_platform) || 0) + 1)
+    typeUsage.set(item.content_type || 'text', (typeUsage.get(item.content_type || 'text') || 0) + 1)
+  })
+  
+  const lastItem = alreadyChosen[alreadyChosen.length - 1]
+  
+  // Try each relaxation level
+  for (const level of relaxLevels) {
+    let eligibleCandidates = [...candidates]
+    
+    // Filter by platform cap
+    if (!level.allowExceedDailyCap) {
+      eligibleCandidates = eligibleCandidates.filter(c => 
+        (platformUsage.get(c.source_platform) || 0) < 2
+      )
+    }
+    
+    // Filter by consecutive platform
+    if (!level.allowConsecutivePlatform && lastItem) {
+      eligibleCandidates = eligibleCandidates.filter(c => 
+        c.source_platform !== lastItem.source_platform
+      )
+    }
+    
+    // Filter by type alternation
+    if (!level.allowSameTypeTwice && lastItem) {
+      eligibleCandidates = eligibleCandidates.filter(c => 
+        (c.content_type || 'text') !== (lastItem.content_type || 'text')
+      )
+    }
+    
+    if (eligibleCandidates.length > 0) {
+      // Sort by priority and return best candidate
+      const candidate = eligibleCandidates.sort((a, b) => 
+        (b.confidence_score || 0.5) - (a.confidence_score || 0.5)
+      )[0]
+      
+      return { candidate, level: level.name }
+    }
+  }
+  
+  // Fallback: oldest approved item (FIFO)
+  if (candidates.length > 0) {
+    const fallback = candidates.sort((a, b) => 
+      new Date(a.created_at || '1970-01-01').getTime() - new Date(b.created_at || '1970-01-01').getTime()
+    )[0]
+    return { candidate: fallback, level: "fallback-fifo" }
+  }
+  
+  return { candidate: null, level: "no-candidates" }
+}
+
+/**
+ * Generate daily schedule and populate scheduled_posts table (Phase 5.12 - Hardened)
+ */
+export async function generateDailySchedule(dateYYYYMMDD: string, opts: GenerateOptions = {}): Promise<any> {
+  const mode: GenMode = opts.mode ?? "create-or-reuse"
+  const forceRefill = !!opts.forceRefill
+  
+  console.log(`🗓️ Generating deterministic daily schedule for ${dateYYYYMMDD} (mode: ${mode}, forceRefill: ${forceRefill})`)
   
   try {
-    const targetDate = parseISO(dateISO + 'T12:00:00Z')
+    const targetDate = parseISO(dateYYYYMMDD + 'T12:00:00Z')
     
-    // Check if schedule already exists for this date
-    const existingCheck = await db.query(`
-      SELECT COUNT(*) as count FROM scheduled_posts 
+    // 1) Load existing rows for the date from scheduled_posts
+    const existingRows = await db.query(`
+      SELECT * FROM scheduled_posts 
       WHERE DATE(scheduled_post_time) = ?
-    `, [dateISO])
+      ORDER BY scheduled_slot_index
+    `, [dateYYYYMMDD])
     
-    if (existingCheck.rows[0]?.count > 0) {
-      console.log(`📅 Schedule already exists for ${dateISO}, skipping generation`)
-      return
-    }
-
-    // Get available content
-    const contentByPlatform = await getAvailableContent()
-    const recentPlatforms = await getRecentlyPostedPlatforms(1)
+    console.log(`📊 Found ${existingRows.rows.length} existing scheduled posts for ${dateYYYYMMDD}`)
     
-    // Select diverse content
-    const selectedContent = selectDiverseContent(contentByPlatform, recentPlatforms, POSTS_PER_DAY)
+    // 2) Get available content pool (exclude already scheduled for this date)
+    const alreadyScheduledIds = existingRows.rows
+      .filter(row => row.content_id)
+      .map(row => row.content_id)
     
-    if (selectedContent.length === 0) {
-      console.log(`⚠️ No content available for ${dateISO}`)
-      return
-    }
-
-    // Generate schedule entries for each slot
-    for (let slotIndex = 0; slotIndex < SLOT_TIMES_ET.length; slotIndex++) {
-      const content = selectedContent[slotIndex]
-      if (!content) continue // Skip if not enough content
-
-      const slotTimeET = SLOT_TIMES_ET[slotIndex]
-      const [hours, minutes] = slotTimeET.split(':').map(Number)
+    const excludeClause = alreadyScheduledIds.length > 0 
+      ? `AND id NOT IN (${alreadyScheduledIds.map(() => '?').join(',')})`
+      : ''
+    
+    const candidatesResult = await db.query(`
+      SELECT * FROM content_queue 
+      WHERE is_approved = TRUE 
+        AND is_posted = FALSE 
+        ${excludeClause}
+      ORDER BY confidence_score DESC, created_at ASC
+    `, alreadyScheduledIds)
+    
+    const candidates = candidatesResult.rows.map(row => ({
+      ...row,
+      status: row.content_status || 'approved',
+      scheduled_for: row.scheduled_post_time,
+      priority: row.confidence_score || 0.5
+    })) as ContentItem[]
+    
+    console.log(`📊 Found ${candidates.length} eligible candidate items`)
+    
+    // 3) For each slot 0..5, determine if we need to fill/refill
+    const slotResults: any[] = []
+    const alreadyChosen: ContentItem[] = []
+    
+    for (let slotIndex = 0; slotIndex < SLOT_ET_TIMES.length; slotIndex++) {
+      const slotTimeET = SLOT_ET_TIMES[slotIndex]
+      const existingRow = existingRows.rows.find(row => row.scheduled_slot_index === slotIndex)
       
-      // Create ET time for the slot
-      const slotET = setSeconds(setMinutes(setHours(targetDate, hours), minutes), 0)
+      let shouldFill = false
+      let reasoning = ''
       
-      // Convert to UTC for storage
-      const slotUTC = toUTC(slotET)
-      
-      // Determine reasoning based on selection criteria
-      let reasoning = 'selected based on queue priority'
-      if (slotIndex > 0) {
-        const prevContent = selectedContent[slotIndex - 1]
-        if (prevContent) {
-          if (content.source_platform !== prevContent.source_platform) {
-            reasoning = `selected to avoid repeating platform '${prevContent.source_platform}'`
-          }
-          if (content.content_type !== prevContent.content_type) {
-            reasoning += ` and alternate type '${prevContent.content_type}'`
-          }
+      if (existingRow) {
+        // Check if row has both content_id and scheduled_post_time
+        if (existingRow.content_id && existingRow.scheduled_post_time) {
+          console.log(`✅ Slot ${slotIndex} already filled with content_id ${existingRow.content_id}`)
+          // Add to already chosen for diversity calculation
+          const existingContent: ContentItem = {
+            id: existingRow.content_id,
+            source_platform: existingRow.platform,
+            content_type: existingRow.content_type,
+            content_text: existingRow.title,
+            confidence_score: 0.5,
+            created_at: new Date().toISOString()
+          } as ContentItem
+          alreadyChosen.push(existingContent)
+          slotResults.push({ slot: slotIndex, action: 'kept', content_id: existingRow.content_id })
+          continue
+        } else if (forceRefill) {
+          shouldFill = true
+          reasoning = 'refilling incomplete row (missing content_id or scheduled_post_time)'
         }
+      } else {
+        shouldFill = true
+        reasoning = 'creating new row for empty slot'
       }
-
-      // Insert into scheduled_posts table
-      await db.query(`
-        INSERT INTO scheduled_posts (
-          content_id, platform, content_type, source, title,
-          scheduled_post_time, scheduled_slot_index, reasoning
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        content.id,
-        content.source_platform,
-        content.content_type || 'text',
-        content.original_author || null,
-        content.content_text?.substring(0, 100) || null,
-        slotUTC.toISOString(),
-        slotIndex,
-        reasoning
-      ])
-
-      // Update content_queue with schedule info (maintain compatibility)
-      await db.query(`
-        UPDATE content_queue 
-        SET scheduled_post_time = ?, content_status = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `, [slotUTC.toISOString(), 'scheduled', content.id])
-
-      console.log(`✅ Scheduled slot ${slotIndex} (${slotTimeET} ET): ${content.source_platform} - ${content.content_text?.substring(0, 30)}...`)
+      
+      if (shouldFill) {
+        // Use progressive relaxation to pick candidate
+        const { candidate, level } = pickCandidateWithRelaxation(
+          candidates.filter(c => !alreadyChosen.some(chosen => chosen.id === c.id)),
+          alreadyChosen,
+          slotIndex,
+          dateYYYYMMDD
+        )
+        
+        if (!candidate) {
+          throw new Error(`No candidate found for slot ${slotIndex} even with full relaxation`)
+        }
+        
+        // Generate UTC time for this slot
+        const slotUTC = toEasternISO(dateYYYYMMDD, slotTimeET)
+        const finalReasoning = `${reasoning} (constraint level: ${level})`
+        
+        // UPSERT the row (insert or update based on slot index)
+        if (existingRow) {
+          // Update existing row
+          await db.query(`
+            UPDATE scheduled_posts 
+            SET content_id = ?, platform = ?, content_type = ?, source = ?, title = ?,
+                scheduled_post_time = ?, reasoning = ?, updated_at = datetime('now')
+            WHERE id = ?
+          `, [
+            candidate.id,
+            candidate.source_platform,
+            candidate.content_type || 'text',
+            candidate.original_author || null,
+            candidate.content_text?.substring(0, 100) || null,
+            slotUTC,
+            finalReasoning,
+            existingRow.id
+          ])
+        } else {
+          // Insert new row
+          await db.query(`
+            INSERT INTO scheduled_posts (
+              content_id, platform, content_type, source, title,
+              scheduled_post_time, scheduled_slot_index, reasoning
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            candidate.id,
+            candidate.source_platform,
+            candidate.content_type || 'text',
+            candidate.original_author || null,
+            candidate.content_text?.substring(0, 100) || null,
+            slotUTC,
+            slotIndex,
+            finalReasoning
+          ])
+        }
+        
+        // Update content_queue
+        await db.query(`
+          UPDATE content_queue 
+          SET scheduled_post_time = ?, content_status = ?, updated_at = datetime('now')
+          WHERE id = ?
+        `, [slotUTC, 'scheduled', candidate.id])
+        
+        alreadyChosen.push(candidate)
+        slotResults.push({ 
+          slot: slotIndex, 
+          action: existingRow ? 'updated' : 'created', 
+          content_id: candidate.id,
+          platform: candidate.source_platform,
+          level 
+        })
+        
+        console.log(`✅ Slot ${slotIndex} (${slotTimeET} ET): ${candidate.source_platform} - ${candidate.content_text?.substring(0, 30)}... (${level})`)
+      }
     }
-
-    console.log(`🎉 Successfully generated schedule for ${dateISO} with ${selectedContent.length} posts`)
+    
+    console.log(`🎉 Successfully processed schedule for ${dateYYYYMMDD}`)
+    
+    return {
+      date: dateYYYYMMDD,
+      filled: slotResults.filter(r => r.action !== 'kept').length,
+      mode,
+      forceRefill,
+      slots: slotResults
+    }
 
   } catch (error) {
-    console.error(`❌ Failed to generate schedule for ${dateISO}:`, error)
+    console.error(`❌ Failed to generate schedule for ${dateYYYYMMDD}:`, error)
     throw error
   }
 }
