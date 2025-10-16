@@ -695,6 +695,89 @@ curl -s https://hotdog-diaries.vercel.app/admin/health/deep \
      -H "Authorization: Bearer $AUTH_TOKEN" | jq '.database.slow_queries'
 ```
 
+### Production Audit System
+
+#### Overview
+The production audit system performs comprehensive 7-day health assessments of the platform using a combination of API endpoints, database queries, and CI/CD monitoring. It generates detailed reports with actionable insights and verdicts.
+
+#### Automated Audits
+```bash
+# Weekly automated audit (every Tuesday 9:00 AM UTC)
+# Configured in: .github/workflows/production-audit.yml
+# Results available as GitHub Actions artifacts
+```
+
+#### Manual Audit Execution
+```bash
+# Required environment variables
+export APP_ORIGIN="https://hotdog-diaries.vercel.app"
+export AUTH_TOKEN="your-admin-jwt-token"
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_SERVICE_KEY="your-service-role-key"
+export GITHUB_REPO="owner/repo"
+export GITHUB_TOKEN="your-github-token"
+
+# Run comprehensive audit
+./scripts/production-audit.sh
+
+# Results in: prod_audit_artifacts/production_audit_YYYY-MM-DD.md
+```
+
+#### Audit Sections
+1. **Health & Metrics Snapshot** - System-wide health check
+2. **Diversity Analysis (7d)** - Platform distribution and content balance
+3. **Pool Balance & Freshness** - Content queue status and age analysis
+4. **Forecast ↔ Actual Integrity** - Scheduling accuracy verification
+5. **CI Health** - GitHub Actions workflow status
+6. **Security & Drift Checks** - Token validation and spec compliance
+7. **Eligibility Analysis** - Quality-aware platform availability
+
+#### Critical Thresholds
+- **Platform Diversity**: Max share ≤60% when ≥4 eligible platforms
+- **Content Pool**: ≥20 items per platform at confidence ≥0.70
+- **Forecast Integrity**: ≤2 days with mismatches acceptable
+- **CI Health**: No failing workflows in last 10 runs
+
+#### Interpreting Results
+
+**Exit Codes:**
+- `0` - System healthy, no issues detected
+- `1` - Issues found requiring attention
+- `2` - Missing required environment variables
+
+**Verdicts:**
+- **OK** - Operating within normal parameters
+- **WARN** - Monitoring required, no immediate action
+- **ATTN** - Issues detected, investigation required
+
+#### Response Procedures
+
+**For ATTN Verdicts:**
+1. Download audit artifacts from GitHub Actions
+2. Review detailed findings in markdown report
+3. Check admin dashboard for obvious issues
+4. Consult relevant runbook sections:
+   - Platform diversity → [Scheduler Operations](#scheduler-operations)
+   - Content pool → Content Management procedures
+   - Forecast integrity → [Deploy Playbook](#deploy-playbook)
+   - CI failures → [Incident Response](#incident-response)
+
+#### Audit Artifacts
+- **Latest**: GitHub Actions artifact `production-audit-latest`
+- **Versioned**: `production-audit-{run-number}`
+- **Retention**: 90 days (versioned), 365 days (latest)
+
+#### Emergency Audit
+```bash
+# Force immediate audit with GitHub API
+gh workflow run production-audit.yml \
+  --ref main \
+  --field force_run=true
+
+# Check status
+gh run list --workflow=production-audit.yml --limit=1
+```
+
 ---
 
 ## Emergency Contacts & Escalation
