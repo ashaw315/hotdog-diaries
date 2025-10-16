@@ -20,6 +20,7 @@ async function getSupabaseCandidates(supabase: any, excludeIds: number[] = [], l
     .select(sel)
     .eq('is_approved', true)
     .or('is_posted.is.null,is_posted.eq.false') // treat null/false as not posted
+    .gte('ingest_priority', 0) // only active priority content
     .order('confidence_score', { ascending: false })
     .order('created_at', { ascending: true })
     .limit(limit);
@@ -802,6 +803,228 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
   } catch (error) {
     console.error(`❌ Failed to generate schedule for ${dateYYYYMMDD}:`, error)
     throw error
+  }
+}
+
+/**
+ * Enhanced Day Filling with Aggressive Fallback
+ * Ensures a single day reaches 6/6 slots using progressive strategies
+ */
+export async function ensureDayFilled(
+  dateYYYYMMDD: string, 
+  options: { aggressiveFallback?: boolean } = {}
+): Promise<{
+  before: number;
+  count_added: number;
+  after: number;
+  platforms: Record<string, number>;
+}> {
+  const { aggressiveFallback = false } = options
+  
+  console.log(`🎯 Ensuring day ${dateYYYYMMDD} is filled (aggressive: ${aggressiveFallback})`)
+  
+  // Get current slot count
+  const isSupabase = !!process.env.SUPABASE_URL && process.env.NODE_ENV === 'production'
+  let beforeCount = 0
+  
+  if (isSupabase) {
+    const supabase = createSimpleClient()
+    const existing = await getSupabaseScheduledPosts(supabase, dateYYYYMMDD)
+    beforeCount = existing.filter(row => row.content_id && row.scheduled_post_time).length
+  } else {
+    const result = await db.query(`
+      SELECT COUNT(*) as count FROM scheduled_posts 
+      WHERE DATE(scheduled_post_time) = ?
+      AND content_id IS NOT NULL
+      AND scheduled_post_time IS NOT NULL
+    `, [dateYYYYMMDD])
+    beforeCount = result.rows[0]?.count || 0
+  }
+  
+  console.log(`📊 Current slots filled: ${beforeCount}/6`)
+  
+  if (beforeCount >= 6) {
+    console.log(`✅ Day already complete`)
+    return {
+      before: beforeCount,
+      count_added: 0,
+      after: beforeCount,
+      platforms: {}
+    }
+  }
+  
+  // Try normal strategy first
+  console.log(`📝 Attempting normal strategy...`)
+  let fillResult = await generateDailySchedule(dateYYYYMMDD, { 
+    mode: "refill-missing", 
+    forceRefill: true 
+  })
+  
+  // Check if we need aggressive fallback
+  let afterNormal = beforeCount + (fillResult.filled || 0)
+  console.log(`📊 After normal strategy: ${afterNormal}/6`)
+  
+  if (afterNormal < 6 && aggressiveFallback) {
+    console.log(`🚨 Activating aggressive fallback strategy...`)
+    
+    // Temporarily modify candidate selection to be more permissive
+    const originalGetCandidates = getSupabaseCandidates
+    
+    // Override with aggressive candidate selection
+    const aggressiveGetCandidates = async (supabase: any, excludeIds: number[] = [], limit = 400) => {
+      const sel = `
+        id, source_platform, content_type, content_text, original_author, created_at, confidence_score,
+        is_posted, is_approved, content_status, scheduled_post_time
+      `;
+      
+      let query = supabase
+        .from('content_queue')
+        .select(sel)
+        .eq('is_approved', true)
+        .or('is_posted.is.null,is_posted.eq.false')
+        .gte('ingest_priority', -1) // Allow lower priority items
+        .order('confidence_score', { ascending: false })
+        .order('created_at', { ascending: true })
+        .limit(limit);
+      
+      if (excludeIds.length > 0) {
+        query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    }
+    
+    // Monkey patch for aggressive mode
+    if (isSupabase) {
+      Object.defineProperty(global, 'getSupabaseCandidates', {
+        value: aggressiveGetCandidates,
+        writable: true
+      })
+    }
+    
+    try {
+      // Run aggressive fill
+      fillResult = await generateDailySchedule(dateYYYYMMDD, { 
+        mode: "refill-missing", 
+        forceRefill: true 
+      })
+    } finally {
+      // Restore original function
+      if (isSupabase) {
+        Object.defineProperty(global, 'getSupabaseCandidates', {
+          value: originalGetCandidates,
+          writable: true
+        })
+      }
+    }
+  }
+  
+  // Get final count and platform distribution
+  let afterCount = 0
+  const platforms: Record<string, number> = {}
+  
+  if (isSupabase) {
+    const supabase = createSimpleClient()
+    const finalPosts = await getSupabaseScheduledPosts(supabase, dateYYYYMMDD)
+    afterCount = finalPosts.filter(row => row.content_id && row.scheduled_post_time).length
+    
+    finalPosts.forEach(post => {
+      if (post.platform) {
+        platforms[post.platform] = (platforms[post.platform] || 0) + 1
+      }
+    })
+  } else {
+    const countResult = await db.query(`
+      SELECT COUNT(*) as count FROM scheduled_posts 
+      WHERE DATE(scheduled_post_time) = ?
+      AND content_id IS NOT NULL
+      AND scheduled_post_time IS NOT NULL
+    `, [dateYYYYMMDD])
+    afterCount = countResult.rows[0]?.count || 0
+    
+    const platformResult = await db.query(`
+      SELECT platform, COUNT(*) as count FROM scheduled_posts 
+      WHERE DATE(scheduled_post_time) = ?
+      AND content_id IS NOT NULL
+      GROUP BY platform
+    `, [dateYYYYMMDD])
+    
+    platformResult.rows.forEach((row: any) => {
+      platforms[row.platform] = row.count
+    })
+  }
+  
+  const countAdded = afterCount - beforeCount
+  
+  console.log(`✅ Day filling complete: ${beforeCount} → ${afterCount} (+${countAdded})`)
+  console.log(`🎯 Platform distribution: ${JSON.stringify(platforms)}`)
+  
+  return {
+    before: beforeCount,
+    count_added: countAdded,
+    after: afterCount,
+    platforms
+  }
+}
+
+/**
+ * Two-Day Orchestrator - Ensures both D and D+1 reach 6/6 slots
+ */
+export async function refillTwoDays(etDate: string): Promise<{
+  date: string;
+  today: ReturnType<typeof ensureDayFilled> extends Promise<infer T> ? T : never;
+  tomorrow: ReturnType<typeof ensureDayFilled> extends Promise<infer T> ? T : never;
+  summary: {
+    total_before: number;
+    total_after: number;
+    total_added: number;
+    days_complete: number;
+    combined_platforms: Record<string, number>;
+  };
+}> {
+  console.log(`🚀 Two-day refill orchestrator starting for ET date: ${etDate}`)
+  
+  // Calculate D and D+1 in ET
+  const todayET = etDate
+  const tomorrowDate = new Date(etDate + 'T12:00:00-04:00')
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrowET = tomorrowDate.toISOString().split('T')[0]
+  
+  console.log(`📅 Processing: Today=${todayET}, Tomorrow=${tomorrowET}`)
+  
+  // Fill both days with aggressive fallback
+  const todayResult = await ensureDayFilled(todayET, { aggressiveFallback: true })
+  const tomorrowResult = await ensureDayFilled(tomorrowET, { aggressiveFallback: true })
+  
+  // Combine platform statistics
+  const combinedPlatforms: Record<string, number> = {}
+  Object.entries(todayResult.platforms).forEach(([platform, count]) => {
+    combinedPlatforms[platform] = (combinedPlatforms[platform] || 0) + count
+  })
+  Object.entries(tomorrowResult.platforms).forEach(([platform, count]) => {
+    combinedPlatforms[platform] = (combinedPlatforms[platform] || 0) + count
+  })
+  
+  const summary = {
+    total_before: todayResult.before + tomorrowResult.before,
+    total_after: todayResult.after + tomorrowResult.after,
+    total_added: todayResult.count_added + tomorrowResult.count_added,
+    days_complete: (todayResult.after >= 6 ? 1 : 0) + (tomorrowResult.after >= 6 ? 1 : 0),
+    combined_platforms: combinedPlatforms
+  }
+  
+  console.log(`🎉 Two-day refill complete:`)
+  console.log(`   📊 Total slots: ${summary.total_before} → ${summary.total_after} (+${summary.total_added})`)
+  console.log(`   ✅ Complete days: ${summary.days_complete}/2`)
+  console.log(`   🎯 Platform distribution: ${JSON.stringify(summary.combined_platforms)}`)
+  
+  return {
+    date: etDate,
+    today: todayResult,
+    tomorrow: tomorrowResult,
+    summary
   }
 }
 

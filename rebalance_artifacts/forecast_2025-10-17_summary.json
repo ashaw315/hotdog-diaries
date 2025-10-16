@@ -1,0 +1,62 @@
+{
+  "date": "2025-10-17",
+  "summary": {
+    "total": 6,
+    "posted": 0,
+    "upcoming": 6,
+    "missed": 0,
+    "platforms": {
+      "pixabay": 2,
+      "bluesky": 1
+    },
+    "content_types": {
+      "image": 2,
+      "text": 1
+    },
+    "diversity_score": 45
+  },
+  "slots": [
+    {
+      "time": "08:00",
+      "status": "upcoming",
+      "platform": "pixabay",
+      "type": "image",
+      "id": 64
+    },
+    {
+      "time": "12:00",
+      "status": "upcoming",
+      "platform": "bluesky",
+      "type": "text",
+      "id": 715
+    },
+    {
+      "time": "15:00",
+      "status": "upcoming",
+      "platform": "pixabay",
+      "type": "image",
+      "id": 91
+    },
+    {
+      "time": "18:00",
+      "status": "upcoming",
+      "platform": null,
+      "type": null,
+      "id": null
+    },
+    {
+      "time": "21:00",
+      "status": "upcoming",
+      "platform": null,
+      "type": null,
+      "id": null
+    },
+    {
+      "time": "23:30",
+      "status": "upcoming",
+      "platform": null,
+      "type": null,
+      "id": null
+    }
+  ]
+}

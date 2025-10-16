@@ -1,0 +1,10 @@
+=== Diversity for 2025-10-16 ===
+{
+  "pixabay": 4,
+  "bluesky": 2
+}
+=== Diversity for 2025-10-17 ===
+{
+  "pixabay": 2,
+  "bluesky": 1
+}

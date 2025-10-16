@@ -1,0 +1,14 @@
+=== POOL DISTRIBUTION (post-rebalance, active only) ===
+platform	active_items
+pixabay	300
+bluesky	299
+tumblr	11
+lemmy	10
+reddit	1
+youtube	1
+giphy	1
+
+Total active candidates: 623
+Platforms represented: 7
+Max platform share: 48.2%
+Diversity: PASS

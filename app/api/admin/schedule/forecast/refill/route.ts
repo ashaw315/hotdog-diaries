@@ -1,8 +1,8 @@
-// POST /api/admin/schedule/forecast/refill?date=YYYY-MM-DD
+// POST /api/admin/schedule/forecast/refill?date=YYYY-MM-DD&twoDays=true
 import { NextResponse } from "next/server"
 import { z } from "zod"
 // IMPORTANT: use the same generator as prod forecast
-import { generateDailySchedule } from "@/lib/jobs/schedule-content-production"
+import { generateDailySchedule, refillTwoDays } from "@/lib/jobs/schedule-content-production"
 
 const Params = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
   const url = new URL(req.url)
   const date = url.searchParams.get("date") ?? ""
   const debug = url.searchParams.get("debug") === "1"
+  const twoDays = url.searchParams.get("twoDays") === "true"
   
   const parsed = Params.safeParse({ date })
   if (!parsed.success) {
@@ -31,8 +32,32 @@ export async function POST(req: Request) {
   }
 
   try {
-    console.log(`🔧 Refill endpoint called for ${parsed.data.date} (debug: ${debug})`)
+    console.log(`🔧 Refill endpoint called for ${parsed.data.date} (debug: ${debug}, twoDays: ${twoDays})`)
     
+    if (twoDays) {
+      // Two-day orchestrator mode
+      const result = await refillTwoDays(parsed.data.date)
+      
+      const response = {
+        ok: true,
+        mode: "two-days",
+        date: parsed.data.date,
+        today: result.today,
+        tomorrow: result.tomorrow,
+        summary: result.summary
+      }
+
+      console.log(`✅ Two-day refill completed for ${parsed.data.date}:`)
+      console.log(`   📊 Total added: ${result.summary.total_added} slots`)
+      console.log(`   ✅ Complete days: ${result.summary.days_complete}/2`)
+      console.log(`   🎯 Platform distribution: ${JSON.stringify(result.summary.combined_platforms)}`)
+
+      return NextResponse.json(response, { 
+        headers: { "cache-control": "no-store" } 
+      })
+    }
+    
+    // Single-day mode (original behavior)
     // Fill ONLY empty or placeholder slots. Never overwrite posted slots.
     // The generator will be updated to guarantee non-empty rows when filling.
     const result = await generateDailySchedule(parsed.data.date, {

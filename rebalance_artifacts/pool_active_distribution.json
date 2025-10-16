@@ -1,0 +1,30 @@
+[
+  {
+    "platform": "pixabay",
+    "active_items": 300
+  },
+  {
+    "platform": "bluesky",
+    "active_items": 299
+  },
+  {
+    "platform": "tumblr",
+    "active_items": 11
+  },
+  {
+    "platform": "lemmy",
+    "active_items": 10
+  },
+  {
+    "platform": "giphy",
+    "active_items": 1
+  },
+  {
+    "platform": "reddit",
+    "active_items": 1
+  },
+  {
+    "platform": "youtube",
+    "active_items": 1
+  }
+]

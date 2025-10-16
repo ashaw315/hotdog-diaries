@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { BulkEditModal } from './BulkEditModal'
 import { authFetch } from '@/lib/auth-fetch'
 import { useContentData } from '@/hooks/useAdminData'
+import { useUrlSort, SORT_CONFIGS } from '@/hooks/useUrlSort'
+import { ScheduleBadge } from './ScheduleBadge'
+import { getETTimeString } from '@/lib/design-tokens/schedule-badges'
 
 interface QueuedContent {
   id: number
@@ -34,11 +37,19 @@ interface QueuedContent {
 
 export default function ContentQueue() {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
-  const [sortBy, setSortBy] = useState<'created_at' | 'updated_at' | 'scraped_at' | 'confidence_score'>('created_at')
   const [filterBy, setFilterBy] = useState<'all' | 'discovered' | 'pending_review' | 'approved' | 'scheduled' | 'rejected'>('all')
   const [editingContent, setEditingContent] = useState<number | null>(null)
   const [editText, setEditText] = useState<string>('')
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
+
+  // URL-persisted sort state - default to scheduled_post_time ascending for schedule view
+  const {
+    sortBy,
+    direction,
+    setSortWithToggle,
+    getSortIndicator,
+    isSorted
+  } = useUrlSort(SORT_CONFIGS.schedule)
 
   // Map the filterBy values to the hook's expected status values
   const getHookStatus = (filter: string) => {
@@ -81,7 +92,7 @@ export default function ContentQueue() {
   // Refresh when sort or filter changes
   useEffect(() => {
     refresh()
-  }, [sortBy, filterBy, refresh])
+  }, [sortBy, direction, filterBy, refresh])
 
   // Replace the manual fetchQueuedContent with the hook's refresh function
   const fetchQueuedContent = refresh
@@ -176,6 +187,22 @@ export default function ContentQueue() {
   const handleCancelEdit = () => {
     setEditingContent(null)
     setEditText('')
+  }
+
+  const handleReconcileContent = async (contentId: number) => {
+    try {
+      const response = await authFetch(`/api/admin/content/${contentId}/reconcile`, {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        await refresh()
+      } else {
+        console.error('Failed to reconcile content')
+      }
+    } catch (error) {
+      console.error('Error reconciling content:', error)
+    }
   }
 
   const handleBulkEdit = async (changes: any) => {
@@ -762,6 +789,41 @@ export default function ContentQueue() {
           transform: translateY(-1px);
         }
         
+        .reconcile-warning {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.375rem 0.75rem;
+          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+          border: 1px solid #f59e0b;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px rgba(245, 158, 11, 0.12);
+        }
+        
+        .warning-icon {
+          color: #d97706;
+          font-weight: 600;
+          font-size: 1rem;
+        }
+        
+        .reconcile-btn {
+          padding: 0.25rem 0.5rem;
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          color: white;
+          border: none;
+          border-radius: 0.375rem;
+          font-size: 0.75rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .reconcile-btn:hover {
+          background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(217, 119, 6, 0.25);
+        }
+        
         .content-text {
           margin: 12px 0;
           color: #374151;
@@ -820,6 +882,12 @@ export default function ContentQueue() {
           display: flex;
           flex-direction: column;
           gap: 4px;
+        }
+        
+        .scheduled-time-detail {
+          color: #059669;
+          font-weight: 500;
+          font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
         }
         
         .action-buttons {
@@ -902,7 +970,7 @@ export default function ContentQueue() {
         }
       `}</style>
       
-      <div className="queue-container">
+      <div className="queue-container" data-testid="content-queue">
         {/* Header */}
         <div className="queue-section">
           <div className="section-header">
@@ -954,13 +1022,14 @@ export default function ContentQueue() {
                   <select
                     id="sort"
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
+                    onChange={(e) => setSortWithToggle(e.target.value as any)}
                     className="filter-select"
                   >
-                    <option value="created_at">Created Date</option>
-                    <option value="updated_at">Updated Date</option>
-                    <option value="confidence_score">Confidence Score</option>
-                    <option value="scraped_at">Scraped Date</option>
+                    <option value="scheduled_post_time">Scheduled (ET) {getSortIndicator('scheduled_post_time')}</option>
+                    <option value="created_at">Created Date {getSortIndicator('created_at')}</option>
+                    <option value="updated_at">Updated Date {getSortIndicator('updated_at')}</option>
+                    <option value="confidence_score">Confidence Score {getSortIndicator('confidence_score')}</option>
+                    <option value="scraped_at">Scraped Date {getSortIndicator('scraped_at')}</option>
                   </select>
                 </div>
               </div>
@@ -1015,7 +1084,7 @@ export default function ContentQueue() {
               {/* Content Items */}
               <div className="content-list">
                 {queuedContent.map((item) => (
-                  <div key={item.id} className="content-item">
+                  <div key={item.id} className="content-item" data-testid="content-item">
                     <div className="item-main">
                       <input
                         type="checkbox"
@@ -1084,11 +1153,27 @@ export default function ContentQueue() {
                                   {Math.round(item.confidence_score * 100)}% confidence
                                 </span>
                               )}
-                              {/* Scheduled status badge */}
+                              
+                              {/* Enhanced scheduled status with ET badge */}
                               {(item.scheduled_for || item.scheduled_post_time) && (
-                                <span className="content-tag tag-scheduled-time">
-                                  ⏰ Scheduled for {formatScheduledDate(item.scheduled_post_time || item.scheduled_for)}
-                                </span>
+                                <ScheduleBadge 
+                                  scheduledTime={item.scheduled_post_time || item.scheduled_for}
+                                />
+                              )}
+                              
+                              {/* Reconcile warning for content with missing enrichment */}
+                              {item.id && !item.content_text && (
+                                <div className="reconcile-warning" data-testid="reconcile-warning">
+                                  <span className="warning-icon" title="Missing content enrichment">⚠︎</span>
+                                  <button
+                                    onClick={() => handleReconcileContent(item.id)}
+                                    className="reconcile-btn"
+                                    data-testid="reconcile-btn"
+                                    title="One-click reconcile"
+                                  >
+                                    Reconcile
+                                  </button>
+                                </div>
                               )}
                             </div>
                             
@@ -1143,7 +1228,9 @@ export default function ContentQueue() {
                             <div>Created: {formatDate(new Date(item.created_at))}</div>
                             <div>Updated: {formatDate(new Date(item.updated_at))}</div>
                             {(item.scheduled_for || item.scheduled_post_time) && (
-                              <div>Scheduled: {formatDate(new Date(item.scheduled_post_time || item.scheduled_for))}</div>
+                              <div className="scheduled-time-detail">
+                                <strong>Scheduled (ET):</strong> {getETTimeString(item.scheduled_post_time || item.scheduled_for)}
+                              </div>
                             )}
                             {item.reviewed_at && (
                               <div>Reviewed: {formatDate(new Date(item.reviewed_at))}</div>

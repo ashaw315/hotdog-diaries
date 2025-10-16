@@ -21,6 +21,127 @@ curl -s https://hotdog-diaries.vercel.app/api/admin/debug | jq .
 - **50-79**: Warning - some issues detected
 - **0-49**: Critical - major problems
 
+## Content Scheduling API
+
+### Schedule Refill Endpoint
+
+The refill endpoint ensures content schedules are complete for the current and next day.
+
+**Single-Day Refill:**
+```bash
+curl -X POST 'https://hotdog-diaries.vercel.app/api/admin/schedule/forecast/refill?date=YYYY-MM-DD' \
+  -H 'Authorization: Bearer <token>'
+```
+
+**Two-Day Refill (Enhanced):**
+```bash
+curl -X POST 'https://hotdog-diaries.vercel.app/api/admin/schedule/forecast/refill?date=YYYY-MM-DD&twoDays=true' \
+  -H 'Authorization: Bearer <token>'
+```
+
+**With Debug Information:**
+```bash
+curl -X POST 'https://hotdog-diaries.vercel.app/api/admin/schedule/forecast/refill?date=YYYY-MM-DD&twoDays=true&debug=1' \
+  -H 'Authorization: Bearer <token>'
+```
+
+### Parameters
+
+- **date** (required): Date in YYYY-MM-DD format (Eastern Time)
+- **twoDays** (optional): When set to `true`, fills both today (D) and tomorrow (D+1) with aggressive fallback
+- **debug** (optional): When set to `1`, includes detailed debugging information in response
+
+### Two-Day Mode Features
+
+1. **Progressive Strategy**: Attempts normal content selection first (ingest_priority >= 0), then aggressive fallback (ingest_priority >= -1) if needed
+2. **Platform Diversity**: Automatically distributes content across multiple platforms with daily caps
+3. **Timezone Awareness**: Proper Eastern Time to UTC conversion for schedule slots
+4. **Comprehensive Reporting**: Returns before/after counts and platform distribution statistics
+
+### Response Format
+
+**Single-Day Response:**
+```json
+{
+  "ok": true,
+  "date": "2025-10-16",
+  "filled": 3,
+  "slots": [
+    {
+      "slot": 0,
+      "action": "created",
+      "content_id": 123,
+      "platform": "reddit",
+      "level": "normal"
+    }
+  ]
+}
+```
+
+**Two-Day Response:**
+```json
+{
+  "ok": true,
+  "mode": "two-days",
+  "date": "2025-10-16",
+  "today": {
+    "before": 2,
+    "count_added": 4,
+    "after": 6,
+    "platforms": {
+      "reddit": 1,
+      "pixabay": 2,
+      "youtube": 1
+    }
+  },
+  "tomorrow": {
+    "before": 0,
+    "count_added": 6,
+    "after": 6,
+    "platforms": {
+      "tumblr": 1,
+      "lemmy": 1,
+      "imgur": 1,
+      "giphy": 1,
+      "bluesky": 2
+    }
+  },
+  "summary": {
+    "total_before": 2,
+    "total_after": 12,
+    "total_added": 10,
+    "days_complete": 2,
+    "combined_platforms": {
+      "reddit": 1,
+      "pixabay": 2,
+      "youtube": 1,
+      "tumblr": 1,
+      "lemmy": 1,
+      "imgur": 1,
+      "giphy": 1,
+      "bluesky": 2
+    }
+  }
+}
+```
+
+### Troubleshooting Refill Issues
+
+**Empty Pool Errors:**
+- Ensure `ingest_priority >= 0` content exists in content_queue
+- Check platform scanning is working: run individual platform scans
+- Verify content approval pipeline is functioning
+
+**Platform Diversity Issues:**
+- Review content distribution across platforms
+- Consider adjusting platform quotas if specific diversity required
+- Check for platform-specific content generation issues
+
+**Timezone Boundary Issues:**
+- Verify Eastern Time calculation during DST transitions
+- Check UTC conversion accuracy in scheduled_posts table
+- Test month/year boundary dates (e.g., 2025-10-31 → 2025-11-01)
+
 ## Common Issues and Solutions
 
 ### Issue 1: Content Queue Not Loading
