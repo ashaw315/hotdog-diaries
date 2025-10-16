@@ -9,6 +9,10 @@ on:
     types: 
       - completed
 
+permissions:
+  contents: read
+  issues: write  # Only for failure notifications
+
 env:
   PROD_URL: https://hotdog-diaries.vercel.app
 
@@ -223,42 +227,32 @@ jobs:
             exit 1
           fi
           
-      - name: Create deployment success issue
+      - name: ✅ Deployment Success
         if: needs.auth-token-validation.result == 'success' && needs.comprehensive-health-check.result == 'success'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const title = `✅ Deployment Gate Passed - ${new Date().toISOString().split('T')[0]}`
-            const body = `## Deployment Gate Success
-            
-            **Deployment**: ${{ github.sha }}  
-            **Timestamp**: ${new Date().toISOString()}  
-            **Environment**: Production  
-            
-            ### Validation Results
-            
-            - ✅ **Auth Token Validation**: Passed
-            - ✅ **Comprehensive Health Check**: Passed
-            - ✅ **Admin Endpoint Smoke Test**: Passed
-            
-            ### Details
-            
-            All security and health validations have passed successfully. The deployment is approved for production traffic.
-            
-            **Production URL**: ${{ env.PROD_URL }}
-            **Health Probe**: ${{ env.PROD_URL }}/api/admin/health/auth-token
-            
-            This notification was generated automatically by the deployment gate workflow.
-            `
-            
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: title,
-              body: body,
-              labels: ['deployment', 'success', 'automated']
-            })
-            
+        run: |
+          echo "🎉 DEPLOYMENT GATE PASSED"
+          echo "========================="
+          echo "✅ Auth Token Validation: Success"
+          echo "✅ Comprehensive Health Check: Success"
+          echo "✅ Admin Endpoint Smoke Test: Success"
+          echo ""
+          echo "🚀 Deployment approved for production traffic"
+          echo "🌐 Production URL: ${{ env.PROD_URL }}"
+          echo "🏥 Health Probe: ${{ env.PROD_URL }}/api/admin/health/auth-token"
+          echo ""
+          echo "## 🎉 Deployment Gate Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: $(date -u -Iseconds)" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: Production" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ **Auth Token Validation**: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ **Comprehensive Health Check**: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ **Admin Endpoint Smoke Test**: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 All security and health validations passed - deployment approved!" >> $GITHUB_STEP_SUMMARY
       - name: Create deployment failure issue
         if: needs.auth-token-validation.result != 'success' || needs.comprehensive-health-check.result != 'success'
         uses: actions/github-script@v7

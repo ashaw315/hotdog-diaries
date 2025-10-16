@@ -29,6 +29,10 @@ on:
         type: string
         default: 'https://hotdog-diaries.vercel.app'
 
+permissions:
+  contents: read
+  issues: write  # Only for failure notifications
+
 concurrency:
   group: post-deploy-${{ github.ref }}
   cancel-in-progress: false
@@ -363,45 +367,31 @@ jobs:
     if: always()
     
     steps:
-      - name: Create success notification
+      - name: ✅ Success Summary
         if: needs.health-check.outputs.health-status != 'failed' && needs.refill-check.outputs.refill-status != 'failed'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const title = `✅ Post-Deploy Check Passed - ${new Date().toISOString().split('T')[0]}`
-            const body = `## Post-Deploy Validation Success
-            
-            **Deployment**: \`${{ github.sha }}\`  
-            **Timestamp**: ${new Date().toISOString()}  
-            **Workflow**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            
-            ### ✅ Validation Results
-            
-            - **Health Check**: ${{ needs.health-check.outputs.health-status }}
-            - **Refill Check**: ${{ needs.refill-check.outputs.refill-status }}
-            - **Diversity Score**: ${{ needs.refill-check.outputs.diversity_score }}
-            
-            ### 📊 System Status
-            
-            All deployment validation checks have passed successfully. The system is operating normally with:
-            
-            - Deep health endpoint responding correctly
-            - Two-day forecast showing adequate content pipeline
-            - Platform diversity within acceptable parameters
-            
-            **Artifacts**: Metrics snapshot and deployment data uploaded as workflow artifacts.
-            
-            ---
-            *This notification was generated automatically by the post-deploy check workflow.*
-            `
-            
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: title,
-              body: body,
-              labels: ['deployment', 'success', 'automated', 'post-deploy']
-            })
+        run: |
+          echo "🎉 POST-DEPLOY VALIDATION SUCCESS"
+          echo "=================================="
+          echo "✅ Health Check: ${{ needs.health-check.outputs.health-status }}"
+          echo "✅ Refill Check: ${{ needs.refill-check.outputs.refill-status }}"
+          echo "📊 Diversity Score: ${{ needs.refill-check.outputs.diversity_score }}"
+          echo ""
+          echo "🚀 System Status: All validation checks passed"
+          echo "🌐 Production URL: ${{ env.PROD_URL }}"
+          echo "📦 Artifacts: Metrics snapshot and deployment data uploaded"
+          echo ""
+          echo "## ✅ Post-Deploy Validation Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: $(date -u -Iseconds)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check**: ${{ needs.health-check.outputs.health-status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Refill Check**: ${{ needs.refill-check.outputs.refill-status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Diversity Score**: ${{ needs.refill-check.outputs.diversity_score }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎉 All post-deployment validation checks passed successfully!" >> $GITHUB_STEP_SUMMARY
             
       - name: Create failure notification  
         if: needs.health-check.outputs.health-status == 'failed' || needs.refill-check.outputs.refill-status == 'failed'
