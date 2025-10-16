@@ -1,0 +1,301 @@
+name: 🔥 Weekly Smoke Test
+
+on:
+  schedule:
+    # Run every Monday at 8:00 AM UTC (4:00 AM EST)
+    - cron: '0 8 * * 1'
+  
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: 'Target environment to test'
+        required: false
+        type: choice
+        options:
+          - production
+          - development
+        default: 'production'
+      include_load_tests:
+        description: 'Include load testing'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  # Production URL for smoke tests
+  PRODUCTION_URL: https://hotdog-diaries.vercel.app
+  DEVELOPMENT_URL: http://localhost:3000
+
+jobs:
+  weekly-smoke-test:
+    name: 🏥 Production Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    permissions:
+      contents: read
+      actions: write
+      issues: write  # For creating issues on failure
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📋 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📦 Install dependencies
+        run: |
+          npm ci
+          
+          # Install additional system dependencies for smoke tests
+          sudo apt-get update
+          sudo apt-get install -y bc jq curl
+          
+      - name: 🔧 Configure test environment
+        run: |
+          # Determine target URL
+          if [ "${{ github.event.inputs.target_environment }}" = "development" ]; then
+            echo "BASE_URL_OVERRIDE=${{ env.DEVELOPMENT_URL }}" >> $GITHUB_ENV
+            echo "🧪 Testing development environment"
+          else
+            echo "BASE_URL_OVERRIDE=${{ env.PRODUCTION_URL }}" >> $GITHUB_ENV
+            echo "🌐 Testing production environment"
+          fi
+          
+          # Configure load testing
+          if [ "${{ github.event.inputs.include_load_tests }}" = "true" ]; then
+            echo "LOAD_TEST_FLAG=--load-test" >> $GITHUB_ENV
+            echo "🚀 Load testing enabled"
+          else
+            echo "LOAD_TEST_FLAG=" >> $GITHUB_ENV
+            echo "📊 Standard testing only"
+          fi
+          
+      - name: 🔥 Run smoke tests
+        id: smoke_tests
+        run: |
+          echo "🔥 Starting comprehensive smoke tests..."
+          echo "Target: $BASE_URL_OVERRIDE"
+          echo ""
+          
+          # Make smoke test script executable
+          chmod +x scripts/smoke.sh
+          
+          # Create results directory
+          mkdir -p test-results
+          
+          # Run smoke tests with JSON output for parsing
+          set +e  # Don't exit on failure, we want to capture results
+          
+          # Run public endpoint tests (no auth required)
+          echo "📊 Testing public endpoints..."
+          if scripts/smoke.sh --json $LOAD_TEST_FLAG > test-results/smoke-results.json; then
+            SMOKE_EXIT_CODE=0
+            echo "✅ Public smoke tests passed"
+          else
+            SMOKE_EXIT_CODE=$?
+            echo "❌ Public smoke tests failed (exit code: $SMOKE_EXIT_CODE)"
+          fi
+          
+          # Also run with human-readable output for logs
+          echo ""
+          echo "📋 Detailed test results:"
+          scripts/smoke.sh $LOAD_TEST_FLAG || true
+          
+          # Save exit code for later steps
+          echo "SMOKE_EXIT_CODE=$SMOKE_EXIT_CODE" >> $GITHUB_ENV
+          
+          # Parse results if JSON exists
+          if [ -f "test-results/smoke-results.json" ]; then
+            echo "📊 Parsing test results..."
+            
+            TOTAL_TESTS=$(jq -r '.summary.total // 0' test-results/smoke-results.json)
+            PASSED_TESTS=$(jq -r '.summary.passed // 0' test-results/smoke-results.json)
+            FAILED_TESTS=$(jq -r '.summary.failed // 0' test-results/smoke-results.json)
+            SUCCESS_RATE=$(jq -r '.summary.success_rate // 0' test-results/smoke-results.json)
+            
+            echo "TOTAL_TESTS=$TOTAL_TESTS" >> $GITHUB_ENV
+            echo "PASSED_TESTS=$PASSED_TESTS" >> $GITHUB_ENV
+            echo "FAILED_TESTS=$FAILED_TESTS" >> $GITHUB_ENV
+            echo "SUCCESS_RATE=$SUCCESS_RATE" >> $GITHUB_ENV
+            
+            echo "📈 Test Summary:"
+            echo "  Total: $TOTAL_TESTS"
+            echo "  Passed: $PASSED_TESTS"
+            echo "  Failed: $FAILED_TESTS"
+            echo "  Success Rate: $SUCCESS_RATE%"
+          fi
+          
+      - name: 🏥 Quick admin health check
+        id: admin_health
+        if: always()
+        run: |
+          echo "🏥 Running quick admin health check..."
+          
+          # Make poke-admin script executable
+          chmod +x scripts/poke-admin.sh
+          
+          # Run admin health check (will skip auth tests without token)
+          set +e
+          if scripts/poke-admin.sh > test-results/admin-health.log 2>&1; then
+            ADMIN_HEALTH_CODE=0
+            echo "✅ Admin health check passed"
+          else
+            ADMIN_HEALTH_CODE=$?
+            echo "❌ Admin health check failed (exit code: $ADMIN_HEALTH_CODE)"
+          fi
+          
+          echo "ADMIN_HEALTH_CODE=$ADMIN_HEALTH_CODE" >> $GITHUB_ENV
+          
+          echo "📋 Admin health results:"
+          cat test-results/admin-health.log
+          
+      - name: 📊 Generate test report
+        if: always()
+        run: |
+          echo "📊 Generating comprehensive test report..."
+          
+          # Create report file
+          REPORT_FILE="test-results/weekly-smoke-report.md"
+          
+          cat > "$REPORT_FILE" << EOF
+          # 🔥 Weekly Smoke Test Report
+          
+          **Date:** $(date -u -Iseconds)  
+          **Environment:** $BASE_URL_OVERRIDE  
+          **Triggered by:** ${{ github.event_name }}  
+          **Workflow Run:** [\#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})  
+          
+          ## 📈 Test Results Summary
+          
+          | Metric | Value | Status |
+          |--------|-------|--------|
+          | **Total Tests** | ${TOTAL_TESTS:-N/A} | - |
+          | **Passed Tests** | ${PASSED_TESTS:-N/A} | $([ "${PASSED_TESTS:-0}" -eq "${TOTAL_TESTS:-1}" ] && echo "✅" || echo "❌") |
+          | **Failed Tests** | ${FAILED_TESTS:-N/A} | $([ "${FAILED_TESTS:-1}" -eq "0" ] && echo "✅" || echo "❌") |
+          | **Success Rate** | ${SUCCESS_RATE:-N/A}% | $([ "${SUCCESS_RATE:-0}" = "100" ] && echo "✅" || echo "❌") |
+          | **Admin Health** | Exit Code ${ADMIN_HEALTH_CODE:-N/A} | $([ "${ADMIN_HEALTH_CODE:-1}" -eq "0" ] && echo "✅" || echo "❌") |
+          
+          ## 🎯 Overall Status
+          
+          EOF
+          
+          # Determine overall status
+          if [ "${SMOKE_EXIT_CODE:-1}" -eq "0" ] && [ "${ADMIN_HEALTH_CODE:-1}" -eq "0" ]; then
+            echo "**🎉 ALL TESTS PASSED** - System is healthy" >> "$REPORT_FILE"
+            echo "OVERALL_STATUS=success" >> $GITHUB_ENV
+          else
+            echo "**🚨 TESTS FAILED** - Issues detected that require attention" >> "$REPORT_FILE"
+            echo "OVERALL_STATUS=failure" >> $GITHUB_ENV
+          fi
+          
+          cat >> "$REPORT_FILE" << EOF
+          
+          ## 📋 Detailed Results
+          
+          ### 🔥 Smoke Test Details
+          \`\`\`json
+          $(cat test-results/smoke-results.json 2>/dev/null || echo '{"error": "No smoke test results available"}')
+          \`\`\`
+          
+          ### 🏥 Admin Health Check
+          \`\`\`
+          $(cat test-results/admin-health.log 2>/dev/null || echo "No admin health results available")
+          \`\`\`
+          
+          ## 🔗 Quick Links
+          
+          - [Production Site](${{ env.PRODUCTION_URL }})
+          - [Admin Dashboard](${{ env.PRODUCTION_URL }}/admin)
+          - [API Documentation](${{ env.PRODUCTION_URL }}/admin/docs)
+          - [System Metrics](${{ env.PRODUCTION_URL }}/api/system/metrics)
+          
+          ---
+          
+          Generated by [Weekly Smoke Test Workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/weekly-smoke-test.yml)
+          EOF
+          
+          echo "✅ Test report generated"
+          
+      - name: 📤 Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-smoke-test-${{ github.run_number }}
+          path: |
+            test-results/
+          retention-days: 30
+          compression-level: 6
+          
+      - name: 📝 Add to job summary
+        if: always()
+        run: |
+          echo "## 🔥 Weekly Smoke Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Add report content to job summary
+          cat test-results/weekly-smoke-report.md >> $GITHUB_STEP_SUMMARY
+          
+      - name: 🚨 Create issue on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueTitle = `🚨 Weekly Smoke Test Failed - ${new Date().toISOString().split('T')[0]}`;
+            const issueBody = `# Weekly Smoke Test Failure Report
+            
+            The weekly smoke test failed on ${new Date().toISOString()}.
+            
+            **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **Environment:** ${{ env.BASE_URL_OVERRIDE }}
+            
+            ## Failure Details
+            
+            - **Smoke Tests Exit Code:** ${{ env.SMOKE_EXIT_CODE }}
+            - **Admin Health Exit Code:** ${{ env.ADMIN_HEALTH_CODE }}
+            - **Overall Status:** ${{ env.OVERALL_STATUS }}
+            
+            ## Next Steps
+            
+            1. 🔍 Review the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            2. 🏥 Check the [admin dashboard](${{ env.PRODUCTION_URL }}/admin)
+            3. 📊 Review [system metrics](${{ env.PRODUCTION_URL }}/api/system/metrics)
+            4. 📋 Consult the [SRE runbook](./docs/runbook.md) for troubleshooting
+            
+            ## Auto-Generated Actions
+            
+            - [ ] Investigate root cause
+            - [ ] Apply fixes if needed
+            - [ ] Re-run smoke tests to verify
+            - [ ] Close this issue when resolved
+            
+            ---
+            
+            This issue was automatically created by the Weekly Smoke Test workflow.
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['bug', 'monitoring', 'auto-created']
+            });
+            
+      - name: ✅ Success notification
+        if: success()
+        run: |
+          echo "🎉 Weekly smoke test completed successfully!"
+          echo ""
+          echo "📊 Results summary:"
+          echo "  - Total tests: ${TOTAL_TESTS:-N/A}"
+          echo "  - Passed: ${PASSED_TESTS:-N/A}"
+          echo "  - Failed: ${FAILED_TESTS:-N/A}"
+          echo "  - Success rate: ${SUCCESS_RATE:-N/A}%"
+          echo "  - Admin health: $([ "${ADMIN_HEALTH_CODE:-1}" -eq "0" ] && echo "✅ Healthy" || echo "❌ Issues")"
+          echo ""
+          echo "🌐 System is healthy and operating normally."

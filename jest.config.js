@@ -14,7 +14,7 @@ const customJestConfig = {
     '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(jose|@testing-library|@radix-ui)/)',
+    'node_modules/(?!(jose|@testing-library|@radix-ui|@supabase|next)/)',
   ],
   testMatch: [
     '**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)',
@@ -23,9 +23,9 @@ const customJestConfig = {
   testPathIgnorePatterns: [
     '__tests__/regression/framework.ts',
     'node_modules/',
-    '.next/',
+    '\\.next/',
     'e2e/', // Exclude Playwright tests from Jest execution
-    '**/*.spec.ts', // Exclude Playwright spec files
+    '.*\\.spec\\.ts$', // Exclude Playwright spec files
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',

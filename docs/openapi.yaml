@@ -1,0 +1,698 @@
+openapi: 3.1.0
+info:
+  title: Hotdog Diaries API
+  description: |
+    Hotdog Diaries content management and scheduling API.
+    
+    ## Authentication
+    
+    Admin endpoints require authentication via one of:
+    - Header: `x-admin-token: <token>`
+    - Header: `Authorization: Bearer <token>`
+    
+    ## Error Handling
+    
+    All endpoints return errors in a consistent envelope format:
+    
+    ```json
+    {
+      "ok": false,
+      "code": "ERROR_CODE",
+      "message": "Human readable error message",
+      "rid": "request-id-for-debugging"
+    }
+    ```
+    
+  version: 1.0.0
+  contact:
+    name: Hotdog Diaries API
+    url: https://hotdog-diaries.vercel.app
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: https://hotdog-diaries.vercel.app/api
+    description: Production
+  - url: http://localhost:3000/api
+    description: Development
+
+security:
+  - AdminToken: []
+
+components:
+  securitySchemes:
+    AdminToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Admin authentication token. Can be provided as:
+        - Bearer token: `Authorization: Bearer <token>`
+        - Custom header: `x-admin-token: <token>`
+      x-alternative-header:
+        name: x-admin-token
+        description: Alternative to Authorization header
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      description: Standard error response envelope
+      properties:
+        ok:
+          type: boolean
+          example: false
+          description: Always false for error responses
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+          description: Machine-readable error code
+        message:
+          type: string
+          example: "Invalid date parameter"
+          description: Human-readable error message
+        rid:
+          type: string
+          example: "req_1234567890abcdef"
+          description: Request ID for debugging and support
+
+    SuccessEnvelope:
+      type: object
+      description: Standard success response wrapper
+      properties:
+        ok:
+          type: boolean
+          example: true
+          description: Always true for successful responses
+        data:
+          type: object
+          description: Response payload
+
+    ScheduledSlot:
+      type: object
+      description: A single time slot in the daily schedule
+      properties:
+        slot_index:
+          type: integer
+          minimum: 0
+          maximum: 5
+          example: 0
+          description: Time slot index (0-5 for the 6 daily slots)
+        time:
+          type: string
+          format: time
+          example: "08:00"
+          description: Local time for this slot (Eastern Time)
+        utc_time:
+          type: string
+          format: date-time
+          example: "2023-10-15T13:00:00.000Z"
+          description: UTC timestamp for this slot
+        content_id:
+          type: integer
+          nullable: true
+          example: 1234
+          description: ID of scheduled content, null if slot is empty
+        content_preview:
+          type: string
+          nullable: true
+          example: "Delicious hotdog with mustard and relish"
+          description: Preview of scheduled content
+        platform:
+          type: string
+          nullable: true
+          example: "reddit"
+          description: Source platform of the content
+        content_type:
+          type: string
+          nullable: true
+          example: "image"
+          enum: ["text", "image", "video", "gif"]
+          description: Type of content
+        status:
+          type: string
+          example: "upcoming"
+          enum: ["posted", "upcoming", "missed"]
+          description: Current status of this slot
+
+    DiversitySummary:
+      type: object
+      description: Platform diversity metrics for the schedule
+      properties:
+        diversity_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.83
+          description: Overall platform diversity score (0-1)
+        platform_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            reddit: 2
+            youtube: 1
+            giphy: 1
+            imgur: 1
+            bluesky: 1
+          description: Count of content per platform
+        total_platforms:
+          type: integer
+          example: 5
+          description: Number of different platforms represented
+        total_content:
+          type: integer
+          example: 6
+          description: Total pieces of content scheduled
+
+    ForecastResponse:
+      type: object
+      description: Daily schedule forecast
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2023-10-15"
+          description: Date for this forecast (YYYY-MM-DD)
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduledSlot"
+          minItems: 6
+          maxItems: 6
+          description: The 6 daily time slots
+        summary:
+          type: object
+          properties:
+            posted:
+              type: integer
+              example: 2
+              description: Number of slots already posted
+            upcoming:
+              type: integer
+              example: 3
+              description: Number of slots with content scheduled but not yet posted
+            missed:
+              type: integer
+              example: 1
+              description: Number of slots that were missed (past time with no content)
+            diversity:
+              $ref: "#/components/schemas/DiversitySummary"
+
+    RefillRequest:
+      type: object
+      description: Request to refill schedule slots
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2023-10-15"
+          description: Date to refill (YYYY-MM-DD)
+        mode:
+          type: string
+          example: "create-or-reuse"
+          enum: ["create-only", "create-or-reuse", "force-recreate"]
+          default: "create-or-reuse"
+          description: |
+            Refill mode:
+            - create-only: Only fill empty slots
+            - create-or-reuse: Fill empty slots, reuse existing if possible
+            - force-recreate: Replace all content with new selections
+        twoDays:
+          type: boolean
+          example: true
+          default: false
+          description: If true, refill today and tomorrow
+
+    RefillResponse:
+      type: object
+      description: Result of refill operation
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2023-10-15"
+        filled:
+          type: integer
+          example: 4
+          description: Number of slots successfully filled
+        mode:
+          type: string
+          example: "create-or-reuse"
+        twoDays:
+          type: boolean
+          example: true
+        debug:
+          type: object
+          properties:
+            environment:
+              type: string
+              example: "production"
+            candidates_found:
+              type: integer
+              example: 25
+            platform_distribution:
+              type: object
+              additionalProperties:
+                type: integer
+
+    ReconcileRequest:
+      type: object
+      description: Request to reconcile schedule with posted content
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2023-10-15"
+          description: Date to reconcile (YYYY-MM-DD)
+
+    ReconcileResponse:
+      type: object
+      description: Result of reconcile operation
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2023-10-15"
+        reconciled_slots:
+          type: integer
+          example: 3
+          description: Number of slots that were reconciled
+        corrections_made:
+          type: integer
+          example: 1
+          description: Number of corrections applied
+        discrepancies_found:
+          type: array
+          items:
+            type: object
+            properties:
+              slot_index:
+                type: integer
+              issue:
+                type: string
+              resolution:
+                type: string
+
+    HealthComponent:
+      type: object
+      description: Individual health check component
+      properties:
+        status:
+          type: string
+          enum: ["healthy", "degraded", "unhealthy"]
+          example: "healthy"
+        message:
+          type: string
+          example: "Database connection successful"
+        response_time_ms:
+          type: number
+          example: 45.2
+          description: Response time in milliseconds
+        last_checked:
+          type: string
+          format: date-time
+          example: "2023-10-15T14:30:00.000Z"
+
+    DeepHealthResponse:
+      type: object
+      description: Comprehensive health check results
+      properties:
+        ok:
+          type: boolean
+          example: true
+          description: Overall health status
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-10-15T14:30:00.000Z"
+        environment:
+          type: string
+          example: "production"
+        version:
+          type: string
+          example: "1.0.0"
+        components:
+          type: object
+          properties:
+            database:
+              $ref: "#/components/schemas/HealthComponent"
+            scheduler:
+              $ref: "#/components/schemas/HealthComponent"
+            content_queue:
+              $ref: "#/components/schemas/HealthComponent"
+            external_apis:
+              $ref: "#/components/schemas/HealthComponent"
+
+    AuthTokenResponse:
+      type: object
+      description: Authentication token validation result
+      properties:
+        valid:
+          type: boolean
+          example: true
+          description: Whether the token is valid
+        user_id:
+          type: integer
+          example: 1
+          description: ID of the authenticated user
+        username:
+          type: string
+          example: "admin"
+          description: Username of the authenticated user
+        expires_at:
+          type: string
+          format: date-time
+          example: "2023-10-16T14:30:00.000Z"
+          description: Token expiration time
+        permissions:
+          type: array
+          items:
+            type: string
+          example: ["admin", "schedule", "content"]
+          description: User permissions
+
+    QueueMetrics:
+      type: object
+      description: Content queue depth by platform
+      additionalProperties:
+        type: integer
+      example:
+        reddit: 45
+        youtube: 23
+        giphy: 12
+        imgur: 18
+        bluesky: 8
+
+    SystemMetrics:
+      type: object
+      description: System-wide metrics and health indicators
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-10-15T14:30:00.000Z"
+        health_status:
+          type: string
+          enum: ["healthy", "degraded", "unhealthy"]
+          example: "healthy"
+        queue_depth_by_platform:
+          $ref: "#/components/schemas/QueueMetrics"
+        posts_today:
+          type: integer
+          example: 4
+          description: Number of posts published today
+        posts_this_week:
+          type: integer
+          example: 28
+          description: Number of posts published this week
+        approved_content_count:
+          type: integer
+          example: 156
+          description: Total approved content ready for posting
+        pending_approval_count:
+          type: integer
+          example: 23
+          description: Content awaiting approval
+        last_scan_times:
+          type: object
+          additionalProperties:
+            type: string
+            format: date-time
+          example:
+            reddit: "2023-10-15T13:45:00.000Z"
+            youtube: "2023-10-15T12:30:00.000Z"
+        scheduler_metrics:
+          type: object
+          properties:
+            last_refill:
+              type: string
+              format: date-time
+              example: "2023-10-15T12:00:00.000Z"
+            next_scheduled_post:
+              type: string
+              format: date-time
+              example: "2023-10-15T17:00:00.000Z"
+            fill_rate_7d:
+              type: number
+              format: float
+              example: 0.95
+              description: 7-day average slot fill rate
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            ok: false
+            code: "UNAUTHORIZED"
+            message: "Admin authentication required"
+            rid: "req_1234567890abcdef"
+
+    ForbiddenError:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            ok: false
+            code: "FORBIDDEN"
+            message: "Admin access required"
+            rid: "req_1234567890abcdef"
+
+    ValidationError:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            ok: false
+            code: "VALIDATION_ERROR"
+            message: "Invalid date format. Expected YYYY-MM-DD"
+            rid: "req_1234567890abcdef"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            ok: false
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
+            rid: "req_1234567890abcdef"
+
+paths:
+  /admin/schedule/forecast:
+    get:
+      summary: Get daily schedule forecast
+      description: |
+        Retrieve the schedule forecast for a specific date, showing all 6 time slots
+        with their content, status, and platform diversity metrics.
+      operationId: getForecast
+      security:
+        - AdminToken: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: Date to get forecast for (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2023-10-15"
+          example: "2023-10-15"
+      responses:
+        "200":
+          description: Schedule forecast retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ForecastResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/schedule/forecast/refill:
+    post:
+      summary: Refill schedule slots
+      description: |
+        Fill empty or inadequately filled schedule slots with new content,
+        applying platform diversity rules and content quality thresholds.
+      operationId: refillSchedule
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefillRequest"
+            examples:
+              single_day:
+                summary: Refill single day
+                value:
+                  date: "2023-10-15"
+                  mode: "create-or-reuse"
+                  twoDays: false
+              two_days:
+                summary: Refill two days
+                value:
+                  date: "2023-10-15"
+                  mode: "create-or-reuse"
+                  twoDays: true
+              force_recreate:
+                summary: Force recreate all content
+                value:
+                  date: "2023-10-15"
+                  mode: "force-recreate"
+                  twoDays: false
+      responses:
+        "200":
+          description: Schedule refilled successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/RefillResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/schedule/forecast/reconcile:
+    post:
+      summary: Reconcile schedule with posted content
+      description: |
+        Reconcile the schedule with actually posted content, correcting any
+        discrepancies between scheduled and posted items.
+      operationId: reconcileSchedule
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReconcileRequest"
+            example:
+              date: "2023-10-15"
+      responses:
+        "200":
+          description: Schedule reconciled successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ReconcileResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/health/deep:
+    get:
+      summary: Comprehensive health check
+      description: |
+        Perform a deep health check of all system components including database,
+        scheduler, content queue, and external API integrations.
+      operationId: getDeepHealth
+      security:
+        - AdminToken: []
+      responses:
+        "200":
+          description: Health check completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeepHealthResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/health/auth-token:
+    get:
+      summary: Validate authentication token
+      description: |
+        Validate the current authentication token and return user information
+        and permissions.
+      operationId: validateAuthToken
+      security:
+        - AdminToken: []
+      responses:
+        "200":
+          description: Token validation result
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AuthTokenResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+
+  /system/metrics:
+    get:
+      summary: Get system metrics
+      description: |
+        Retrieve system-wide metrics including queue depths, posting statistics,
+        and health indicators. This endpoint does not require authentication.
+      operationId: getSystemMetrics
+      responses:
+        "200":
+          description: System metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemMetrics"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+tags:
+  - name: Schedule
+    description: Content scheduling and forecasting operations
+  - name: Health
+    description: System health and diagnostic endpoints  
+  - name: Metrics
+    description: System metrics and monitoring data

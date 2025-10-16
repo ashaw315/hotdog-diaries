@@ -1,0 +1,172 @@
+name: 📋 Generate Runbook Artifacts
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'docs/runbook.md'
+      - 'scripts/md-to-pdf.ts'
+      - '.github/workflows/runbook-artifact.yml'
+  
+  workflow_dispatch:
+    inputs:
+      force_regenerate:
+        description: 'Force regenerate all artifacts'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  generate-runbook-artifacts:
+    name: 🔄 Generate PDF and Upload Artifacts
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      actions: write
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📋 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📦 Install dependencies
+        run: |
+          npm ci
+          # Install additional system dependencies for PDF generation
+          sudo apt-get update
+          sudo apt-get install -y fonts-liberation fonts-dejavu-core
+          
+      - name: 📄 Generate PDF from Markdown
+        run: |
+          echo "🔄 Generating runbook PDF..."
+          npm run runbook:pdf
+          
+          # Verify PDF was generated
+          if [ ! -f "docs/runbook.pdf" ]; then
+            echo "❌ PDF generation failed"
+            exit 1
+          fi
+          
+          # Get file size for logging
+          PDF_SIZE=$(du -h docs/runbook.pdf | cut -f1)
+          echo "✅ PDF generated successfully ($PDF_SIZE)"
+          
+      - name: 📊 Generate metadata
+        run: |
+          echo "📊 Generating artifact metadata..."
+          
+          cat > docs/runbook-metadata.json << EOF
+          {
+            "generated_at": "$(date -u -Iseconds)",
+            "git_commit": "${{ github.sha }}",
+            "git_ref": "${{ github.ref }}",
+            "workflow_run_id": "${{ github.run_id }}",
+            "workflow_run_number": "${{ github.run_number }}",
+            "triggered_by": "${{ github.event_name }}",
+            "actor": "${{ github.actor }}",
+            "repository": "${{ github.repository }}",
+            "pdf_size_bytes": $(stat -c%s docs/runbook.pdf),
+            "pdf_checksum_sha256": "$(sha256sum docs/runbook.pdf | cut -d' ' -f1)",
+            "source_files": [
+              "docs/runbook.md",
+              "scripts/md-to-pdf.ts"
+            ],
+            "format_version": "1.0.0"
+          }
+          EOF
+          
+          echo "✅ Metadata generated"
+          cat docs/runbook-metadata.json
+          
+      - name: 🔍 Validate artifacts
+        run: |
+          echo "🔍 Validating generated artifacts..."
+          
+          # Check PDF is valid (basic validation)
+          if file docs/runbook.pdf | grep -q "PDF"; then
+            echo "✅ PDF format validated"
+          else
+            echo "❌ Invalid PDF format"
+            exit 1
+          fi
+          
+          # Check metadata is valid JSON
+          if jq . docs/runbook-metadata.json > /dev/null; then
+            echo "✅ Metadata JSON validated"
+          else
+            echo "❌ Invalid metadata JSON"
+            exit 1
+          fi
+          
+          # Check file sizes are reasonable
+          PDF_SIZE_BYTES=$(stat -c%s docs/runbook.pdf)
+          if [ $PDF_SIZE_BYTES -lt 10000 ]; then
+            echo "❌ PDF suspiciously small ($PDF_SIZE_BYTES bytes)"
+            exit 1
+          elif [ $PDF_SIZE_BYTES -gt 50000000 ]; then
+            echo "❌ PDF suspiciously large ($PDF_SIZE_BYTES bytes)"
+            exit 1
+          else
+            echo "✅ PDF size reasonable ($PDF_SIZE_BYTES bytes)"
+          fi
+          
+      - name: 📤 Upload runbook artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sre-runbook-${{ github.run_number }}
+          path: |
+            docs/runbook.pdf
+            docs/runbook.md
+            docs/runbook-metadata.json
+          retention-days: 90
+          compression-level: 6
+          
+      - name: 📤 Upload latest runbook (overwrites)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sre-runbook-latest
+          path: |
+            docs/runbook.pdf
+            docs/runbook.md
+            docs/runbook-metadata.json
+          retention-days: 365
+          compression-level: 6
+          
+      - name: 📋 Generate summary
+        run: |
+          echo "## 📋 Runbook Artifacts Generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Generated at:** $(date -u -Iseconds)" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📄 Generated Files" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size | SHA256 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| \`docs/runbook.pdf\` | $(du -h docs/runbook.pdf | cut -f1) | \`$(sha256sum docs/runbook.pdf | cut -d' ' -f1 | head -c16)...\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`docs/runbook.md\` | $(du -h docs/runbook.md | cut -f1) | \`$(sha256sum docs/runbook.md | cut -d' ' -f1 | head -c16)...\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📤 Artifact Downloads" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Versioned:** \`sre-runbook-${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Latest:** \`sre-runbook-latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All artifacts generated successfully!" >> $GITHUB_STEP_SUMMARY
+          
+      - name: ✅ Complete
+        run: |
+          echo "🎉 Runbook artifact generation completed successfully!"
+          echo ""
+          echo "📦 Artifacts available:"
+          echo "  - sre-runbook-${{ github.run_number }} (versioned)"
+          echo "  - sre-runbook-latest (always current)"
+          echo ""
+          echo "📄 Generated files:"
+          ls -la docs/runbook.*

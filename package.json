@@ -52,7 +52,12 @@
     "schedule:day": "tsx scripts/generateScheduleForDate.ts",
     "rotate-tokens": "npx tsx scripts/rotate-token.ts",
     "validate-secrets": "npx tsx scripts/validate-secrets.ts",
-    "test-observability": "npx tsx scripts/test-observability.ts"
+    "test-observability": "npx tsx scripts/test-observability.ts",
+    "api:inventory": "npx tsx scripts/route-inventory.ts",
+    "api:lint": "npx redocly lint docs/openapi.yaml",
+    "api:validate": "npx tsx scripts/validate-openapi.ts",
+    "api:check-drift": "npm run api:inventory && npm run api:validate",
+    "runbook:pdf": "npx tsx scripts/md-to-pdf.ts"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
@@ -98,6 +103,7 @@
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "redoc": "^2.5.2",
     "simple-git": "^3.28.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
@@ -115,17 +121,23 @@
     "zod": "^4.1.9"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
     "@playwright/test": "^1.55.0",
+    "@redocly/cli": "^2.6.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/react-dom": "^19.1.7",
     "eslint": "^9.31.0",
     "eslint-config-next": "^15.4.1",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
+    "js-yaml": "^4.1.0",
+    "marked": "^12.0.2",
+    "puppeteer": "^24.25.0",
     "tsx": "^4.20.3"
   }
 }

@@ -1,0 +1,291 @@
+name: OpenAPI Spec Drift Detection
+
+on:
+  pull_request:
+    paths:
+      - 'app/api/**/*.ts'
+      - 'docs/openapi.yaml'
+      - 'docs/openapi.ignore.json'
+      - 'scripts/route-inventory.ts'
+  push:
+    branches: [main]
+    paths:
+      - 'app/api/**/*.ts'
+      - 'docs/openapi.yaml'
+      - 'docs/openapi.ignore.json'
+  workflow_dispatch:
+  schedule:
+    # Run weekly to catch any drift
+    - cron: '0 6 * * 1'  # Monday 6 AM UTC
+
+concurrency:
+  group: spec-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: test
+  CI: true
+
+jobs:
+  validate-openapi-spec:
+    name: Validate OpenAPI Specification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'openapi-validation'
+          
+      - name: Install OpenAPI validation tools
+        run: |
+          npm install -g @redocly/cli swagger-parser
+          
+      - name: Validate OpenAPI specification syntax
+        run: |
+          echo "🔍 Validating OpenAPI specification syntax..."
+          
+          # Check if openapi.yaml exists
+          if [ ! -f "docs/openapi.yaml" ]; then
+            echo "❌ OpenAPI specification not found at docs/openapi.yaml"
+            exit 1
+          fi
+          
+          # Validate with Redocly CLI
+          echo "📋 Running Redocly validation..."
+          redocly lint docs/openapi.yaml --skip-rule=no-unused-components
+          
+          # Validate with swagger-parser (additional validation)
+          echo "📋 Running swagger-parser validation..."
+          npx swagger-parser validate docs/openapi.yaml
+          
+          echo "✅ OpenAPI specification is valid"
+          
+      - name: Check specification completeness
+        run: |
+          echo "🔍 Checking OpenAPI specification completeness..."
+          
+          # Check for required sections
+          REQUIRED_SECTIONS=(
+            "openapi"
+            "info"
+            "servers"
+            "paths"
+            "components.schemas"
+            "components.securitySchemes"
+          )
+          
+          for section in "${REQUIRED_SECTIONS[@]}"; do
+            if ! yq eval "has(\"${section//./\".\"}\"))" docs/openapi.yaml | grep -q "true"; then
+              echo "❌ Missing required section: $section"
+              exit 1
+            fi
+            echo "✅ Found section: $section"
+          done
+          
+          # Check for security schemes
+          if ! yq eval '.components.securitySchemes | has("AdminToken")' docs/openapi.yaml | grep -q "true"; then
+            echo "❌ Missing AdminToken security scheme"
+            exit 1
+          fi
+          
+          echo "✅ OpenAPI specification is complete"
+
+  detect-api-drift:
+    name: Detect API Route Drift
+    runs-on: ubuntu-latest
+    needs: validate-openapi-spec
+    timeout-minutes: 10
+    outputs:
+      drift-detected: ${{ steps.drift-check.outputs.drift-detected }}
+      missing-routes: ${{ steps.drift-check.outputs.missing-routes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'drift-detection'
+          
+      - name: Generate current route inventory
+        run: |
+          echo "🔍 Generating current API route inventory..."
+          npx tsx scripts/route-inventory.ts
+          
+          # Show inventory summary
+          echo "📊 Current route inventory:"
+          cat docs/api-inventory.json | jq '.totalRoutes, .adminRoutes, .publicRoutes'
+          
+      - name: Load ignore list
+        id: ignore-list
+        run: |
+          echo "📋 Loading route ignore list..."
+          
+          if [ -f "docs/openapi.ignore.json" ]; then
+            echo "✅ Found ignore list with $(jq '.ignoredRoutes | length' docs/openapi.ignore.json) entries"
+          else
+            echo "⚠️ No ignore list found, creating empty one"
+            echo '{"ignoredRoutes": [], "ignorePatterns": []}' > docs/openapi.ignore.json
+          fi
+          
+      - name: Extract routes from OpenAPI spec
+        run: |
+          echo "🔍 Extracting documented routes from OpenAPI spec..."
+          
+          # Extract paths from OpenAPI spec
+          yq eval '.paths | keys' docs/openapi.yaml | yq eval '.[]' - > documented-routes.txt
+          
+          # Prefix with /api for comparison
+          sed 's|^|/api|' documented-routes.txt > documented-api-routes.txt
+          
+          echo "📋 Documented routes:"
+          cat documented-api-routes.txt
+          
+      - name: Check for drift
+        id: drift-check
+        run: |
+          echo "🔍 Checking for API route drift..."
+          
+          # Extract actual routes from inventory
+          jq -r '.routes[].path' docs/api-inventory.json > actual-routes.txt
+          
+          # Extract ignored routes (exact matches)
+          jq -r '.ignoredRoutes[].path' docs/openapi.ignore.json > ignored-routes.txt
+          
+          # Extract ignore patterns
+          jq -r '.ignorePatterns[].pattern' docs/openapi.ignore.json > ignore-patterns.txt
+          
+          # Function to check if route matches any ignore pattern
+          is_ignored() {
+            local route="$1"
+            
+            # Check exact matches
+            if grep -Fxq "$route" ignored-routes.txt 2>/dev/null; then
+              return 0
+            fi
+            
+            # Check patterns
+            while IFS= read -r pattern; do
+              if [[ "$route" =~ $pattern ]]; then
+                return 0
+              fi
+            done < ignore-patterns.txt 2>/dev/null
+            
+            return 1
+          }
+          
+          # Find missing routes (in code but not in spec and not ignored)
+          MISSING_ROUTES=()
+          
+          while IFS= read -r route; do
+            # Skip empty lines
+            [ -z "$route" ] && continue
+            
+            # Check if route is documented or ignored
+            if ! grep -Fxq "$route" documented-api-routes.txt && ! is_ignored "$route"; then
+              MISSING_ROUTES+=("$route")
+              echo "❌ Missing from OpenAPI spec: $route"
+            fi
+          done < actual-routes.txt
+          
+          # Check results
+          if [ ${#MISSING_ROUTES[@]} -eq 0 ]; then
+            echo "✅ No API drift detected - all routes are documented or ignored"
+            echo "drift-detected=false" >> $GITHUB_OUTPUT
+            echo "missing-routes=" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ API drift detected! ${#MISSING_ROUTES[@]} undocumented routes found"
+            
+            # Format missing routes for output
+            MISSING_JSON=$(printf '%s\n' "${MISSING_ROUTES[@]}" | jq -R . | jq -s .)
+            echo "drift-detected=true" >> $GITHUB_OUTPUT
+            echo "missing-routes=$MISSING_JSON" >> $GITHUB_OUTPUT
+            
+            # Generate suggestions
+            echo ""
+            echo "🔧 To fix this drift, either:"
+            echo "1. Add the missing routes to docs/openapi.yaml, or"
+            echo "2. Add them to docs/openapi.ignore.json with a reason"
+            echo ""
+            echo "Missing routes:"
+            printf '  - %s\n' "${MISSING_ROUTES[@]}"
+          fi
+          
+      - name: Upload drift report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-drift-report
+          path: |
+            docs/api-inventory.json
+            documented-routes.txt
+            actual-routes.txt
+            ignored-routes.txt
+          retention-days: 14
+
+  generate-drift-summary:
+    name: Generate Drift Summary
+    runs-on: ubuntu-latest
+    needs: detect-api-drift
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 📋 OpenAPI Spec Drift Detection" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.detect-api-drift.outputs.drift-detected }}" = "true" ]; then
+            echo "### ⚠️ Drift Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The following API routes exist in code but are not documented in the OpenAPI specification:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Parse missing routes JSON
+            MISSING_ROUTES='${{ needs.detect-api-drift.outputs.missing-routes }}'
+            echo "$MISSING_ROUTES" | jq -r '.[]' | while read -r route; do
+              echo "- \`$route\`" >> $GITHUB_STEP_SUMMARY
+            done
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🔧 Resolution Options" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "1. **Document the routes**: Add them to \`docs/openapi.yaml\` with proper schemas" >> $GITHUB_STEP_SUMMARY
+            echo "2. **Ignore the routes**: Add them to \`docs/openapi.ignore.json\` with clear reasons" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📖 Documentation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- [OpenAPI Specification](./docs/openapi.yaml)" >> $GITHUB_STEP_SUMMARY
+            echo "- [Ignore List](./docs/openapi.ignore.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- [Route Inventory Script](./scripts/route-inventory.ts)" >> $GITHUB_STEP_SUMMARY
+            
+          else
+            echo "### ✅ No Drift Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All API routes are properly documented or ignored. The OpenAPI specification is up to date!" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow**: \`spec-drift.yml\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: $(date -Iseconds)" >> $GITHUB_STEP_SUMMARY
+
+  fail-on-drift:
+    name: Fail on Drift (PR only)
+    runs-on: ubuntu-latest
+    needs: detect-api-drift
+    if: github.event_name == 'pull_request' && needs.detect-api-drift.outputs.drift-detected == 'true'
+    steps:
+      - name: Fail PR on drift
+        run: |
+          echo "❌ PR blocked due to API specification drift"
+          echo ""
+          echo "The following routes are not documented in the OpenAPI specification:"
+          echo '${{ needs.detect-api-drift.outputs.missing-routes }}' | jq -r '.[]'
+          echo ""
+          echo "Please update docs/openapi.yaml or docs/openapi.ignore.json before merging."
+          exit 1
