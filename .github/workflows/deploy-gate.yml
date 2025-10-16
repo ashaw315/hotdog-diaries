@@ -19,6 +19,7 @@ env:
 jobs:
   auth-token-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     name: Validate AUTH_TOKEN Deploy Gate
     if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     
@@ -127,6 +128,7 @@ jobs:
 
   comprehensive-health-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     name: Comprehensive Health Validation
     needs: auth-token-validation
     
@@ -198,6 +200,7 @@ jobs:
 
   deployment-gate-result:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     name: Deployment Gate Result
     needs: [auth-token-validation, comprehensive-health-check]
     if: always()

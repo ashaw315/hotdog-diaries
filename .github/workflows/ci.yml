@@ -19,6 +19,10 @@ on:
         description: 'Test results summary'
         value: ${{ jobs.test.outputs.results }}
 
+permissions:
+  contents: read
+  actions: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
