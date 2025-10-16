@@ -9,7 +9,7 @@
 
 import fs from 'fs/promises'
 import path from 'path'
-import { TOKEN_CONFIGS } from './rotate-token.js'
+import { TOKEN_CONFIGS } from './rotate-token.ts'
 
 interface ValidationResult {
   isValid: boolean
@@ -53,7 +53,8 @@ class SecretValidator {
       errors.push(`Token too short: ${token.length} chars (minimum 32)`)
     }
 
-    if (token.length < config.length) {
+    // For JWT tokens, be more flexible with length requirements
+    if (config.format !== 'jwt' && token.length < config.length) {
       errors.push(`Token shorter than required: ${token.length}/${config.length} chars`)
     }
 
@@ -78,25 +79,55 @@ class SecretValidator {
           errors.push('Token must be alphanumeric')
         }
         break
+      
+      case 'jwt':
+        // JWT tokens have format: header.payload.signature (base64url encoded parts)
+        const jwtParts = token.split('.')
+        if (jwtParts.length !== 3) {
+          errors.push('JWT token must have 3 parts (header.payload.signature)')
+        } else {
+          // Validate each part is valid base64url
+          for (let i = 0; i < 3; i++) {
+            const part = jwtParts[i]
+            if (!/^[A-Za-z0-9_-]+$/.test(part)) {
+              errors.push(`JWT part ${i + 1} contains invalid base64url characters`)
+            }
+          }
+          
+          // Try to decode header to verify it's JWT
+          try {
+            // Convert base64url to base64
+            const base64Header = jwtParts[0].replace(/-/g, '+').replace(/_/g, '/') + '=='.substring(0, (4 - jwtParts[0].length % 4) % 4)
+            const header = JSON.parse(Buffer.from(base64Header, 'base64').toString())
+            if (!header.alg || !header.typ || header.typ !== 'JWT') {
+              errors.push('Token header is not valid JWT format')
+            }
+          } catch {
+            errors.push('Token header cannot be decoded as JWT')
+          }
+        }
+        break
     }
 
-    // Pattern validation - detect weak patterns
-    const patterns = [
-      { regex: /(.)\\1{3,}/, message: 'Contains repeated character patterns' },
-      { regex: /012345|123456|abcdef|654321|fedcba/, message: 'Contains sequential patterns' },
-      { regex: /password|secret|token|admin|test|demo|example/i, message: 'Contains common words' },
-      { regex: /^(00000|11111|22222|33333|44444|55555|66666|77777|88888|99999|aaaaa|bbbbb)/, message: 'Starts with repeated characters' },
-      { regex: /qwerty|asdfgh|zxcvbn|admin123|password123/i, message: 'Contains keyboard patterns or common passwords' }
-    ]
+    // Pattern validation - detect weak patterns (skip for JWT tokens)
+    if (config.format !== 'jwt') {
+      const patterns = [
+        { regex: /(.)\\1{3,}/, message: 'Contains repeated character patterns' },
+        { regex: /012345|123456|abcdef|654321|fedcba/, message: 'Contains sequential patterns' },
+        { regex: /password|secret|token|admin|test|demo|example/i, message: 'Contains common words' },
+        { regex: /^(00000|11111|22222|33333|44444|55555|66666|77777|88888|99999|aaaaa|bbbbb)/, message: 'Starts with repeated characters' },
+        { regex: /qwerty|asdfgh|zxcvbn|admin123|password123/i, message: 'Contains keyboard patterns or common passwords' }
+      ]
 
-    for (const pattern of patterns) {
-      if (pattern.regex.test(token)) {
-        errors.push(pattern.message)
+      for (const pattern of patterns) {
+        if (pattern.regex.test(token)) {
+          errors.push(pattern.message)
+        }
       }
     }
 
-    // Additional entropy checks
-    if (token.length >= 32) {
+    // Additional entropy checks (skip for JWT tokens)
+    if (config.format !== 'jwt' && token.length >= 32) {
       const uniqueChars = new Set(token.toLowerCase()).size
       const expectedMinUniqueChars = Math.min(token.length * 0.6, 16)
       
@@ -175,7 +206,7 @@ class SecretValidator {
       const content = await fs.readFile(envExamplePath, 'utf8')
       const vars: string[] = []
       
-      const lines = content.split('\\n')
+      const lines = content.split('\n')
       for (const line of lines) {
         const trimmed = line.trim()
         if (trimmed && !trimmed.startsWith('#')) {
