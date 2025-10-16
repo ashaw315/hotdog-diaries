@@ -1,0 +1,116 @@
+{
+  "totalItems": 1000,
+  "platforms": [
+    "bluesky",
+    "giphy",
+    "imgur",
+    "lemmy",
+    "mastodon",
+    "pixabay",
+    "reddit",
+    "tumblr",
+    "youtube"
+  ],
+  "targetRange": {
+    "min": 10,
+    "max": 30,
+    "ideal": 11
+  },
+  "platformAnalysis": {
+    "bluesky": {
+      "current": 347,
+      "currentPercent": "34.7",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "DEPRIORITIZE 47 items"
+    },
+    "giphy": {
+      "current": 0,
+      "currentPercent": "0.0",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "EMPTY POOL"
+    },
+    "imgur": {
+      "current": 0,
+      "currentPercent": "0.0",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "EMPTY POOL"
+    },
+    "lemmy": {
+      "current": 3,
+      "currentPercent": "0.3",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "NEED 97 more"
+    },
+    "mastodon": {
+      "current": 0,
+      "currentPercent": "0.0",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "EMPTY POOL"
+    },
+    "pixabay": {
+      "current": 647,
+      "currentPercent": "64.7",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "DEPRIORITIZE 347 items"
+    },
+    "reddit": {
+      "current": 0,
+      "currentPercent": "0.0",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "EMPTY POOL"
+    },
+    "tumblr": {
+      "current": 3,
+      "currentPercent": "0.3",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "NEED 97 more"
+    },
+    "youtube": {
+      "current": 0,
+      "currentPercent": "0.0",
+      "targetMin": 100,
+      "targetMax": 300,
+      "action": "EMPTY POOL"
+    }
+  },
+  "excessList": [
+    {
+      "platform": "bluesky",
+      "current": 347,
+      "excess": 47,
+      "target": 300,
+      "currentPercent": "34.7"
+    },
+    {
+      "platform": "pixabay",
+      "current": 647,
+      "excess": 347,
+      "target": 300,
+      "currentPercent": "64.7"
+    }
+  ],
+  "deficitList": [
+    {
+      "platform": "lemmy",
+      "current": 3,
+      "deficit": 97,
+      "target": 100,
+      "currentPercent": "0.3"
+    },
+    {
+      "platform": "tumblr",
+      "current": 3,
+      "deficit": 97,
+      "target": 100,
+      "currentPercent": "0.3"
+    }
+  ]
+}
