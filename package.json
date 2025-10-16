@@ -51,7 +51,8 @@
     "validate:ci-fix": "npx tsx scripts/validateCIFix.ts",
     "schedule:day": "tsx scripts/generateScheduleForDate.ts",
     "rotate-tokens": "npx tsx scripts/rotate-token.ts",
-    "validate-secrets": "npx tsx scripts/validate-secrets.ts"
+    "validate-secrets": "npx tsx scripts/validate-secrets.ts",
+    "test-observability": "npx tsx scripts/test-observability.ts"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",

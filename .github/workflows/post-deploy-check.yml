@@ -1,0 +1,453 @@
+name: Post-Deploy Check
+
+on:
+  deployment_status:
+  push:
+    branches: [ main ]
+  workflow_run:
+    workflows: ["Vercel Production Deployment"]
+    types: 
+      - completed
+  workflow_dispatch:
+    inputs:
+      skip_refill_check:
+        description: 'Skip refill dry-run check'
+        type: boolean
+        default: false
+      target_url:
+        description: 'Target URL to check (defaults to production)'
+        type: string
+        default: 'https://hotdog-diaries.vercel.app'
+  workflow_call:
+    inputs:
+      skip_refill_check:
+        description: 'Skip refill dry-run check'
+        type: boolean
+        default: false
+      target_url:
+        description: 'Target URL to check'
+        type: string
+        default: 'https://hotdog-diaries.vercel.app'
+
+concurrency:
+  group: post-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PROD_URL: ${{ inputs.target_url || 'https://hotdog-diaries.vercel.app' }}
+  AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    name: Health & Metrics Validation
+    timeout-minutes: 10
+    outputs:
+      health-status: ${{ steps.health.outputs.status }}
+      metrics-snapshot: ${{ steps.metrics.outputs.snapshot }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'post-deploy'
+          install-dependencies: 'false'
+        
+      - name: Wait for deployment readiness
+        if: github.event_name == 'push' || github.event_name == 'deployment_status'
+        run: |
+          echo "⏳ Waiting for deployment to be ready..."
+          sleep 30
+          
+      - name: Test deep health endpoint
+        id: health
+        run: |
+          echo "🏥 Testing /admin/health/deep endpoint..."
+          
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            --max-time 30 \
+            "$PROD_URL/api/admin/health/deep")
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Deep health check passed"
+            
+            # Verify 'ok' status in response
+            OK_STATUS=$(echo "$BODY" | jq -r '.ok // false')
+            if [ "$OK_STATUS" = "true" ]; then
+              echo "✅ Health status is OK"
+              echo "status=healthy" >> $GITHUB_OUTPUT
+              
+              # Extract component details for artifact
+              echo "$BODY" | jq '.components // {}' > health_components.json
+              
+            else
+              echo "❌ Health status indicates issues"
+              echo "status=degraded" >> $GITHUB_OUTPUT
+              echo "$BODY" | jq '.components // {}' > health_components.json
+              
+              # Don't fail immediately - continue to refill check
+              echo "⚠️ Health check shows degraded status but continuing..."
+            fi
+          else
+            echo "❌ Deep health check failed with status $HTTP_STATUS"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo '{"error": "health_check_failed", "status": '$HTTP_STATUS'}' > health_components.json
+            exit 1
+          fi
+          
+      - name: Get system metrics snapshot
+        id: metrics
+        run: |
+          echo "📊 Collecting system metrics snapshot..."
+          
+          METRICS_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            --max-time 15 \
+            "$PROD_URL/api/system/metrics")
+          
+          METRICS_HTTP_STATUS=$(echo $METRICS_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          METRICS_BODY=$(echo $METRICS_RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "Metrics HTTP Status: $METRICS_HTTP_STATUS"
+          
+          if [ "$METRICS_HTTP_STATUS" -eq 200 ]; then
+            echo "✅ System metrics collected"
+            echo "$METRICS_BODY" > metrics_snapshot.json
+            echo "snapshot=available" >> $GITHUB_OUTPUT
+            
+            # Extract key metrics for logs
+            QUEUE_DEPTH=$(echo "$METRICS_BODY" | jq '[.queue_depth_by_platform | to_entries[]] | map(.value) | add // 0')
+            POSTS_TODAY=$(echo "$METRICS_BODY" | jq '.posts_today // 0')
+            HEALTH_STATUS=$(echo "$METRICS_BODY" | jq -r '.health_status // "unknown"')
+            
+            echo "📈 Key Metrics:"
+            echo "  Total queue depth: $QUEUE_DEPTH"
+            echo "  Posts today: $POSTS_TODAY"
+            echo "  Health status: $HEALTH_STATUS"
+            
+          else
+            echo "⚠️ Could not collect metrics (status $METRICS_HTTP_STATUS)"
+            echo '{"error": "metrics_unavailable", "timestamp": "'$(date -Iseconds)'"}' > metrics_snapshot.json
+            echo "snapshot=failed" >> $GITHUB_OUTPUT
+          fi
+
+  refill-check:
+    runs-on: ubuntu-latest
+    name: Two-Day Refill Validation
+    needs: health-check
+    if: needs.health-check.outputs.health-status != 'failed' && inputs.skip_refill_check != true
+    timeout-minutes: 8
+    outputs:
+      refill-status: ${{ steps.refill.outputs.status }}
+      diversity-score: ${{ steps.refill.outputs.diversity_score }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'post-deploy-refill'
+          install-dependencies: 'false'
+          
+      - name: Test two-day forecast endpoint
+        id: refill
+        run: |
+          echo "🔮 Testing two-day forecast capability..."
+          
+          # Get today and tomorrow dates
+          TODAY=$(date -Iseconds | cut -d'T' -f1)
+          TOMORROW=$(date -d "+1 day" -Iseconds | cut -d'T' -f1)
+          
+          echo "Testing forecast for: $TODAY and $TOMORROW"
+          
+          # Test today's forecast
+          TODAY_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            --max-time 30 \
+            "$PROD_URL/api/admin/schedule/forecast?date=$TODAY")
+          
+          TODAY_HTTP_STATUS=$(echo $TODAY_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          TODAY_BODY=$(echo $TODAY_RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          # Test tomorrow's forecast
+          TOMORROW_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            --max-time 30 \
+            "$PROD_URL/api/admin/schedule/forecast?date=$TOMORROW")
+          
+          TOMORROW_HTTP_STATUS=$(echo $TOMORROW_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          TOMORROW_BODY=$(echo $TOMORROW_RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "Today forecast status: $TODAY_HTTP_STATUS"
+          echo "Tomorrow forecast status: $TOMORROW_HTTP_STATUS"
+          
+          # Validate both days have 6 slots
+          if [ "$TODAY_HTTP_STATUS" -eq 200 ] && [ "$TOMORROW_HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Forecast endpoints responding"
+            
+            # Count slots for today
+            TODAY_SLOTS=$(echo "$TODAY_BODY" | jq '.slots | length // 0')
+            TODAY_FILLED=$(echo "$TODAY_BODY" | jq '[.slots[] | select(.content_id != null)] | length // 0')
+            
+            # Count slots for tomorrow  
+            TOMORROW_SLOTS=$(echo "$TOMORROW_BODY" | jq '.slots | length // 0')
+            TOMORROW_FILLED=$(echo "$TOMORROW_BODY" | jq '[.slots[] | select(.content_id != null)] | length // 0')
+            
+            echo "📅 Today: $TODAY_FILLED/$TODAY_SLOTS slots filled"
+            echo "📅 Tomorrow: $TOMORROW_FILLED/$TOMORROW_SLOTS slots filled"
+            
+            # Check if we have 6/6 for both days
+            if [ "$TODAY_SLOTS" -eq 6 ] && [ "$TOMORROW_SLOTS" -eq 6 ]; then
+              echo "✅ Both days have 6 time slots configured"
+              
+              # Check fill status - warn if not fully filled but don't fail
+              TOTAL_FILLED=$((TODAY_FILLED + TOMORROW_FILLED))
+              if [ "$TOTAL_FILLED" -ge 10 ]; then
+                echo "✅ Good fill rate: $TOTAL_FILLED/12 slots filled"
+                echo "status=good" >> $GITHUB_OUTPUT
+              else
+                echo "⚠️ Low fill rate: $TOTAL_FILLED/12 slots filled"
+                echo "status=warning" >> $GITHUB_OUTPUT
+              fi
+              
+              # Extract diversity information for analysis
+              TODAY_DIVERSITY=$(echo "$TODAY_BODY" | jq '.summary.diversity_score // 0')
+              TOMORROW_DIVERSITY=$(echo "$TOMORROW_BODY" | jq '.summary.diversity_score // 0')
+              AVG_DIVERSITY=$(echo "($TODAY_DIVERSITY + $TOMORROW_DIVERSITY) / 2" | bc -l)
+              
+              echo "🎯 Diversity scores: Today=$TODAY_DIVERSITY, Tomorrow=$TOMORROW_DIVERSITY, Avg=$AVG_DIVERSITY"
+              echo "diversity_score=$AVG_DIVERSITY" >> $GITHUB_OUTPUT
+              
+              # Save forecast data for artifact
+              echo "$TODAY_BODY" > today_forecast.json
+              echo "$TOMORROW_BODY" > tomorrow_forecast.json
+              
+            else
+              echo "❌ Incorrect slot configuration (expected 6/6)"
+              echo "status=failed" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+            
+          else
+            echo "❌ Forecast endpoints failed"
+            echo "Today status: $TODAY_HTTP_STATUS"
+            echo "Tomorrow status: $TOMORROW_HTTP_STATUS"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+      - name: Diversity policy evaluation (warn-only)
+        run: |
+          echo "🌈 Evaluating diversity policy..."
+          
+          DIVERSITY_SCORE="${{ steps.refill.outputs.diversity_score }}"
+          
+          if [ -n "$DIVERSITY_SCORE" ]; then
+            # Convert to integer percentage for comparison
+            DIVERSITY_PCT=$(echo "$DIVERSITY_SCORE * 100" | bc -l | cut -d'.' -f1)
+            
+            echo "Diversity score: $DIVERSITY_SCORE ($DIVERSITY_PCT%)"
+            
+            if [ "$DIVERSITY_PCT" -ge 80 ]; then
+              echo "✅ Excellent diversity ($DIVERSITY_PCT% >= 80%)"
+            elif [ "$DIVERSITY_PCT" -ge 60 ]; then
+              echo "🟡 Good diversity ($DIVERSITY_PCT% >= 60%)"
+            elif [ "$DIVERSITY_PCT" -ge 40 ]; then
+              echo "🟠 Moderate diversity ($DIVERSITY_PCT% >= 40%)"
+            else
+              echo "🔴 Low diversity ($DIVERSITY_PCT% < 40%)"
+              echo "⚠️ Consider running content scans to improve platform diversity"
+            fi
+            
+            # This is warn-only, so don't fail the deployment
+            echo "📋 Diversity policy result: INFORMATIONAL (warn-only)"
+          else
+            echo "⚠️ Could not calculate diversity score"
+          fi
+
+  upload-artifacts:
+    runs-on: ubuntu-latest
+    name: Upload Metrics & Artifacts
+    needs: [health-check, refill-check]
+    if: always()
+    
+    steps:
+      - name: Download artifacts from previous jobs
+        run: |
+          echo "📦 Collecting deployment artifacts..."
+          mkdir -p deployment_artifacts
+          
+          # Create summary artifact
+          cat > deployment_artifacts/deployment_summary.json << EOF
+          {
+            "timestamp": "$(date -Iseconds)",
+            "deployment_sha": "${{ github.sha }}",
+            "workflow_run": "${{ github.run_id }}",
+            "health_status": "${{ needs.health-check.outputs.health-status }}",
+            "refill_status": "${{ needs.refill-check.outputs.refill-status }}",
+            "diversity_score": "${{ needs.refill-check.outputs.diversity_score }}",
+            "environment": "production",
+            "success": ${{ needs.health-check.outputs.health-status != 'failed' && needs.refill-check.outputs.refill-status != 'failed' }}
+          }
+          EOF
+          
+      - name: Collect current metrics snapshot
+        run: |
+          echo "📊 Collecting final metrics snapshot..."
+          
+          FINAL_METRICS=$(curl -s --max-time 15 "$PROD_URL/api/system/metrics" || echo '{"error": "collection_failed"}')
+          echo "$FINAL_METRICS" > deployment_artifacts/final_metrics_snapshot.json
+          
+          # Extract summary for logs
+          if echo "$FINAL_METRICS" | jq -e '.timestamp' > /dev/null 2>&1; then
+            HEALTH_STATUS=$(echo "$FINAL_METRICS" | jq -r '.health_status // "unknown"')
+            TOTAL_QUEUE=$(echo "$FINAL_METRICS" | jq '[.queue_depth_by_platform | to_entries[]] | map(.value) | add // 0')
+            POSTS_TODAY=$(echo "$FINAL_METRICS" | jq '.posts_today // 0')
+            
+            echo "📈 Final Metrics Summary:"
+            echo "  Health: $HEALTH_STATUS"
+            echo "  Queue Depth: $TOTAL_QUEUE"
+            echo "  Posts Today: $POSTS_TODAY"
+          else
+            echo "⚠️ Could not collect final metrics"
+          fi
+          
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-deploy-check-${{ github.sha }}
+          path: deployment_artifacts/
+          retention-days: 30
+          
+      - name: Generate deployment report
+        run: |
+          echo "📋 Post-Deploy Check Report"
+          echo "=========================="
+          echo "Deployment: ${{ github.sha }}"
+          echo "Timestamp: $(date -Iseconds)"
+          echo "Workflow: ${{ github.run_id }}"
+          echo ""
+          echo "Results:"
+          echo "  Health Check: ${{ needs.health-check.outputs.health-status }}"
+          echo "  Refill Check: ${{ needs.refill-check.outputs.refill-status }}"
+          echo "  Diversity Score: ${{ needs.refill-check.outputs.diversity_score }}"
+          echo ""
+          
+          OVERALL_SUCCESS="${{ needs.health-check.outputs.health-status != 'failed' && needs.refill-check.outputs.refill-status != 'failed' }}"
+          
+          if [ "$OVERALL_SUCCESS" = "true" ]; then
+            echo "✅ DEPLOYMENT VALIDATION PASSED"
+            echo "All post-deploy checks completed successfully"
+          else
+            echo "❌ DEPLOYMENT VALIDATION FAILED"
+            echo "One or more critical checks failed"
+            exit 1
+          fi
+
+  notification:
+    runs-on: ubuntu-latest
+    name: Post-Deploy Notification
+    needs: [health-check, refill-check, upload-artifacts]
+    if: always()
+    
+    steps:
+      - name: Create success notification
+        if: needs.health-check.outputs.health-status != 'failed' && needs.refill-check.outputs.refill-status != 'failed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `✅ Post-Deploy Check Passed - ${new Date().toISOString().split('T')[0]}`
+            const body = `## Post-Deploy Validation Success
+            
+            **Deployment**: \`${{ github.sha }}\`  
+            **Timestamp**: ${new Date().toISOString()}  
+            **Workflow**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ### ✅ Validation Results
+            
+            - **Health Check**: ${{ needs.health-check.outputs.health-status }}
+            - **Refill Check**: ${{ needs.refill-check.outputs.refill-status }}
+            - **Diversity Score**: ${{ needs.refill-check.outputs.diversity_score }}
+            
+            ### 📊 System Status
+            
+            All deployment validation checks have passed successfully. The system is operating normally with:
+            
+            - Deep health endpoint responding correctly
+            - Two-day forecast showing adequate content pipeline
+            - Platform diversity within acceptable parameters
+            
+            **Artifacts**: Metrics snapshot and deployment data uploaded as workflow artifacts.
+            
+            ---
+            *This notification was generated automatically by the post-deploy check workflow.*
+            `
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'success', 'automated', 'post-deploy']
+            })
+            
+      - name: Create failure notification  
+        if: needs.health-check.outputs.health-status == 'failed' || needs.refill-check.outputs.refill-status == 'failed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Post-Deploy Check Failed - ${new Date().toISOString().split('T')[0]}`
+            const body = `## Post-Deploy Validation Failure
+            
+            **Deployment**: \`${{ github.sha }}\`  
+            **Timestamp**: ${new Date().toISOString()}  
+            **Workflow**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ### ❌ Validation Results
+            
+            - **Health Check**: ${{ needs.health-check.outputs.health-status }}
+            - **Refill Check**: ${{ needs.refill-check.outputs.refill-status }}
+            
+            ### 🚨 Immediate Actions Required
+            
+            1. **Check workflow logs** for specific failure details
+            2. **Verify system health** manually via admin panel
+            3. **Test critical endpoints** to isolate issues:
+               - Health: ${{ env.PROD_URL }}/api/admin/health/deep
+               - Metrics: ${{ env.PROD_URL }}/api/system/metrics
+               - Forecast: ${{ env.PROD_URL }}/api/admin/schedule/forecast
+            4. **Consider rollback** if critical functionality is impacted
+            
+            ### 🔍 Investigation
+            
+            Check the workflow artifacts for detailed metrics and diagnostic data.
+            
+            ### 📞 Escalation
+            
+            If the issue persists or affects user-facing functionality, escalate immediately.
+            
+            /cc @devops-team @on-call
+            
+            ---
+            *This alert was generated automatically by the post-deploy check workflow.*
+            `
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'failure', 'urgent', 'automated', 'post-deploy']
+            })

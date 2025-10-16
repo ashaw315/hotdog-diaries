@@ -1,0 +1,80 @@
+name: 'Cache PNPM Dependencies'
+description: 'Advanced caching for PNPM with fallback strategies'
+inputs:
+  cache-key-prefix:
+    description: 'Cache key prefix'
+    required: false
+    default: 'pnpm'
+  working-directory:
+    description: 'Working directory'
+    required: false
+    default: '.'
+  cache-strategy:
+    description: 'Cache strategy: aggressive, conservative, or disabled'
+    required: false
+    default: 'aggressive'
+outputs:
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+  cache-key:
+    description: 'Cache key used'
+    value: ${{ steps.cache.outputs.cache-primary-key }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Get PNPM store directory
+      id: pnpm-cache
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if command -v pnpm >/dev/null 2>&1; then
+          echo "store-path=$(pnpm store path)" >> $GITHUB_OUTPUT
+          echo "lock-hash=$(sha256sum pnpm-lock.yaml | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+        else
+          echo "store-path=~/.pnpm-store" >> $GITHUB_OUTPUT
+          echo "lock-hash=no-lockfile" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Cache PNPM dependencies
+      id: cache
+      if: inputs.cache-strategy != 'disabled'
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ steps.pnpm-cache.outputs.store-path }}
+          ${{ inputs.working-directory }}/node_modules
+          ~/.pnpm
+        key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ steps.pnpm-cache.outputs.lock-hash }}
+        restore-keys: |
+          ${{ inputs.cache-key-prefix }}-${{ runner.os }}-
+          ${{ inputs.cache-key-prefix }}-
+          
+    - name: Conservative cache fallback
+      id: conservative-cache
+      if: inputs.cache-strategy == 'conservative' && steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.pnpm-cache.outputs.store-path }}
+        key: ${{ inputs.cache-key-prefix }}-store-${{ runner.os }}-${{ github.sha }}
+        restore-keys: |
+          ${{ inputs.cache-key-prefix }}-store-${{ runner.os }}-
+          
+    - name: Setup PNPM
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        if ! command -v pnpm >/dev/null 2>&1; then
+          echo "📦 Installing PNPM..."
+          npm install -g pnpm@latest
+        fi
+        echo "✅ PNPM $(pnpm --version)"
+        
+    - name: Verify cache status
+      shell: bash
+      run: |
+        if [[ "${{ steps.cache.outputs.cache-hit }}" == "true" ]]; then
+          echo "🎯 Cache hit! Using cached dependencies"
+        else
+          echo "💾 Cache miss - dependencies will be installed"
+        fi

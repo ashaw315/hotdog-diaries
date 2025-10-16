@@ -1,0 +1,106 @@
+name,triggers,jobs,estimated_duration_min,category
+=== auto-approve.yml ===
+auto-approve.yml,  schedule:;  workflow_dispatch:,3
+,3,ops
+=== auto-queue-manager.yml ===
+auto-queue-manager.yml,  schedule:;  workflow_dispatch:,4
+,3,ops
+=== ci-new.yml ===
+ci-new.yml,  push:,2
+,5,ci
+=== ci-test.yml ===
+ci-test.yml,  push:,2
+,5,ci
+=== ci.yml ===
+ci.yml,  push:;  pull_request:,6
+,15,ci
+=== cleanup-duplicates.yml ===
+cleanup-duplicates.yml,  schedule:;  workflow_dispatch:,4
+,3,ops
+=== daily-ingestion-report.yml ===
+daily-ingestion-report.yml,  schedule:;  workflow_dispatch:,3
+,5,ops
+=== daily-report.yml ===
+daily-report.yml,  schedule:;  workflow_dispatch:,3
+,3,ops
+=== deploy-gate.yml ===
+deploy-gate.yml,  push:,6
+,3,ops
+=== e2e.yml ===
+e2e.yml,  push:;  pull_request:;  workflow_dispatch:,6
+,15,testing
+=== manual-operations.yml ===
+manual-operations.yml,  workflow_dispatch:,2
+,3,ops
+=== meta-ci-audit.yml ===
+meta-ci-audit.yml,  schedule:;  workflow_dispatch:,3
+,5,ci
+=== phase3-auto-healing.yml ===
+phase3-auto-healing.yml,,4
+,8,ops
+=== post-breakfast.yml ===
+post-breakfast.yml,  schedule:;  workflow_dispatch:,4
+,3,posting
+=== post-deploy-check.yml ===
+post-deploy-check.yml,  push:,8
+,3,posting
+=== post-dinner.yml ===
+post-dinner.yml,  schedule:;  workflow_dispatch:,3
+,3,posting
+=== post-evening.yml ===
+post-evening.yml,  schedule:;  workflow_dispatch:,3
+,3,posting
+=== post-late-night.yml ===
+post-late-night.yml,  schedule:;  workflow_dispatch:,3
+,3,posting
+=== post-lunch.yml ===
+post-lunch.yml,  schedule:;  workflow_dispatch:,3
+,3,posting
+=== post-remediation-check.yml ===
+post-remediation-check.yml,  workflow_dispatch:,3
+,8,posting
+=== post-snack.yml ===
+post-snack.yml,  schedule:;  workflow_dispatch:,3
+,3,posting
+=== queue-monitor-hook.yml ===
+queue-monitor-hook.yml,,2
+,3,ops
+=== queue-monitor.yml ===
+queue-monitor.yml,  schedule:;  workflow_dispatch:,4
+,3,ops
+=== scan-bluesky.yml ===
+scan-bluesky.yml,  schedule:;  workflow_dispatch:,3
+,3,scanner
+=== scan-giphy.yml ===
+scan-giphy.yml,  schedule:;  workflow_dispatch:,3
+,3,scanner
+=== scan-imgur.yml ===
+scan-imgur.yml,  schedule:;  workflow_dispatch:,3
+,3,scanner
+=== scan-lemmy.yml ===
+scan-lemmy.yml,  schedule:;  workflow_dispatch:,3
+,3,scanner
+=== scan-niche-platforms.yml ===
+scan-niche-platforms.yml,  schedule:;  workflow_dispatch:,4
+,3,scanner
+=== scan-pixabay.yml ===
+scan-pixabay.yml,  schedule:;  workflow_dispatch:,3
+,3,scanner
+=== scan-reddit.yml ===
+scan-reddit.yml,  schedule:;  workflow_dispatch:,3
+,3,scanner
+=== scan-social-platforms.yml ===
+scan-social-platforms.yml,  schedule:;  workflow_dispatch:,6
+,3,scanner
+=== scan-tumblr.yml ===
+scan-tumblr.yml,  schedule:;  workflow_dispatch:,3
+,3,scanner
+=== scan-youtube.yml ===
+scan-youtube.yml,  schedule:;  workflow_dispatch:,3
+,3,scanner
+=== secret-validation.yml ===
+secret-validation.yml,  push:;  pull_request:;  schedule:,6
+,8,ops
+=== token-refresh.yml ===
+token-refresh.yml,,2
+,3,ops

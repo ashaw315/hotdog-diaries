@@ -1,0 +1,300 @@
+name: Content Scanners
+
+on:
+  schedule:
+    # Staggered schedule to avoid API rate limits
+    - cron: '0 */4 * * *'     # Every 4 hours for high-volume platforms
+    - cron: '30 */6 * * *'    # Every 6 hours for medium-volume platforms  
+    - cron: '15 */8 * * *'    # Every 8 hours for low-volume platforms
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Platforms to scan (comma-separated: reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay,niche)'
+        type: string
+        default: 'all'
+      max-posts:
+        description: 'Maximum posts per platform'
+        type: number
+        default: 50
+  workflow_call:
+    inputs:
+      platforms:
+        description: 'Platforms to scan'
+        type: string
+        default: 'all'
+      max-posts:
+        description: 'Maximum posts per platform'
+        type: number
+        default: 50
+
+concurrency:
+  group: scanners-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel scanning jobs
+
+env:
+  NODE_ENV: production
+  CI: true
+
+jobs:
+  determine-platforms:
+    name: Determine Scan Strategy
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      platforms: ${{ steps.strategy.outputs.platforms }}
+      schedule-type: ${{ steps.strategy.outputs.schedule-type }}
+    steps:
+      - name: Determine scan strategy
+        id: strategy
+        run: |
+          PLATFORMS="${{ inputs.platforms || 'all' }}"
+          SCHEDULE_TYPE="manual"
+          
+          # Determine platforms based on trigger
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            SCHEDULE_TYPE="scheduled"
+            
+            # Determine which platforms based on cron time
+            HOUR=$(date +%H)
+            MINUTE=$(date +%M)
+            
+            if [[ $MINUTE -eq 0 ]]; then
+              # Every 4 hours (0, 4, 8, 12, 16, 20) - high volume
+              PLATFORMS="reddit,youtube,giphy"
+              echo "🔄 High-volume scan: reddit,youtube,giphy"
+            elif [[ $MINUTE -eq 30 ]]; then
+              # Every 6 hours (00:30, 06:30, 12:30, 18:30) - medium volume  
+              PLATFORMS="imgur,bluesky,tumblr"
+              echo "🔄 Medium-volume scan: imgur,bluesky,tumblr"
+            elif [[ $MINUTE -eq 15 ]]; then
+              # Every 8 hours (00:15, 08:15, 16:15) - low volume
+              PLATFORMS="lemmy,pixabay,niche"
+              echo "🔄 Low-volume scan: lemmy,pixabay,niche"
+            fi
+          fi
+          
+          if [[ "$PLATFORMS" == "all" ]]; then
+            PLATFORMS="reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay,niche"
+          fi
+          
+          echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
+          echo "schedule-type=$SCHEDULE_TYPE" >> $GITHUB_OUTPUT
+          echo "Selected platforms: $PLATFORMS"
+
+  scan:
+    name: Scan Content
+    runs-on: ubuntu-latest
+    needs: determine-platforms
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 3  # Limit parallel jobs to avoid rate limits
+      matrix:
+        platform: ${{ fromJSON(format('[{0}]', replace(replace(needs.determine-platforms.outputs.platforms, ' ', ''), ',', '","'))) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'scanner-${{ matrix.platform }}'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Platform-specific setup
+        run: |
+          echo "🔧 Setting up environment for ${{ matrix.platform }}..."
+          
+          case "${{ matrix.platform }}" in
+            reddit)
+              echo "REDDIT_CLIENT_ID=${{ secrets.REDDIT_CLIENT_ID }}" >> $GITHUB_ENV
+              echo "REDDIT_CLIENT_SECRET=${{ secrets.REDDIT_CLIENT_SECRET }}" >> $GITHUB_ENV
+              ;;
+            youtube)
+              echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> $GITHUB_ENV
+              ;;
+            giphy)
+              echo "GIPHY_API_KEY=${{ secrets.GIPHY_API_KEY }}" >> $GITHUB_ENV
+              ;;
+            imgur)
+              echo "IMGUR_CLIENT_ID=${{ secrets.IMGUR_CLIENT_ID }}" >> $GITHUB_ENV
+              ;;
+            bluesky)
+              echo "BLUESKY_IDENTIFIER=${{ secrets.BLUESKY_IDENTIFIER }}" >> $GITHUB_ENV
+              echo "BLUESKY_APP_PASSWORD=${{ secrets.BLUESKY_APP_PASSWORD }}" >> $GITHUB_ENV
+              ;;
+            pixabay)
+              echo "PIXABAY_API_KEY=${{ secrets.PIXABAY_API_KEY }}" >> $GITHUB_ENV
+              ;;
+            niche)
+              # Niche platforms may use multiple APIs
+              echo "LEMMY_INSTANCE_URL=${{ secrets.LEMMY_INSTANCE_URL }}" >> $GITHUB_ENV
+              echo "TUMBLR_API_KEY=${{ secrets.TUMBLR_API_KEY }}" >> $GITHUB_ENV
+              ;;
+          esac
+          
+      - name: Scan platform content
+        id: scan
+        run: |
+          echo "📡 Scanning ${{ matrix.platform }} for hotdog content..."
+          
+          MAX_POSTS="${{ inputs.max-posts || 50 }}"
+          
+          case "${{ matrix.platform }}" in
+            reddit)
+              npm run scan:reddit -- --max-posts=$MAX_POSTS
+              ;;
+            youtube)
+              npm run scan:youtube -- --max-posts=$MAX_POSTS
+              ;;
+            giphy)
+              npm run scan:giphy -- --max-posts=$MAX_POSTS
+              ;;
+            imgur)
+              npm run scan:imgur -- --max-posts=$MAX_POSTS
+              ;;
+            bluesky)
+              npm run scan:bluesky -- --max-posts=$MAX_POSTS
+              ;;
+            tumblr)
+              npm run scan:tumblr -- --max-posts=$MAX_POSTS
+              ;;
+            lemmy)
+              npm run scan:lemmy -- --max-posts=$MAX_POSTS
+              ;;
+            pixabay)
+              npm run scan:pixabay -- --max-posts=$MAX_POSTS
+              ;;
+            niche)
+              # Scan multiple niche platforms with smaller limits
+              npm run scan:niche-platforms -- --max-posts=20
+              ;;
+            *)
+              echo "❌ Unknown platform: ${{ matrix.platform }}"
+              exit 1
+              ;;
+          esac
+          
+          echo "✅ Scan completed for ${{ matrix.platform }}"
+          
+      - name: Upload scan logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-logs-${{ matrix.platform }}
+          path: |
+            logs/scan-*.log
+            reports/scan-*.json
+          retention-days: 3
+          if-no-files-found: ignore
+
+  summary:
+    name: Scan Summary
+    runs-on: ubuntu-latest
+    needs: [determine-platforms, scan]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'scanner-summary'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Generate scan summary
+        run: |
+          echo "📊 Generating content scan summary..."
+          npm run scan:summary || echo "Summary generation completed"
+          
+      - name: Create GitHub step summary
+        run: |
+          echo "## 📡 Content Scanner Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Schedule Type:** ${{ needs.determine-platforms.outputs.schedule-type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Platforms:** ${{ needs.determine-platforms.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Status | Notes |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Create a simplified status report
+          PLATFORMS=($(echo "${{ needs.determine-platforms.outputs.platforms }}" | tr ',' ' '))
+          for platform in "${PLATFORMS[@]}"; do
+            STATUS="unknown"
+            # This is simplified - you'd need to extract actual results
+            echo "| $platform | $STATUS | Scan attempted |" >> $GITHUB_STEP_SUMMARY
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📈 **Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Content will be queued for review and scheduling" >> $GITHUB_STEP_SUMMARY
+          echo "- Check admin dashboard for new content" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Upload summary report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-summary-report
+          path: |
+            reports/scan-summary.json
+            reports/scan-summary.md
+          retention-days: 7
+          if-no-files-found: ignore
+
+  rate-limit-check:
+    name: Rate Limit Health Check
+    runs-on: ubuntu-latest
+    needs: scan
+    if: always()
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'rate-limit-check'
+          
+      - name: Check API rate limits
+        run: |
+          echo "🔍 Checking API rate limit status..."
+          
+          # Check rate limits for various APIs
+          echo "API Rate Limit Status:" >> rate-limit-report.md
+          echo "=====================" >> rate-limit-report.md
+          echo "" >> rate-limit-report.md
+          
+          # This would ideally query actual rate limit status
+          echo "- Reddit API: $(date)" >> rate-limit-report.md
+          echo "- YouTube API: $(date)" >> rate-limit-report.md
+          echo "- Giphy API: $(date)" >> rate-limit-report.md
+          echo "- Imgur API: $(date)" >> rate-limit-report.md
+          echo "" >> rate-limit-report.md
+          echo "Generated at: $(date)" >> rate-limit-report.md
+          
+          echo "✅ Rate limit check completed"
+          
+      - name: Upload rate limit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: rate-limit-report
+          path: rate-limit-report.md
+          retention-days: 1

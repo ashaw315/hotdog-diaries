@@ -1,0 +1,65 @@
+name: 'Setup Node.js with Cache'
+description: 'Setup Node.js with optimized dependency caching'
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '18'
+  cache-key-suffix:
+    description: 'Additional cache key suffix'
+    required: false
+    default: ''
+  install-dependencies:
+    description: 'Whether to install dependencies'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Working directory for npm operations'
+    required: false
+    default: '.'
+outputs:
+  node-version:
+    description: 'Node.js version that was installed'
+    value: ${{ steps.setup.outputs.node-version }}
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      id: setup
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+        
+    - name: Cache node_modules
+      id: cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ inputs.working-directory }}/node_modules
+          ~/.npm
+        key: npm-${{ runner.os }}-${{ hashFiles(format('{0}/package-lock.json', inputs.working-directory)) }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          npm-${{ runner.os }}-${{ hashFiles(format('{0}/package-lock.json', inputs.working-directory)) }}-
+          npm-${{ runner.os }}-
+          
+    - name: Install dependencies
+      if: inputs.install-dependencies == 'true' && steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "📦 Installing dependencies..."
+        npm ci --prefer-offline --no-audit --no-fund
+        
+    - name: Verify installation
+      if: inputs.install-dependencies == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "✅ Node.js $(node --version)"
+        echo "✅ npm $(npm --version)"
+        echo "✅ Dependencies: $(ls node_modules | wc -l) packages"

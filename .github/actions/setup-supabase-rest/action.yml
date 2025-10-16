@@ -1,0 +1,99 @@
+name: 'Setup Supabase REST Environment'
+description: 'Configure Supabase connection and environment variables for API testing'
+inputs:
+  supabase-url:
+    description: 'Supabase project URL'
+    required: true
+  supabase-service-key:
+    description: 'Supabase service role key'
+    required: true
+  database-url:
+    description: 'Direct database connection URL'
+    required: false
+  node-env:
+    description: 'Node environment'
+    required: false
+    default: 'production'
+  verify-connection:
+    description: 'Whether to verify the connection'
+    required: false
+    default: 'true'
+outputs:
+  connection-status:
+    description: 'Connection verification status'
+    value: ${{ steps.verify.outputs.status }}
+  tables-available:
+    description: 'Number of accessible tables'
+    value: ${{ steps.verify.outputs.tables }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure environment variables
+      shell: bash
+      run: |
+        echo "🔧 Configuring Supabase environment..."
+        echo "SUPABASE_URL=${{ inputs.supabase-url }}" >> $GITHUB_ENV
+        echo "SUPABASE_SERVICE_ROLE_KEY=${{ inputs.supabase-service-key }}" >> $GITHUB_ENV
+        echo "NODE_ENV=${{ inputs.node-env }}" >> $GITHUB_ENV
+        
+        # Set database URL if provided
+        if [[ -n "${{ inputs.database-url }}" ]]; then
+          echo "DATABASE_URL=${{ inputs.database-url }}" >> $GITHUB_ENV
+        fi
+        
+        # Configure for production-like environment
+        echo "POSTGRES_URL=${{ inputs.database-url }}" >> $GITHUB_ENV
+        echo "VERCEL_ENV=production" >> $GITHUB_ENV
+        
+    - name: Verify Supabase connection
+      id: verify
+      if: inputs.verify-connection == 'true'
+      shell: bash
+      run: |
+        echo "🔍 Verifying Supabase connection..."
+        
+        # Test REST API connection
+        RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+          -H "apikey: ${{ inputs.supabase-service-key }}" \
+          -H "Authorization: Bearer ${{ inputs.supabase-service-key }}" \
+          "${{ inputs.supabase-url }}/rest/v1/" \
+          --max-time 10)
+        
+        HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+        
+        if [ "$HTTP_STATUS" -eq 200 ]; then
+          echo "✅ Supabase REST API connection successful"
+          echo "status=connected" >> $GITHUB_OUTPUT
+          
+          # Try to get table count
+          TABLES_RESPONSE=$(curl -s \
+            -H "apikey: ${{ inputs.supabase-service-key }}" \
+            -H "Authorization: Bearer ${{ inputs.supabase-service-key }}" \
+            "${{ inputs.supabase-url }}/rest/v1/?select=*" \
+            --max-time 5 || echo "[]")
+          
+          # Count accessible tables (rough estimate)
+          TABLE_COUNT=$(echo "$TABLES_RESPONSE" | grep -o '"' | wc -l | awk '{print int($1/2)}')
+          echo "📊 Estimated accessible tables: $TABLE_COUNT"
+          echo "tables=$TABLE_COUNT" >> $GITHUB_OUTPUT
+          
+        else
+          echo "❌ Supabase connection failed (HTTP $HTTP_STATUS)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          echo "tables=0" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+    - name: Configure database-specific settings
+      shell: bash
+      run: |
+        echo "⚙️ Configuring database settings..."
+        
+        # Production database configuration
+        echo "USE_POSTGRES_IN_DEV=true" >> $GITHUB_ENV
+        echo "CI=true" >> $GITHUB_ENV
+        
+        # Disable SQLite fallback in production environment
+        echo "DATABASE_URL_SQLITE=" >> $GITHUB_ENV
+        
+        echo "✅ Supabase environment configured"

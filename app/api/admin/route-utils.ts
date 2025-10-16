@@ -163,6 +163,27 @@ export function mockAdminDataIfCI(endpoint: string) {
         timestamp: new Date().toISOString()
       }
       
+    case 'system-metrics':
+      return {
+        timestamp: new Date().toISOString(),
+        uptime_seconds: 86400,
+        queue_depth_by_platform: {
+          reddit: 12,
+          youtube: 8,
+          imgur: 6,
+          giphy: 4,
+          pixabay: 3,
+          bluesky: 2
+        },
+        posts_today: 4,
+        scans_last_24h: 15,
+        refill_count: 12,
+        errors_last_1h: 0,
+        health_status: 'healthy',
+        version: '1.0.0',
+        environment: 'test'
+      }
+      
     default:
       return {
         success: true,

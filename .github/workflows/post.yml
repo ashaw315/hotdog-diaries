@@ -1,0 +1,370 @@
+name: Content Posting
+
+on:
+  schedule:
+    # 6 times daily - standard posting schedule
+    - cron: '0 13 * * *'    # 8:00 AM ET (breakfast)
+    - cron: '0 17 * * *'    # 12:00 PM ET (lunch)  
+    - cron: '0 20 * * *'    # 3:00 PM ET (snack)
+    - cron: '0 23 * * *'    # 6:00 PM ET (dinner)
+    - cron: '0 2 * * *'     # 9:00 PM ET (evening)
+    - cron: '30 4 * * *'    # 11:30 PM ET (late night)
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'Time slot to post (breakfast, lunch, snack, dinner, evening, late-night, or manual)'
+        type: choice
+        options:
+          - manual
+          - breakfast
+          - lunch
+          - snack
+          - dinner
+          - evening
+          - late-night
+        default: manual
+      dry-run:
+        description: 'Dry run mode (preview only)'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      slot:
+        description: 'Time slot to post'
+        type: string
+        default: manual
+      dry-run:
+        description: 'Dry run mode'
+        type: boolean
+        default: false
+
+concurrency:
+  group: posting-${{ github.ref }}-${{ inputs.slot || 'scheduled' }}
+  cancel-in-progress: false  # Don't cancel posting operations
+
+env:
+  NODE_ENV: production
+  CI: true
+
+jobs:
+  determine-slot:
+    name: Determine Posting Slot
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      slot: ${{ steps.strategy.outputs.slot }}
+      slot-index: ${{ steps.strategy.outputs.slot-index }}
+      dry-run: ${{ steps.strategy.outputs.dry-run }}
+      auth-token: ${{ steps.strategy.outputs.auth-token }}
+    steps:
+      - name: Determine posting strategy
+        id: strategy
+        run: |
+          SLOT="${{ inputs.slot || 'manual' }}"
+          DRY_RUN="${{ inputs.dry-run || 'false' }}"
+          SLOT_INDEX="0"
+          
+          # Determine slot based on schedule
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            HOUR=$(date +%H)
+            MINUTE=$(date +%M)
+            
+            if [[ $HOUR -eq 13 && $MINUTE -eq 0 ]]; then
+              SLOT="breakfast"
+              SLOT_INDEX="0"
+              echo "🌅 Breakfast posting slot (8:00 AM ET)"
+            elif [[ $HOUR -eq 17 && $MINUTE -eq 0 ]]; then
+              SLOT="lunch"
+              SLOT_INDEX="1"
+              echo "🍽️ Lunch posting slot (12:00 PM ET)"
+            elif [[ $HOUR -eq 20 && $MINUTE -eq 0 ]]; then
+              SLOT="snack"
+              SLOT_INDEX="2"
+              echo "🍿 Snack posting slot (3:00 PM ET)"
+            elif [[ $HOUR -eq 23 && $MINUTE -eq 0 ]]; then
+              SLOT="dinner"
+              SLOT_INDEX="3"
+              echo "🍽️ Dinner posting slot (6:00 PM ET)"
+            elif [[ $HOUR -eq 2 && $MINUTE -eq 0 ]]; then
+              SLOT="evening"
+              SLOT_INDEX="4"
+              echo "🌆 Evening posting slot (9:00 PM ET)"
+            elif [[ $HOUR -eq 4 && $MINUTE -eq 30 ]]; then
+              SLOT="late-night"
+              SLOT_INDEX="5"
+              echo "🌙 Late night posting slot (11:30 PM ET)"
+            fi
+          else
+            # Map manual slots to indices
+            case "$SLOT" in
+              breakfast) SLOT_INDEX="0" ;;
+              lunch) SLOT_INDEX="1" ;;
+              snack) SLOT_INDEX="2" ;;
+              dinner) SLOT_INDEX="3" ;;
+              evening) SLOT_INDEX="4" ;;
+              late-night) SLOT_INDEX="5" ;;
+              manual) SLOT_INDEX="6" ;;
+            esac
+          fi
+          
+          echo "slot=$SLOT" >> $GITHUB_OUTPUT
+          echo "slot-index=$SLOT_INDEX" >> $GITHUB_OUTPUT
+          echo "dry-run=$DRY_RUN" >> $GITHUB_OUTPUT
+          echo "auth-token=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_OUTPUT
+          echo "Selected slot: $SLOT (index: $SLOT_INDEX), dry-run: $DRY_RUN"
+
+  pre-post-check:
+    name: Pre-Post Validation
+    runs-on: ubuntu-latest
+    needs: determine-slot
+    timeout-minutes: 5
+    outputs:
+      can-post: ${{ steps.validation.outputs.can-post }}
+      content-available: ${{ steps.validation.outputs.content-available }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'post-validation'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Validate posting conditions
+        id: validation
+        run: |
+          echo "🔍 Validating posting conditions for slot: ${{ needs.determine-slot.outputs.slot }}..."
+          
+          AUTH_TOKEN="${{ needs.determine-slot.outputs.auth-token }}"
+          SLOT_INDEX="${{ needs.determine-slot.outputs.slot-index }}"
+          TODAY=$(date +%Y-%m-%d)
+          
+          # Check if content is available for this slot
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/forecast?date=$TODAY" \
+            --max-time 30)
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+          
+          CAN_POST="false"
+          CONTENT_AVAILABLE="false"
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Schedule API accessible"
+            CONTENT_AVAILABLE="true"
+            
+            # Check if this slot hasn't been posted yet today
+            # This is a simplified check - you'd parse the JSON response
+            if [[ "$BODY" == *"upcoming"* ]]; then
+              CAN_POST="true"
+              echo "✅ Content ready for posting"
+            else
+              echo "⚠️ Content may already be posted for this slot"
+            fi
+          else
+            echo "❌ Schedule API not accessible (status: $HTTP_STATUS)"
+          fi
+          
+          # Dry run mode always allows posting for testing
+          if [[ "${{ needs.determine-slot.outputs.dry-run }}" == "true" ]]; then
+            CAN_POST="true"
+            echo "🧪 Dry run mode - posting validation bypassed"
+          fi
+          
+          echo "can-post=$CAN_POST" >> $GITHUB_OUTPUT
+          echo "content-available=$CONTENT_AVAILABLE" >> $GITHUB_OUTPUT
+          echo "Validation result: can-post=$CAN_POST, content-available=$CONTENT_AVAILABLE"
+
+  post-content:
+    name: Post Content
+    runs-on: ubuntu-latest
+    needs: [determine-slot, pre-post-check]
+    if: needs.pre-post-check.outputs.can-post == 'true'
+    timeout-minutes: 10
+    outputs:
+      post-status: ${{ steps.post.outputs.post-status }}
+      post-id: ${{ steps.post.outputs.post-id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'post-content'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Execute content posting
+        id: post
+        run: |
+          echo "📤 Posting content for slot: ${{ needs.determine-slot.outputs.slot }}..."
+          
+          AUTH_TOKEN="${{ needs.determine-slot.outputs.auth-token }}"
+          SLOT="${{ needs.determine-slot.outputs.slot }}"
+          SLOT_INDEX="${{ needs.determine-slot.outputs.slot-index }}"
+          DRY_RUN="${{ needs.determine-slot.outputs.dry-run }}"
+          
+          # Prepare the posting request
+          JSON_PAYLOAD=$(cat <<EOF
+          {
+            "slot": "$SLOT",
+            "slotIndex": $SLOT_INDEX,
+            "dryRun": $DRY_RUN
+          }
+          EOF
+          )
+          
+          # Execute the post
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$JSON_PAYLOAD" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/post" \
+            --max-time 300)
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+          
+          echo "post-status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "✅ Dry run completed successfully"
+              echo "post-id=dry-run-$(date +%s)" >> $GITHUB_OUTPUT
+            else
+              echo "✅ Content posted successfully"
+              # Extract post ID from response if available
+              POST_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | cut -d'"' -f4 || echo "posted-$(date +%s)")
+              echo "post-id=$POST_ID" >> $GITHUB_OUTPUT
+            fi
+            
+            echo "Response: $BODY"
+          else
+            echo "❌ Content posting failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+      - name: Upload posting logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: posting-logs-${{ needs.determine-slot.outputs.slot }}
+          path: |
+            logs/post-*.log
+            reports/post-*.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  post-validation:
+    name: Post-Posting Validation
+    runs-on: ubuntu-latest
+    needs: [determine-slot, post-content]
+    if: needs.post-content.outputs.post-status == '200'
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'post-validation'
+          
+      - name: Validate post success
+        run: |
+          echo "✅ Validating successful post: ${{ needs.post-content.outputs.post-id }}..."
+          
+          AUTH_TOKEN="${{ needs.determine-slot.outputs.auth-token }}"
+          SLOT="${{ needs.determine-slot.outputs.slot }}"
+          DRY_RUN="${{ needs.determine-slot.outputs.dry-run }}"
+          
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "🧪 Dry run mode - post validation skipped"
+          else
+            # Verify the content was actually posted
+            sleep 10  # Give the system time to update
+            
+            # Check the schedule to see if the content is marked as posted
+            TODAY=$(date +%Y-%m-%d)
+            RESPONSE=$(curl -s \
+              -H "Authorization: Bearer $AUTH_TOKEN" \
+              "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/forecast?date=$TODAY" \
+              --max-time 30)
+            
+            if [[ "$RESPONSE" == *"posted"* ]]; then
+              echo "✅ Post validation confirmed - content appears in schedule as posted"
+            else
+              echo "⚠️ Post validation warning - content may not be marked as posted yet"
+            fi
+          fi
+          
+          echo "🎉 Posting workflow completed for slot: $SLOT"
+
+  summary:
+    name: Posting Summary
+    runs-on: ubuntu-latest
+    needs: [determine-slot, pre-post-check, post-content, post-validation]
+    if: always()
+    steps:
+      - name: Generate posting summary
+        run: |
+          echo "## 📤 Content Posting Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Slot:** ${{ needs.determine-slot.outputs.slot }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Slot Index:** ${{ needs.determine-slot.outputs.slot-index }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Dry Run:** ${{ needs.determine-slot.outputs.dry-run }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Pre-Check | ${{ needs.pre-post-check.result }} | Can post: ${{ needs.pre-post-check.outputs.can-post }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.post-content.result }}" != "" ]]; then
+            echo "| Posting | ${{ needs.post-content.result }} | Status: ${{ needs.post-content.outputs.post-status }} |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Posting | skipped | Pre-checks failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.post-validation.result }}" != "" ]]; then
+            echo "| Validation | ${{ needs.post-validation.result }} | Post verification |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          if [[ "${{ needs.post-content.result }}" == "success" ]]; then
+            if [[ "${{ needs.determine-slot.outputs.dry-run }}" == "true" ]]; then
+              echo "## 🧪 Dry run completed successfully" >> $GITHUB_STEP_SUMMARY
+              echo "Content would have been posted for **${{ needs.determine-slot.outputs.slot }}** slot." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "## ✅ Content posted successfully" >> $GITHUB_STEP_SUMMARY
+              echo "**Post ID:** ${{ needs.post-content.outputs.post-id }}" >> $GITHUB_STEP_SUMMARY
+              echo "Posted for **${{ needs.determine-slot.outputs.slot }}** slot." >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [[ "${{ needs.pre-post-check.outputs.can-post }}" == "false" ]]; then
+            echo "## ℹ️ Posting skipped" >> $GITHUB_STEP_SUMMARY
+            echo "Content was not available or already posted for this slot." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Posting failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check posting logs for details." >> $GITHUB_STEP_SUMMARY
+          fi

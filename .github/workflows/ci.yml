@@ -1,231 +1,218 @@
-name: CI/CD Pipeline
-
+name: CI
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        type: string
+        default: '20'
+      cache-strategy:
+        description: 'Cache strategy for dependencies'
+        type: string
+        default: 'aggressive'
+    outputs:
+      test-results:
+        description: 'Test results summary'
+        value: ${{ jobs.test.outputs.results }}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: test
+  CI: true
 
 jobs:
-  stability-check:
-    name: CI Stability & Auto-Healing
+  lint:
+    name: Lint & Format Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     outputs:
-      ci-ready: ${{ steps.gatekeeper.outputs.ci-ready }}
-      auto-fixes-applied: ${{ steps.gatekeeper.outputs.auto-fixes-applied }}
-
+      lint-status: ${{ steps.lint.outcome }}
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: 🧩 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 🧠 Install tsx (temporary CI dependency)
+          node-version: ${{ inputs.node-version || '20' }}
+          cache-key-suffix: 'lint'
+          
+      - name: Install tsx for scripts
         run: npm install --no-save tsx
-
-      - name: 🔧 Patch legacy path resolver
+        
+      - name: Patch legacy path resolver
         run: npx tsx scripts/patchPathResolver.ts
-
-      - name: 🛡️ Validate route patterns
+        
+      - name: Validate route patterns
         run: npx tsx scripts/validateRoutes.ts
-
-      - name: 🔍 Audit for legacy dependencies
-        run: |
-          echo "🔍 Scanning for problematic legacy dependencies..."
-          npx tsx scripts/findOffender.ts || (echo "❌ Legacy modules found – aborting build" && exit 1)
-          echo "✅ Dependency audit passed"
-
-      - name: 🛠 Prepare build environment
-        run: |
-          echo "🧩 Build environment check..."
-          echo "✅ No patches needed - using modern got-based HTTP client"
-          echo "✅ Build environment prepared"
-
-      - name: 🛡️ Run Critical Failure Gatekeeper
-        id: gatekeeper
-        run: |
-          echo "🛡️ Running CI Stability & Auto-Healing System..."
           
-          # Run the gatekeeper system
-          npx tsx scripts/checkCriticalFailures.ts || GATEKEEPER_EXIT=$?
+      - name: Run ESLint
+        id: lint
+        run: |
+          echo "🔍 Running ESLint..."
+          npm run lint:ci 2>&1 | tee lint-results.txt
+          echo "lint-output<<EOF" >> $GITHUB_OUTPUT
+          cat lint-results.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           
-          # Check if auto-fixes were applied
-          if [ -f "reports/ci-health-gate.md" ]; then
-            AUTO_FIXES=$(grep -c "Auto-Fixes Applied" reports/ci-health-gate.md || echo "0")
-            echo "auto-fixes-applied=$AUTO_FIXES" >> $GITHUB_OUTPUT
-            
-            # Check CI readiness from report
-            if grep -q "CI Readiness: ✅ Ready" reports/ci-health-gate.md; then
-              echo "ci-ready=true" >> $GITHUB_OUTPUT
-              echo "✅ CI stability check passed"
-            else
-              echo "ci-ready=false" >> $GITHUB_OUTPUT
-              echo "❌ CI stability check failed"
-            fi
-          else
-            echo "ci-ready=false" >> $GITHUB_OUTPUT
-            echo "auto-fixes-applied=0" >> $GITHUB_OUTPUT
-          fi
+      - name: Check Prettier formatting
+        run: |
+          echo "🎨 Checking code formatting..."
+          npm run format:check || true
           
-          # Exit with gatekeeper result
-          exit ${GATEKEEPER_EXIT:-0}
+      - name: Upload lint results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-results
+          path: lint-results.txt
+          retention-days: 7
 
-      - name: Upload stability reports
+  typecheck:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      typecheck-status: ${{ steps.typecheck.outcome }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ inputs.node-version || '20' }}
+          cache-key-suffix: 'typecheck'
+          
+      - name: Run TypeScript compiler
+        id: typecheck
+        run: |
+          echo "🔍 Running TypeScript type checking..."
+          npm run type-check 2>&1 | tee typecheck-results.txt
+          echo "typecheck-output<<EOF" >> $GITHUB_OUTPUT
+          cat typecheck-results.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+      - name: Upload typecheck results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-results
+          path: typecheck-results.txt
+          retention-days: 7
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL_SQLITE: "./test_hotdog_diaries.db"
+      JWT_SECRET: "test-jwt-secret-for-ci"
+    outputs:
+      results: ${{ steps.test.outputs.results }}
+      coverage: ${{ steps.test.outputs.coverage }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ inputs.node-version || '20' }}
+          cache-key-suffix: 'test'
+          
+      - name: Initialize test database
+        run: |
+          echo "🗄️ Setting up test database..."
+          NODE_ENV=test npx tsx scripts/init-sqlite.ts || echo "Database init attempted"
+          
+      - name: Run unit tests
+        id: test
+        run: |
+          echo "🧪 Running unit tests..."
+          npm test 2>&1 | tee test-results.txt
+          
+          # Extract test summary
+          TESTS_PASSED=$(grep -o "Tests:.*passed" test-results.txt | head -1 || echo "Tests: unknown")
+          
+          echo "results=${TESTS_PASSED}" >> $GITHUB_OUTPUT
+          
+      - name: Run unit tests with coverage
+        run: |
+          echo "📊 Running tests with coverage..."
+          npm run test:coverage
+          
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-stability-reports
+          name: test-results
           path: |
-            reports/ci-health-gate.md
-            reports/lint-auto-fix.md
-            reports/security-audit.md
-          retention-days: 30
+            test-results.txt
+            coverage/
+          retention-days: 7
 
-      - name: Commit auto-fixes
-        if: steps.gatekeeper.outputs.auto-fixes-applied != '0'
-        run: |
-          echo "🔧 Auto-fixes were applied, committing changes..."
-          
-          # Configure git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action Auto-Fix"
-          
-          # Stage any auto-fix changes
-          git add -A
-          
-          # Commit if there are changes
-          if ! git diff --staged --quiet; then
-            git commit -m "fix: auto-fix lint and security issues
-            
-            - Applied ${{ steps.gatekeeper.outputs.auto-fixes-applied }} automatic fixes
-            - Generated by CI Stability & Auto-Healing System
-            - Safe fixes only: no breaking changes applied
-            
-            [skip ci]"
-            
-            # Push changes back to the branch
-            git push
-            echo "✅ Auto-fixes committed and pushed"
-          else
-            echo "ℹ️ No changes to commit"
-          fi
-
-      - name: Post stability summary
-        if: always()
-        run: |
-          echo "📊 CI Stability Check Summary:"
-          echo "- CI Ready: ${{ steps.gatekeeper.outputs.ci-ready }}"
-          echo "- Auto-fixes Applied: ${{ steps.gatekeeper.outputs.auto-fixes-applied }}"
-          echo ""
-          echo "📄 Detailed reports available in artifacts"
-
-  phase3-auto-healing:
-    name: Phase 3 Auto-Healing
-    needs: stability-check
-    if: failure() && needs.stability-check.outputs.ci-ready == 'false'
-    uses: ./.github/workflows/phase3-auto-healing.yml
-    with:
-      trigger_deep_remediation: true
-    secrets: inherit
-
-  test:
-    name: Unit & Integration Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: stability-check
-    if: needs.stability-check.outputs.ci-ready == 'true'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Cache node_modules
-        id: node-modules-cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-
-      - name: Install dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
-        run: npm ci
-
-      - name: "ESLint Check (Baseline: 800 warnings max)"
-        run: npm run lint:ci
-
-      - name: TypeScript Check (Non-blocking baseline)
-        run: npm run type-check
-
-      - name: Run unit tests
-        run: npm test
-
-      - name: Run unit tests with coverage
-        run: npm run test:coverage
-
-  build:
-    name: Build Application
+  security:
+    name: Security & Dependency Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: stability-check
-    if: needs.stability-check.outputs.ci-ready == 'true'
-
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
         with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Cache node_modules
-        id: node-modules-cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-
-      - name: Install dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
-        run: npm ci
-
-      - name: 🔧 Patch legacy path resolver (build phase)
-        run: npx tsx scripts/patchPathResolver.ts
-
-      - name: 🛡️ Validate route patterns (build phase)
-        run: npx tsx scripts/validateRoutes.ts
-
-      - name: 🔍 Pre-build dependency audit
+          node-version: ${{ inputs.node-version || '20' }}
+          cache-key-suffix: 'security'
+          
+      - name: Install tsx for scripts
+        run: npm install --no-save tsx
+        
+      - name: Audit for legacy dependencies
         run: |
-          echo "🔍 Running pre-build dependency audit..."
-          npx tsx scripts/findOffender.ts || (echo "❌ Legacy dependencies detected in build phase" && exit 1)
-          echo "✅ Build dependency layer verified clean"
-          echo "✅ Using modern got-based HTTP client"
-          echo "✅ Build layer hardened with webpack externals"
+          echo "🔍 Scanning for problematic legacy dependencies..."
+          npx tsx scripts/findOffender.ts || (echo "❌ Legacy modules found" && exit 1)
+          echo "✅ Dependency audit passed"
+          
+      - name: Run security audit
+        run: |
+          echo "🔒 Running npm security audit..."
+          npm audit --audit-level=high || echo "⚠️ Vulnerabilities found - review required"
 
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, typecheck]
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ inputs.node-version || '20' }}
+          cache-key-suffix: 'build'
+          
+      - name: Install tsx for scripts
+        run: npm install --no-save tsx
+        
+      - name: Patch legacy path resolver (build phase)
+        run: npx tsx scripts/patchPathResolver.ts
+        
+      - name: Validate route patterns (build phase)
+        run: npx tsx scripts/validateRoutes.ts
+        
       - name: Cache Next.js build
         uses: actions/cache@v4
         with:
@@ -234,163 +221,112 @@ jobs:
           key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-
+          
       - name: Build application
-        run: npm run build
         env:
-          NODE_ENV: production
-          DATABASE_URL: "postgresql://test:test@localhost:5432/test"
-
-  e2e-smoke:
-    name: E2E Smoke Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: [stability-check, test, build]
-    if: needs.stability-check.outputs.ci-ready == 'true'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Cache node_modules
-        id: node-modules-cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-
-      - name: Install dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
-        run: npm ci
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-
-
-      - name: Install Playwright browsers if cache miss
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: |
-          echo "🎭 Installing Playwright browsers (cache miss)..."
-          echo "This step saves 8-10 minutes on subsequent runs"
-          npx playwright install --with-deps
-          echo "✅ Playwright browsers installed successfully"
-
-      - name: Verify Playwright cache
-        run: |
-          echo "🔍 Playwright cache verification:"
-          du -sh ~/.cache/ms-playwright 2>/dev/null || echo "No cache directory found"
-          echo "Cache hit: ${{ steps.playwright-cache.outputs.cache-hit }}"
-          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = true ]; then
-            echo "✅ Cache hit - saved ~8-10 minutes of installation time"
-          else
-            echo "ℹ️ Cache miss - first run or dependency changes detected"
-          fi
-
-      - name: Create test environment
-        run: |
-          echo "DATABASE_URL_SQLITE=./test_hotdog_diaries.db" >> $GITHUB_ENV
-          echo "NODE_ENV=test" >> $GITHUB_ENV
-          echo "JWT_SECRET=test-jwt-secret-for-e2e-testing-${{ github.sha }}" >> $GITHUB_ENV
-          echo "CI=true" >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_CI=true" >> $GITHUB_ENV
-
-      - name: Verify CI Environment Vars
-        run: |
-          echo "🔍 Verifying CI environment configuration:"
-          echo "NEXT_PUBLIC_CI=$NEXT_PUBLIC_CI"
-          echo "CI=$CI"
-          echo "NODE_ENV=$NODE_ENV"
-          echo "Expected: Minimal admin shell should render, no API polling should occur"
-
-      - name: Build application for E2E tests
-        run: npm run build
-        env:
-          DATABASE_URL_SQLITE: ./test_hotdog_diaries.db
+          DATABASE_URL_SQLITE: "./test_build.db"
           NODE_ENV: test
-          CI: true
-          NEXT_PUBLIC_CI: true
-
-      - name: Initialize test database
         run: |
-          npm run db:init || echo "Database init attempted"
-          npm run admin:create || echo "Admin user creation attempted"
+          echo "🏗️ Building application..."
+          npm run build
+          
+      - name: Verify build artifacts
+        run: |
+          echo "✅ Verifying build output..."
+          ls -la .next/
+          echo "Build completed successfully"
 
-      - name: Run E2E smoke tests
-        run: npm run test:e2e
-        env:
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-          CI: true
-          NEXT_PUBLIC_CI: true
-          NODE_ENV: test
-
-  security:
-    name: Security Audit
+  auto-healing:
+    name: Auto-Healing Gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: stability-check
-    if: needs.stability-check.outputs.ci-ready == 'true'
-
+    needs: [lint, typecheck, test, security, build]
+    if: failure()
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Cache node_modules
-        id: node-modules-cache
-        uses: actions/cache@v4
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
         with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-
-      - name: Install dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
-        run: npm ci
-
-      - name: Enhanced Security Validation
+          node-version: ${{ inputs.node-version || '20' }}
+          cache-key-suffix: 'healing'
+          
+      - name: Install tsx for scripts
+        run: npm install --no-save tsx
+        
+      - name: Run critical failure gatekeeper
+        id: gatekeeper
         run: |
-          echo "🔒 Running enhanced security validation..."
+          echo "🛡️ Running CI Auto-Healing System..."
+          npx tsx scripts/checkCriticalFailures.ts || GATEKEEPER_EXIT=$?
           
-          # The stability check already ran security auto-fix
-          # Here we validate the current state and check for any new issues
-          
-          echo "📊 Current vulnerability status:"
-          npm audit --audit-level=moderate || echo "Vulnerabilities found - checking if within acceptable thresholds"
-          
-          echo ""
-          echo "🔍 Checking for critical/high vulnerabilities:"
-          if npm audit --audit-level=high; then
-            echo "✅ No critical or high-severity vulnerabilities"
+          # Check if auto-fixes were applied
+          if [ -f "reports/ci-health-gate.md" ]; then
+            AUTO_FIXES=$(grep -c "Auto-Fixes Applied" reports/ci-health-gate.md || echo "0")
+            echo "auto-fixes-applied=$AUTO_FIXES" >> $GITHUB_OUTPUT
+            echo "✅ Auto-healing analysis completed"
           else
-            echo "⚠️ Critical or high vulnerabilities detected"
-            echo "Note: Auto-fixes may have been applied in stability-check phase"
+            echo "auto-fixes-applied=0" >> $GITHUB_OUTPUT
+          fi
+          
+          exit ${GATEKEEPER_EXIT:-0}
+          
+      - name: Upload healing reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-healing-reports
+          path: |
+            reports/ci-health-gate.md
+            reports/lint-auto-fix.md
+            reports/security-audit.md
+          retention-days: 30
+          
+      - name: Commit auto-fixes
+        if: steps.gatekeeper.outputs.auto-fixes-applied != '0'
+        run: |
+          echo "🔧 Auto-fixes applied, committing changes..."
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Auto-Fix"
+          git add -A
+          
+          if ! git diff --staged --quiet; then
+            git commit -m "fix: auto-fix CI issues
             
-            # Show summary for manual review
-            npm audit --audit-level=critical || echo "Critical vulnerabilities require immediate attention"
+            - Applied ${{ steps.gatekeeper.outputs.auto-fixes-applied }} automatic fixes
+            - Generated by CI Auto-Healing System
+            
+            [skip ci]"
+            git push
+            echo "✅ Auto-fixes committed and pushed"
           fi
 
-      - name: Security summary
-        if: always()
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test, security, build]
+    if: always()
+    steps:
+      - name: Generate CI summary
         run: |
-          echo "📋 Security audit completed"
-          echo "See ci-stability-reports artifact for detailed security analysis"
+          echo "## 🚀 CI Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.lint.result }} | ${{ needs.lint.outputs.lint-status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeCheck | ${{ needs.typecheck.result }} | ${{ needs.typecheck.outputs.typecheck-status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.test.result }} | ${{ needs.test.outputs.results }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result }} | Dependency audit |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} | Build verification |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          if [[ "${{ needs.lint.result }}" == "success" && "${{ needs.typecheck.result }}" == "success" && "${{ needs.test.result }}" == "success" && "${{ needs.security.result }}" == "success" && "${{ needs.build.result }}" == "success" ]]; then
+            echo "## ✅ All CI checks passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Some CI checks failed - Auto-healing may have been triggered" >> $GITHUB_STEP_SUMMARY
+          fi

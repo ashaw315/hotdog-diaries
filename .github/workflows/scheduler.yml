@@ -1,0 +1,387 @@
+name: Content Scheduler
+
+on:
+  schedule:
+    - cron: '0 1 * * *'     # Daily at 1 AM UTC - refill next day
+    - cron: '0 12 * * *'    # Daily at 12 PM UTC - forecast check
+    - cron: '0 0 * * 0'     # Weekly on Sunday - reconcile 
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Operation to perform'
+        type: choice
+        options:
+          - refill
+          - forecast
+          - reconcile
+          - twoDays
+        default: refill
+      days:
+        description: 'Number of days (for refill/forecast)'
+        type: number
+        default: 2
+  workflow_call:
+    inputs:
+      operation:
+        description: 'Operation to perform'
+        type: string
+        default: refill
+      days:
+        description: 'Number of days'
+        type: number
+        default: 2
+
+concurrency:
+  group: scheduler-${{ github.ref }}-${{ inputs.operation || 'scheduled' }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: production
+  CI: true
+
+jobs:
+  determine-operation:
+    name: Determine Operation
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      operation: ${{ steps.strategy.outputs.operation }}
+      days: ${{ steps.strategy.outputs.days }}
+      auth-token: ${{ steps.strategy.outputs.auth-token }}
+    steps:
+      - name: Determine operation strategy
+        id: strategy
+        run: |
+          OPERATION="${{ inputs.operation || 'refill' }}"
+          DAYS="${{ inputs.days || 2 }}"
+          
+          # Determine operation based on schedule
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            HOUR=$(date +%H)
+            
+            if [[ $HOUR -eq 1 ]]; then
+              OPERATION="refill"
+              DAYS=2
+              echo "🌅 Morning refill - scheduling next 2 days"
+            elif [[ $HOUR -eq 12 ]]; then
+              OPERATION="forecast"
+              DAYS=3
+              echo "🌞 Midday forecast check - analyzing next 3 days"
+            elif [[ $HOUR -eq 0 ]]; then
+              OPERATION="reconcile"
+              DAYS=7
+              echo "🌙 Weekly reconcile - checking past 7 days"
+            fi
+          fi
+          
+          echo "operation=$OPERATION" >> $GITHUB_OUTPUT
+          echo "days=$DAYS" >> $GITHUB_OUTPUT
+          echo "auth-token=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_OUTPUT
+          echo "Selected operation: $OPERATION for $DAYS days"
+
+  refill:
+    name: Refill Schedule
+    runs-on: ubuntu-latest
+    needs: determine-operation
+    if: needs.determine-operation.outputs.operation == 'refill' || needs.determine-operation.outputs.operation == 'twoDays'
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'scheduler-refill'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Refill content schedule
+        id: refill
+        run: |
+          echo "🔄 Refilling content schedule for ${{ needs.determine-operation.outputs.days }} days..."
+          
+          DAYS="${{ needs.determine-operation.outputs.days }}"
+          AUTH_TOKEN="${{ needs.determine-operation.outputs.auth-token }}"
+          
+          # Call the refill API endpoint
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"days\": $DAYS}" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/refill" \
+            --max-time 300)
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+          
+          echo "refill-status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "refill-response<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Schedule refill completed successfully"
+          else
+            echo "❌ Schedule refill failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+      - name: Upload refill logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduler-refill-logs
+          path: |
+            logs/scheduler-*.log
+            reports/refill-*.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  forecast:
+    name: Generate Forecast
+    runs-on: ubuntu-latest
+    needs: determine-operation
+    if: needs.determine-operation.outputs.operation == 'forecast'
+    timeout-minutes: 8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'scheduler-forecast'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Generate schedule forecast
+        id: forecast
+        run: |
+          echo "🔮 Generating schedule forecast for ${{ needs.determine-operation.outputs.days }} days..."
+          
+          DAYS="${{ needs.determine-operation.outputs.days }}"
+          AUTH_TOKEN="${{ needs.determine-operation.outputs.auth-token }}"
+          
+          # Get forecast for multiple days
+          for i in $(seq 0 $((DAYS-1))); do
+            DATE=$(date -d "+$i days" +%Y-%m-%d)
+            echo "📅 Generating forecast for $DATE..."
+            
+            RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+              -H "Authorization: Bearer $AUTH_TOKEN" \
+              "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/forecast?date=$DATE" \
+              --max-time 60)
+            
+            HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+            BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+            
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ Forecast for $DATE generated successfully"
+              echo "$BODY" > "forecast-$DATE.json"
+            else
+              echo "⚠️ Forecast for $DATE failed with status $HTTP_STATUS"
+              echo "Response: $BODY"
+            fi
+          done
+          
+          echo "✅ Forecast generation completed"
+          
+      - name: Upload forecast reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduler-forecast-reports
+          path: |
+            forecast-*.json
+            logs/forecast-*.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  reconcile:
+    name: Reconcile Content
+    runs-on: ubuntu-latest
+    needs: determine-operation
+    if: needs.determine-operation.outputs.operation == 'reconcile'
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'scheduler-reconcile'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Reconcile content and schedule
+        id: reconcile
+        run: |
+          echo "🔄 Reconciling content and schedule for past ${{ needs.determine-operation.outputs.days }} days..."
+          
+          DAYS="${{ needs.determine-operation.outputs.days }}"
+          AUTH_TOKEN="${{ needs.determine-operation.outputs.auth-token }}"
+          
+          # Call the reconcile API endpoint
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"days\": $DAYS}" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/reconcile" \
+            --max-time 600)
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+          
+          echo "reconcile-status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "reconcile-response<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Content reconciliation completed successfully"
+          else
+            echo "❌ Content reconciliation failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+      - name: Upload reconcile logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduler-reconcile-logs
+          path: |
+            logs/reconcile-*.log
+            reports/reconcile-*.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+  queue-health:
+    name: Queue Health Check
+    runs-on: ubuntu-latest
+    needs: [determine-operation, refill, forecast, reconcile]
+    if: always()
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'scheduler-health'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Check queue health
+        run: |
+          echo "🏥 Checking content queue health..."
+          
+          AUTH_TOKEN="${{ needs.determine-operation.outputs.auth-token }}"
+          
+          # Get queue metrics
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/metrics" \
+            --max-time 30)
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Queue health check completed"
+            echo "$BODY" > queue-health.json
+          else
+            echo "⚠️ Queue health check failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+          fi
+          
+      - name: Upload health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: queue-health-report
+          path: queue-health.json
+          retention-days: 3
+          if-no-files-found: ignore
+
+  summary:
+    name: Scheduler Summary
+    runs-on: ubuntu-latest
+    needs: [determine-operation, refill, forecast, reconcile, queue-health]
+    if: always()
+    steps:
+      - name: Generate scheduler summary
+        run: |
+          echo "## 📅 Content Scheduler Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Operation:** ${{ needs.determine-operation.outputs.operation }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Days:** ${{ needs.determine-operation.outputs.days }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status | Notes |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Add job statuses
+          if [[ "${{ needs.refill.result }}" != "" ]]; then
+            echo "| Refill | ${{ needs.refill.result }} | Schedule refill operation |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.forecast.result }}" != "" ]]; then
+            echo "| Forecast | ${{ needs.forecast.result }} | Schedule forecast generation |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.reconcile.result }}" != "" ]]; then
+            echo "| Reconcile | ${{ needs.reconcile.result }} | Content reconciliation |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "| Queue Health | ${{ needs.queue-health.result }} | Content queue health check |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          OVERALL_SUCCESS=true
+          
+          if [[ "${{ needs.refill.result }}" == "failure" ]] || [[ "${{ needs.forecast.result }}" == "failure" ]] || [[ "${{ needs.reconcile.result }}" == "failure" ]]; then
+            OVERALL_SUCCESS=false
+          fi
+          
+          if [[ "$OVERALL_SUCCESS" == "true" ]]; then
+            echo "## ✅ Scheduler operations completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Some scheduler operations failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check individual job logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📈 **Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Content is scheduled and ready for posting" >> $GITHUB_STEP_SUMMARY
+          echo "- Check admin dashboard for schedule overview" >> $GITHUB_STEP_SUMMARY

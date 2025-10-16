@@ -1,0 +1,487 @@
+name: Housekeeping
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'     # Weekly on Monday at 3 AM UTC
+    - cron: '0 6 * * *'     # Daily at 6 AM UTC
+  workflow_dispatch:
+    inputs:
+      tasks:
+        description: 'Tasks to run (comma-separated: cleanup, dead-links, licenses, audit, queue-monitor, secrets)'
+        type: string
+        default: 'all'
+      force-cleanup:
+        description: 'Force aggressive cleanup'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      tasks:
+        description: 'Tasks to run'
+        type: string
+        default: 'all'
+      force-cleanup:
+        description: 'Force aggressive cleanup'
+        type: boolean
+        default: false
+
+concurrency:
+  group: housekeeping-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: production
+  CI: true
+
+jobs:
+  determine-tasks:
+    name: Determine Tasks
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      tasks: ${{ steps.strategy.outputs.tasks }}
+      schedule-type: ${{ steps.strategy.outputs.schedule-type }}
+      force-cleanup: ${{ steps.strategy.outputs.force-cleanup }}
+    steps:
+      - name: Determine housekeeping strategy
+        id: strategy
+        run: |
+          TASKS="${{ inputs.tasks || 'all' }}"
+          FORCE_CLEANUP="${{ inputs.force-cleanup || 'false' }}"
+          SCHEDULE_TYPE="manual"
+          
+          # Determine tasks based on schedule
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            SCHEDULE_TYPE="scheduled"
+            HOUR=$(date +%H)
+            DAY=$(date +%u)  # 1=Monday, 7=Sunday
+            
+            if [[ $HOUR -eq 3 && $DAY -eq 1 ]]; then
+              # Weekly comprehensive housekeeping
+              TASKS="cleanup,dead-links,licenses,audit,queue-monitor,secrets"
+              FORCE_CLEANUP="true"
+              echo "🏠 Weekly comprehensive housekeeping"
+            elif [[ $HOUR -eq 6 ]]; then
+              # Daily light housekeeping
+              TASKS="cleanup,queue-monitor"
+              FORCE_CLEANUP="false"
+              echo "🧹 Daily light housekeeping"
+            fi
+          fi
+          
+          if [[ "$TASKS" == "all" ]]; then
+            TASKS="cleanup,dead-links,licenses,audit,queue-monitor,secrets"
+          fi
+          
+          echo "tasks=$TASKS" >> $GITHUB_OUTPUT
+          echo "schedule-type=$SCHEDULE_TYPE" >> $GITHUB_OUTPUT
+          echo "force-cleanup=$FORCE_CLEANUP" >> $GITHUB_OUTPUT
+          echo "Selected tasks: $TASKS (force: $FORCE_CLEANUP)"
+
+  cleanup-duplicates:
+    name: Cleanup Duplicates
+    runs-on: ubuntu-latest
+    needs: determine-tasks
+    if: contains(needs.determine-tasks.outputs.tasks, 'cleanup')
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'housekeeping-cleanup'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Clean up duplicate content
+        run: |
+          echo "🧹 Cleaning up duplicate content..."
+          
+          AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
+          FORCE_CLEANUP="${{ needs.determine-tasks.outputs.force-cleanup }}"
+          
+          # Call the cleanup API endpoint
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"force\": $FORCE_CLEANUP}" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/cleanup/duplicates" \
+            --max-time 300)
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Duplicate cleanup completed"
+            echo "$BODY" > cleanup-duplicates-report.json
+          else
+            echo "⚠️ Duplicate cleanup failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+          fi
+          
+      - name: Upload cleanup report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-duplicates-report
+          path: cleanup-duplicates-report.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  dead-links-check:
+    name: Dead Links Check
+    runs-on: ubuntu-latest
+    needs: determine-tasks
+    if: contains(needs.determine-tasks.outputs.tasks, 'dead-links')
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'housekeeping-deadlinks'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Check for dead links
+        run: |
+          echo "🔗 Checking for dead links in content..."
+          
+          # Run dead link detection script
+          npm run check:dead-links || echo "Dead link check completed with warnings"
+          
+          # Count and report results
+          if [ -f "reports/dead-links.json" ]; then
+            DEAD_COUNT=$(jq '.deadLinks | length' reports/dead-links.json 2>/dev/null || echo "0")
+            echo "Found $DEAD_COUNT dead links"
+            
+            if [ "$DEAD_COUNT" -gt 0 ]; then
+              echo "⚠️ Dead links detected - content may need review"
+            else
+              echo "✅ No dead links found"
+            fi
+          fi
+          
+      - name: Upload dead links report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dead-links-report
+          path: |
+            reports/dead-links.json
+            reports/dead-links.md
+          retention-days: 14
+          if-no-files-found: ignore
+
+  license-audit:
+    name: License Audit
+    runs-on: ubuntu-latest
+    needs: determine-tasks
+    if: contains(needs.determine-tasks.outputs.tasks, 'licenses')
+    timeout-minutes: 8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'housekeeping-licenses'
+          
+      - name: Audit licenses
+        run: |
+          echo "📜 Auditing dependency licenses..."
+          
+          # Generate license report
+          npm run licenses:check || echo "License check completed"
+          
+          # Check for problematic licenses
+          if [ -f "reports/licenses.json" ]; then
+            PROBLEMATIC=$(jq '.problematic | length' reports/licenses.json 2>/dev/null || echo "0")
+            echo "Found $PROBLEMATIC potentially problematic licenses"
+            
+            if [ "$PROBLEMATIC" -gt 0 ]; then
+              echo "⚠️ License issues detected - manual review required"
+            else
+              echo "✅ All licenses appear compatible"
+            fi
+          fi
+          
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-audit-report
+          path: |
+            reports/licenses.json
+            reports/licenses.md
+          retention-days: 30
+          if-no-files-found: ignore
+
+  security-audit:
+    name: Security Audit  
+    runs-on: ubuntu-latest
+    needs: determine-tasks
+    if: contains(needs.determine-tasks.outputs.tasks, 'audit')
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'housekeeping-security'
+          
+      - name: Run security audit
+        run: |
+          echo "🔒 Running security audit..."
+          
+          # Run npm audit
+          npm audit --audit-level=moderate > security-audit.txt 2>&1 || echo "Audit completed with findings"
+          
+          # Count vulnerabilities
+          HIGH_VULNS=$(grep -c "high" security-audit.txt || echo "0")
+          CRITICAL_VULNS=$(grep -c "critical" security-audit.txt || echo "0")
+          
+          echo "Found $CRITICAL_VULNS critical and $HIGH_VULNS high severity vulnerabilities"
+          
+          if [ "$CRITICAL_VULNS" -gt 0 ]; then
+            echo "❌ Critical vulnerabilities detected - immediate action required"
+            exit 1
+          elif [ "$HIGH_VULNS" -gt 0 ]; then
+            echo "⚠️ High severity vulnerabilities detected - review recommended"
+          else
+            echo "✅ No critical or high severity vulnerabilities"
+          fi
+          
+      - name: Upload security audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-report
+          path: security-audit.txt
+          retention-days: 14
+
+  queue-monitor:
+    name: Queue Monitor
+    runs-on: ubuntu-latest
+    needs: determine-tasks
+    if: contains(needs.determine-tasks.outputs.tasks, 'queue-monitor')
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'housekeeping-queue'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Monitor content queue health
+        run: |
+          echo "📊 Monitoring content queue health..."
+          
+          AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
+          
+          # Get queue metrics
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/metrics" \
+            --max-time 30)
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//')
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Queue monitoring completed"
+            echo "$BODY" > queue-health.json
+            
+            # Extract key metrics if possible
+            if command -v jq >/dev/null 2>&1; then
+              TOTAL_CONTENT=$(echo "$BODY" | jq '.totalContent // 0' 2>/dev/null || echo "unknown")
+              APPROVED_CONTENT=$(echo "$BODY" | jq '.approvedContent // 0' 2>/dev/null || echo "unknown")
+              echo "📈 Queue stats: $TOTAL_CONTENT total, $APPROVED_CONTENT approved"
+            fi
+          else
+            echo "⚠️ Queue monitoring failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+          fi
+          
+      - name: Upload queue health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: queue-health-report
+          path: queue-health.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  secrets-validation:
+    name: Secrets Validation
+    runs-on: ubuntu-latest
+    needs: determine-tasks
+    if: contains(needs.determine-tasks.outputs.tasks, 'secrets')
+    timeout-minutes: 8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'housekeeping-secrets'
+          
+      - name: Validate secrets configuration
+        run: |
+          echo "🔐 Validating secrets configuration..."
+          
+          # Check essential secrets
+          MISSING_SECRETS=""
+          
+          if [[ -z "${{ secrets.SUPABASE_URL }}" ]]; then
+            MISSING_SECRETS="$MISSING_SECRETS SUPABASE_URL"
+          fi
+          
+          if [[ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
+            MISSING_SECRETS="$MISSING_SECRETS SUPABASE_SERVICE_ROLE_KEY"
+          fi
+          
+          if [[ -z "${{ secrets.AUTH_TOKEN }}" ]]; then
+            MISSING_SECRETS="$MISSING_SECRETS AUTH_TOKEN"
+          fi
+          
+          if [[ -z "${{ secrets.DATABASE_URL }}" ]]; then
+            MISSING_SECRETS="$MISSING_SECRETS DATABASE_URL"
+          fi
+          
+          # Report results
+          if [[ -n "$MISSING_SECRETS" ]]; then
+            echo "❌ Missing essential secrets:$MISSING_SECRETS"
+            echo "missing-secrets=$MISSING_SECRETS" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "✅ All essential secrets are configured"
+          fi
+          
+          # Check API keys
+          API_KEYS=""
+          if [[ -n "${{ secrets.REDDIT_CLIENT_ID }}" ]]; then
+            API_KEYS="$API_KEYS reddit"
+          fi
+          if [[ -n "${{ secrets.YOUTUBE_API_KEY }}" ]]; then
+            API_KEYS="$API_KEYS youtube"
+          fi
+          if [[ -n "${{ secrets.GIPHY_API_KEY }}" ]]; then
+            API_KEYS="$API_KEYS giphy"
+          fi
+          
+          echo "📊 Configured API integrations:$API_KEYS"
+
+  summary:
+    name: Housekeeping Summary
+    runs-on: ubuntu-latest
+    needs: [determine-tasks, cleanup-duplicates, dead-links-check, license-audit, security-audit, queue-monitor, secrets-validation]
+    if: always()
+    steps:
+      - name: Generate housekeeping summary
+        run: |
+          echo "## 🏠 Housekeeping Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tasks:** ${{ needs.determine-tasks.outputs.tasks }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Schedule Type:** ${{ needs.determine-tasks.outputs.schedule-type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Force Cleanup:** ${{ needs.determine-tasks.outputs.force-cleanup }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Task | Status | Notes |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Add task statuses
+          if [[ "${{ needs.cleanup-duplicates.result }}" != "" ]]; then
+            echo "| Cleanup Duplicates | ${{ needs.cleanup-duplicates.result }} | Content deduplication |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.dead-links-check.result }}" != "" ]]; then
+            echo "| Dead Links Check | ${{ needs.dead-links-check.result }} | URL validation |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.license-audit.result }}" != "" ]]; then
+            echo "| License Audit | ${{ needs.license-audit.result }} | Dependency licensing |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.security-audit.result }}" != "" ]]; then
+            echo "| Security Audit | ${{ needs.security-audit.result }} | Vulnerability scanning |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.queue-monitor.result }}" != "" ]]; then
+            echo "| Queue Monitor | ${{ needs.queue-monitor.result }} | Content queue health |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.secrets-validation.result }}" != "" ]]; then
+            echo "| Secrets Validation | ${{ needs.secrets-validation.result }} | Configuration check |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          FAILED_TASKS=0
+          
+          if [[ "${{ needs.cleanup-duplicates.result }}" == "failure" ]]; then
+            ((FAILED_TASKS++))
+          fi
+          if [[ "${{ needs.dead-links-check.result }}" == "failure" ]]; then
+            ((FAILED_TASKS++))
+          fi
+          if [[ "${{ needs.license-audit.result }}" == "failure" ]]; then
+            ((FAILED_TASKS++))
+          fi
+          if [[ "${{ needs.security-audit.result }}" == "failure" ]]; then
+            ((FAILED_TASKS++))
+          fi
+          if [[ "${{ needs.queue-monitor.result }}" == "failure" ]]; then
+            ((FAILED_TASKS++))
+          fi
+          if [[ "${{ needs.secrets-validation.result }}" == "failure" ]]; then
+            ((FAILED_TASKS++))
+          fi
+          
+          if [[ $FAILED_TASKS -eq 0 ]]; then
+            echo "## ✅ All housekeeping tasks completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ $FAILED_TASKS housekeeping task(s) failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check individual task logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📈 **Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Review artifact reports for detailed findings" >> $GITHUB_STEP_SUMMARY
+          echo "- Address any security or license issues found" >> $GITHUB_STEP_SUMMARY
+          echo "- Monitor content queue health metrics" >> $GITHUB_STEP_SUMMARY

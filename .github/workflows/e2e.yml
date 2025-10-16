@@ -1,18 +1,30 @@
-# 🌭 Hotdog Diaries — Playwright E2E Workflow
-# Runs full end-to-end tests on Next.js app with caching & automatic recovery
-
-name: Playwright E2E Tests
+name: E2E Tests
 
 on:
-  push:
-    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * *'  # Nightly at 2 AM UTC
   pull_request:
-    branches: [ main ]
+    types: [labeled]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      browser:
+        description: 'Browser to test (chromium, firefox, webkit, all)'
+        type: string
+        default: 'chromium'
+      timeout:
+        description: 'Test timeout in minutes'
+        type: number
+        default: 20
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   NODE_ENV: test
   CI: true
+  NEXT_PUBLIC_CI: true
   DISABLE_EXTERNAL_INTEGRATIONS: true
   ADMIN_USERNAME: admin
   ADMIN_PASSWORD: StrongAdminPass123!
@@ -21,267 +33,189 @@ env:
   PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
 
 jobs:
-  build-app:
+  should-run:
+    name: Should Run E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      run-tests: ${{ steps.check.outputs.run-tests }}
+      browser: ${{ steps.check.outputs.browser }}
+    steps:
+      - name: Check trigger conditions
+        id: check
+        run: |
+          RUN_TESTS="false"
+          BROWSER="${{ inputs.browser || 'chromium' }}"
+          
+          # Always run on schedule (nightly)
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            RUN_TESTS="true"
+            BROWSER="all"
+            echo "🌙 Nightly run - testing all browsers"
+          fi
+          
+          # Run on workflow_dispatch
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            RUN_TESTS="true"
+            echo "🚀 Manual dispatch - testing with browser: $BROWSER"
+          fi
+          
+          # Run on PR with e2e label
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ contains(github.event.pull_request.labels.*.name, 'e2e') }}" == "true" ]]; then
+            RUN_TESTS="true"
+            echo "🏷️ PR with e2e label - testing with browser: $BROWSER"
+          fi
+          
+          echo "run-tests=$RUN_TESTS" >> $GITHUB_OUTPUT
+          echo "browser=$BROWSER" >> $GITHUB_OUTPUT
+          echo "Decision: run-tests=$RUN_TESTS, browser=$BROWSER"
+
+  build:
     name: Build Application
     runs-on: ubuntu-latest
+    needs: should-run
+    if: needs.should-run.outputs.run-tests == 'true'
     timeout-minutes: 10
-    
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
         with:
           node-version: '20'
-          cache: 'npm'
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
-      - name: Install dependencies
-        run: npm ci
-
+          cache-key-suffix: 'e2e-build'
+          
       - name: Initialize test database
         run: |
-          # Create minimal test database and admin user
+          echo "🗄️ Setting up test database..."
           npm run db:init || echo "Database init completed"
           npm run admin:create || echo "Admin user creation completed"
 
       - name: Build Next.js application
-        run: npm run build
+        run: |
+          echo "🏗️ Building application for E2E tests..."
+          npm run build
 
       - name: Verify build output
         run: |
-          echo "📦 Checking for .next directory..."
-          ls -la
+          echo "📦 Verifying build output..."
           if [ ! -d ".next" ]; then
             echo "❌ Build output missing!"
             exit 1
           fi
-          echo "✅ .next build output verified."
-          echo "📊 Build directory structure:"
-          ls -la .next/
-          echo "📊 Build size:"
-          du -sh .next
+          echo "✅ Build verified - Size: $(du -sh .next | cut -f1)"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nextjs-build
+          name: nextjs-e2e-build
           include-hidden-files: true
           path: |
             .next/**
             public/**
             package.json
             package-lock.json
+            ci-test.db
           retention-days: 1
-          if-no-files-found: error
 
-  test-chromium:
-    name: E2E Tests (Chromium)
+  test:
+    name: E2E Tests
     runs-on: ubuntu-latest
-    needs: build-app
-    timeout-minutes: 15
-    
+    needs: [should-run, build]
+    if: needs.should-run.outputs.run-tests == 'true'
+    timeout-minutes: ${{ fromJSON(inputs.timeout || 20) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ${{ fromJSON(
+          needs.should-run.outputs.browser == 'all' && '["chromium", "firefox", "webkit"]' ||
+          format('["{0}"]', needs.should-run.outputs.browser)
+        ) }}
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
         with:
           node-version: '20'
-
+          cache-key-suffix: 'e2e-test-${{ matrix.browser }}'
+          
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: nextjs-build
+          name: nextjs-e2e-build
           path: .
 
       - name: Verify build artifacts
         run: |
-          echo "🧩 Checking for .next directory..."
-          echo "📁 Current directory contents:"
-          ls -la
-          
+          echo "🧩 Verifying downloaded build..."
           if [ ! -d ".next" ]; then
-            echo "⚠️ .next directory not found, running fallback build"
-            npm ci
+            echo "⚠️ Build missing, running fallback build"
             npm run build
-          else
-            echo "✅ Found .next build directory."
-            echo "📊 .next contents:"
-            ls -la .next/
           fi
-
-      - name: Restore dependencies
-        run: |
-          echo "📦 Restoring npm dependencies..."
-          npm ci
-        working-directory: ./
+          echo "✅ Build verified"
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-playwright-
+            playwright-${{ runner.os }}-
 
-      - name: Install Playwright browsers (once)
-        run: npx playwright install --with-deps
-        working-directory: ./
+      - name: Install Playwright browsers
+        run: |
+          echo "🎭 Installing Playwright browsers..."
+          npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: Initialize test environment
         run: |
-          npm run db:init || echo "Database init completed"
-          npm run admin:create || echo "Admin user creation completed"
+          echo "🔧 Setting up test environment..."
+          # Database should be included in artifacts, but fallback just in case
+          [ -f "ci-test.db" ] || npm run db:init
+          echo "✅ Test environment ready"
 
-      - name: Verify .next build
+      - name: Run Playwright tests
         run: |
-          if [ ! -d ".next" ]; then
-            echo "⚠️ .next missing, running fallback build"
-            npm run build
-          fi
-          echo "✅ .next directory confirmed"
-
-      - name: Run Playwright tests (Chromium)
-        run: npx playwright test --project=chromium --reporter=github
-        working-directory: ./
+          echo "🧪 Running E2E tests with ${{ matrix.browser }}..."
+          npx playwright test --project=${{ matrix.browser }} --reporter=github
         
-      - name: Upload Playwright report (Chromium)
+      - name: Upload test report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-chromium
-          path: playwright-report/
+          name: e2e-report-${{ matrix.browser }}
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7
 
-      - name: Upload test results (Chromium)
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-chromium
-          path: test-results/
-          retention-days: 7
-
-  test-firefox:
-    name: E2E Tests (Firefox)
+  summary:
+    name: E2E Summary
     runs-on: ubuntu-latest
-    needs: build-app
-    timeout-minutes: 15
-    
+    needs: [should-run, test]
+    if: always() && needs.should-run.outputs.run-tests == 'true'
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: nextjs-build
-          path: .
-
-      - name: Verify build artifacts
+      - name: Generate E2E summary
         run: |
-          echo "🧩 Checking for .next directory..."
-          echo "📁 Current directory contents:"
-          ls -la
+          echo "## 🎭 E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Browser(s):** ${{ needs.should-run.outputs.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Browser | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
           
-          if [ ! -d ".next" ]; then
-            echo "⚠️ .next directory not found, running fallback build"
-            npm ci
-            npm run build
-          else
-            echo "✅ Found .next build directory."
-            echo "📊 .next contents:"
-            ls -la .next/
-          fi
-
-      - name: Restore dependencies
-        run: |
-          echo "📦 Restoring npm dependencies..."
-          npm ci
-        working-directory: ./
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
-      - name: Install Playwright browsers (once)
-        run: npx playwright install --with-deps
-        working-directory: ./
-
-      - name: Initialize test environment
-        run: |
-          npm run db:init || echo "Database init completed"
-          npm run admin:create || echo "Admin user creation completed"
-
-      - name: Verify .next build
-        run: |
-          if [ ! -d ".next" ]; then
-            echo "⚠️ .next missing, running fallback build"
-            npm run build
-          fi
-          echo "✅ .next directory confirmed"
-
-      - name: Run Playwright tests (Firefox)
-        run: npx playwright test --project=firefox --reporter=github
-        working-directory: ./
-        
-      - name: Upload Playwright report (Firefox)
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report-firefox
-          path: playwright-report/
-          retention-days: 7
-
-      - name: Upload test results (Firefox)
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-firefox
-          path: test-results/
-          retention-days: 7
-
-  # Summary job that provides overall status
-  e2e-summary:
-    name: E2E Test Summary
-    runs-on: ubuntu-latest
-    needs: [test-chromium, test-firefox]
-    if: always()
-    timeout-minutes: 2
-    
-    steps:
-      - name: Check test results
-        run: |
-          echo "🎭 Playwright E2E Test Results Summary"
-          echo "======================================"
-          echo "Chromium Tests: ${{ needs.test-chromium.result }}"
-          echo "Firefox Tests: ${{ needs.test-firefox.result }}"
+          # This is a simplified version - in reality you'd iterate over the matrix results
+          echo "| ${{ needs.should-run.outputs.browser }} | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           
-          if [[ "${{ needs.test-chromium.result }}" == "success" && "${{ needs.test-firefox.result }}" == "success" ]]; then
-            echo "✅ All E2E tests passed!"
-            exit 0
-          elif [[ "${{ needs.test-chromium.result }}" == "failure" || "${{ needs.test-firefox.result }}" == "failure" ]]; then
-            echo "❌ Some E2E tests failed. Check individual job logs."
-            exit 1
+          if [[ "${{ needs.test.result }}" == "success" ]]; then
+            echo "## ✅ All E2E tests passed!" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ E2E tests completed with unexpected status."
+            echo "## ❌ Some E2E tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check individual test reports in artifacts." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
