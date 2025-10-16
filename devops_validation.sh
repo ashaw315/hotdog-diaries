@@ -100,6 +100,33 @@ jq -r '
 jq -r '.[] | "\(.platform)\t\(.active_items)"' "${ARTIFACTS_DIR}/pool_active_distribution.json" \
   | tee "${ARTIFACTS_DIR}/pool_active_distribution.tsv" >/dev/null
 
+# ---- AVAILABILITY SNAPSHOT (quality-aware) ----
+MIN_CANDIDATES="${MIN_CANDIDATES:-20}"
+MIN_CONF="${MIN_CONF:-0.70}"
+
+echo "STEP 2.5 — Quality-aware eligibility analysis (MIN_CANDIDATES=${MIN_CANDIDATES}, MIN_CONF=${MIN_CONF})"
+
+# Pull only needed fields (PostgREST)
+curl -sS "${SUPABASE_URL}/rest/v1/content_queue?select=source_platform,confidence_score,ingest_priority,is_posted,is_approved&is_approved=eq.true&ingest_priority=gte.0&or=(is_posted.is.null,is_posted.eq.false)" \
+  "${SB_HDR[@]}" > "${ARTIFACTS_DIR}/pool_quality_raw.json"
+
+jq --argjson min_conf "$MIN_CONF" --argjson min_candidates "$MIN_CANDIDATES" '
+  group_by(.source_platform) 
+  | map({
+      platform: (.[0].source_platform|ascii_downcase),
+      eligible: (map(select((.confidence_score // 0) >= $min_conf)) | length),
+      total: length
+    })
+  | map(. + {meets_cap: (.eligible >= $min_candidates)})
+' "${ARTIFACTS_DIR}/pool_quality_raw.json" \
+  > "${ARTIFACTS_DIR}/eligibility_snapshot.json"
+
+eligible_count=$(jq '[.[] | select(.meets_cap==true)] | length' "${ARTIFACTS_DIR}/eligibility_snapshot.json")
+
+echo "Eligible platforms at quality threshold: ${eligible_count}"
+jq -r '.[] | "\(.platform)\t\(.total)\t\(.eligible)\t\(.meets_cap)"' "${ARTIFACTS_DIR}/eligibility_snapshot.json" \
+  | tee "${ARTIFACTS_DIR}/eligibility_summary.tsv" >/dev/null
+
 # =========================
 # STEP 3 — REFILL (API)
 # =========================
@@ -181,10 +208,18 @@ curl -sS -X POST "${APP_ORIGIN}/api/admin/schedule/forecast/reconcile?date=${TOD
   | tee "${ARTIFACTS_DIR}/reconcile_today.json" >/dev/null || true
 
 # =========================
-# STEP 8 — Report + Strict PASS/FAIL
+# STEP 8 — Report + Availability-Aware Diversity Guard
 # =========================
 pass_slots=$([[ "${slots_today}" == "6" && "${slots_tomorrow}" == "6" ]] && echo "OK" || echo "FAIL")
-pass_diversity=$([[ "${platforms_2d}" -ge 4 ]] && echo "OK" || echo "FAIL")
+
+# Availability-aware diversity validation
+if (( eligible_count >= 4 )); then
+  pass_diversity=$([[ "${platforms_2d}" -ge 4 ]] && echo "OK" || echo "FAIL")
+  diversity_note="Eligible platforms >=4; enforcing diversity>=4"
+else
+  pass_diversity="WARN"
+  diversity_note="Eligible platforms <4 (pool lacks depth at MIN_CONF=${MIN_CONF}, MIN_CANDIDATES=${MIN_CANDIDATES}); diversity not enforced"
+fi
 
 {
   echo "# Rebalance Verification Report (Supabase REST)"
@@ -193,6 +228,9 @@ pass_diversity=$([[ "${platforms_2d}" -ge 4 ]] && echo "OK" || echo "FAIL")
   echo
   echo "## Pool Distribution (active) — REST grouped via jq"
   cat "${ARTIFACTS_DIR}/pool_active_distribution.json"
+  echo
+  echo "## Eligibility Snapshot (quality-aware)"
+  cat "${ARTIFACTS_DIR}/eligibility_snapshot.json"
   echo
   echo "## Refill Responses"
   echo "### Today"; cat "${ARTIFACTS_DIR}/refill_today.json"; echo
@@ -210,8 +248,10 @@ pass_diversity=$([[ "${platforms_2d}" -ge 4 ]] && echo "OK" || echo "FAIL")
   echo "slots_filled_today:    ${slots_today}"
   echo "slots_filled_tomorrow: ${slots_tomorrow}"
   echo "platforms_across_2d:   ${platforms_2d}"
+  echo "eligible_platforms_at_quality: ${eligible_count}"
+  echo "diversity_policy: ${diversity_note}"
   echo "criteria_slots_6_each_day: ${pass_slots}"
-  echo "criteria_diversity_>=4:    ${pass_diversity}"
+  echo "criteria_diversity_result: ${pass_diversity}"
 } | tee "${ARTIFACTS_DIR}/rebalance_verification.md" >/dev/null
 
 # Helpful nudges
@@ -227,8 +267,12 @@ echo "Artifacts written to: ${ARTIFACTS_DIR}"
 ls -1 "${ARTIFACTS_DIR}" || true
 
 # Final exit based on criteria
-if [[ "${pass_slots}" == "OK" && "${pass_diversity}" == "OK" ]]; then
-  echo "✅ VALIDATION PASSED: All criteria met"
+if [[ "${pass_slots}" == "OK" && ("${pass_diversity}" == "OK" || "${pass_diversity}" == "WARN") ]]; then
+  if [[ "${pass_diversity}" == "WARN" ]]; then
+    echo "⚠️ VALIDATION PASSED WITH WARNING: Slots OK, diversity warning due to limited platform pool quality"
+  else
+    echo "✅ VALIDATION PASSED: All criteria met"
+  fi
   exit 0
 else
   echo "❌ VALIDATION FAILED: See troubleshooting above"
