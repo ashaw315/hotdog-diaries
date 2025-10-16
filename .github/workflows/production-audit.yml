@@ -49,8 +49,8 @@ jobs:
           echo "GITHUB_REPO=${{ env.GITHUB_REPO }}" >> $GITHUB_ENV
           
           # Validate required secrets are available
-          if [[ -z "${{ secrets.PRODUCTION_AUTH_TOKEN }}" ]]; then
-            echo "❌ PRODUCTION_AUTH_TOKEN secret not configured"
+          if [[ -z "${{ secrets.AUTH_TOKEN }}" ]]; then
+            echo "❌ AUTH_TOKEN secret not configured"
             exit 1
           fi
           
@@ -59,8 +59,8 @@ jobs:
             exit 1
           fi
           
-          if [[ -z "${{ secrets.SUPABASE_SERVICE_KEY }}" ]]; then
-            echo "❌ SUPABASE_SERVICE_KEY secret not configured"
+          if [[ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
+            echo "❌ SUPABASE_SERVICE_ROLE_KEY secret not configured"
             exit 1
           fi
           
@@ -69,9 +69,9 @@ jobs:
       - name: 🔍 Run production audit
         id: audit
         env:
-          AUTH_TOKEN: ${{ secrets.PRODUCTION_AUTH_TOKEN }}
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🔍 Starting 7-day production audit..."
