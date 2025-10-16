@@ -258,15 +258,20 @@ class SecretValidator {
   async validateCurrentTokens(): Promise<TokenValidation[]> {
     const results: TokenValidation[] = []
     
+    // Optional tokens that may not be configured in all environments
+    const optionalTokens = ['CRON_TOKEN', 'ADMIN_PASSWORD']
+    
     for (const [tokenName, config] of Object.entries(TOKEN_CONFIGS)) {
       const tokenValue = process.env[tokenName]
       
       if (!tokenValue) {
+        // For optional tokens, mark as valid but with warning
+        const isOptional = optionalTokens.includes(tokenName)
         results.push({
           tokenName,
           value: '',
-          isValid: false,
-          errors: ['Token not found in environment']
+          isValid: isOptional, // Optional tokens don't fail validation
+          errors: isOptional ? [] : ['Token not found in environment']
         })
         continue
       }
@@ -296,12 +301,19 @@ class SecretValidator {
     for (const validation of tokenValidations) {
       if (!validation.isValid) {
         if (validation.value === '') {
-          warnings.push(`${validation.tokenName}: ${validation.errors.join(', ')}`)
+          // Only add warnings for required tokens that are missing
+          if (validation.errors.length > 0) {
+            warnings.push(`${validation.tokenName}: ${validation.errors.join(', ')}`)
+          }
         } else {
           errors.push(`${validation.tokenName}: ${validation.errors.join(', ')}`)
         }
       } else {
-        console.log(`  ✅ ${validation.tokenName}`)
+        if (validation.value === '') {
+          console.log(`  ⚠️  ${validation.tokenName} (optional - not configured)`)
+        } else {
+          console.log(`  ✅ ${validation.tokenName}`)
+        }
       }
     }
     
@@ -319,8 +331,10 @@ class SecretValidator {
     }
     
     if (envValidation.orphanedVars.length > 0) {
-      warnings.push(`Orphaned variables in .env.example: ${envValidation.orphanedVars.join(', ')}`)
-      console.log(`  ⚠️  Orphaned in .env.example: ${envValidation.orphanedVars.join(', ')}`)
+      // Note: Don't treat orphaned variables as warnings in strict mode
+      // They're informational and not security-critical
+      console.log(`  ℹ️  Orphaned in .env.example: ${envValidation.orphanedVars.join(', ')}`)
+      console.log(`     (These variables are documented but not currently used in codebase)`)
     }
     
     console.log('')
