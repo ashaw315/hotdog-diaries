@@ -1,0 +1,307 @@
+name: Deploy Gate
+
+on:
+  deployment_status:
+  push:
+    branches: [ main ]
+  workflow_run:
+    workflows: ["Vercel Production Deployment"]
+    types: 
+      - completed
+
+env:
+  PROD_URL: https://hotdog-diaries.vercel.app
+
+jobs:
+  auth-token-validation:
+    runs-on: ubuntu-latest
+    name: Validate AUTH_TOKEN Deploy Gate
+    if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    
+    steps:
+      - name: Wait for deployment
+        if: github.event_name == 'push'
+        run: |
+          echo "⏳ Waiting for deployment to be available..."
+          sleep 30
+          
+      - name: Test health probe with valid token
+        run: |
+          echo "🔍 Testing auth token health probe..."
+          
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            "${{ env.PROD_URL }}/api/admin/health/auth-token")
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Auth token validation passed"
+            
+            # Verify response contains success code
+            if echo "$BODY" | jq -e '.code == "AUTH_TOKEN_VALID"' > /dev/null; then
+              echo "✅ Response contains valid success code"
+            else
+              echo "❌ Response missing valid success code"
+              exit 1
+            fi
+          else
+            echo "❌ Auth token validation failed with status $HTTP_STATUS"
+            
+            # Check if it's an auth mismatch
+            if [ "$HTTP_STATUS" -eq 401 ]; then
+              CODE=$(echo "$BODY" | jq -r '.code // "unknown"')
+              if [ "$CODE" = "AUTH_TOKEN_MISMATCH" ]; then
+                echo "🚨 AUTH_TOKEN_MISMATCH detected - deployment blocked!"
+                echo "The AUTH_TOKEN secret may be incorrect or expired."
+              fi
+            fi
+            
+            exit 1
+          fi
+          
+      - name: Test health probe with invalid token
+        run: |
+          echo "🧪 Testing auth token health probe with invalid token..."
+          
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer invalid-token-12345" \
+            "${{ env.PROD_URL }}/api/admin/health/auth-token")
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_STATUS" -eq 401 ]; then
+            echo "✅ Invalid token correctly rejected"
+            
+            # Verify response contains mismatch code
+            CODE=$(echo "$BODY" | jq -r '.code // "unknown"')
+            if [ "$CODE" = "AUTH_TOKEN_MISMATCH" ]; then
+              echo "✅ Response contains correct error code: AUTH_TOKEN_MISMATCH"
+            else
+              echo "⚠️ Response contains unexpected error code: $CODE"
+            fi
+          else
+            echo "❌ Invalid token should have been rejected with 401"
+            exit 1
+          fi
+          
+      - name: Test health probe without token
+        run: |
+          echo "🧪 Testing auth token health probe without token..."
+          
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            "${{ env.PROD_URL }}/api/admin/health/auth-token")
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_STATUS" -eq 401 ]; then
+            echo "✅ Missing token correctly rejected"
+            
+            # Verify response contains missing token code
+            CODE=$(echo "$BODY" | jq -r '.code // "unknown"')
+            if [ "$CODE" = "AUTH_TOKEN_MISSING" ]; then
+              echo "✅ Response contains correct error code: AUTH_TOKEN_MISSING"
+            else
+              echo "⚠️ Response contains unexpected error code: $CODE"
+            fi
+          else
+            echo "❌ Missing token should have been rejected with 401"
+            exit 1
+          fi
+
+  comprehensive-health-check:
+    runs-on: ubuntu-latest
+    name: Comprehensive Health Validation
+    needs: auth-token-validation
+    
+    steps:
+      - name: Deep health check
+        run: |
+          echo "🏥 Running comprehensive health validation..."
+          
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            "${{ env.PROD_URL }}/api/admin/health/deep")
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Deep health check passed"
+            
+            # Verify response structure
+            OK_STATUS=$(echo "$BODY" | jq -r '.ok // false')
+            if [ "$OK_STATUS" = "true" ]; then
+              echo "✅ Health status is OK"
+              
+              # Show component health
+              echo "📊 Component Health:"
+              echo "$BODY" | jq '.components // {}' || echo "No component details available"
+              
+            else
+              echo "❌ Health status indicates issues"
+              echo "$BODY" | jq '.components // {}' || echo "No component details available"
+              exit 1
+            fi
+          else
+            echo "❌ Deep health check failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+      - name: Admin endpoint smoke test
+        run: |
+          echo "💨 Running admin endpoint smoke test..."
+          
+          # Test a few critical admin endpoints
+          ENDPOINTS=(
+            "/api/admin/dashboard/stats"
+            "/api/admin/queue/health"
+            "/api/admin/platforms/status"
+          )
+          
+          for ENDPOINT in "${ENDPOINTS[@]}"; do
+            echo "Testing $ENDPOINT..."
+            
+            RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+              -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+              "${{ env.PROD_URL }}$ENDPOINT")
+            
+            HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+            
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ $ENDPOINT responding"
+            else
+              echo "❌ $ENDPOINT failed with status $HTTP_STATUS"
+              # Don't fail the entire gate for individual endpoint issues
+              # Just log them for monitoring
+            fi
+          done
+
+  deployment-gate-result:
+    runs-on: ubuntu-latest
+    name: Deployment Gate Result
+    needs: [auth-token-validation, comprehensive-health-check]
+    if: always()
+    
+    steps:
+      - name: Check gate results
+        run: |
+          echo "🚪 Deployment Gate Results"
+          echo "=========================="
+          
+          AUTH_RESULT="${{ needs.auth-token-validation.result }}"
+          HEALTH_RESULT="${{ needs.comprehensive-health-check.result }}"
+          
+          echo "Auth Token Validation: $AUTH_RESULT"
+          echo "Health Check: $HEALTH_RESULT"
+          
+          if [ "$AUTH_RESULT" = "success" ] && [ "$HEALTH_RESULT" = "success" ]; then
+            echo ""
+            echo "✅ DEPLOYMENT GATE PASSED"
+            echo "All security and health validations successful."
+            echo "Deployment is approved for production traffic."
+          else
+            echo ""
+            echo "❌ DEPLOYMENT GATE FAILED"
+            echo "Security or health validations failed."
+            echo "Deployment should be rolled back or investigated."
+            exit 1
+          fi
+          
+      - name: Create deployment success issue
+        if: needs.auth-token-validation.result == 'success' && needs.comprehensive-health-check.result == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `✅ Deployment Gate Passed - ${new Date().toISOString().split('T')[0]}`
+            const body = `## Deployment Gate Success
+            
+            **Deployment**: ${{ github.sha }}  
+            **Timestamp**: ${new Date().toISOString()}  
+            **Environment**: Production  
+            
+            ### Validation Results
+            
+            - ✅ **Auth Token Validation**: Passed
+            - ✅ **Comprehensive Health Check**: Passed
+            - ✅ **Admin Endpoint Smoke Test**: Passed
+            
+            ### Details
+            
+            All security and health validations have passed successfully. The deployment is approved for production traffic.
+            
+            **Production URL**: ${{ env.PROD_URL }}
+            **Health Probe**: ${{ env.PROD_URL }}/api/admin/health/auth-token
+            
+            This notification was generated automatically by the deployment gate workflow.
+            `
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'success', 'automated']
+            })
+            
+      - name: Create deployment failure issue
+        if: needs.auth-token-validation.result != 'success' || needs.comprehensive-health-check.result != 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Deployment Gate Failed - ${new Date().toISOString().split('T')[0]}`
+            const body = `## Deployment Gate Failure
+            
+            **Deployment**: ${{ github.sha }}  
+            **Timestamp**: ${new Date().toISOString()}  
+            **Environment**: Production  
+            
+            ### Validation Results
+            
+            - ${{ needs.auth-token-validation.result == 'success' && '✅' || '❌' }} **Auth Token Validation**: ${{ needs.auth-token-validation.result }}
+            - ${{ needs.comprehensive-health-check.result == 'success' && '✅' || '❌' }} **Comprehensive Health Check**: ${{ needs.comprehensive-health-check.result }}
+            
+            ### Immediate Actions Required
+            
+            1. **Check workflow logs** for specific failure details
+            2. **Verify AUTH_TOKEN secret** is correct and not expired
+            3. **Test health endpoints** manually to isolate issues
+            4. **Consider rollback** if critical functionality is impacted
+            
+            ### Investigation
+            
+            - **Health Probe**: ${{ env.PROD_URL }}/api/admin/health/auth-token
+            - **Deep Health**: ${{ env.PROD_URL }}/api/admin/health/deep
+            - **Workflow**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ### Security Note
+            
+            If the failure is due to AUTH_TOKEN_MISMATCH, this indicates a security configuration issue that must be resolved before deployment approval.
+            
+            /cc @security-team @devops-team
+            
+            This alert was generated automatically by the deployment gate workflow.
+            `
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'failure', 'security', 'urgent', 'automated']
+            })

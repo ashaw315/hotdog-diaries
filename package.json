@@ -49,7 +49,9 @@
     "test:auto-healing": "npx tsx scripts/testAutoHealing.ts",
     "test:auto-healing-full": "npx tsx scripts/testAutoHealing.ts --full",
     "validate:ci-fix": "npx tsx scripts/validateCIFix.ts",
-    "schedule:day": "tsx scripts/generateScheduleForDate.ts"
+    "schedule:day": "tsx scripts/generateScheduleForDate.ts",
+    "rotate-tokens": "npx tsx scripts/rotate-token.ts",
+    "validate-secrets": "npx tsx scripts/validate-secrets.ts"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
@@ -78,6 +80,7 @@
     "dotenv": "^17.2.1",
     "framer-motion": "^12.23.12",
     "fs-extra": "^11.3.2",
+    "glob": "^11.0.0",
     "globby": "^15.0.0",
     "got": "^13.0.0",
     "gsap": "^3.13.0",
