@@ -1,0 +1,154 @@
+name: 🚪 Deployment Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Deployment base URL (e.g. https://hotdog-diaries.vercel.app)'
+        required: false
+        type: string
+  deployment_status:
+  workflow_call:
+    inputs:
+      target_url:
+        description: 'Deployment base URL'
+        required: false
+        type: string
+    secrets:
+      AUTH_TOKEN:
+        description: 'Admin authentication token'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: 🔐 Security & Health Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    # Prevent fork PRs from running secrets-backed gate
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+
+    env:
+      TARGET_URL: ${{ inputs.target_url || github.event.deployment_status.environment_url || vars.SITE_URL || secrets.SITE_URL }}
+      AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+
+    steps:
+      - name: 🧪 Preflight Validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "🔍 Validating deployment gate requirements..."
+          echo "Event: ${{ github.event_name }}"
+          echo "Environment URL: ${{ github.event.deployment_status.environment_url || 'none' }}"
+          echo "Target URL: ${TARGET_URL:-<empty>}"
+          
+          missing=0
+          if [ -z "${TARGET_URL:-}" ]; then
+            echo "::error title=Missing Target URL::No TARGET_URL available. Provide 'inputs.target_url' OR set repository variable 'SITE_URL' OR ensure 'deployment_status.environment_url' is present."
+            missing=1
+          fi
+          
+          if [ -z "${AUTH_TOKEN:-}" ]; then
+            echo "::error title=Missing Auth Token::AUTH_TOKEN secret not configured. Add repository secret AUTH_TOKEN with admin JWT token."
+            missing=1
+          fi
+          
+          if [ "$missing" -ne 0 ]; then
+            echo "❌ Preflight failed — required context not available."
+            echo "::error::Deployment gate cannot proceed without TARGET_URL and AUTH_TOKEN"
+            exit 1
+          fi
+          
+          echo "✅ Preflight validation passed"
+          echo "🎯 Target: ${TARGET_URL}"
+
+      - name: 🔐 Authentication Validation
+        id: auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "🔐 Validating admin authentication token..."
+          
+          response=$(curl -fsS -w "HTTP_CODE:%{http_code}" \
+            -H "x-admin-token: ${AUTH_TOKEN}" \
+            -H "Authorization: Bearer ${AUTH_TOKEN}" \
+            "${TARGET_URL}/api/admin/health/auth-token")
+          
+          http_code=$(echo "$response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2)
+          body=$(echo "$response" | sed 's/HTTP_CODE:[0-9]*$//')
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Auth validation failed with HTTP $http_code"
+            echo "Response: $body"
+            exit 1
+          fi
+          
+          echo "✅ Authentication token valid"
+          echo "$body" | jq . || echo "$body"
+
+      - name: 💚 Deep Health Check
+        id: health
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "💚 Running comprehensive system health check..."
+          
+          response=$(curl -fsS -w "HTTP_CODE:%{http_code}" \
+            -H "x-admin-token: ${AUTH_TOKEN}" \
+            -H "Authorization: Bearer ${AUTH_TOKEN}" \
+            "${TARGET_URL}/api/admin/health/deep")
+          
+          http_code=$(echo "$response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2)
+          body=$(echo "$response" | sed 's/HTTP_CODE:[0-9]*$//')
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Health check failed with HTTP $http_code"
+            echo "Response: $body"
+            exit 1
+          fi
+          
+          echo "✅ Deep health check passed"
+          echo "$body" | jq '{
+            database: .database.status,
+            apis: (.apis | length),
+            scheduler: .scheduler.status,
+            overall: .status
+          }' || echo "$body"
+
+      - name: ✅ Gate Summary
+        if: always()
+        run: |
+          echo "## 🚪 Deployment Gate Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Auth Token | ${{ steps.auth.outcome == 'success' && '✅ Valid' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Health Check | ${{ steps.health.outcome == 'success' && '✅ Healthy' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** \`${TARGET_URL}\`" >> $GITHUB_STEP_SUMMARY
+          
+          echo "🚪 Deployment Gate Results"
+          echo "=========================="
+          echo "Auth Token Validation: ${{ steps.auth.outcome }}"
+          echo "Health Check:          ${{ steps.health.outcome }}"
+
+      - name: ❌ Fail on Security or Health Issues
+        if: |
+          steps.auth.outcome != 'success' ||
+          steps.health.outcome != 'success'
+        run: |
+          echo "❌ DEPLOYMENT GATE FAILED"
+          echo "Security or health validations failed - deployment blocked"
+          echo "::error title=Gate Failed::One or more security/health checks failed"
+          exit 1
+          
+      - name: 🎉 Gate Success
+        run: |
+          echo "🎉 DEPLOYMENT GATE PASSED"
+          echo "All security and health validations successful"
+          echo "Deployment is cleared to proceed"
