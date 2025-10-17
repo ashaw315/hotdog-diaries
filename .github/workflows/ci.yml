@@ -59,9 +59,15 @@ jobs:
         run: |
           echo "🔍 Running ESLint..."
           npm run lint:ci 2>&1 | tee lint-results.txt
+          LINT_EXIT_CODE=${PIPESTATUS[0]}
+          
+          # Only capture first 100 lines to avoid HEREDOC issues
           echo "lint-output<<EOF" >> $GITHUB_OUTPUT
-          cat lint-results.txt >> $GITHUB_OUTPUT
+          head -n 100 lint-results.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Exit with the lint exit code
+          exit $LINT_EXIT_CODE
           
       - name: Check Prettier formatting
         run: |
