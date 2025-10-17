@@ -3,20 +3,20 @@ import { NextRequest, NextResponse } from 'next/server'
 /**
  * Auth Token Health Probe Endpoint
  * 
- * Validates AUTH_TOKEN against production secret for deploy gate functionality.
- * Returns 200 for valid tokens, 401 with specific error codes for mismatches.
+ * Validates JWT tokens using proper JWT verification for deploy gate functionality.
+ * Returns 200 for valid tokens, 401 with specific error codes for invalid tokens.
  */
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the AUTH_TOKEN from production environment
-    const productionAuthToken = process.env.AUTH_TOKEN
+    // Get JWT secret from environment
+    const jwtSecret = process.env.JWT_SECRET
     
-    if (!productionAuthToken) {
+    if (!jwtSecret) {
       return NextResponse.json(
         { 
-          code: 'AUTH_TOKEN_NOT_CONFIGURED',
-          message: 'AUTH_TOKEN not configured in environment',
+          code: 'JWT_SECRET_NOT_CONFIGURED',
+          message: 'JWT_SECRET not configured in environment',
           status: 'error'
         },
         { status: 500 }
@@ -47,30 +47,49 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Validate token against production secret
-    if (providedToken !== productionAuthToken) {
+    // Validate JWT token using proper verification
+    try {
+      // Import auth service for JWT verification
+      const { AuthService } = await import('@/lib/services/auth')
+      const decoded = AuthService.verifyJWT(providedToken)
+      
+      // Check if it's an admin token
+      if (!decoded || !decoded.username || decoded.username !== 'admin') {
+        return NextResponse.json(
+          {
+            code: 'AUTH_TOKEN_INVALID_USER',
+            message: 'Token is not for admin user',
+            status: 'error'
+          },
+          { status: 401 }
+        )
+      }
+      
+      // Token is valid
       return NextResponse.json(
         {
-          code: 'AUTH_TOKEN_MISMATCH',
-          message: 'Provided token does not match production secret',
+          code: 'AUTH_TOKEN_VALID',
+          message: 'Authentication token is valid',
+          status: 'success',
+          timestamp: new Date().toISOString(),
+          environment: process.env.NODE_ENV || 'unknown',
+          user: decoded.username,
+          expires: new Date(decoded.exp * 1000).toISOString()
+        },
+        { status: 200 }
+      )
+      
+    } catch (jwtError) {
+      return NextResponse.json(
+        {
+          code: 'AUTH_TOKEN_INVALID',
+          message: 'Invalid or expired JWT token',
           status: 'error',
-          hint: 'Token may be expired, incorrect, or from wrong environment'
+          hint: 'Token may be malformed, expired, or signed with wrong secret'
         },
         { status: 401 }
       )
     }
-    
-    // Token is valid
-    return NextResponse.json(
-      {
-        code: 'AUTH_TOKEN_VALID',
-        message: 'Authentication token is valid',
-        status: 'success',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'unknown'
-      },
-      { status: 200 }
-    )
     
   } catch (error) {
     console.error('Auth token health probe error:', error)
