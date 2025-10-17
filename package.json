@@ -57,7 +57,9 @@
     "api:lint": "npx redocly lint docs/openapi.yaml",
     "api:validate": "npx tsx scripts/validate-openapi.ts",
     "api:check-drift": "npm run api:inventory && npm run api:validate",
-    "runbook:pdf": "npx tsx scripts/md-to-pdf.ts"
+    "runbook:pdf": "npx tsx scripts/md-to-pdf.ts",
+    "test:planner": "node --test scripts/scan-plan.test.mjs",
+    "test:planner-contract": "node --test --test-reporter=spec scripts/scan-plan.test.mjs"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",

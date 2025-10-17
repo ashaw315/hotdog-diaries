@@ -1,0 +1,335 @@
+name: 📋 Planner Contract
+
+on:
+  schedule:
+    # Daily at 3:30 AM UTC (11:30 PM ET) - after content scans complete
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    inputs:
+      test_scenarios:
+        description: 'Test scenarios to run (all,basic,edge,stress)'
+        type: choice
+        default: 'all'
+        options:
+          - all
+          - basic
+          - edge
+          - stress
+      fail_fast:
+        description: 'Stop on first test failure'
+        type: boolean
+        default: false
+
+concurrency:
+  group: planner-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: test
+  CI: true
+
+jobs:
+  planner-contract:
+    name: 📋 Validate Planner Behavior
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    permissions:
+      contents: read
+      issues: write  # For creating issues on contract violations
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: 📦 Install dependencies
+        run: |
+          echo "🔧 Installing test dependencies..."
+          npm ci --prefer-offline --no-audit
+          
+      - name: 🧪 Run planner unit tests
+        id: unit-tests
+        run: |
+          echo "🧪 Running comprehensive planner unit tests..."
+          
+          # Set test configuration
+          export SCAN_MIN_PER_PLATFORM=40
+          export SCAN_MAX_PER_PLATFORM=120
+          export SCAN_GLOBAL_MAX=800
+          export SCAN_COOLDOWN_MIN=180
+          export MIN_CONF=0.70
+          export MIN_CANDIDATES=20
+          export PLATFORM_ALLOW="reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay"
+          
+          # Run Node.js tests with timeout and detailed output
+          timeout 300s node --test --test-reporter=spec scripts/scan-plan.test.mjs > test_output.txt 2>&1
+          TEST_EXIT_CODE=$?
+          
+          echo "TEST_EXIT_CODE=$TEST_EXIT_CODE" >> $GITHUB_ENV
+          
+          # Display results
+          cat test_output.txt
+          
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "✅ All planner unit tests passed"
+            echo "UNIT_TESTS_STATUS=passed" >> $GITHUB_ENV
+          else
+            echo "❌ Planner unit tests failed with exit code: $TEST_EXIT_CODE"
+            echo "UNIT_TESTS_STATUS=failed" >> $GITHUB_ENV
+          fi
+          
+      - name: 🔍 Contract validation scenarios
+        id: contract-validation
+        if: inputs.test_scenarios == 'all' || inputs.test_scenarios == 'edge' || github.event_name == 'schedule'
+        run: |
+          echo "🔍 Running contract validation scenarios..."
+          
+          # Test 1: Global cap enforcement
+          echo "📊 Testing global cap enforcement..."
+          node -e "
+          import { spawn } from 'node:child_process';
+          import { writeFile } from 'node:fs/promises';
+          
+          const wrapper = \`
+            globalThis.fetch = async (url) => {
+              if (url.includes('/api/system/metrics')) {
+                return new Response(JSON.stringify({
+                  queue_depth_by_platform: { reddit: 500, youtube: 400 },
+                  last_scan_times: {}
+                }), { status: 200, headers: {'content-type':'application/json'}});
+              }
+              return new Response('[]', { status: 200, headers: {'content-type':'application/json'}});
+            };
+            import('./scripts/scan-plan.mjs').catch(e => { console.error(e); process.exit(1); });
+          \`;
+          
+          await writeFile('__tmp_global_cap_test.mjs', wrapper);
+          
+          const proc = spawn('node', ['__tmp_global_cap_test.mjs'], {
+            env: {
+              ...process.env,
+              TARGET_URL: 'https://example.com',
+              SUPABASE_URL: 'https://supabase.local',
+              SUPABASE_SERVICE_ROLE_KEY: 'test',
+              SCAN_GLOBAL_MAX: '800'
+            }
+          });
+          
+          let stdout = '';
+          proc.stdout.on('data', d => stdout += d.toString());
+          
+          const code = await new Promise(res => proc.on('close', res));
+          
+          if (stdout.includes('global_cap_reached')) {
+            console.log('✅ Global cap enforcement: PASSED');
+          } else {
+            console.log('❌ Global cap enforcement: FAILED');
+            console.log('Output:', stdout);
+            process.exit(1);
+          }
+          " || exit 1
+          
+          echo "CONTRACT_VALIDATION_STATUS=passed" >> $GITHUB_ENV
+          
+      - name: 🚀 Stress test scenarios
+        id: stress-tests
+        if: inputs.test_scenarios == 'all' || inputs.test_scenarios == 'stress' || github.event_name == 'schedule'
+        run: |
+          echo "🚀 Running stress test scenarios..."
+          
+          # Test with extreme platform counts
+          node -e "
+          import { spawn } from 'node:child_process';
+          import { writeFile } from 'node:fs/promises';
+          
+          // Generate 50 platforms with various queue depths
+          const platforms = {};
+          for (let i = 0; i < 50; i++) {
+            platforms[\`platform\${i}\`] = Math.floor(Math.random() * 200);
+          }
+          
+          const wrapper = \`
+            globalThis.fetch = async (url) => {
+              if (url.includes('/api/system/metrics')) {
+                return new Response(JSON.stringify({
+                  queue_depth_by_platform: ${JSON.stringify(platforms)},
+                  last_scan_times: {}
+                }), { status: 200, headers: {'content-type':'application/json'}});
+              }
+              // Generate large supabase response
+              const rows = Array.from({length: 1000}, (_, i) => ({
+                source_platform: \`platform\${i % 50}\`,
+                confidence_score: Math.random(),
+                ingest_priority: 0,
+                is_posted: false,
+                is_approved: true
+              }));
+              return new Response(JSON.stringify(rows), { status: 200, headers: {'content-type':'application/json'}});
+            };
+            import('./scripts/scan-plan.mjs').catch(e => { console.error(e); process.exit(1); });
+          \`;
+          
+          await writeFile('__tmp_stress_test.mjs', wrapper);
+          
+          const start = Date.now();
+          const proc = spawn('node', ['__tmp_stress_test.mjs'], {
+            env: {
+              ...process.env,
+              TARGET_URL: 'https://example.com',
+              SUPABASE_URL: 'https://supabase.local',  
+              SUPABASE_SERVICE_ROLE_KEY: 'test',
+              PLATFORM_ALLOW: Object.keys(platforms).join(',')
+            }
+          });
+          
+          const code = await new Promise(res => proc.on('close', res));
+          const duration = Date.now() - start;
+          
+          if (code === 0 && duration < 5000) {
+            console.log(\`✅ Stress test: PASSED (completed in \${duration}ms)\`);
+          } else {
+            console.log(\`❌ Stress test: FAILED (exit code: \${code}, duration: \${duration}ms)\`);
+            process.exit(1);
+          }
+          " || exit 1
+          
+          echo "STRESS_TESTS_STATUS=passed" >> $GITHUB_ENV
+          
+      - name: 📊 Generate contract summary
+        if: always()
+        run: |
+          echo "## 📋 Planner Contract Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u -Iseconds)" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Scenarios:** ${{ inputs.test_scenarios || 'all' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Results table
+          echo "| Test Category | Status | Notes |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ env.UNIT_TESTS_STATUS }}" = "passed" ]; then
+            echo "| Unit Tests | ✅ Passed | All core logic validated |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Unit Tests | ❌ Failed | Critical planner logic broken |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ env.CONTRACT_VALIDATION_STATUS }}" = "passed" ]; then
+            echo "| Contract Validation | ✅ Passed | Policy enforcement working |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ env.CONTRACT_VALIDATION_STATUS }}" = "" ]; then
+            echo "| Contract Validation | ⏭️ Skipped | Not run in this scenario |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Contract Validation | ❌ Failed | Policy violations detected |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ env.STRESS_TESTS_STATUS }}" = "passed" ]; then
+            echo "| Stress Tests | ✅ Passed | Performance within limits |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ env.STRESS_TESTS_STATUS }}" = "" ]; then
+            echo "| Stress Tests | ⏭️ Skipped | Not run in this scenario |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Stress Tests | ❌ Failed | Performance degradation |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          if [ "${{ env.UNIT_TESTS_STATUS }}" = "passed" ] && \
+             ( [ "${{ env.CONTRACT_VALIDATION_STATUS }}" = "passed" ] || [ "${{ env.CONTRACT_VALIDATION_STATUS }}" = "" ] ) && \
+             ( [ "${{ env.STRESS_TESTS_STATUS }}" = "passed" ] || [ "${{ env.STRESS_TESTS_STATUS }}" = "" ] ); then
+            echo "### 🎉 Overall Status: **HEALTHY**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The demand-driven scanner planner is operating within contract specifications." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### 🚨 Overall Status: **CONTRACT VIOLATION**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Critical planner behavior violations detected. Immediate attention required." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - name: 🧹 Cleanup test artifacts
+        if: always()
+        run: |
+          rm -f __tmp_*.mjs test_output.txt scan_plan.json scan_matrix.json
+          
+      - name: 📤 Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: planner-contract-test-results-${{ github.run_number }}
+          path: |
+            test_output.txt
+            scan_plan.json
+            scan_matrix.json
+          retention-days: 7
+          if-no-files-found: ignore
+          
+      - name: 🚨 Create issue on contract violation
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueTitle = `🚨 Planner Contract Violation - ${new Date().toISOString().split('T')[0]}`;
+            const issueBody = `# Planner Contract Violation Report
+            
+            The daily planner contract validation detected critical violations on ${new Date().toISOString()}.
+            
+            **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **Test Scenarios:** ${{ inputs.test_scenarios || 'all' }}
+            
+            ## Failure Details
+            
+            - **Unit Tests:** ${{ env.UNIT_TESTS_STATUS || 'unknown' }}
+            - **Contract Validation:** ${{ env.CONTRACT_VALIDATION_STATUS || 'unknown' }}
+            - **Stress Tests:** ${{ env.STRESS_TESTS_STATUS || 'unknown' }}
+            
+            ## Impact Assessment
+            
+            Contract violations in the demand-driven scanner planner can lead to:
+            - Inefficient resource allocation
+            - Platform diversity degradation  
+            - API quota exhaustion
+            - Poor content quality selection
+            - Scanner infinite loops or crashes
+            
+            ## Investigation Steps
+            
+            1. 🔍 Download test artifacts: \`planner-contract-test-results-${{ github.run_number }}\`
+            2. 📊 Review test output for specific failures
+            3. 🧪 Run tests locally: \`node --test scripts/scan-plan.test.mjs\`
+            4. 🔧 Check recent changes to \`scripts/scan-plan.mjs\`
+            5. 📈 Verify environment variables and thresholds
+            
+            ## Common Contract Violations
+            
+            - **Global Cap Bypass:** Planner allows scanning when total queue > SCAN_GLOBAL_MAX
+            - **Cooldown Ignored:** Recent scans not respected for cooldown period
+            - **Quality Gates Broken:** Low-confidence content allowed when high-quality alternatives exist
+            - **Performance Regression:** Planning takes >5 seconds or excessive memory
+            - **Logic Errors:** Incorrect deficit calculations or matrix generation
+            
+            ## Immediate Actions
+            
+            - [ ] Stop all scheduled scanning workflows
+            - [ ] Review and fix planner logic
+            - [ ] Run manual validation: \`npm run test:planner\`
+            - [ ] Deploy fix and verify contract compliance
+            - [ ] Re-enable scheduled scans
+            - [ ] Close this issue when resolved
+            
+            ---
+            
+            This issue was automatically created by the Planner Contract workflow.
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['critical', 'scanner', 'contract-violation', 'auto-created']
+            });
