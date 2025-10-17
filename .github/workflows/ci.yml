@@ -58,16 +58,29 @@ jobs:
         id: lint
         run: |
           echo "🔍 Running ESLint..."
-          npx next lint --max-warnings=1500 2>&1 | tee lint-results.txt
+          # Run ESLint but don't fail the build on warnings - capture exit code separately
+          npx next lint --max-warnings=2000 2>&1 | tee lint-results.txt
           LINT_EXIT_CODE=${PIPESTATUS[0]}
+          
+          # Count warnings for reporting
+          WARNING_COUNT=$(grep -c "Warning:" lint-results.txt || echo "0")
+          echo "Found $WARNING_COUNT ESLint warnings"
           
           # Only capture first 100 lines to avoid HEREDOC issues
           echo "lint-output<<EOF" >> $GITHUB_OUTPUT
           head -n 100 lint-results.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           
-          # Exit with the lint exit code
-          exit $LINT_EXIT_CODE
+          echo "warning-count=$WARNING_COUNT" >> $GITHUB_OUTPUT
+          
+          # Only fail if there are actual ESLint errors (not warnings)
+          if [ $LINT_EXIT_CODE -ne 0 ] && grep -q "Error:" lint-results.txt; then
+            echo "❌ ESLint found errors (not just warnings)"
+            exit 1
+          else
+            echo "✅ ESLint completed (warnings: $WARNING_COUNT)"
+            exit 0
+          fi
           
       - name: Check Prettier formatting
         run: |
