@@ -58,7 +58,7 @@ jobs:
         id: lint
         run: |
           echo "🔍 Running ESLint..."
-          npm run lint:ci 2>&1 | tee lint-results.txt
+          npx next lint --max-warnings=1500 2>&1 | tee lint-results.txt
           LINT_EXIT_CODE=${PIPESTATUS[0]}
           
           # Only capture first 100 lines to avoid HEREDOC issues

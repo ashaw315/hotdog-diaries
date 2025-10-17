@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, createContext, useContext, ReactNode } from 'react'
+import { useState, createContext, useContext, ReactNode } from 'react'
 
 export interface Toast {
   id: string
@@ -280,11 +280,11 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   )
 }
 
-// Convenience hook for toast operations
-export const useToast = () => {
+// Enhanced useToast hook with convenience methods
+export const useToastActions = () => {
   const context = useContext(ToastContext)
   if (!context) {
-    throw new Error('useToast must be used within a ToastProvider')
+    throw new Error('useToastActions must be used within a ToastProvider')
   }
   
   return {
