@@ -244,7 +244,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [lint, typecheck, planner-tests]
-    if: success()
+    if: always() && !cancelled()
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -292,7 +292,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [lint, typecheck, test, planner-tests, security, build]
-    if: failure()
+    if: always() && contains(needs.*.result, 'failure')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
