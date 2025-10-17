@@ -28,7 +28,7 @@ async function runPlanner(env = {}, fixture = {}) {
   await writeFile(tmp, wrapper, 'utf8');
 
   const proc = spawn(process.execPath, [tmp], {
-    cwd: __dirname,
+    cwd: resolve(__dirname, '..'),
     env: {
       ...process.env,
       TARGET_URL: env.TARGET_URL ?? 'https://example.com',
@@ -50,8 +50,17 @@ async function runPlanner(env = {}, fixture = {}) {
   proc.stderr.on('data', d => stderr += d.toString());
   const code = await new Promise(res => proc.on('close', res));
 
-  const plan = JSON.parse(await readFile(resolve(__dirname, '../scan_plan.json'), 'utf8'));
-  const matrix = JSON.parse(await readFile(resolve(__dirname, '../scan_matrix.json'), 'utf8'));
+  let plan, matrix;
+  try {
+    plan = JSON.parse(await readFile(resolve(__dirname, '../scan_plan.json'), 'utf8'));
+  } catch (err) {
+    throw new Error(`Failed to read scan_plan.json: ${err.message}. stdout: ${stdout}, stderr: ${stderr}, code: ${code}`);
+  }
+  try {
+    matrix = JSON.parse(await readFile(resolve(__dirname, '../scan_matrix.json'), 'utf8'));
+  } catch (err) {
+    throw new Error(`Failed to read scan_matrix.json: ${err.message}. stdout: ${stdout}, stderr: ${stderr}, code: ${code}`);
+  }
   try { await rm(tmp); } catch {}
   return { code, stdout, stderr, plan, matrix };
 }
@@ -61,7 +70,11 @@ test('global cap → empty matrix with reason', async () => {
     metrics: {
       queue_depth_by_platform: { pixabay: 500, bluesky: 400 },
       last_scan_times: { pixabay: new Date().toISOString(), bluesky: new Date().toISOString() }
-    }
+    },
+    supabase: [
+      ...Array.from({length:500}, ()=>({ source_platform:'pixabay', confidence_score:0.9, ingest_priority:0, is_posted:false, is_approved:true })),
+      ...Array.from({length:400}, ()=>({ source_platform:'bluesky', confidence_score:0.9, ingest_priority:0, is_posted:false, is_approved:true })),
+    ]
   };
   const { plan, matrix } = await runPlanner({ SCAN_GLOBAL_MAX: 800 }, fixture);
   assert.equal(plan.analysis.reason, 'global_cap_reached');
