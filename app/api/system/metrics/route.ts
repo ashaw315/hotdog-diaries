@@ -43,7 +43,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const lastHour = new Date(now.getTime() - 60 * 60 * 1000)
 
     // Initialize metrics
-    let queueDepthByPlatform: Record<string, number> = {}
+    const queueDepthByPlatform: Record<string, number> = {}
     let postsToday = 0
     let scansLast24h = 0
     let refillCount = 0
