@@ -258,12 +258,10 @@ export async function GET(request: NextRequest) {
       const safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns)
       console.log('[AdminQueueAPI] Safe SELECT clause built')
       
-      let contentQuery: string
-      let countQuery: string
       const queryParams = [limit, actualOffset]
       
       // Build WHERE clause based on filters and available columns
-      let whereConditions: string[] = []
+      const whereConditions: string[] = []
       const hasIsApproved = columns.includes('is_approved')
       const hasIsPosted = columns.includes('is_posted')
       const hasAdminNotes = columns.includes('admin_notes')
@@ -303,7 +301,7 @@ export async function GET(request: NextRequest) {
       
       console.log(`[AdminQueueAPI] Building query with WHERE: ${whereClause}`)
       
-      contentQuery = `
+      const contentQuery = `
         SELECT ${safeSelectClause}
         FROM content_queue
         ${whereClause}
@@ -311,7 +309,7 @@ export async function GET(request: NextRequest) {
         LIMIT $1 OFFSET $2
       `
       
-      countQuery = `
+      const countQuery = `
         SELECT COUNT(*) as total
         FROM content_queue
         ${whereClause}

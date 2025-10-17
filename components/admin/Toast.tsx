@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, createContext, useContext, ReactNode } from 'react'
+import { useState, createContext, useContext, ReactNode } from 'react'
 
 export interface Toast {
   id: string
@@ -280,32 +280,27 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   )
 }
 
-// Convenience functions for common toast types
-export const toast = {
-  success: (title: string, message?: string) => {
-    const context = useContext(ToastContext)
-    if (context) {
+// Enhanced useToast hook with convenience methods
+export const useToastActions = () => {
+  const context = useContext(ToastContext)
+  if (!context) {
+    throw new Error('useToastActions must be used within a ToastProvider')
+  }
+  
+  return {
+    success: (title: string, message?: string) => {
       context.showToast({ type: 'success', title, message })
-    }
-  },
-  
-  error: (title: string, message?: string, action?: Toast['action']) => {
-    const context = useContext(ToastContext)
-    if (context) {
+    },
+    
+    error: (title: string, message?: string, action?: Toast['action']) => {
       context.showToast({ type: 'error', title, message, action, duration: 0 }) // Don't auto-dismiss errors
-    }
-  },
-  
-  warning: (title: string, message?: string) => {
-    const context = useContext(ToastContext)
-    if (context) {
+    },
+    
+    warning: (title: string, message?: string) => {
       context.showToast({ type: 'warning', title, message })
-    }
-  },
-  
-  info: (title: string, message?: string) => {
-    const context = useContext(ToastContext)
-    if (context) {
+    },
+    
+    info: (title: string, message?: string) => {
       context.showToast({ type: 'info', title, message })
     }
   }

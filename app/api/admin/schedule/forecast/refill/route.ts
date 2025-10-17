@@ -103,7 +103,7 @@ export async function POST(req: Request) {
     console.error(`❌ Refill failed for ${parsed.data.date}:`, e)
     
     // Enhanced error handling with Postgres pattern detection
-    let errorMessage = e?.message ?? "refill failed"
+    const errorMessage = e?.message ?? "refill failed"
     let friendlyHint = null
     
     // Detect known Postgres/Supabase error patterns

@@ -63,8 +63,30 @@ jobs:
           node-version: 20
           cache: 'npm'
           
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing dependencies for planner tests..."
+          npm ci --prefer-offline --no-audit --no-fund
+          
+      - name: Runtime policy guard
+        id: policy-guard
+        run: |
+          echo "🛡️ Running runtime policy enforcement..."
+          
+          # Verify planner tests pass before allowing scans
+          if ! npm run test:planner --silent >/dev/null 2>&1; then
+            echo "❌ POLICY VIOLATION: Planner contract tests failed"
+            echo "🚨 Blocking scan execution for safety"
+            echo "policy-violation=true" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "✅ Policy guard passed - planner behavior validated"
+          echo "policy-violation=false" >> $GITHUB_OUTPUT
+          
       - name: Build scan plan
         id: plan
+        if: steps.policy-guard.outputs.policy-violation == 'false'
         run: |
           echo "🔍 Analyzing queue depths and planning scans..."
           node scripts/scan-plan.mjs 2>&1 | tee plan_stdout.txt || true
@@ -82,13 +104,23 @@ jobs:
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
           echo "has_work=$has_work" >> $GITHUB_OUTPUT
           
+          # Handle policy guard results
+          policy_status="Unknown"
+          if [ "${{ steps.policy-guard.outputs.policy-violation }}" = "true" ]; then
+            policy_status="❌ VIOLATION - Scan blocked"
+            echo "reason=policy_violation" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.policy-guard.outputs.policy-violation }}" = "false" ]; then
+            policy_status="✅ Passed"
+          fi
+          
+          # Summary for UI
+          echo "## 📊 Scan Planning Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Policy Guard:** $policy_status" >> $GITHUB_STEP_SUMMARY
+          
           if [ -f scan_plan.json ]; then
             reason=$(jq -r '.analysis.reason // "unknown"' scan_plan.json)
             echo "reason=$reason" >> $GITHUB_OUTPUT
-            
-            # Summary for UI
-            echo "## 📊 Scan Planning Results" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Reason:** $reason" >> $GITHUB_STEP_SUMMARY
             echo "**Platforms to scan:** $(echo "$matrix" | jq -r '.include | length')" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -101,6 +133,10 @@ jobs:
             else
               echo "✅ All platforms have sufficient content queued!" >> $GITHUB_STEP_SUMMARY
             fi
+          else
+            echo "**Status:** Scan planning blocked due to policy violation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **SAFETY BLOCK**: Planner contract tests failed. Scans are disabled until issues are resolved." >> $GITHUB_STEP_SUMMARY
           fi
           
       - name: Upload plan artifacts

@@ -61,18 +61,18 @@ export function CIRuntimeGuard() {
     const originalSetInterval = globalThis.setInterval
     const originalSetTimeout = globalThis.setTimeout
 
-    globalThis.setInterval = ((fn: Function, ms: number, ...rest: any[]) => {
+    globalThis.setInterval = ((fn: () => void, ms: number, ...rest: unknown[]) => {
       if (ms > 2000) {
         console.log(`🧪 [CI] Blocking setInterval with ${ms}ms interval`)
-        return -1 as any // Return fake timer ID
+        return -1 as number // Return fake timer ID
       }
       return originalSetInterval(fn, ms, ...rest)
     }) as typeof setInterval
 
-    globalThis.setTimeout = ((fn: Function, ms: number, ...rest: any[]) => {
+    globalThis.setTimeout = ((fn: () => void, ms: number, ...rest: unknown[]) => {
       if (ms > 10000) {
         console.log(`🧪 [CI] Blocking setTimeout with ${ms}ms delay`)
-        return -1 as any // Return fake timer ID
+        return -1 as number // Return fake timer ID
       }
       return originalSetTimeout(fn, ms, ...rest)
     }) as typeof setTimeout
