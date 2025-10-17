@@ -36,10 +36,90 @@ env:
   CI: true
 
 jobs:
+  plan-scans:
+    name: Plan Demand-Driven Scans
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      reason: ${{ steps.plan.outputs.reason }}
+      has_work: ${{ steps.plan.outputs.has_work }}
+    env:
+      TARGET_URL: ${{ vars.SITE_URL || secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SCAN_MIN_PER_PLATFORM: ${{ vars.SCAN_MIN_PER_PLATFORM || '40' }}
+      SCAN_MAX_PER_PLATFORM: ${{ vars.SCAN_MAX_PER_PLATFORM || '120' }}
+      SCAN_GLOBAL_MAX: ${{ vars.SCAN_GLOBAL_MAX || '800' }}
+      SCAN_COOLDOWN_MIN: ${{ vars.SCAN_COOLDOWN_MIN || '180' }}
+      MIN_CONF: ${{ vars.MIN_CONF || '0.70' }}
+      MIN_CANDIDATES: ${{ vars.MIN_CANDIDATES || '20' }}
+      PLATFORM_ALLOW: ${{ vars.PLATFORM_ALLOW || 'reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Build scan plan
+        id: plan
+        run: |
+          echo "🔍 Analyzing queue depths and planning scans..."
+          node scripts/scan-plan.mjs 2>&1 | tee plan_stdout.txt || true
+          
+          # Check if matrix has any work
+          if [ -f scan_matrix.json ]; then
+            matrix=$(cat scan_matrix.json)
+            has_work=$(echo "$matrix" | jq -r 'if .include | length > 0 then "true" else "false" end')
+          else
+            matrix='{"include":[]}'
+            has_work='false'
+          fi
+          
+          # Output for next job
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "has_work=$has_work" >> $GITHUB_OUTPUT
+          
+          if [ -f scan_plan.json ]; then
+            reason=$(jq -r '.analysis.reason // "unknown"' scan_plan.json)
+            echo "reason=$reason" >> $GITHUB_OUTPUT
+            
+            # Summary for UI
+            echo "## 📊 Scan Planning Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Reason:** $reason" >> $GITHUB_STEP_SUMMARY
+            echo "**Platforms to scan:** $(echo "$matrix" | jq -r '.include | length')" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "$has_work" = "true" ]; then
+              echo "### Platforms Needing Content" >> $GITHUB_STEP_SUMMARY
+              echo "| Platform | Desired Posts |" >> $GITHUB_STEP_SUMMARY
+              echo "|----------|---------------|" >> $GITHUB_STEP_SUMMARY
+              echo "$matrix" | jq -r '.include[] | "| \(.platform) | \(.desired) |"' >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ All platforms have sufficient content queued!" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+      - name: Upload plan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-plan-${{ github.run_number }}
+          path: |
+            scan_plan.json
+            scan_matrix.json
+            plan_stdout.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
   determine-platforms:
-    name: Determine Scan Strategy
+    name: Determine Scan Strategy (Legacy)
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.platforms != '' && inputs.platforms != 'demand-driven') }}
     outputs:
       platforms: ${{ steps.strategy.outputs.platforms }}
       schedule-type: ${{ steps.strategy.outputs.schedule-type }}
@@ -81,10 +161,121 @@ jobs:
           echo "schedule-type=$SCHEDULE_TYPE" >> $GITHUB_OUTPUT
           echo "Selected platforms: $PLATFORMS"
 
+  demand-driven-scan:
+    name: Scan Content (Demand-Driven)
+    runs-on: ubuntu-latest
+    needs: plan-scans
+    if: ${{ needs.plan-scans.outputs.has_work == 'true' }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 3  # Limit parallel jobs to avoid rate limits
+      matrix: ${{ fromJSON(needs.plan-scans.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with cache
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: '20'
+          cache-key-suffix: 'scanner-${{ matrix.platform }}'
+          
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          
+      - name: Platform-specific setup
+        run: |
+          echo "🔧 Setting up environment for ${{ matrix.platform }}..."
+          echo "📊 Target: ${{ matrix.desired }} posts"
+          
+          case "${{ matrix.platform }}" in
+            reddit)
+              echo "REDDIT_CLIENT_ID=${{ secrets.REDDIT_CLIENT_ID }}" >> $GITHUB_ENV
+              echo "REDDIT_CLIENT_SECRET=${{ secrets.REDDIT_CLIENT_SECRET }}" >> $GITHUB_ENV
+              ;;
+            youtube)
+              echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> $GITHUB_ENV
+              ;;
+            giphy)
+              echo "GIPHY_API_KEY=${{ secrets.GIPHY_API_KEY }}" >> $GITHUB_ENV
+              ;;
+            imgur)
+              echo "IMGUR_CLIENT_ID=${{ secrets.IMGUR_CLIENT_ID }}" >> $GITHUB_ENV
+              ;;
+            bluesky)
+              echo "BLUESKY_IDENTIFIER=${{ secrets.BLUESKY_IDENTIFIER }}" >> $GITHUB_ENV
+              echo "BLUESKY_APP_PASSWORD=${{ secrets.BLUESKY_APP_PASSWORD }}" >> $GITHUB_ENV
+              ;;
+            pixabay)
+              echo "PIXABAY_API_KEY=${{ secrets.PIXABAY_API_KEY }}" >> $GITHUB_ENV
+              ;;
+            tumblr)
+              echo "TUMBLR_API_KEY=${{ secrets.TUMBLR_API_KEY }}" >> $GITHUB_ENV
+              ;;
+          esac
+          
+      - name: Scan platform content
+        id: scan
+        run: |
+          echo "📡 Scanning ${{ matrix.platform }} for hotdog content..."
+          echo "🎯 Targeting ${{ matrix.desired }} posts based on queue deficit"
+          
+          # Use the desired count from the planning phase
+          MAX_POSTS="${{ matrix.desired }}"
+          
+          case "${{ matrix.platform }}" in
+            reddit)
+              npm run scan:reddit -- --max-posts=$MAX_POSTS || true
+              ;;
+            youtube)
+              npm run scan:youtube -- --max-posts=$MAX_POSTS || true
+              ;;
+            giphy)
+              npm run scan:giphy -- --max-posts=$MAX_POSTS || true
+              ;;
+            imgur)
+              npm run scan:imgur -- --max-posts=$MAX_POSTS || true
+              ;;
+            bluesky)
+              npm run scan:bluesky -- --max-posts=$MAX_POSTS || true
+              ;;
+            tumblr)
+              npm run scan:tumblr -- --max-posts=$MAX_POSTS || true
+              ;;
+            lemmy)
+              npm run scan:lemmy -- --max-posts=$MAX_POSTS || true
+              ;;
+            pixabay)
+              npm run scan:pixabay -- --max-posts=$MAX_POSTS || true
+              ;;
+            *)
+              echo "❌ Unknown platform: ${{ matrix.platform }}"
+              ;;
+          esac
+          
+          echo "✅ Scan completed for ${{ matrix.platform }}"
+          
+      - name: Upload scan logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-logs-${{ matrix.platform }}-${{ github.run_number }}
+          path: |
+            logs/scan-*.log
+            reports/scan-*.json
+          retention-days: 3
+          if-no-files-found: ignore
+
   scan:
-    name: Scan Content
+    name: Scan Content (Legacy)
     runs-on: ubuntu-latest
     needs: determine-platforms
+    if: ${{ needs.determine-platforms.outputs.platforms != '' }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -198,8 +389,8 @@ jobs:
   summary:
     name: Scan Summary
     runs-on: ubuntu-latest
-    needs: [determine-platforms, scan]
-    if: always()
+    needs: [plan-scans, demand-driven-scan, determine-platforms, scan]
+    if: always() && !cancelled()
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -227,8 +418,16 @@ jobs:
           echo "## 📡 Content Scanner Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Schedule Type:** ${{ needs.determine-platforms.outputs.schedule-type }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Platforms:** ${{ needs.determine-platforms.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if demand-driven or legacy
+          if [ "${{ needs.plan-scans.outputs.reason }}" != "" ]; then
+            echo "**Mode:** Demand-Driven" >> $GITHUB_STEP_SUMMARY
+            echo "**Reason:** ${{ needs.plan-scans.outputs.reason }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Mode:** Legacy/Manual" >> $GITHUB_STEP_SUMMARY
+            echo "**Schedule Type:** ${{ needs.determine-platforms.outputs.schedule-type }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Platforms:** ${{ needs.determine-platforms.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Platform | Status | Notes |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|--------|-------|" >> $GITHUB_STEP_SUMMARY
