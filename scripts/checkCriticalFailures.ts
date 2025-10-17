@@ -194,7 +194,7 @@ class CriticalFailureGatekeeper {
         console.log(chalk.white('  Running lint auto-fix...'))
         
         // Import and run the lint auto-fixer
-        const { LintAutoFixer } = await import('./fixLintErrors.js')
+        const { LintAutoFixer } = await import('./fixLintErrors.ts')
         const lintFixer = new LintAutoFixer()
         const lintSummary = await lintFixer.execute()
 
@@ -299,7 +299,7 @@ class CriticalFailureGatekeeper {
         console.log(chalk.white('  Running security auto-fix...'))
         
         // Import and run the security auto-fixer
-        const { SecurityAutoFixer } = await import('./securityAutoFix.js')
+        const { SecurityAutoFixer } = await import('./securityAutoFix.ts')
         const securityFixer = new SecurityAutoFixer()
         const securitySummary = await securityFixer.execute()
 
@@ -515,7 +515,7 @@ class CriticalFailureGatekeeper {
       
       if (!this.config.reportOnly) {
         // Import and run the build diagnostics analyzer
-        const { BuildFailureAnalyzer } = await import('./analyzeBuildFailure.js')
+        const { BuildFailureAnalyzer } = await import('./analyzeBuildFailure.ts')
         const buildAnalyzer = new BuildFailureAnalyzer({ verbose: false, saveLogs: true })
         const diagnosticResult = await buildAnalyzer.execute()
 
@@ -553,7 +553,7 @@ class CriticalFailureGatekeeper {
       
       if (!this.config.reportOnly) {
         // Import and run the security deep fixer
-        const { SecurityDeepFixer } = await import('./securityDeepFix.js')
+        const { SecurityDeepFixer } = await import('./securityDeepFix.ts')
         const securityFixer = new SecurityDeepFixer({ 
           dryRun: false, 
           aggressive: healthResult.components.security.score < 30 // Use aggressive mode for very low scores
