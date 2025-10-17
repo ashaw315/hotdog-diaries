@@ -63,6 +63,11 @@ jobs:
           node-version: 20
           cache: 'npm'
           
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing dependencies for planner tests..."
+          npm ci --prefer-offline --no-audit --no-fund
+          
       - name: Runtime policy guard
         id: policy-guard
         run: |
