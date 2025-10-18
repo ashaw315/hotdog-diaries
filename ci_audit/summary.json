@@ -1,0 +1,2637 @@
+{
+  "failingCount": 0,
+  "items": [
+    {
+      "file": ".github/workflows/auto-approve.yml",
+      "name": "Auto-Approve Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 */6 * * *"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "force_approval": {
+              "description": "Force approval of more content",
+              "required": false,
+              "default": "false",
+              "type": "boolean"
+            },
+            "max_items": {
+              "description": "Maximum items to approve",
+              "required": false,
+              "default": "200",
+              "type": "string"
+            },
+            "min_confidence": {
+              "description": "Minimum confidence score",
+              "required": false,
+              "default": "0.4",
+              "type": "string"
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "auto-approve",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.AUTH_TOKEN }}",
+          "{{ secrets.SITE_URL }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/auto-queue-manager.yml",
+      "name": "Auto Queue Manager",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 */6 * * *"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "mode": {
+              "description": "Scan mode",
+              "required": false,
+              "default": "auto",
+              "type": "choice",
+              "options": [
+                "auto",
+                "emergency",
+                "status-only"
+              ]
+            },
+            "force": {
+              "description": "Force scan regardless of recommendations",
+              "required": false,
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "refresh-token",
+          "hasCache": false
+        },
+        {
+          "jobName": "auto-queue-manager",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/ci-new.yml",
+      "name": "CI Test",
+      "triggers": {
+        "push": {
+          "branches": [
+            "main"
+          ]
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "test",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": true
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": false,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/ci-test.yml",
+      "name": "CI Test",
+      "triggers": {
+        "push": {
+          "branches": [
+            "main"
+          ]
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "test",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": true
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": false,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "name": "CI",
+      "triggers": {
+        "push": {
+          "branches": [
+            "main",
+            "develop"
+          ]
+        },
+        "pull_request": {
+          "branches": [
+            "main"
+          ]
+        },
+        "workflow_call": {
+          "inputs": {
+            "node-version": {
+              "description": "Node.js version to use",
+              "type": "string",
+              "default": "20"
+            },
+            "cache-strategy": {
+              "description": "Cache strategy for dependencies",
+              "type": "string",
+              "default": "aggressive"
+            }
+          },
+          "outputs": {
+            "test-results": {
+              "description": "Test results summary",
+              "value": "${{ jobs.test.outputs.results }}"
+            }
+          }
+        }
+      },
+      "concurrency": {
+        "group": "ci-${{ github.ref }}",
+        "cancel-in-progress": true
+      },
+      "jobs": [
+        {
+          "jobName": "lint",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "typecheck",
+          "runsOn": "ubuntu-latest",
+          "timeout": 8,
+          "hasCache": false
+        },
+        {
+          "jobName": "test",
+          "runsOn": "ubuntu-latest",
+          "timeout": 15,
+          "hasCache": false
+        },
+        {
+          "jobName": "planner-tests",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": false
+        },
+        {
+          "jobName": "security",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "build",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": true
+        },
+        {
+          "jobName": "auto-healing",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "summary",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": false,
+        "uses_cache": true,
+        "uploads_artifacts": true,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/cleanup-duplicates.yml",
+      "name": "Database Cleanup",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 6 * * *"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "dry_run": {
+              "description": "Dry run (no actual deletion)",
+              "required": false,
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "jobs": [
+        {
+          "jobName": "cleanup-duplicates",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "sync-posted-flags",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/daily-ingestion-report.yml",
+      "name": "Daily Ingestion Balance Report",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 9 * * *"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "format": {
+              "description": "Output format",
+              "required": false,
+              "default": "table",
+              "type": "choice",
+              "options": [
+                "table",
+                "json"
+              ]
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "ingestion-report",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": false,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/daily-report.yml",
+      "name": "Daily Summary Report",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 0 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "generate-report",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": true,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}",
+          "{{ secrets.GITHUB_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/deploy-gate.yml",
+      "name": "Deploy Gate",
+      "triggers": {
+        "deployment_status": null,
+        "push": {
+          "branches": [
+            "main"
+          ]
+        },
+        "workflow_run": {
+          "workflows": [
+            "Vercel Production Deployment"
+          ],
+          "types": [
+            "completed"
+          ]
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "issues": "write"
+      },
+      "jobs": [
+        {
+          "jobName": "auth-token-validation",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "comprehensive-health-check",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "deployment-gate-result",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": false,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/deployment-gate.yml",
+      "name": "🚪 Deployment Gate",
+      "triggers": {
+        "workflow_dispatch": {
+          "inputs": {
+            "target_url": {
+              "description": "Deployment base URL (e.g. https://hotdog-diaries.vercel.app)",
+              "required": false,
+              "type": "string"
+            }
+          }
+        },
+        "deployment_status": null,
+        "workflow_call": {
+          "inputs": {
+            "target_url": {
+              "description": "Deployment base URL",
+              "required": false,
+              "type": "string"
+            }
+          },
+          "secrets": {
+            "AUTH_TOKEN": {
+              "description": "Admin authentication token",
+              "required": true
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read"
+      },
+      "jobs": [
+        {
+          "jobName": "gate",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/e2e.yml",
+      "name": ".github/workflows/e2e.yml",
+      "jobs": [],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/housekeeping.yml",
+      "name": "Housekeeping",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 3 * * 1"
+          },
+          {
+            "cron": "0 6 * * *"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "tasks": {
+              "description": "Tasks to run (comma-separated: cleanup, dead-links, licenses, audit, queue-monitor, secrets)",
+              "type": "string",
+              "default": "all"
+            },
+            "force-cleanup": {
+              "description": "Force aggressive cleanup",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "workflow_call": {
+          "inputs": {
+            "tasks": {
+              "description": "Tasks to run",
+              "type": "string",
+              "default": "all"
+            },
+            "force-cleanup": {
+              "description": "Force aggressive cleanup",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "concurrency": {
+        "group": "housekeeping-${{ github.ref }}",
+        "cancel-in-progress": true
+      },
+      "jobs": [
+        {
+          "jobName": "determine-tasks",
+          "runsOn": "ubuntu-latest",
+          "timeout": 2,
+          "hasCache": false
+        },
+        {
+          "jobName": "cleanup-duplicates",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "dead-links-check",
+          "runsOn": "ubuntu-latest",
+          "timeout": 15,
+          "hasCache": false
+        },
+        {
+          "jobName": "license-audit",
+          "runsOn": "ubuntu-latest",
+          "timeout": 8,
+          "hasCache": false
+        },
+        {
+          "jobName": "security-audit",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "queue-monitor",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": false
+        },
+        {
+          "jobName": "secrets-validation",
+          "runsOn": "ubuntu-latest",
+          "timeout": 8,
+          "hasCache": false
+        },
+        {
+          "jobName": "summary",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": false,
+        "uses_cache": false,
+        "uploads_artifacts": true,
+        "references_secrets": [
+          "{{ secrets.AUTH_TOKEN }}",
+          "{{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}",
+          "{{ secrets.SUPABASE_URL }}",
+          "{{ secrets.SUPABASE_SERVICE_ROLE_KEY }}",
+          "{{ secrets.DATABASE_URL }}",
+          "{{ secrets.REDDIT_CLIENT_ID }}",
+          "{{ secrets.YOUTUBE_API_KEY }}",
+          "{{ secrets.GIPHY_API_KEY }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/manual-operations.yml",
+      "name": "Manual Operations",
+      "triggers": {
+        "workflow_dispatch": {
+          "inputs": {
+            "operation": {
+              "description": "Operation to perform",
+              "required": true,
+              "type": "choice",
+              "options": [
+                "post-now",
+                "scan-all-emergency",
+                "scan-all-normal",
+                "catch-up-missed-posts",
+                "approve-pending",
+                "system-health-check",
+                "clear-queue-test",
+                "fix-duplicates"
+              ]
+            },
+            "count": {
+              "description": "Number of times (for catch-up posts)",
+              "required": false,
+              "default": "1",
+              "type": "string"
+            },
+            "platform": {
+              "description": "Specific platform (for single platform scans)",
+              "required": false,
+              "type": "choice",
+              "options": [
+                "all",
+                "reddit",
+                "youtube",
+                "giphy",
+                "pixabay",
+                "bluesky",
+                "imgur",
+                "lemmy",
+                "tumblr"
+              ]
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "execute-operation",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/meta-ci-audit.yml",
+      "name": "Meta CI Audit",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 8 * * 1"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "audit-ci-health",
+          "runsOn": "ubuntu-latest",
+          "timeout": 15,
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": false,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/phase3-auto-healing.yml",
+      "name": "Phase 3 CI Auto-Healing: Security & Build Diagnostics",
+      "triggers": {
+        "workflow_call": {
+          "inputs": {
+            "trigger_deep_remediation": {
+              "description": "Force deep remediation even if not triggered by failures",
+              "required": false,
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "outputs": {
+            "remediation_applied": {
+              "description": "Whether Phase 3 auto-healing was applied",
+              "value": "${{ jobs.deep-remediation.outputs.remediation_applied }}"
+            },
+            "security_score_improvement": {
+              "description": "Security score improvement from remediation",
+              "value": "${{ jobs.deep-remediation.outputs.security_improvement }}"
+            },
+            "build_diagnostic_available": {
+              "description": "Whether build diagnostics were generated",
+              "value": "${{ jobs.deep-remediation.outputs.build_diagnostics }}"
+            }
+          }
+        },
+        "workflow_dispatch": {
+          "inputs": {
+            "force_aggressive_mode": {
+              "description": "Use aggressive security remediation",
+              "required": false,
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "deep-remediation",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "trigger-recheck",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": true,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/planner-contract.yml",
+      "name": "📋 Planner Contract",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "30 3 * * *"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "test_scenarios": {
+              "description": "Test scenarios to run (all,basic,edge,stress)",
+              "type": "choice",
+              "default": "all",
+              "options": [
+                "all",
+                "basic",
+                "edge",
+                "stress"
+              ]
+            },
+            "fail_fast": {
+              "description": "Stop on first test failure",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "concurrency": {
+        "group": "planner-contract-${{ github.ref }}",
+        "cancel-in-progress": true
+      },
+      "jobs": [
+        {
+          "jobName": "planner-contract",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": false,
+        "uses_cache": true,
+        "uploads_artifacts": true,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post-breakfast.yml",
+      "name": "Post Breakfast Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 7 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "refresh-token",
+          "hasCache": false
+        },
+        {
+          "jobName": "post-breakfast",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post-deploy-check.yml",
+      "name": "Post-Deploy Check",
+      "triggers": {
+        "deployment_status": null,
+        "push": {
+          "branches": [
+            "main"
+          ]
+        },
+        "workflow_run": {
+          "workflows": [
+            "Vercel Production Deployment"
+          ],
+          "types": [
+            "completed"
+          ]
+        },
+        "workflow_dispatch": {
+          "inputs": {
+            "skip_refill_check": {
+              "description": "Skip refill dry-run check",
+              "type": "boolean",
+              "default": false
+            },
+            "target_url": {
+              "description": "Target URL to check (defaults to production)",
+              "type": "string",
+              "default": "https://hotdog-diaries.vercel.app"
+            }
+          }
+        },
+        "workflow_call": {
+          "inputs": {
+            "skip_refill_check": {
+              "description": "Skip refill dry-run check",
+              "type": "boolean",
+              "default": false
+            },
+            "target_url": {
+              "description": "Target URL to check",
+              "type": "string",
+              "default": "https://hotdog-diaries.vercel.app"
+            }
+          }
+        }
+      },
+      "permissions": {
+        "contents": "read",
+        "issues": "write"
+      },
+      "concurrency": {
+        "group": "post-deploy-${{ github.ref }}",
+        "cancel-in-progress": false
+      },
+      "jobs": [
+        {
+          "jobName": "health-check",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "refill-check",
+          "runsOn": "ubuntu-latest",
+          "timeout": 8,
+          "hasCache": false
+        },
+        {
+          "jobName": "upload-artifacts",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "notification",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": false,
+        "missing_timeouts": true,
+        "missing_concurrency": false,
+        "uses_cache": false,
+        "uploads_artifacts": true,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post-dinner.yml",
+      "name": "Post Dinner Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 18 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "post-dinner",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post-evening.yml",
+      "name": "Post Evening Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 20 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "post-evening",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post-late-night.yml",
+      "name": "Post Late Night Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "30 22 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "post-late-night",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post-lunch.yml",
+      "name": "Post Lunch Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 12 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "post-lunch",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post-remediation-check.yml",
+      "name": "Post-Remediation Validation",
+      "triggers": {
+        "repository_dispatch": {
+          "types": [
+            "post-remediation-check"
+          ]
+        },
+        "workflow_dispatch": {
+          "inputs": {
+            "manual_trigger": {
+              "description": "Manually trigger post-remediation validation",
+              "required": false,
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "validate-remediation",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": true,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post-snack.yml",
+      "name": "Post Afternoon Snack",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 15 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "post-snack",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/post.yml",
+      "name": "Content Posting",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 13 * * *"
+          },
+          {
+            "cron": "0 17 * * *"
+          },
+          {
+            "cron": "0 20 * * *"
+          },
+          {
+            "cron": "0 23 * * *"
+          },
+          {
+            "cron": "0 2 * * *"
+          },
+          {
+            "cron": "30 4 * * *"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "slot": {
+              "description": "Time slot to post (breakfast, lunch, snack, dinner, evening, late-night, or manual)",
+              "type": "choice",
+              "options": [
+                "manual",
+                "breakfast",
+                "lunch",
+                "snack",
+                "dinner",
+                "evening",
+                "late-night"
+              ],
+              "default": "manual"
+            },
+            "dry-run": {
+              "description": "Dry run mode (preview only)",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "workflow_call": {
+          "inputs": {
+            "slot": {
+              "description": "Time slot to post",
+              "type": "string",
+              "default": "manual"
+            },
+            "dry-run": {
+              "description": "Dry run mode",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "concurrency": {
+        "group": "posting-${{ github.ref }}-${{ inputs.slot || 'scheduled' }}",
+        "cancel-in-progress": false
+      },
+      "jobs": [
+        {
+          "jobName": "determine-slot",
+          "runsOn": "ubuntu-latest",
+          "timeout": 2,
+          "hasCache": false
+        },
+        {
+          "jobName": "pre-post-check",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": false
+        },
+        {
+          "jobName": "post-content",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "post-validation",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": false
+        },
+        {
+          "jobName": "summary",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": false,
+        "uses_cache": false,
+        "uploads_artifacts": true,
+        "references_secrets": [
+          "{{ secrets.AUTH_TOKEN }}",
+          "{{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/production-audit.yml",
+      "name": "🔍 Production Audit",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 9 * * 2"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "force_run": {
+              "description": "Force run audit even if recent run exists",
+              "required": false,
+              "type": "boolean",
+              "default": false
+            },
+            "audit_window_days": {
+              "description": "Number of days to audit (default: 7)",
+              "required": false,
+              "type": "number",
+              "default": 7
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "production-audit",
+          "runsOn": "ubuntu-latest",
+          "timeout": 20,
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": true,
+        "references_secrets": [
+          "{{ secrets.AUTH_TOKEN }}",
+          "{{ secrets.SUPABASE_URL }}",
+          "{{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/queue-monitor-hook.yml",
+      "name": "Queue Monitor Hook",
+      "triggers": {
+        "workflow_call": {
+          "inputs": {
+            "trigger_source": {
+              "description": "Source that triggered this hook",
+              "required": true,
+              "type": "string"
+            },
+            "post_count": {
+              "description": "Number of posts just made",
+              "required": false,
+              "default": "1",
+              "type": "string"
+            }
+          },
+          "secrets": {
+            "SITE_URL": {
+              "required": true
+            },
+            "AUTH_TOKEN": {
+              "required": true
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "queue-monitor",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/queue-monitor.yml",
+      "name": "Monitor Queue Health & Scan if Needed",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 */3 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "check-queue-health",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "scan-platforms",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/runbook-artifact.yml",
+      "name": "📋 Generate Runbook Artifacts",
+      "triggers": {
+        "push": {
+          "branches": [
+            "main"
+          ],
+          "paths": [
+            "docs/runbook.md",
+            "scripts/md-to-pdf.ts",
+            ".github/workflows/runbook-artifact.yml"
+          ]
+        },
+        "workflow_dispatch": {
+          "inputs": {
+            "force_regenerate": {
+              "description": "Force regenerate all artifacts",
+              "required": false,
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "generate-runbook-artifacts",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": true,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-bluesky.yml",
+      "name": "Scan Bluesky for Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 1,9,17 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-bluesky",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-giphy.yml",
+      "name": "Scan Giphy for Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 2,10,18 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-giphy",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-imgur.yml",
+      "name": "Scan Imgur for Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 4,12,20 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-imgur",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-lemmy.yml",
+      "name": "Scan Lemmy for Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 5,13,21 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-lemmy",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-niche-platforms.yml",
+      "name": "Scan Niche Platforms",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 6,14,22 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-lemmy",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "scan-tumblr",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-pixabay.yml",
+      "name": "Scan Pixabay for Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 3,11,19 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-pixabay",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-reddit.yml",
+      "name": "Scan Reddit for Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 2,10,18 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-reddit",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-social-platforms.yml",
+      "name": "Scan Social Platforms",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 1,9,17 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-giphy",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "scan-bluesky",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "scan-imgur",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "scan-pixabay",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-tumblr.yml",
+      "name": "Scan Tumblr for Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 6,14,22 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-tumblr",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scan-youtube.yml",
+      "name": "Scan YouTube for Content",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 4,16 * * *"
+          }
+        ],
+        "workflow_dispatch": null
+      },
+      "jobs": [
+        {
+          "jobName": "scan-youtube",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": [
+          "{{ secrets.SITE_URL }}",
+          "{{ secrets.AUTH_TOKEN }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scanners.yml",
+      "name": "Content Scanners",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 */4 * * *"
+          },
+          {
+            "cron": "30 */6 * * *"
+          },
+          {
+            "cron": "15 */8 * * *"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "platforms": {
+              "description": "Platforms to scan (comma-separated: reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay,niche)",
+              "type": "string",
+              "default": "all"
+            },
+            "max-posts": {
+              "description": "Maximum posts per platform",
+              "type": "number",
+              "default": 50
+            }
+          }
+        },
+        "workflow_call": {
+          "inputs": {
+            "platforms": {
+              "description": "Platforms to scan",
+              "type": "string",
+              "default": "all"
+            },
+            "max-posts": {
+              "description": "Maximum posts per platform",
+              "type": "number",
+              "default": 50
+            }
+          }
+        }
+      },
+      "concurrency": {
+        "group": "scanners-${{ github.ref }}",
+        "cancel-in-progress": false
+      },
+      "jobs": [
+        {
+          "jobName": "plan-scans",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": false
+        },
+        {
+          "jobName": "determine-platforms",
+          "runsOn": "ubuntu-latest",
+          "timeout": 2,
+          "hasCache": false
+        },
+        {
+          "jobName": "demand-driven-scan",
+          "runsOn": "ubuntu-latest",
+          "timeout": 15,
+          "hasCache": false
+        },
+        {
+          "jobName": "scan",
+          "runsOn": "ubuntu-latest",
+          "timeout": 15,
+          "hasCache": false
+        },
+        {
+          "jobName": "summary",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "rate-limit-check",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": false,
+        "uses_cache": true,
+        "uploads_artifacts": true,
+        "references_secrets": [
+          "{{ vars.SITE_URL || secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}",
+          "{{ secrets.SUPABASE_URL }}",
+          "{{ secrets.SUPABASE_SERVICE_ROLE_KEY }}",
+          "{{ vars.SCAN_MIN_PER_PLATFORM || '40' }}",
+          "{{ vars.SCAN_MAX_PER_PLATFORM || '120' }}",
+          "{{ vars.SCAN_GLOBAL_MAX || '800' }}",
+          "{{ vars.SCAN_COOLDOWN_MIN || '180' }}",
+          "{{ vars.MIN_CONF || '0.70' }}",
+          "{{ vars.MIN_CANDIDATES || '20' }}",
+          "{{ vars.PLATFORM_ALLOW || 'reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay' }}",
+          "{{ secrets.REDDIT_CLIENT_ID }}",
+          "{{ secrets.REDDIT_CLIENT_SECRET }}",
+          "{{ secrets.YOUTUBE_API_KEY }}",
+          "{{ secrets.GIPHY_API_KEY }}",
+          "{{ secrets.IMGUR_CLIENT_ID }}",
+          "{{ secrets.BLUESKY_IDENTIFIER }}",
+          "{{ secrets.BLUESKY_APP_PASSWORD }}",
+          "{{ secrets.PIXABAY_API_KEY }}",
+          "{{ secrets.TUMBLR_API_KEY }}",
+          "{{ secrets.LEMMY_INSTANCE_URL }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/scheduler.yml",
+      "name": "Content Scheduler",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 1 * * *"
+          },
+          {
+            "cron": "0 12 * * *"
+          },
+          {
+            "cron": "0 0 * * 0"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "operation": {
+              "description": "Operation to perform",
+              "type": "choice",
+              "options": [
+                "refill",
+                "forecast",
+                "reconcile",
+                "twoDays"
+              ],
+              "default": "refill"
+            },
+            "days": {
+              "description": "Number of days (for refill/forecast)",
+              "type": "number",
+              "default": 2
+            }
+          }
+        },
+        "workflow_call": {
+          "inputs": {
+            "operation": {
+              "description": "Operation to perform",
+              "type": "string",
+              "default": "refill"
+            },
+            "days": {
+              "description": "Number of days",
+              "type": "number",
+              "default": 2
+            }
+          }
+        }
+      },
+      "concurrency": {
+        "group": "scheduler-${{ github.ref }}-${{ inputs.operation || 'scheduled' }}",
+        "cancel-in-progress": true
+      },
+      "jobs": [
+        {
+          "jobName": "determine-operation",
+          "runsOn": "ubuntu-latest",
+          "timeout": 2,
+          "hasCache": false
+        },
+        {
+          "jobName": "refill",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "forecast",
+          "runsOn": "ubuntu-latest",
+          "timeout": 8,
+          "hasCache": false
+        },
+        {
+          "jobName": "reconcile",
+          "runsOn": "ubuntu-latest",
+          "timeout": 15,
+          "hasCache": false
+        },
+        {
+          "jobName": "queue-health",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": false
+        },
+        {
+          "jobName": "summary",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": false,
+        "uses_cache": false,
+        "uploads_artifacts": true,
+        "references_secrets": [
+          "{{ secrets.AUTH_TOKEN }}",
+          "{{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}"
+        ]
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/secret-validation.yml",
+      "name": "Secret Validation",
+      "triggers": {
+        "push": {
+          "branches": [
+            "main",
+            "develop"
+          ]
+        },
+        "pull_request": {
+          "branches": [
+            "main",
+            "develop"
+          ]
+        },
+        "schedule": [
+          {
+            "cron": "0 9 * * 1"
+          }
+        ]
+      },
+      "jobs": [
+        {
+          "jobName": "validate-secrets",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "environment-completeness",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "token-strength-check",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": false,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/spec-drift.yml",
+      "name": "OpenAPI Spec Drift Detection",
+      "triggers": {
+        "pull_request": {
+          "paths": [
+            "app/api/**/*.ts",
+            "docs/openapi.yaml",
+            "docs/openapi.ignore.json",
+            "scripts/route-inventory.ts"
+          ]
+        },
+        "push": {
+          "branches": [
+            "main"
+          ],
+          "paths": [
+            "app/api/**/*.ts",
+            "docs/openapi.yaml",
+            "docs/openapi.ignore.json"
+          ]
+        },
+        "workflow_dispatch": null,
+        "schedule": [
+          {
+            "cron": "0 6 * * 1"
+          }
+        ]
+      },
+      "concurrency": {
+        "group": "spec-drift-${{ github.ref }}",
+        "cancel-in-progress": true
+      },
+      "jobs": [
+        {
+          "jobName": "validate-openapi-spec",
+          "runsOn": "ubuntu-latest",
+          "timeout": 5,
+          "hasCache": false
+        },
+        {
+          "jobName": "detect-api-drift",
+          "runsOn": "ubuntu-latest",
+          "timeout": 10,
+          "hasCache": false
+        },
+        {
+          "jobName": "generate-drift-summary",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        },
+        {
+          "jobName": "fail-on-drift",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": false,
+        "uses_cache": false,
+        "uploads_artifacts": true,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/token-refresh.yml",
+      "name": "Token Refresh (Reusable)",
+      "triggers": {
+        "workflow_call": {
+          "outputs": {
+            "auth_token": {
+              "description": "Refreshed authentication token",
+              "value": "${{ jobs.refresh.outputs.auth_token }}"
+            }
+          },
+          "secrets": {
+            "SITE_URL": {
+              "required": true
+            },
+            "SERVICE_ACCOUNT_SECRET": {
+              "required": false
+            },
+            "REFRESH_TOKEN": {
+              "required": false
+            },
+            "AUTH_TOKEN": {
+              "required": false
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "refresh",
+          "runsOn": "ubuntu-latest",
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": true,
+        "missing_concurrency": true,
+        "uses_cache": false,
+        "uploads_artifacts": false,
+        "references_secrets": []
+      },
+      "latest_url": null
+    },
+    {
+      "file": ".github/workflows/weekly-smoke-test.yml",
+      "name": "🔥 Weekly Smoke Test",
+      "triggers": {
+        "schedule": [
+          {
+            "cron": "0 8 * * 1"
+          }
+        ],
+        "workflow_dispatch": {
+          "inputs": {
+            "target_environment": {
+              "description": "Target environment to test",
+              "required": false,
+              "type": "choice",
+              "options": [
+                "production",
+                "development"
+              ],
+              "default": "production"
+            },
+            "include_load_tests": {
+              "description": "Include load testing",
+              "required": false,
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "jobs": [
+        {
+          "jobName": "weekly-smoke-test",
+          "runsOn": "ubuntu-latest",
+          "timeout": 15,
+          "hasCache": false
+        }
+      ],
+      "stats": {
+        "recent_total": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "pass_rate_pct": 0,
+        "avg_duration_s": 0,
+        "flaky": false
+      },
+      "flags": {
+        "minimal_permissions": true,
+        "missing_timeouts": false,
+        "missing_concurrency": true,
+        "uses_cache": true,
+        "uploads_artifacts": true,
+        "references_secrets": []
+      },
+      "latest_url": null
+    }
+  ]
+}

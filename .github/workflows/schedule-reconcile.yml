@@ -1,0 +1,243 @@
+name: Schedule Reconciliation
+
+on:
+  schedule:
+    # Daily at 2:30 AM ET (6:30 AM UTC in summer, 7:30 AM UTC in winter)
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Target date (YYYY-MM-DD, defaults to yesterday)'
+        required: false
+        type: string
+      force_backfill:
+        description: 'Force backfill even if no orphans found'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  NODE_ENV: production
+
+jobs:
+  reconcile:
+    name: Schedule Reconciliation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --production
+        
+      - name: Determine target date
+        id: date
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            TARGET_DATE="${{ github.event.inputs.date }}"
+          else
+            # Default to yesterday in ET timezone
+            TARGET_DATE=$(TZ=America/New_York date -d "yesterday" +%Y-%m-%d)
+          fi
+          echo "target_date=$TARGET_DATE" >> $GITHUB_OUTPUT
+          echo "🗓️ Target date: $TARGET_DATE"
+          
+      - name: Health Check - Timezone Handling
+        id: health_tz
+        run: |
+          echo "🕒 Checking timezone health..."
+          
+          RESPONSE=$(curl -s -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            "${{ vars.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/health/schedule-tz?date=${{ steps.date.outputs.target_date }}")
+          
+          HTTP_CODE="${RESPONSE: -3}"
+          BODY="${RESPONSE%???}"
+          
+          echo "Response code: $HTTP_CODE"
+          echo "timezone_health_status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Timezone health check failed"
+            echo "$BODY" | jq -r '.issues[]?' || echo "$BODY"
+            echo "timezone_issues=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Timezone health check passed"
+            echo "timezone_issues=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Health Check - Posting Source of Truth
+        id: health_posting
+        run: |
+          echo "🔍 Checking posting source of truth health..."
+          
+          RESPONSE=$(curl -s -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            "${{ vars.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/health/posting-source-of-truth")
+          
+          HTTP_CODE="${RESPONSE: -3}"
+          BODY="${RESPONSE%???}"
+          
+          echo "Response code: $HTTP_CODE"
+          echo "posting_health_status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          
+          ORPHAN_COUNT=$(echo "$BODY" | jq -r '.orphan_posts // 0')
+          COMPLIANCE_SCORE=$(echo "$BODY" | jq -r '.posting_compliance_score // 0')
+          
+          echo "orphan_count=$ORPHAN_COUNT" >> $GITHUB_OUTPUT
+          echo "compliance_score=$COMPLIANCE_SCORE" >> $GITHUB_OUTPUT
+          
+          if [ "$HTTP_CODE" != "200" ] || [ "$ORPHAN_COUNT" -gt 5 ] || [ "$COMPLIANCE_SCORE" -lt 90 ]; then
+            echo "❌ Posting health check indicates issues"
+            echo "Orphan posts: $ORPHAN_COUNT, Compliance: $COMPLIANCE_SCORE%"
+            echo "$BODY" | jq -r '.issues[]?' || echo "$BODY"
+            echo "posting_issues=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Posting health check passed"
+            echo "posting_issues=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Run Backfill Job
+        id: backfill
+        if: |
+          steps.health_posting.outputs.orphan_count > 0 || 
+          github.event.inputs.force_backfill == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🔧 Running backfill job for orphan posts..."
+          echo "Target date: ${{ steps.date.outputs.target_date }}"
+          echo "Orphan count detected: ${{ steps.health_posting.outputs.orphan_count }}"
+          
+          # Run backfill job with write mode
+          npx tsx scripts/ops/backfill-post-links.ts \
+            --date "${{ steps.date.outputs.target_date }}" \
+            --write \
+            --verbose
+          
+          # Check if report was generated
+          if [ -f "ci_audit/backfill-${{ steps.date.outputs.target_date }}.md" ]; then
+            echo "backfill_report_generated=true" >> $GITHUB_OUTPUT
+            echo "✅ Backfill report generated"
+          else
+            echo "backfill_report_generated=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No backfill report generated"
+          fi
+          
+      - name: Generate Daily Report
+        id: report
+        run: |
+          echo "📊 Generating daily reconciliation report..."
+          
+          # Create comprehensive report
+          REPORT_FILE="ci_audit/reconcile-${{ steps.date.outputs.target_date }}.md"
+          mkdir -p ci_audit
+          
+          cat > "$REPORT_FILE" << 'EOF'
+          # Schedule Reconciliation Report
+          
+          **Date:** ${{ steps.date.outputs.target_date }}  
+          **Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")  
+          **Workflow:** ${{ github.workflow }} #${{ github.run_number }}  
+          
+          ## Health Check Results
+          
+          ### Timezone Handling
+          - **Status:** ${{ steps.health_tz.outputs.timezone_health_status == '200' && '✅ Healthy' || '❌ Issues Detected' }}
+          - **HTTP Code:** ${{ steps.health_tz.outputs.timezone_health_status }}
+          - **Issues Found:** ${{ steps.health_tz.outputs.timezone_issues }}
+          
+          ### Posting Source of Truth
+          - **Status:** ${{ steps.health_posting.outputs.posting_health_status == '200' && '✅ Healthy' || '❌ Issues Detected' }}
+          - **HTTP Code:** ${{ steps.health_posting.outputs.posting_health_status }}
+          - **Orphan Posts:** ${{ steps.health_posting.outputs.orphan_count }}
+          - **Compliance Score:** ${{ steps.health_posting.outputs.compliance_score }}%
+          - **Issues Found:** ${{ steps.health_posting.outputs.posting_issues }}
+          
+          ## Backfill Results
+          
+          ${{ steps.backfill.outcome == 'success' && '✅ Backfill job completed successfully' || steps.backfill.outcome == 'skipped' && '⏭️ Backfill job skipped (no orphan posts)' || '❌ Backfill job failed or was not run' }}
+          
+          ${{ steps.backfill.outputs.backfill_report_generated == 'true' && '📄 Detailed backfill report available: `ci_audit/backfill-${{ steps.date.outputs.target_date }}.md`' || '' }}
+          
+          ## Recommendations
+          
+          ${{ steps.health_tz.outputs.timezone_issues == 'true' && '- 🕒 **Timezone Issues:** Review timezone conversion logic and DST handling' || '' }}
+          ${{ steps.health_posting.outputs.posting_issues == 'true' && '- 🔍 **Posting Issues:** Review scheduled_posts table integrity and posting service configuration' || '' }}
+          ${{ steps.health_posting.outputs.orphan_count > 5 && '- 🔧 **High Orphan Count:** Consider running backfill job more frequently or investigating posting service' || '' }}
+          ${{ steps.health_posting.outputs.compliance_score < 90 && '- 📊 **Low Compliance:** Enable ENFORCE_SCHEDULE_SOURCE_OF_TRUTH feature flag and review posting workflows' || '' }}
+          
+          ## Next Steps
+          
+          - Monitor system health endpoints daily
+          - Review any generated backfill reports
+          - Ensure ENFORCE_SCHEDULE_SOURCE_OF_TRUTH=true in production
+          - Consider manual review if compliance score remains low
+          
+          ---
+          *Generated by Schedule Reconciliation workflow*
+          EOF
+          
+          echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
+          echo "✅ Daily report generated: $REPORT_FILE"
+          
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reconciliation-reports-${{ steps.date.outputs.target_date }}
+          path: ci_audit/
+          retention-days: 30
+          
+      - name: Determine Workflow Status
+        id: status
+        run: |
+          # Determine overall workflow status
+          if [[ "${{ steps.health_tz.outputs.timezone_issues }}" == "true" ]] || \
+             [[ "${{ steps.health_posting.outputs.posting_issues }}" == "true" ]] || \
+             [[ "${{ steps.backfill.outcome }}" == "failure" ]]; then
+            echo "workflow_status=failure" >> $GITHUB_OUTPUT
+            echo "❌ Workflow completed with issues"
+          else
+            echo "workflow_status=success" >> $GITHUB_OUTPUT
+            echo "✅ Workflow completed successfully"
+          fi
+          
+      - name: Notify on Failure
+        if: steps.status.outputs.workflow_status == 'failure'
+        run: |
+          echo "🚨 RECONCILIATION ISSUES DETECTED"
+          echo ""
+          echo "Date: ${{ steps.date.outputs.target_date }}"
+          echo "Timezone Health: ${{ steps.health_tz.outputs.timezone_issues == 'true' && 'ISSUES' || 'OK' }}"
+          echo "Posting Health: ${{ steps.health_posting.outputs.posting_issues == 'true' && 'ISSUES' || 'OK' }}"
+          echo "Orphan Posts: ${{ steps.health_posting.outputs.orphan_count }}"
+          echo "Compliance Score: ${{ steps.health_posting.outputs.compliance_score }}%"
+          echo "Backfill Status: ${{ steps.backfill.outcome }}"
+          echo ""
+          echo "Please review the generated reports and take corrective action."
+          echo "Reports available in workflow artifacts."
+          
+          # Exit with failure to mark workflow as failed
+          exit 1
+          
+      - name: Success Summary
+        if: steps.status.outputs.workflow_status == 'success'
+        run: |
+          echo "✅ RECONCILIATION COMPLETED SUCCESSFULLY"
+          echo ""
+          echo "Date: ${{ steps.date.outputs.target_date }}"
+          echo "All health checks passed"
+          echo "Orphan Posts: ${{ steps.health_posting.outputs.orphan_count }}"
+          echo "Compliance Score: ${{ steps.health_posting.outputs.compliance_score }}%"
+          echo "System operating within expected parameters"

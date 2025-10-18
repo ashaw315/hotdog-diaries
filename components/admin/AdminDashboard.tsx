@@ -5,6 +5,7 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { useDashboardData } from '@/hooks/useAdminData'
 import { ContentStatusDashboard } from './ContentStatusDashboard'
 import DiversityAlerts from './DiversityAlerts'
+import HealthStatusDashboard from './HealthStatusDashboard'
 
 interface DashboardStats {
   totalContent: number
@@ -515,6 +516,12 @@ export default function AdminDashboard() {
 
           {/* Diversity Alerts */}
           <DiversityAlerts refreshInterval={30000} />
+
+          {/* Health Status */}
+          <div className="platform-section" data-testid="health-status-section">
+            <h2 className="section-title" data-testid="health-status-title">System Health</h2>
+            <HealthStatusDashboard />
+          </div>
 
           {/* Content Status Dashboard */}
           <div style={{ marginBottom: '32px' }}>

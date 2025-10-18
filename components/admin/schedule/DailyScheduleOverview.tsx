@@ -1250,8 +1250,8 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
           </div>
         )}
 
-        {/* Forecast Section (What Will Post) */}
-        {forecast && forecast.slots.length > 0 && (
+        {/* Forecast Section (What Will Post) - Source of Truth: scheduled_posts */}
+        {forecast && (
           <div style={{ marginTop: 'var(--spacing-xl)' }}>
             <div className="schedule-admin-card">
               <div className="schedule-admin-card-header">
@@ -1268,9 +1268,45 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                   color: 'var(--color-text-secondary)',
                   margin: 'var(--spacing-xs) 0 0 0'
                 }}>
-                  Deterministic content selection for {forecast.date} • Posted: {forecast.summary.posted}, Upcoming: {forecast.summary.upcoming}, Missed: {forecast.summary.missed} • Diversity Score: {forecast.summary.diversity_score}%
+                  Source: scheduled_posts table • Posted: {forecast.summary.posted}, Upcoming: {forecast.summary.upcoming}, Missed: {forecast.summary.missed} • Diversity Score: {forecast.summary.diversity_score}%
                 </p>
               </div>
+              
+              {/* No Schedule Warning Banner */}
+              {forecast.slots.length === 0 && (
+                <div style={{
+                  padding: 'var(--spacing-lg)',
+                  backgroundColor: '#fef3c7',
+                  color: '#92400e',
+                  borderTop: '1px solid var(--color-border)',
+                  borderBottom: '1px solid var(--color-border)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 'var(--spacing-sm)',
+                    marginBottom: 'var(--spacing-sm)'
+                  }}>
+                    <AlertCircle className="w-5 h-5" />
+                    <span style={{ 
+                      fontSize: 'var(--font-size-lg)',
+                      fontWeight: 'var(--font-weight-semibold)'
+                    }}>
+                      No materialized schedule for this date
+                    </span>
+                  </div>
+                  <p style={{
+                    fontSize: 'var(--font-size-sm)',
+                    margin: 0,
+                    lineHeight: '1.5'
+                  }}>
+                    The scheduled_posts table contains no entries for {forecast.date}. 
+                    Use "Refill Today" to generate a schedule or check if the date is correct.
+                  </p>
+                </div>
+              )}
               <div className="schedule-admin-card-body">
                 {forecastLoading ? (
                   <div className="schedule-loading">
