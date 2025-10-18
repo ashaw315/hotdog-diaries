@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz'
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
 import { parseISO, format, addHours } from 'date-fns'
 
 /**
