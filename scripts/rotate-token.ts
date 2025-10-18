@@ -603,7 +603,10 @@ For more information, see docs/secrets.md
 }
 
 // Run if called directly
-if (require.main === module) {
+// In ES modules, we can't use require.main, so we check if this is being run directly
+// by checking if the script is being executed via tsx or node
+const isMainModule = process.argv[1] && process.argv[1].includes('rotate-token')
+if (isMainModule) {
   main()
 }
 

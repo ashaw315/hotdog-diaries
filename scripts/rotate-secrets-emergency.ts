@@ -234,7 +234,9 @@ async function main() {
 }
 
 // Run the emergency rotation if called directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('rotate-secrets-emergency')
+if (isMainModule) {
   main();
 }
 

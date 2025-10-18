@@ -87,7 +87,9 @@ async function seed() {
 }
 
 // Run if called directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('seed-minimal-ci')
+if (isMainModule) {
   seed().catch((error) => {
     console.error('❌ Minimal seeding failed:', error)
     process.exit(1)

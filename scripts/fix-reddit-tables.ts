@@ -77,7 +77,9 @@ async function createRedditTables() {
 }
 
 // Run if called directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('fix-reddit-tables')
+if (isMainModule) {
   createRedditTables()
     .then(() => {
       console.log('✅ Script completed successfully')

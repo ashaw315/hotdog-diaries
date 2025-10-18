@@ -256,7 +256,9 @@ async function seedDatabase() {
 }
 
 // Run seeder if called directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('seed-ci-db')
+if (isMainModule) {
   seedDatabase().catch((error) => {
     console.error('❌ Seeding process failed:', error)
     process.exit(1)

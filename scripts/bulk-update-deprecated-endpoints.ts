@@ -325,7 +325,9 @@ async function main(): Promise<void> {
 }
 
 // Run the bulk update
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('bulk-update-deprecated-endpoints')
+if (isMainModule) {
   main()
 }
 

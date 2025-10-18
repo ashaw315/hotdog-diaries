@@ -188,7 +188,9 @@ async function main() {
 }
 
 // Run if executed directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('fix-supabase-schema')
+if (isMainModule) {
   main().catch(console.error)
 }
 

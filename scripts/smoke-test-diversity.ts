@@ -409,7 +409,9 @@ async function runSmokeTests(): Promise<SmokeTestSuite> {
 }
 
 // CLI execution
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('smoke-test-diversity')
+if (isMainModule) {
   runSmokeTests()
     .then(results => {
       if (results.overallSuccess) {

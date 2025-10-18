@@ -91,6 +91,8 @@ async function generateServiceToken() {
 }
 
 // Run if executed directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('generate-service-token')
+if (isMainModule) {
   generateServiceToken()
 }

@@ -412,7 +412,9 @@ Examples:
 }
 
 // Main execution
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('md-to-pdf')
+if (isMainModule) {
   const options = parseArgs()
   convertMarkdownToPDF(options).catch(error => {
     console.error('❌ Script failed:', error)

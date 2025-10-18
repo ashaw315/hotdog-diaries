@@ -455,7 +455,9 @@ async function main() {
 }
 
 // Execute if run directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('backfill-post-links')
+if (isMainModule) {
   main().catch(err => {
     console.error('❌ Fatal error:', err)
     process.exit(1)

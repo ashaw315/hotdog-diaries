@@ -259,7 +259,9 @@ async function main() {
 }
 
 // Run if executed directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('reset-and-test')
+if (isMainModule) {
   main().catch(console.error)
 }
 

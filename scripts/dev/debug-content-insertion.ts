@@ -178,7 +178,9 @@ async function debugContentInsertion() {
 }
 
 // Run if called directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('debug-content-insertion')
+if (isMainModule) {
   debugContentInsertion().catch(console.error)
 }
 

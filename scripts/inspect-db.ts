@@ -139,7 +139,9 @@ async function inspectDatabase() {
 }
 
 // Run if executed directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('inspect-db')
+if (isMainModule) {
   inspectDatabase().catch(console.error)
 }
 

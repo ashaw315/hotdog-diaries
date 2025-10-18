@@ -289,7 +289,9 @@ async function main() {
 }
 
 // Run if called directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('ci-env-check')
+if (isMainModule) {
   main()
 }
 

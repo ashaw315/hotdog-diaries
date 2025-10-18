@@ -176,6 +176,8 @@ async function setupProductionAdmin() {
 }
 
 // Run the setup if this script is executed directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('setup-prod-admin')
+if (isMainModule) {
   setupProductionAdmin()
 }

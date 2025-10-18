@@ -346,7 +346,9 @@ EXAMPLES:
 }
 
 // Run if called directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('test-observability')
+if (isMainModule) {
   main().catch(error => {
     console.error('Test failed:', error)
     process.exit(1)

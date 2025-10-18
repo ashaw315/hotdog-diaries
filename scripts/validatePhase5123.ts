@@ -154,7 +154,9 @@ async function validatePhase5123() {
   return allTestsPassed
 }
 
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('validatePhase5123')
+if (isMainModule) {
   validatePhase5123().catch(e => {
     console.error('💥 Validation failed:', e)
     process.exit(1)

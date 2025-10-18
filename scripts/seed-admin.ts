@@ -228,7 +228,9 @@ async function main() {
 }
 
 // Run if this file is executed directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('seed-admin')
+if (isMainModule) {
   main().catch(error => {
     console.error('Fatal error:', error)
     process.exit(1)

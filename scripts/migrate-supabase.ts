@@ -178,7 +178,9 @@ function validateEnvironment() {
 }
 
 // Main execution
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('migrate-supabase')
+if (isMainModule) {
   validateEnvironment()
   runSupabaseMigration().catch(console.error)
 }

@@ -128,7 +128,9 @@ export default async function handler() {
 }
 
 // Run directly if called
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('vercel-admin-setup')
+if (isMainModule) {
   createAdminUserOnVercel().catch((error) => {
     console.error('Script failed:', error)
     process.exit(1)

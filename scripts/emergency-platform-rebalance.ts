@@ -235,7 +235,9 @@ async function emergencyPlatformRebalance() {
 }
 
 // Run if called directly
-if (require.main === module) {
+// ES module check for direct execution
+const isMainModule = process.argv[1] && process.argv[1].includes('emergency-platform-rebalance')
+if (isMainModule) {
   emergencyPlatformRebalance()
     .then(() => {
       console.log('\n✅ Emergency platform rebalance analysis complete!')
