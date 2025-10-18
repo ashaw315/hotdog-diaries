@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
 
 console.log('🧹 Cleaning up for production deployment...\n');
 
@@ -61,7 +62,6 @@ toRemove.forEach(item => {
 // Clean up node_modules of dev dependencies in production
 if (process.env.NODE_ENV === 'production') {
   console.log('\n📦 Pruning development dependencies...');
-  const { execSync } = require('child_process');
   try {
     execSync('npm prune --production', { stdio: 'inherit' });
     console.log('✅ Development dependencies removed');
@@ -78,7 +78,6 @@ if (errorCount > 0) {
 
 // Check for remaining test files
 console.log('\n🔍 Checking for remaining test files...');
-const { execSync } = require('child_process');
 try {
   const testFiles = execSync('find . -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.spec.ts" | grep -v node_modules | head -10', { encoding: 'utf-8' });
   if (testFiles.trim()) {
