@@ -1,0 +1,200 @@
+{
+  "generated_at": "2025-10-18T20:07:46.031Z",
+  "analysis_date_et": "2025-10-18",
+  "overall_status": "critical",
+  "critical_issues": 2,
+  "warnings": 1,
+  "executive_summary": {
+    "posting_success_rate": "Unknown",
+    "workflows_healthy": 7,
+    "workflows_total": 30,
+    "root_cause": "Posting pipeline failures detected",
+    "immediate_actions": [
+      "Run today-posting-matrix.ts to analyze posting status",
+      "Critical: investigate widespread failures",
+      "Check GitHub Actions status"
+    ]
+  },
+  "health_checks": [
+    {
+      "check": "today_posting_performance",
+      "status": "fail",
+      "message": "No posting matrix data available",
+      "actions": [
+        "Run today-posting-matrix.ts to analyze posting status"
+      ]
+    },
+    {
+      "check": "workflow_reliability",
+      "status": "fail",
+      "message": "Poor workflow reliability: 56.4%",
+      "details": {
+        "totalRuns": 225,
+        "totalSuccess": 127
+      },
+      "actions": [
+        "Critical: investigate widespread failures",
+        "Check GitHub Actions status",
+        "Review recent changes"
+      ]
+    },
+    {
+      "check": "cron_schedule_health",
+      "status": "warn",
+      "message": "Thundering herd risk detected in cron schedules",
+      "details": [
+        {
+          "time_utc": "2025-10-19T00:00:00.000Z",
+          "time_et": "2025-10-18 20:00:00 EDT",
+          "workflows": [
+            "Post Evening Content",
+            "Content Posting"
+          ],
+          "severity": "high",
+          "reason": "2 workflows scheduled at same time (includes posting workflows)"
+        },
+        {
+          "time_utc": "2025-10-19T04:00:00.000Z",
+          "time_et": "2025-10-19 00:00:00 EDT",
+          "workflows": [
+            "Auto-Approve Content",
+            "Auto Queue Manager"
+          ],
+          "severity": "low",
+          "reason": "2 workflows scheduled at same time"
+        },
+        {
+          "time_utc": "2025-10-19T04:00:00.000Z",
+          "time_et": "2025-10-19 00:00:00 EDT",
+          "workflows": [
+            "Daily Summary Report",
+            "Content Scheduler"
+          ],
+          "severity": "low",
+          "reason": "2 workflows scheduled at same time"
+        },
+        {
+          "time_utc": "2025-10-19T05:00:00.000Z",
+          "time_et": "2025-10-19 01:00:00 EDT",
+          "workflows": [
+            "Scan Bluesky for Content",
+            "Scan Social Platforms"
+          ],
+          "severity": "low",
+          "reason": "2 workflows scheduled at same time"
+        },
+        {
+          "time_utc": "2025-10-19T06:00:00.000Z",
+          "time_et": "2025-10-19 02:00:00 EDT",
+          "workflows": [
+            "Scan Giphy for Content",
+            "Scan Reddit for Content"
+          ],
+          "severity": "low",
+          "reason": "2 workflows scheduled at same time"
+        },
+        {
+          "time_utc": "2025-10-19T10:00:00.000Z",
+          "time_et": "2025-10-19 06:00:00 EDT",
+          "workflows": [
+            "Database Cleanup",
+            "Housekeeping",
+            "OpenAPI Spec Drift Detection"
+          ],
+          "severity": "medium",
+          "reason": "Moderate collision risk: 3 workflows"
+        },
+        {
+          "time_utc": "2025-10-19T10:00:00.000Z",
+          "time_et": "2025-10-19 06:00:00 EDT",
+          "workflows": [
+            "Scan Niche Platforms",
+            "Scan Tumblr for Content"
+          ],
+          "severity": "low",
+          "reason": "2 workflows scheduled at same time"
+        },
+        {
+          "time_utc": "2025-10-19T12:00:00.000Z",
+          "time_et": "2025-10-19 08:00:00 EDT",
+          "workflows": [
+            "Meta CI Audit",
+            "🔥 Weekly Smoke Test"
+          ],
+          "severity": "low",
+          "reason": "2 workflows scheduled at same time"
+        },
+        {
+          "time_utc": "2025-10-19T13:00:00.000Z",
+          "time_et": "2025-10-19 09:00:00 EDT",
+          "workflows": [
+            "Daily Ingestion Balance Report",
+            "🔍 Production Audit",
+            "Secret Validation"
+          ],
+          "severity": "medium",
+          "reason": "Moderate collision risk: 3 workflows"
+        },
+        {
+          "time_utc": "2025-10-19T16:00:00.000Z",
+          "time_et": "2025-10-19 12:00:00 EDT",
+          "workflows": [
+            "Post Lunch Content",
+            "Content Scheduler"
+          ],
+          "severity": "high",
+          "reason": "2 workflows scheduled at same time (includes posting workflows)"
+        }
+      ],
+      "actions": [
+        "Stagger conflicting workflows by 1-2 minutes",
+        "Review high-collision time slots"
+      ]
+    }
+  ],
+  "detailed_analysis": {
+    "posting_pipeline": {
+      "status": "critical",
+      "today_posts_expected": 0,
+      "today_posts_actual": 0,
+      "empty_slots": 0,
+      "failed_slots": 0,
+      "issues": [
+        "No posting matrix data available"
+      ]
+    },
+    "workflow_reliability": {
+      "total_workflows": 30,
+      "scheduled_workflows": 33,
+      "success_rate_overall": "56.4%",
+      "cron_collisions": 10,
+      "recent_failures": 97
+    },
+    "source_of_truth_compliance": {
+      "violations_detected": 0,
+      "enforcement_enabled": false,
+      "recommendations": [
+        "Run posting logs analysis to check compliance"
+      ]
+    }
+  },
+  "next_steps": {
+    "immediate": [
+      "Run today-posting-matrix.ts to analyze posting status",
+      "Critical: investigate widespread failures",
+      "Check GitHub Actions status",
+      "Review recent changes"
+    ],
+    "short_term": [
+      "Stagger conflicting workflows by 1-2 minutes",
+      "Review high-collision time slots"
+    ],
+    "monitoring": [
+      "Monitor posting success rate daily",
+      "Review workflow failure alerts",
+      "Check cron schedule performance weekly",
+      "Validate source of truth compliance",
+      "Monitor for cron collision impacts during peak hours"
+    ]
+  }
+}

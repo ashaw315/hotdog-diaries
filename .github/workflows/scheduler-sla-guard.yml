@@ -1,0 +1,34 @@
+name: "Scheduler SLA Guard"
+on:
+  schedule:
+    # 10:10 UTC = 06:10 ET
+    - cron: "10 10 * * *"
+
+jobs:
+  guard:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: scheduler-sla-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile || pnpm install
+      - name: Check SLA (today & tomorrow)
+        run: pnpm tsx scripts/ops/assert-schedule-sla.ts --tz America/New_York --today 6 --tomorrow 6
+      - name: Alert on failure (optional)
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -n "$ALERT_WEBHOOK_URL" ]; then
+            node -e "fetch(process.env.ALERT_WEBHOOK_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:'❌ Scheduler SLA failed: not enough scheduled rows for today/tomorrow.'})})"
+          else
+            echo "No ALERT_WEBHOOK_URL configured."
+          fi

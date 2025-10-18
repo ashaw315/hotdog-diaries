@@ -1,0 +1,30 @@
+name: "Queue Readiness"
+on:
+  schedule:
+    - cron: "0 10 * * *" # 06:00 ET
+
+jobs:
+  check:
+    permissions:
+      contents: read
+      issues: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: queue-readiness-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile || pnpm install
+      - id: check
+        run: pnpm tsx scripts/ops/check-queue-readiness.ts --tz America/New_York --min 12
+      - name: Open shortage issue (if needed)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --title "Queue shortage detected (auto)" --body "$(cat ci_audit/queue-readiness-latest.md)" --label "queue-shortage" || true

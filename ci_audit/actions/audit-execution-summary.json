@@ -1,0 +1,25 @@
+{
+  "success": false,
+  "execution_time_ms": 18892,
+  "components_completed": [
+    "scan-workflows",
+    "fetch-runs"
+  ],
+  "components_failed": [],
+  "output_files": [],
+  "summary": {
+    "workflows_found": 45,
+    "runs_analyzed": 225,
+    "posting_attempts": 0,
+    "posting_success_rate": "0%",
+    "overall_health": "critical",
+    "critical_issues": 0
+  },
+  "execution_timestamp": "2025-10-18T19:28:43.246Z",
+  "execution_duration_human": "18.9s",
+  "component_status": {
+    "completed": 2,
+    "failed": 0,
+    "total": 2
+  }
+}

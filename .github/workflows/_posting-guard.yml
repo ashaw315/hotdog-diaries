@@ -1,0 +1,35 @@
+name: "Posting Guard (Reusable)"
+on:
+  workflow_call:
+    inputs:
+      tz:
+        required: false
+        type: string
+        default: "America/New_York"
+      min_slots:
+        required: false
+        type: number
+        default: 6
+      date:
+        required: false
+        type: string
+        default: "today"
+
+jobs:
+  guard:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: posting-guard-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile || pnpm install
+      - name: Verify schedule ready
+        run: pnpm tsx scripts/ops/assert-schedule-ready.ts --tz "${{ inputs.tz }}" --date "${{ inputs.date }}" --min "${{ inputs.min_slots }}"

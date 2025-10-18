@@ -1,45 +1,40 @@
-name: 'Post-Remediation Validation'
-
+name: Post-Remediation Validation
 on:
   repository_dispatch:
-    types: [post-remediation-check]
-  
+    types:
+      - post-remediation-check
   workflow_dispatch:
     inputs:
       manual_trigger:
-        description: 'Manually trigger post-remediation validation'
+        description: Manually trigger post-remediation validation
         required: false
         type: boolean
         default: false
-
 env:
-  NODE_OPTIONS: '--max-old-space-size=4096'
-
+  NODE_OPTIONS: --max-old-space-size=4096
 jobs:
   validate-remediation:
-    name: 'Validate Phase 3 Remediation Results'
+    name: Validate Phase 3 Remediation Results
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
-
       - name: 📊 Extract Remediation Context
         id: context
         run: |
           echo "🔍 Extracting remediation context from dispatch payload..."
-          
+
           # Extract data from repository_dispatch payload
           SECURITY_IMPROVEMENT="${{ github.event.client_payload.security_improvement }}"
           BUILD_DIAGNOSTICS="${{ github.event.client_payload.build_diagnostics }}"
           TRIGGERED_BY="${{ github.event.client_payload.triggered_by }}"
           COMMIT_SHA="${{ github.event.client_payload.commit_sha }}"
           REMEDIATION_TIME="${{ github.event.client_payload.remediation_timestamp }}"
-          
+
           # Set defaults for manual triggers
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             SECURITY_IMPROVEMENT="unknown"
@@ -48,39 +43,36 @@ jobs:
             COMMIT_SHA="${{ github.sha }}"
             REMEDIATION_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           fi
-          
+
           echo "security_improvement=$SECURITY_IMPROVEMENT" >> $GITHUB_OUTPUT
           echo "build_diagnostics=$BUILD_DIAGNOSTICS" >> $GITHUB_OUTPUT
           echo "triggered_by=$TRIGGERED_BY" >> $GITHUB_OUTPUT
           echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
           echo "remediation_time=$REMEDIATION_TIME" >> $GITHUB_OUTPUT
-          
+
           echo "📋 Remediation Context:"
           echo "- Security Improvement: $SECURITY_IMPROVEMENT"
           echo "- Build Diagnostics: $BUILD_DIAGNOSTICS"
           echo "- Triggered By: $TRIGGERED_BY"
           echo "- Commit SHA: $COMMIT_SHA"
           echo "- Remediation Time: $REMEDIATION_TIME"
-
       - name: Setup Node.js with caching
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-
+          node-version: "18"
+          cache: npm
       - name: Install dependencies
         run: |
           npm ci --prefer-offline --no-audit --no-fund
           npm install --no-save tsx
-
       - name: 🧪 Re-run CI Health Checks
         id: health-recheck
         run: |
           echo "🧪 Re-running CI health checks to validate remediation..."
-          
+
           # Run the critical failure gatekeeper in report-only mode
           npx tsx scripts/checkCriticalFailures.ts --report-only || true
-          
+
           # Extract health metrics from the report
           if [[ -f "reports/ci-health-gate.md" ]]; then
             echo "health_report_generated=true" >> $GITHUB_OUTPUT
@@ -109,12 +101,11 @@ jobs:
             echo "ci_ready=false" >> $GITHUB_OUTPUT
             echo "confidence_score=0" >> $GITHUB_OUTPUT
           fi
-
       - name: 🔍 Validate Specific Components
         id: component-validation
         run: |
           echo "🔍 Validating specific components after remediation..."
-          
+
           # Test lint status
           echo "📝 Testing lint status..."
           if npm run lint:check 2>/dev/null || true; then
@@ -124,7 +115,7 @@ jobs:
             echo "lint_status=fail" >> $GITHUB_OUTPUT
             echo "❌ Lint checks still failing"
           fi
-          
+
           # Test security status (basic check)
           echo "🔒 Testing security status..."
           if npm audit --audit-level=critical 2>/dev/null; then
@@ -134,7 +125,7 @@ jobs:
             echo "security_status=fail" >> $GITHUB_OUTPUT
             echo "⚠️ Critical security vulnerabilities remain"
           fi
-          
+
           # Test build status
           echo "🏗️ Testing build status..."
           if timeout 120 npm run build 2>/dev/null; then
@@ -144,39 +135,38 @@ jobs:
             echo "build_status=fail" >> $GITHUB_OUTPUT
             echo "❌ Build still failing"
           fi
-
       - name: 📈 Calculate Remediation Effectiveness
         id: effectiveness
         run: |
           echo "📈 Calculating remediation effectiveness..."
-          
+
           # Get current health metrics
           CONFIDENCE="${{ steps.health-recheck.outputs.confidence_score }}"
           CI_READY="${{ steps.health-recheck.outputs.ci_ready }}"
           LINT_STATUS="${{ steps.component-validation.outputs.lint_status }}"
           SECURITY_STATUS="${{ steps.component-validation.outputs.security_status }}"
           BUILD_STATUS="${{ steps.component-validation.outputs.build_status }}"
-          
+
           # Calculate effectiveness score
           EFFECTIVENESS=0
-          
+
           # Base score from confidence
           if [[ "$CONFIDENCE" =~ ^[0-9]+$ ]]; then
             EFFECTIVENESS=$CONFIDENCE
           fi
-          
+
           # Bonus points for component health
           [[ "$LINT_STATUS" == "pass" ]] && EFFECTIVENESS=$((EFFECTIVENESS + 5))
           [[ "$SECURITY_STATUS" == "pass" ]] && EFFECTIVENESS=$((EFFECTIVENESS + 10))
           [[ "$BUILD_STATUS" == "pass" ]] && EFFECTIVENESS=$((EFFECTIVENESS + 15))
           [[ "$CI_READY" == "true" ]] && EFFECTIVENESS=$((EFFECTIVENESS + 20))
-          
+
           # Cap at 100
           [[ $EFFECTIVENESS -gt 100 ]] && EFFECTIVENESS=100
-          
+
           echo "effectiveness_score=$EFFECTIVENESS" >> $GITHUB_OUTPUT
           echo "📊 Remediation effectiveness: $EFFECTIVENESS/100"
-          
+
           # Determine overall status
           if [[ $EFFECTIVENESS -ge 80 && "$CI_READY" == "true" ]]; then
             echo "overall_status=success" >> $GITHUB_OUTPUT
@@ -188,19 +178,18 @@ jobs:
             echo "overall_status=failed" >> $GITHUB_OUTPUT
             echo "❌ Remediation was not effective"
           fi
-
       - name: 🚨 Check Rollback Requirements
         id: rollback-check
         if: steps.effectiveness.outputs.effectiveness_score < 30
         run: |
           echo "🚨 Checking if rollback is required..."
-          
+
           EFFECTIVENESS="${{ steps.effectiveness.outputs.effectiveness_score }}"
           CI_READY="${{ steps.health-recheck.outputs.ci_ready }}"
-          
+
           echo "Current effectiveness: $EFFECTIVENESS/100"
           echo "CI Ready: $CI_READY"
-          
+
           # Determine if rollback is needed
           if [[ $EFFECTIVENESS -lt 30 && "$CI_READY" == "false" ]]; then
             echo "rollback_required=true" >> $GITHUB_OUTPUT
@@ -210,40 +199,67 @@ jobs:
             echo "rollback_required=false" >> $GITHUB_OUTPUT
             echo "✅ No rollback required"
           fi
-
       - name: 📊 Generate Validation Summary
-        run: |
+        run: >
           echo "📊 Post-Remediation Validation Summary" >> $GITHUB_STEP_SUMMARY
+
           echo "=======================================" >> $GITHUB_STEP_SUMMARY
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
+
           echo "### 🎯 Remediation Context" >> $GITHUB_STEP_SUMMARY
+
           echo "- **Triggered By:** ${{ steps.context.outputs.triggered_by }}" >> $GITHUB_STEP_SUMMARY
+
           echo "- **Commit SHA:** ${{ steps.context.outputs.commit_sha }}" >> $GITHUB_STEP_SUMMARY
+
           echo "- **Remediation Time:** ${{ steps.context.outputs.remediation_time }}" >> $GITHUB_STEP_SUMMARY
+
           echo "- **Security Improvement:** ${{ steps.context.outputs.security_improvement }}" >> $GITHUB_STEP_SUMMARY
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
+
           echo "### 📈 Validation Results" >> $GITHUB_STEP_SUMMARY
+
           echo "- **Overall Status:** ${{ steps.effectiveness.outputs.overall_status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Effectiveness Score:** ${{ steps.effectiveness.outputs.effectiveness_score }}/100" >> $GITHUB_STEP_SUMMARY
-          echo "- **Confidence Score:** ${{ steps.health-recheck.outputs.confidence_score }}/100" >> $GITHUB_STEP_SUMMARY
-          echo "- **CI Ready:** ${{ steps.health-recheck.outputs.ci_ready == 'true' && '✅ Yes' || '❌ No' }}" >> $GITHUB_STEP_SUMMARY
+
+          echo "- **Effectiveness Score:** ${{ steps.effectiveness.outputs.effectiveness_score }}/100" >>
+          $GITHUB_STEP_SUMMARY
+
+          echo "- **Confidence Score:** ${{ steps.health-recheck.outputs.confidence_score }}/100" >>
+          $GITHUB_STEP_SUMMARY
+
+          echo "- **CI Ready:** ${{ steps.health-recheck.outputs.ci_ready == 'true' && '✅ Yes' || '❌ No' }}" >>
+          $GITHUB_STEP_SUMMARY
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
+
           echo "### 🔍 Component Status" >> $GITHUB_STEP_SUMMARY
-          echo "- **Lint:** ${{ steps.component-validation.outputs.lint_status == 'pass' && '✅ Pass' || '❌ Fail' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Security:** ${{ steps.component-validation.outputs.security_status == 'pass' && '✅ Pass' || '❌ Fail' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build:** ${{ steps.component-validation.outputs.build_status == 'pass' && '✅ Pass' || '❌ Fail' }}" >> $GITHUB_STEP_SUMMARY
+
+          echo "- **Lint:** ${{ steps.component-validation.outputs.lint_status == 'pass' && '✅ Pass' || '❌ Fail' }}" >>
+          $GITHUB_STEP_SUMMARY
+
+          echo "- **Security:** ${{ steps.component-validation.outputs.security_status == 'pass' && '✅ Pass' || '❌ Fail'
+          }}" >> $GITHUB_STEP_SUMMARY
+
+          echo "- **Build:** ${{ steps.component-validation.outputs.build_status == 'pass' && '✅ Pass' || '❌ Fail' }}"
+          >> $GITHUB_STEP_SUMMARY
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
+
           if [[ "${{ steps.rollback-check.outputs.rollback_required }}" == "true" ]]; then
             echo "### 🚨 Rollback Required" >> $GITHUB_STEP_SUMMARY
             echo "**Reason:** ${{ steps.rollback-check.outputs.rollback_reason }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
+
           echo "### 📋 Next Actions" >> $GITHUB_STEP_SUMMARY
+
           if [[ "${{ steps.effectiveness.outputs.overall_status }}" == "success" ]]; then
             echo "✅ **Remediation successful** - CI can proceed normally" >> $GITHUB_STEP_SUMMARY
           elif [[ "${{ steps.effectiveness.outputs.overall_status }}" == "partial" ]]; then
@@ -254,7 +270,6 @@ jobs:
               echo "🚨 **Consider rollback** - Health critically low" >> $GITHUB_STEP_SUMMARY
             fi
           fi
-
       - name: Upload Post-Remediation Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -265,41 +280,60 @@ jobs:
             reports/build-diagnostics.md
             reports/security-deep-fix.md
           retention-days: 30
-
       - name: 📝 Update Original PR with Validation Results
         if: github.event_name == 'repository_dispatch' && github.event.client_payload.commit_sha
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
+        run: >
           echo "📝 Updating original PR with validation results..."
-          
-          # Find PR associated with the commit SHA
-          COMMIT_SHA="${{ steps.context.outputs.commit_sha }}"
-          
-          # Create validation results comment
-          cat > validation_comment.md << EOF
-          ## 🧪 Post-Remediation Validation Results
-          
-          **Validation Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)  
-          **Triggered By:** ${{ steps.context.outputs.triggered_by }}
-          
-          ### 📊 Results Summary
-          - **Overall Status:** ${{ steps.effectiveness.outputs.overall_status == 'success' && '✅ Success' || steps.effectiveness.outputs.overall_status == 'partial' && '⚠️ Partial' || '❌ Failed' }}
-          - **Effectiveness Score:** ${{ steps.effectiveness.outputs.effectiveness_score }}/100
-          - **CI Ready:** ${{ steps.health-recheck.outputs.ci_ready == 'true' && '✅ Yes' || '❌ No' }}
-          
-          ### 🔍 Component Validation
-          - **Lint:** ${{ steps.component-validation.outputs.lint_status == 'pass' && '✅' || '❌' }}
-          - **Security:** ${{ steps.component-validation.outputs.security_status == 'pass' && '✅' || '❌' }}
-          - **Build:** ${{ steps.component-validation.outputs.build_status == 'pass' && '✅' || '❌' }}
-          
-          ${{ steps.rollback-check.outputs.rollback_required == 'true' && '### 🚨 Rollback Required\n**Reason:** Health critically low after remediation\n' || '' }}
-          
-          > **Note:** This validation ran independently after Phase 3 auto-healing completed.
-          EOF
-          
-          echo "✅ Validation results prepared for PR update"
 
+
+          # Find PR associated with the commit SHA
+
+          COMMIT_SHA="${{ steps.context.outputs.commit_sha }}"
+
+
+          # Create validation results comment
+
+          cat > validation_comment.md << EOF
+
+          ## 🧪 Post-Remediation Validation Results
+
+
+          **Validation Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)  
+
+          **Triggered By:** ${{ steps.context.outputs.triggered_by }}
+
+
+          ### 📊 Results Summary
+
+          - **Overall Status:** ${{ steps.effectiveness.outputs.overall_status == 'success' && '✅ Success' ||
+          steps.effectiveness.outputs.overall_status == 'partial' && '⚠️ Partial' || '❌ Failed' }}
+
+          - **Effectiveness Score:** ${{ steps.effectiveness.outputs.effectiveness_score }}/100
+
+          - **CI Ready:** ${{ steps.health-recheck.outputs.ci_ready == 'true' && '✅ Yes' || '❌ No' }}
+
+
+          ### 🔍 Component Validation
+
+          - **Lint:** ${{ steps.component-validation.outputs.lint_status == 'pass' && '✅' || '❌' }}
+
+          - **Security:** ${{ steps.component-validation.outputs.security_status == 'pass' && '✅' || '❌' }}
+
+          - **Build:** ${{ steps.component-validation.outputs.build_status == 'pass' && '✅' || '❌' }}
+
+
+          ${{ steps.rollback-check.outputs.rollback_required == 'true' && '### 🚨 Rollback Required\n**Reason:** Health
+          critically low after remediation\n' || '' }}
+
+
+          > **Note:** This validation ran independently after Phase 3 auto-healing completed.
+
+          EOF
+
+
+          echo "✅ Validation results prepared for PR update"
       - name: 🎯 Final Validation Status
         run: |
           echo "🎯 Post-Remediation Validation Complete"
@@ -309,7 +343,7 @@ jobs:
           echo "📈 Effectiveness: ${{ steps.effectiveness.outputs.effectiveness_score }}/100"
           echo "🚀 CI Ready: ${{ steps.health-recheck.outputs.ci_ready }}"
           echo ""
-          
+
           if [[ "${{ steps.effectiveness.outputs.overall_status }}" == "success" ]]; then
             echo "✅ Phase 3 auto-healing was successful!"
             echo "🎉 CI pipeline can proceed normally"
@@ -326,3 +360,11 @@ jobs:
             fi
             exit 1
           fi
+    needs: guard
+    concurrency:
+      group: validate-remediation-${{ github.ref }}
+      cancel-in-progress: true
+  guard:
+    uses: ./.github/workflows/_posting-guard.yml
+permissions:
+  contents: read
