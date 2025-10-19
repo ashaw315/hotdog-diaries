@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "generated": "2025-10-19T18:09:17.457Z",
+    "totalWorkflows": 0,
+    "totalRuns": 0,
+    "totalSignatures": 0
+  },
+  "summary": {
+    "necessary": 0,
+    "useful": 0,
+    "redundant": 0,
+    "outdated": 0,
+    "highFailureCount": 0,
+    "overallHealthScore": null
+  }
+}

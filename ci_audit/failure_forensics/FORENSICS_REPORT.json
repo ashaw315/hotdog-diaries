@@ -1,0 +1,1585 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-10-19T11:41:18.611Z",
+    "analysis_scope": "CI/CD Pipeline Health Assessment",
+    "total_workflows_analyzed": 50,
+    "data_sources": [
+      "workflows",
+      "relevance"
+    ],
+    "analysis_depth": "shallow"
+  },
+  "executive_summary": {
+    "overall_health_score": 70,
+    "critical_issues_count": 0,
+    "workflows_needing_attention": 0,
+    "deprecation_candidates": 42,
+    "total_failure_patterns": 0,
+    "key_findings": [
+      "Analyzed 50 CI/CD workflows across the repository",
+      "42 workflows are candidates for deprecation or major refactoring"
+    ],
+    "immediate_actions": [
+      "Update dependencies in 13 workflows"
+    ]
+  },
+  "workflow_portfolio": {
+    "total_count": 50,
+    "by_classification": {
+      "critical": 6,
+      "useful": 2,
+      "outdated": 42
+    },
+    "by_complexity": {
+      "Low (0-25)": 40,
+      "Medium (26-50)": 5,
+      "High (51-75)": 3,
+      "Very High (76+)": 2
+    },
+    "by_maintenance_burden": {
+      "low": 45,
+      "medium": 5
+    },
+    "by_failure_rate": {
+      "Low (0-10%)": 50,
+      "Medium (10-30%)": 0,
+      "High (30-50%)": 0,
+      "Very High (50%+)": 0
+    }
+  },
+  "failure_analysis": {
+    "total_failures_analyzed": 0,
+    "unique_patterns": 0,
+    "most_critical_patterns": [],
+    "category_breakdown": {}
+  },
+  "priority_recommendations": [
+    {
+      "priority": "high",
+      "title": "Update Outdated Dependencies",
+      "description": "13 workflows use outdated actions or dependencies",
+      "affected_workflows": [
+        "Post-Remediation Validation",
+        "Secret Validation",
+        "Phase 3 CI Auto-Healing: Security & Build Diagnostics",
+        "Scheduler SLA Guard",
+        "🔥 Weekly Smoke Test",
+        "Auto PR CI Shepherd",
+        "📋 Generate Runbook Artifacts",
+        "OpenAPI Spec Drift Detection",
+        "Posting Guard (Reusable)",
+        "Meta CI Audit",
+        "Production Autonomy Watchdog",
+        "Queue Readiness",
+        "CI"
+      ],
+      "estimated_effort": "medium",
+      "business_impact": "medium",
+      "technical_debt_reduction": 25
+    },
+    {
+      "priority": "medium",
+      "title": "Deprecate Unused or Redundant Workflows",
+      "description": "42 workflows have low business value or are unused",
+      "affected_workflows": [
+        "CI",
+        "Housekeeping",
+        "Posting Guard (Reusable)",
+        "Meta CI Audit",
+        "Production Autonomy Watchdog",
+        "Queue Readiness",
+        "Content Scanners",
+        "Content Scheduler",
+        "Token Refresh (Reusable)",
+        "Auto PR CI Shepherd",
+        "CI Test",
+        "CI Test",
+        "Content Posting",
+        "🔍 Production Audit",
+        "📋 Generate Runbook Artifacts",
+        "Scan Bluesky for Content",
+        "Scan Giphy for Content",
+        "Scan Imgur for Content",
+        "Scan Lemmy for Content",
+        "Scan Niche Platforms",
+        "Scan Pixabay for Content",
+        "Scan Reddit for Content",
+        "Scan Social Platforms",
+        "Scan Tumblr for Content",
+        "Scan YouTube for Content",
+        "Schedule Reconciliation",
+        "OpenAPI Spec Drift Detection",
+        "Scheduler SLA Guard",
+        "🔥 Weekly Smoke Test",
+        "Auto-Approve Content",
+        "Auto Queue Manager",
+        "Database Cleanup",
+        "Manual Operations",
+        "📋 Planner Contract",
+        "Post Breakfast Content",
+        "Post Dinner Content",
+        "Post Evening Content",
+        "Post Late Night Content",
+        "Post Lunch Content",
+        "Post Afternoon Snack",
+        "Queue Monitor Hook",
+        "Daily Ingestion Balance Report"
+      ],
+      "estimated_effort": "low",
+      "business_impact": "low",
+      "technical_debt_reduction": 50
+    }
+  ],
+  "detailed_findings": {
+    "critical_workflows": [],
+    "high_maintenance_workflows": [],
+    "failure_prone_workflows": [],
+    "outdated_workflows": [
+      {
+        "workflow_file": "ci.yml",
+        "workflow_name": "CI",
+        "relevance_score": 34,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies, overly_complex.",
+        "maintenance_burden": "medium",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 86,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": true,
+          "automates_manual_process": false,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": true
+        }
+      },
+      {
+        "workflow_file": "housekeeping.yml",
+        "workflow_name": "Housekeeping",
+        "relevance_score": 34,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: hardcoded_values, overly_complex.",
+        "maintenance_burden": "medium",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 77,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": true,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": true
+        }
+      },
+      {
+        "workflow_file": "_posting-guard.yml",
+        "workflow_name": "Posting Guard (Reusable)",
+        "relevance_score": 44,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies, missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": false,
+          "provides_visibility": false,
+          "blocks_bad_deployments": true
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "meta-ci-audit.yml",
+        "workflow_name": "Meta CI Audit",
+        "relevance_score": 44,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies, missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 14,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "prod-watchdog.yml",
+        "workflow_name": "Production Autonomy Watchdog",
+        "relevance_score": 44,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies, hardcoded_values.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 18,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": true,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "queue-readiness.yml",
+        "workflow_name": "Queue Readiness",
+        "relevance_score": 44,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies, missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 10,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scanners.yml",
+        "workflow_name": "Content Scanners",
+        "relevance_score": 44,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: hardcoded_values, overly_complex.",
+        "maintenance_burden": "medium",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 64,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": true,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": true
+        }
+      },
+      {
+        "workflow_file": "scheduler.yml",
+        "workflow_name": "Content Scheduler",
+        "relevance_score": 44,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: hardcoded_values, overly_complex.",
+        "maintenance_burden": "medium",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 62,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": true,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": true
+        }
+      },
+      {
+        "workflow_file": "token-refresh.yml",
+        "workflow_name": "Token Refresh (Reusable)",
+        "relevance_score": 45,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": false,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "auto-pr-ci-shepherd.yml",
+        "workflow_name": "Auto PR CI Shepherd",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 23,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "ci-new.yml",
+        "workflow_name": "CI Test",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 9,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": true,
+          "automates_manual_process": false,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "ci-test.yml",
+        "workflow_name": "CI Test",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 9,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": true,
+          "automates_manual_process": false,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "post.yml",
+        "workflow_name": "Content Posting",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: hardcoded_values.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 45,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": true,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "production-audit.yml",
+        "workflow_name": "🔍 Production Audit",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: hardcoded_values.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 15,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": true,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "runbook-artifact.yml",
+        "workflow_name": "📋 Generate Runbook Artifacts",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 15,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-bluesky.yml",
+        "workflow_name": "Scan Bluesky for Content",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-giphy.yml",
+        "workflow_name": "Scan Giphy for Content",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-imgur.yml",
+        "workflow_name": "Scan Imgur for Content",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-lemmy.yml",
+        "workflow_name": "Scan Lemmy for Content",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-niche-platforms.yml",
+        "workflow_name": "Scan Niche Platforms",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 10,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-pixabay.yml",
+        "workflow_name": "Scan Pixabay for Content",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-reddit.yml",
+        "workflow_name": "Scan Reddit for Content",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-social-platforms.yml",
+        "workflow_name": "Scan Social Platforms",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 16,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-tumblr.yml",
+        "workflow_name": "Scan Tumblr for Content",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scan-youtube.yml",
+        "workflow_name": "Scan YouTube for Content",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 8,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "schedule-reconcile.yml",
+        "workflow_name": "Schedule Reconciliation",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: hardcoded_values.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 18,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": true,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "spec-drift.yml",
+        "workflow_name": "OpenAPI Spec Drift Detection",
+        "relevance_score": 52,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 36,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "scheduler-sla-guard.yml",
+        "workflow_name": "Scheduler SLA Guard",
+        "relevance_score": 59,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies, missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 10,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": true
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "weekly-smoke-test.yml",
+        "workflow_name": "🔥 Weekly Smoke Test",
+        "relevance_score": 59,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: outdated_dependencies, hardcoded_values.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 17,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": true,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": true,
+          "hardcoded_values": true,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "auto-approve.yml",
+        "workflow_name": "Auto-Approve Content",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 11,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "auto-queue-manager.yml",
+        "workflow_name": "Auto Queue Manager",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 14,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "cleanup-duplicates.yml",
+        "workflow_name": "Database Cleanup",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 14,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "manual-operations.yml",
+        "workflow_name": "Manual Operations",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 6,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "planner-contract.yml",
+        "workflow_name": "📋 Planner Contract",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 16,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "post-breakfast.yml",
+        "workflow_name": "Post Breakfast Content",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 16,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "post-dinner.yml",
+        "workflow_name": "Post Dinner Content",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 13,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "post-evening.yml",
+        "workflow_name": "Post Evening Content",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 13,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "post-late-night.yml",
+        "workflow_name": "Post Late Night Content",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 13,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "post-lunch.yml",
+        "workflow_name": "Post Lunch Content",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 13,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "post-snack.yml",
+        "workflow_name": "Post Afternoon Snack",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 13,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": false,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "queue-monitor-hook.yml",
+        "workflow_name": "Queue Monitor Hook",
+        "relevance_score": 60,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: .",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 7,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": false,
+          "provides_visibility": true,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": false,
+          "overly_complex": false
+        }
+      },
+      {
+        "workflow_file": "daily-ingestion-report.yml",
+        "workflow_name": "Daily Ingestion Balance Report",
+        "relevance_score": 67,
+        "classification": "outdated",
+        "justification": "Workflow appears outdated or unused (0 recent runs). High technical debt: missing_documentation.",
+        "maintenance_burden": "low",
+        "recommendations": [
+          "Strong candidate for deprecation",
+          "Archive or remove if no longer needed",
+          "If still needed, complete rewrite recommended"
+        ],
+        "usage_metrics": {
+          "recent_runs": 0,
+          "failure_rate": 0,
+          "last_success": null,
+          "complexity_score": 12,
+          "dependencies": []
+        },
+        "business_value": {
+          "protects_production": false,
+          "enforces_quality": false,
+          "automates_manual_process": true,
+          "provides_visibility": true,
+          "blocks_bad_deployments": false
+        },
+        "technical_debt": {
+          "outdated_dependencies": false,
+          "hardcoded_values": false,
+          "poor_error_handling": false,
+          "missing_documentation": true,
+          "overly_complex": false
+        }
+      }
+    ]
+  },
+  "appendix": {
+    "methodology": "Automated analysis of GitHub Actions workflows, failure logs, and usage patterns using signature-based failure detection and business value assessment.",
+    "data_limitations": [
+      "GitHub Actions run data not available - analysis based on workflow definitions only",
+      "Failure signature analysis not performed - cannot identify specific failure patterns",
+      "Analysis limited to workflows in .github/workflows directory",
+      "Historical data limited to last 50 runs per workflow",
+      "Log analysis may miss certain failure patterns due to log formatting variations"
+    ],
+    "future_recommendations": [
+      "Implement automated workflow health monitoring",
+      "Set up failure pattern alerting",
+      "Create workflow deprecation process",
+      "Establish maintenance burden metrics",
+      "Implement progressive rollout for workflow changes"
+    ]
+  }
+}
