@@ -49,7 +49,7 @@ async function main() {
   const data = await loadWatchdogData()
   
   // Analyze failure causes
-  const plan = analyzeFaiiures(data)
+  const plan = analyzeFailures(data)
   
   if (plan.causes.length === 0) {
     console.log('  ✅ No remediable failures detected')
@@ -157,7 +157,7 @@ async function loadWatchdogData(): Promise<WatchdogData> {
   return data
 }
 
-function analyzeFaiiures(data: WatchdogData): RemediationPlan {
+function analyzeFailures(data: WatchdogData): RemediationPlan {
   const causes: string[] = []
   const actions: RemediationAction[] = []
 

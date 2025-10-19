@@ -39,6 +39,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
       - run: pnpm install --frozen-lockfile || pnpm install
       - name: Actions check
         run: pnpm tsx scripts/prod/check-actions-today.ts --date "${{ inputs.date }}"
