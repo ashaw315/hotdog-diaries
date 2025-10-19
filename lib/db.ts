@@ -1,11 +1,47 @@
 import { Pool, PoolClient, QueryResult } from 'pg'
 import { sql } from '@vercel/postgres'
 import { LogLevel } from '@/types'
-import { Database } from 'sqlite'
-import sqlite3 from 'sqlite3'
-import { open } from 'sqlite'
 import path from 'path'
 import { QueryResult as DbQueryResult, DatabaseHealthCheck } from '@/types/database'
+
+// Conditional SQLite imports to avoid Vercel build issues
+let Database: any = null
+let sqlite3: any = null
+let open: any = null
+
+// Only import SQLite in environments that need it
+const shouldUseSqlite = () => {
+  const nodeEnv = process.env.NODE_ENV
+  const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS)
+  const hasSupabaseUrl = !!(process.env.DATABASE_URL?.includes('supabase.co'))
+  const isProduction = nodeEnv === 'production'
+  
+  // Skip SQLite entirely in production unless CI
+  if (isProduction && !isCI) return false
+  
+  // Use SQLite in development without Supabase URL
+  if (nodeEnv === 'development' && !hasSupabaseUrl) return true
+  
+  // Use SQLite in CI without Supabase URL
+  if (isCI && !hasSupabaseUrl) return true
+  
+  return false
+}
+
+// Lazy load SQLite dependencies only when needed
+async function loadSqlite() {
+  if (!Database && shouldUseSqlite()) {
+    try {
+      const sqliteModule = await import('sqlite')
+      const sqlite3Module = await import('sqlite3')
+      Database = sqliteModule.Database
+      open = sqliteModule.open
+      sqlite3 = sqlite3Module.default
+    } catch (error) {
+      console.warn('SQLite modules not available:', error)
+    }
+  }
+}
 
 interface DatabaseConfig {
   host: string
@@ -21,7 +57,7 @@ interface DatabaseConfig {
 
 class DatabaseConnection {
   private pool: Pool | null = null
-  private sqliteDb: Database | null = null
+  private sqliteDb: any = null  // Using any since we're lazy loading the Database type
   private isSupabase: boolean = false
   private isSqlite: boolean = false
   private connectionMode: 'supabase' | 'sqlite' | 'postgres-pool' = 'postgres-pool'
@@ -246,6 +282,13 @@ class DatabaseConnection {
   private async connectSqlite(): Promise<void> {
     if (this.sqliteDb) {
       return
+    }
+
+    // Ensure SQLite modules are loaded
+    await loadSqlite()
+    
+    if (!Database || !sqlite3) {
+      throw new Error('SQLite modules not available')
     }
 
     const dbPath = process.env.DATABASE_URL_SQLITE?.replace('sqlite:', '') || './hotdog_diaries_dev.db'

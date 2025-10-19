@@ -108,8 +108,6 @@
     "react-dom": "^19.1.0",
     "redoc": "^2.5.2",
     "simple-git": "^3.28.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "string-similarity": "^4.0.4",
     "swr": "^2.3.6",
     "tailwind-merge": "^3.3.1",
@@ -141,6 +139,8 @@
     "js-yaml": "^4.1.0",
     "marked": "^12.0.2",
     "puppeteer": "^24.25.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "tsx": "^4.20.3"
   },
   "type": "module"
