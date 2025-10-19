@@ -1,0 +1,135 @@
+name: "Auto PR CI Shepherd"
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      pr_mode:
+        description: "Use PR mode instead of direct push"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  shepherd:
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+      issues: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: ci-shepherd-${{ github.ref }}
+      cancel-in-progress: true
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - run: pnpm install --frozen-lockfile || pnpm install
+
+      # Direct push path
+      - name: "Direct: Preflight watchdog check"
+        if: ${{ inputs.pr_mode != true }}
+        run: |
+          echo "🔍 Running preflight production watchdog..."
+          pnpm tsx scripts/ops/ci-shepherd/run-and-wait-workflow.ts \
+            --workflow .github/workflows/prod-watchdog.yml \
+            --timeoutSec 900
+
+      - name: "Direct: Auto-remedy on preflight failure"
+        if: ${{ inputs.pr_mode != true && failure() }}
+        run: |
+          echo "🔧 Preflight watchdog failed, attempting auto-remedy..."
+          pnpm tsx scripts/ops/ci-shepherd/auto-remedy.ts
+
+      - name: "Direct: Push to main" 
+        if: ${{ inputs.pr_mode != true && success() }}
+        run: |
+          echo "✅ Preflight passed, pushing to main"
+          # Add actual push logic here
+          
+      - name: "Direct: Post-push watchdog"
+        if: ${{ inputs.pr_mode != true && success() }}
+        run: |
+          echo "🔍 Running post-push production watchdog..."
+          pnpm tsx scripts/ops/ci-shepherd/run-and-wait-workflow.ts \
+            --workflow .github/workflows/prod-watchdog.yml \
+            --timeoutSec 900
+
+      - name: "Direct: Auto-remedy on post-push failure"
+        if: ${{ inputs.pr_mode != true && failure() }}
+        run: |
+          echo "🔧 Post-push watchdog failed, attempting auto-remedy..."
+          pnpm tsx scripts/ops/ci-shepherd/auto-remedy.ts
+
+      - name: "Direct: Auto-revert if still failing"
+        if: ${{ inputs.pr_mode != true && failure() }}
+        run: |
+          echo "❌ Auto-remedy failed, triggering auto-revert"
+          # Add auto-revert logic here
+          # pnpm tsx scripts/ops/ci-shepherd/auto-revert.ts --target main
+
+      # PR path  
+      - name: "PR: Create and monitor"
+        if: ${{ inputs.pr_mode == true }}
+        run: |
+          echo "📝 Creating PR and setting up monitoring"
+          # Add PR creation logic here
+
+      - name: "PR: Pre-merge watchdog check"
+        if: ${{ inputs.pr_mode == true && success() }}
+        run: |
+          echo "🔍 Running pre-merge production watchdog..."
+          pnpm tsx scripts/ops/ci-shepherd/run-and-wait-workflow.ts \
+            --workflow .github/workflows/prod-watchdog.yml \
+            --timeoutSec 900
+
+      - name: "PR: Auto-remedy on pre-merge failure"
+        if: ${{ inputs.pr_mode == true && failure() }}
+        run: |
+          echo "🔧 Pre-merge watchdog failed, attempting auto-remedy..."
+          pnpm tsx scripts/ops/ci-shepherd/auto-remedy.ts
+
+      - name: "PR: Block merge if still failing"
+        if: ${{ inputs.pr_mode == true && failure() }}
+        run: |
+          echo "❌ Auto-remedy failed, blocking merge"
+          gh pr comment ${{ github.event.number }} --body "🚨 **Pre-merge watchdog failure** - auto-remedy attempted but merge still blocked"
+          gh pr edit ${{ github.event.number }} --add-label "watchdog-red"
+          exit 1
+
+      - name: "PR: Proceed to merge"
+        if: ${{ inputs.pr_mode == true && success() }}
+        run: |
+          echo "✅ Pre-merge watchdog passed, proceeding to merge"
+          # Add merge logic here
+
+      - name: "PR: Post-merge watchdog"
+        if: ${{ inputs.pr_mode == true && success() }}
+        run: |
+          echo "🔍 Running post-merge production watchdog..."
+          pnpm tsx scripts/ops/ci-shepherd/run-and-wait-workflow.ts \
+            --workflow .github/workflows/prod-watchdog.yml \
+            --timeoutSec 900
+
+      - name: "PR: Auto-remedy on post-merge failure"
+        if: ${{ inputs.pr_mode == true && failure() }}
+        run: |
+          echo "🔧 Post-merge watchdog failed, attempting auto-remedy..."
+          pnpm tsx scripts/ops/ci-shepherd/auto-remedy.ts
+
+      - name: "PR: Auto-revert if still failing"
+        if: ${{ inputs.pr_mode == true && failure() }}
+        run: |
+          echo "❌ Auto-remedy failed, triggering auto-revert"
+          # Add auto-revert logic here  
+          # pnpm tsx scripts/ops/ci-shepherd/auto-revert.ts --target main

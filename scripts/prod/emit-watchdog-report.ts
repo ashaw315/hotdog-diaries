@@ -1,0 +1,438 @@
+#!/usr/bin/env tsx
+
+/**
+ * Emit comprehensive watchdog report from collected data
+ */
+
+import { parseArgs } from 'node:util'
+import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { execSync } from 'node:child_process'
+import { getTodayET, getCurrentET } from './lib/time'
+
+interface Args {
+  date?: string
+}
+
+type HealthStatus = 'GREEN' | 'YELLOW' | 'RED'
+
+interface ReportData {
+  actions?: any
+  db?: any
+  ui?: any
+  canary?: any
+}
+
+async function main() {
+  const { values } = parseArgs({
+    options: {
+      date: { type: 'string' }
+    }
+  })
+
+  const args: Args = {
+    date: values.date || getTodayET()
+  }
+
+  console.log(`📝 Generating watchdog report for ${args.date}`)
+
+  // Load all JSON data
+  const data: ReportData = {}
+  
+  if (existsSync('ci_audit/watchdog/actions-today.json')) {
+    data.actions = JSON.parse(await readFile('ci_audit/watchdog/actions-today.json', 'utf-8'))
+  }
+  
+  if (existsSync('ci_audit/watchdog/db-today.json')) {
+    data.db = JSON.parse(await readFile('ci_audit/watchdog/db-today.json', 'utf-8'))
+  }
+  
+  if (existsSync('ci_audit/watchdog/ui-today.json')) {
+    data.ui = JSON.parse(await readFile('ci_audit/watchdog/ui-today.json', 'utf-8'))
+  }
+  
+  if (existsSync('ci_audit/watchdog/canary.json')) {
+    data.canary = JSON.parse(await readFile('ci_audit/watchdog/canary.json', 'utf-8'))
+  }
+
+  // Determine overall health
+  const health = determineHealth(data)
+  
+  // Generate markdown report
+  const report = generateMarkdown(data, health, args.date!)
+
+  // Save report
+  await mkdir('ci_audit/watchdog', { recursive: true })
+  await writeFile('ci_audit/watchdog/PROD_WATCHDOG_REPORT.md', report)
+
+  console.log(`📊 Report generated: ${health.overall}`)
+  console.log(`  Actions: ${health.actions}`)
+  console.log(`  Database: ${health.db}`)
+  console.log(`  UI: ${health.ui}`)
+  
+  if (data.canary) {
+    console.log(`  Canary: ${health.canary}`)
+  }
+
+  // Publish GitHub Check Run if running in CI
+  await publishCheckRun(health, report, args.date!)
+
+  // Exit with error if RED status
+  if (health.overall === 'RED') {
+    console.error('❌ Critical issues detected')
+    process.exit(1)
+  }
+}
+
+function determineHealth(data: ReportData) {
+  const health = {
+    actions: 'GREEN' as HealthStatus,
+    db: 'GREEN' as HealthStatus,
+    ui: 'GREEN' as HealthStatus,
+    canary: 'GREEN' as HealthStatus,
+    overall: 'GREEN' as HealthStatus
+  }
+
+  // Check actions
+  if (data.actions) {
+    const failures = data.actions.slots?.filter((s: any) => 
+      s.status === 'MISSING_EXECUTION' || s.status === 'FAILED'
+    ) || []
+    
+    if (failures.length > 0) {
+      health.actions = 'RED'
+    } else {
+      const skipped = data.actions.slots?.filter((s: any) => 
+        s.status === 'EXECUTED_SKIPPED_BY_GUARD'
+      ) || []
+      
+      if (skipped.length > 3) {
+        health.actions = 'YELLOW'
+      }
+    }
+  }
+
+  // Check database
+  if (data.db) {
+    if (!data.db.flags?.SCHEDULE_TODAY_OK) {
+      health.db = 'RED'
+    } else if (!data.db.flags?.SCHEDULE_TOMORROW_OK) {
+      health.db = 'YELLOW'
+    } else if (data.db.flags?.NON_NULL_BIND_RATIO_TODAY < 0.5) {
+      health.db = 'YELLOW'
+    }
+  }
+
+  // Check UI
+  if (data.ui) {
+    if (!data.ui.overallOk) {
+      health.ui = 'RED'
+    }
+  }
+
+  // Check canary
+  if (data.canary) {
+    if (data.canary.status === 'FAILED') {
+      health.canary = 'RED'
+    } else if (data.canary.status === 'NOT_CONFIGURED') {
+      health.canary = 'YELLOW'
+    }
+  }
+
+  // Determine overall
+  if (health.actions === 'RED' || health.db === 'RED' || health.ui === 'RED') {
+    health.overall = 'RED'
+  } else if (health.actions === 'YELLOW' || health.db === 'YELLOW' || health.ui === 'YELLOW') {
+    health.overall = 'YELLOW'
+  }
+
+  return health
+}
+
+function generateMarkdown(data: ReportData, health: any, date: string): string {
+  const statusIcon = {
+    GREEN: '🟢',
+    YELLOW: '🟡',
+    RED: '🔴'
+  }
+
+  let md = `# Production Watchdog Report
+
+**Date (ET):** ${date}  
+**Generated:** ${getCurrentET()}  
+**Overall Status:** ${statusIcon[health.overall]} ${health.overall}
+
+---
+
+## Summary
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| GitHub Actions | ${statusIcon[health.actions]} | ${getActionsSummary(data.actions)} |
+| Database | ${statusIcon[health.db]} | ${getDBSummary(data.db)} |
+| UI Health | ${statusIcon[health.ui]} | ${getUISummary(data.ui)} |
+${data.canary ? `| Canary | ${statusIcon[health.canary]} | ${getCanarySummary(data.canary)} |` : ''}
+
+---
+
+## GitHub Actions Status
+
+${getActionsDetail(data.actions)}
+
+## Database Status
+
+${getDBDetail(data.db)}
+
+## UI Health Probes
+
+${getUIDetail(data.ui)}
+
+${data.canary ? `## Synthetic Canary
+
+${getCanaryDetail(data.canary)}` : ''}
+
+## Immediate Next Steps
+
+${getNextSteps(data, health)}
+
+---
+
+*Report generated by prod-watchdog.yml*
+`
+
+  return md
+}
+
+function getActionsSummary(actions: any): string {
+  if (!actions) return 'No data'
+  
+  const slots = actions.slots || []
+  const executed = slots.filter((s: any) => s.status.startsWith('EXECUTED')).length
+  const missing = slots.filter((s: any) => s.status === 'MISSING_EXECUTION').length
+  const failed = slots.filter((s: any) => s.status === 'FAILED').length
+  
+  if (missing > 0 || failed > 0) {
+    return `⚠️ ${missing} missing, ${failed} failed`
+  }
+  
+  return `${executed} executed`
+}
+
+function getDBSummary(db: any): string {
+  if (!db) return 'No data'
+  
+  const today = db.scheduleTodayCount || 0
+  const tomorrow = db.scheduleTomorrowCount || 0
+  const posted = db.postedTodayCount || 0
+  
+  return `Today: ${today}/6, Tomorrow: ${tomorrow}/6, Posted: ${posted}`
+}
+
+function getUISummary(ui: any): string {
+  if (!ui) return 'No data'
+  
+  const probes = ui.probes || []
+  const ok = probes.filter((p: any) => p.ok).length
+  
+  return `${ok}/${probes.length} endpoints OK`
+}
+
+function getCanarySummary(canary: any): string {
+  if (!canary) return 'No data'
+  
+  if (canary.status === 'SUCCESS') {
+    return `✅ Success (${canary.timingMs}ms)`
+  } else if (canary.status === 'SKIPPED') {
+    return 'Skipped'
+  }
+  
+  return canary.status
+}
+
+function getActionsDetail(actions: any): string {
+  if (!actions) return '*No actions data available*\n'
+  
+  const slots = actions.slots || []
+  
+  let md = `| Slot | Time (ET) | Status | Last Run |\n`
+  md += `|------|-----------|--------|-----------|\n`
+  
+  for (const slot of slots) {
+    const icon = slot.status === 'EXECUTED_SUCCESS' ? '✅' :
+                 slot.status === 'EXECUTED_SKIPPED_BY_GUARD' ? '⏩' :
+                 slot.status === 'NOT_EXECUTED_YET' ? '⏰' :
+                 slot.status === 'MISSING_EXECUTION' ? '❌' : '⚠️'
+    
+    const runLink = slot.lastRun ? `[Run #${slot.lastRun.id}](${slot.lastRun.html_url})` : '-'
+    
+    md += `| ${slot.slot} | ${slot.timeET} | ${icon} ${slot.status} | ${runLink} |\n`
+  }
+  
+  return md
+}
+
+function getDBDetail(db: any): string {
+  if (!db) return '*No database data available*\n'
+  
+  return `
+### Today's Schedule
+- **Total Slots:** ${db.scheduleTodayCount}/6
+- **Filled Slots:** ${db.scheduleTodayNonNull}
+- **Fill Rate:** ${Math.round((db.flags?.NON_NULL_BIND_RATIO_TODAY || 0) * 100)}%
+- **Posted Count:** ${db.postedTodayCount}
+
+### Tomorrow's Schedule
+- **Total Slots:** ${db.scheduleTomorrowCount}/6
+- **Filled Slots:** ${db.scheduleTomorrowNonNull}
+
+### Flags
+- SCHEDULE_TODAY_OK: ${db.flags?.SCHEDULE_TODAY_OK ? '✅' : '❌'}
+- SCHEDULE_TOMORROW_OK: ${db.flags?.SCHEDULE_TOMORROW_OK ? '✅' : '❌'}
+`
+}
+
+function getUIDetail(ui: any): string {
+  if (!ui) return '*No UI probe data available*\n'
+  
+  let md = `| Endpoint | Status | Response Time |\n`
+  md += `|----------|--------|---------------|\n`
+  
+  for (const probe of ui.probes || []) {
+    const icon = probe.ok ? '✅' : '❌'
+    const endpoint = probe.endpoint.replace(ui.baseUrl, '')
+    
+    md += `| ${endpoint || '/'} | ${icon} ${probe.status} | ${probe.responseTime}ms |\n`
+  }
+  
+  return md
+}
+
+function getCanaryDetail(canary: any): string {
+  if (!canary) return '*No canary data available*\n'
+  
+  return `
+- **Status:** ${canary.status}
+- **Runtime:** ${canary.runtime}
+- **Message:** ${canary.message}
+${canary.timingMs ? `- **Timing:** ${canary.timingMs}ms` : ''}
+${canary.path ? `- **Path:** ${canary.path.join(' → ')}` : ''}
+`
+}
+
+function getNextSteps(data: ReportData, health: any): string {
+  const steps: string[] = []
+  
+  // Actions issues
+  if (health.actions === 'RED' && data.actions) {
+    const missing = data.actions.slots?.filter((s: any) => 
+      s.status === 'MISSING_EXECUTION' && s.isPast
+    ) || []
+    
+    if (missing.length > 0) {
+      steps.push(`### ⚠️ Missing Workflow Runs`)
+      steps.push(`The following posting slots did not execute:`)
+      for (const slot of missing) {
+        steps.push(`- **${slot.slot}** (${slot.timeET} ET)`)
+        steps.push(`  \`\`\`bash\n  gh workflow run post-${slot.slot}.yml --ref main\n  \`\`\``)
+      }
+    }
+  }
+  
+  // Database issues
+  if (health.db === 'RED' && data.db) {
+    if (!data.db.flags?.SCHEDULE_TODAY_OK) {
+      steps.push(`### ⚠️ Today's Schedule Incomplete`)
+      steps.push(`Only ${data.db.scheduleTodayCount}/6 slots scheduled for today.`)
+      steps.push(`\`\`\`bash`)
+      steps.push(`gh workflow run content-scheduler.yml --ref main`)
+      steps.push(`\`\`\``)
+    }
+  }
+  
+  if (health.db === 'YELLOW' && data.db) {
+    if (!data.db.flags?.SCHEDULE_TOMORROW_OK) {
+      steps.push(`### ⚠️ Tomorrow's Schedule Incomplete`)
+      steps.push(`Only ${data.db.scheduleTomorrowCount}/6 slots scheduled for tomorrow.`)
+      steps.push(`\`\`\`bash`)
+      steps.push(`gh workflow run content-scheduler.yml --ref main`)
+      steps.push(`\`\`\``)
+    }
+  }
+  
+  // UI issues
+  if (health.ui === 'RED' && data.ui) {
+    const failed = data.ui.probes?.filter((p: any) => !p.ok) || []
+    
+    if (failed.length > 0) {
+      steps.push(`### ⚠️ UI Endpoints Failing`)
+      for (const probe of failed) {
+        const endpoint = probe.endpoint.replace(data.ui.baseUrl, '')
+        steps.push(`- **${endpoint}**: Status ${probe.status}`)
+      }
+      steps.push(`Check Vercel deployment status and logs.`)
+    }
+  }
+  
+  if (steps.length === 0) {
+    steps.push('✅ No immediate action required. System operating normally.')
+  }
+  
+  return steps.join('\n')
+}
+
+async function publishCheckRun(health: any, report: string, date: string) {
+  // Only publish if running in GitHub Actions
+  const githubSha = process.env.GITHUB_SHA
+  const githubRepo = process.env.GITHUB_REPOSITORY
+  
+  if (!githubSha || !githubRepo) {
+    console.log('  Not in CI environment, skipping Check Run publication')
+    return
+  }
+
+  console.log('  Publishing GitHub Check Run...')
+
+  // Map health status to check conclusion
+  const conclusion = health.overall === 'GREEN' ? 'success' :
+                     health.overall === 'YELLOW' ? 'neutral' : 'failure'
+
+  // Create summary with top findings
+  const summary = `## Production Watchdog - ${date}
+
+**Overall Status:** ${health.overall}
+
+| Component | Status |
+|-----------|--------|
+| Actions | ${health.actions} |
+| Database | ${health.db} |
+| UI | ${health.ui} |
+${health.canary ? `| Canary | ${health.canary} |` : ''}
+
+[View full report in artifacts](https://github.com/${githubRepo}/actions/runs/${process.env.GITHUB_RUN_ID})
+`
+
+  try {
+    // Use gh api to create check run
+    const cmd = `gh api repos/${githubRepo}/check-runs \
+      -H "Accept: application/vnd.github+json" \
+      -f name="prod-watchdog" \
+      -f head_sha="${githubSha}" \
+      -f status="completed" \
+      -f conclusion="${conclusion}" \
+      -f output[title]="Production Watchdog" \
+      -f output[summary]="${summary.replace(/"/g, '\\"').replace(/\n/g, '\\n')}" \
+      2>/dev/null || echo '{"message":"Check run created"}'`
+    
+    const result = execSync(cmd, { encoding: 'utf-8' })
+    console.log('  ✅ Check Run published')
+  } catch (error) {
+    console.warn('  ⚠️ Failed to publish Check Run (non-fatal):', error)
+  }
+}
+
+// ES module check for direct execution
+if (process.argv[1] && process.argv[1].includes('emit-watchdog-report')) {
+  main().catch(console.error)
+}
+
+export { main as emitWatchdogReport }

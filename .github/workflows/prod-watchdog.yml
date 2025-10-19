@@ -1,0 +1,81 @@
+name: "Production Autonomy Watchdog"
+on:
+  schedule:
+    - cron: "7 * * * *"      # hourly at :07 UTC
+    - cron: "7 10 * * *"     # 06:07 ET
+    - cron: "37 10 * * *"    # 06:37 ET
+    - cron: "7 11 * * *"     # 07:07 ET
+  workflow_dispatch:
+    inputs:
+      run_canary:
+        description: "Run DRY_RUN posting canary"
+        required: false
+        type: boolean
+        default: false
+      date:
+        description: "ISO date (ET) to analyze; default today"
+        required: false
+        type: string
+jobs:
+  watchdog:
+    permissions:
+      contents: read
+      issues: write
+      checks: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: prod-watchdog-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PROD_BASE_URL: ${{ vars.PROD_BASE_URL || 'https://hotdog-diaries.vercel.app' }}
+      RUN_CANARY: ${{ inputs.run_canary || 'false' }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile || pnpm install
+      - name: Actions check
+        run: pnpm tsx scripts/prod/check-actions-today.ts --date "${{ inputs.date }}"
+      - name: DB check
+        run: pnpm tsx scripts/prod/check-db-posting.ts --date "${{ inputs.date }}"
+      - name: UI probe
+        run: pnpm tsx scripts/prod/probe-ui.ts --date "${{ inputs.date }}"
+      - name: Canary (optional)
+        if: ${{ inputs.run_canary == true }}
+        run: pnpm tsx scripts/prod/synthetic-post-canary.ts
+      - name: Emit report
+        id: report
+        run: pnpm tsx scripts/prod/emit-watchdog-report.ts --date "${{ inputs.date }}"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PROD_WATCHDOG_REPORT
+          path: ci_audit/watchdog/
+          retention-days: 7
+      - name: Create/Update issue on failure
+        if: failure()
+        run: |
+          TITLE="❌ Production Watchdog Failure $(date -u +%F)"
+          BODY="$(cat ci_audit/watchdog/PROD_WATCHDOG_REPORT.md)"
+          # Try to find existing open issue
+          NUM=$(gh issue list --search "Production Watchdog Failure" --state open --limit 1 --json number -q '.[0].number' || true)
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label "production-watchdog"
+          fi
+      - name: Alert webhook (optional)
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -n "$ALERT_WEBHOOK_URL" ]; then
+            printf '%s' "{\"text\":\"❌ Hotdog Diaries: Production watchdog detected failures. See artifact: PROD_WATCHDOG_REPORT.\"}" \
+              | curl -s -X POST -H 'content-type: application/json' -d @- "$ALERT_WEBHOOK_URL" || true
+          fi
