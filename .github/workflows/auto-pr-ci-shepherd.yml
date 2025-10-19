@@ -23,6 +23,8 @@ jobs:
     concurrency:
       group: ci-shepherd-${{ github.ref }}
       cancel-in-progress: true
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     steps:
       - uses: actions/checkout@v4
