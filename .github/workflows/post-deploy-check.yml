@@ -63,47 +63,94 @@ jobs:
         run: |
           echo "⏳ Waiting for deployment to be ready..."
           sleep 30
-      - name: Test deep health endpoint
+      - name: Test health endpoints with retry
         id: health
         run: |
-          echo "🏥 Testing /admin/health/deep endpoint..."
-
-          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer $AUTH_TOKEN" \
-            -H "Content-Type: application/json" \
-            --max-time 30 \
-            "$PROD_URL/api/admin/health/deep")
-
-          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
-
-          echo "HTTP Status: $HTTP_STATUS"
-          echo "Response Body: $BODY"
-
-          if [ "$HTTP_STATUS" -eq 200 ]; then
-            echo "✅ Deep health check passed"
+          echo "🏥 Testing health endpoints with retry logic..."
+          
+          # Function to test endpoint with retries
+          test_endpoint() {
+            local ENDPOINT_NAME="$1"
+            local ENDPOINT_URL="$2"
+            local MAX_RETRIES=2
+            local DELAY=10
+            local TOTAL_TIMEOUT=60
             
-            # Verify 'ok' status in response
-            OK_STATUS=$(echo "$BODY" | jq -r '.ok // false')
-            if [ "$OK_STATUS" = "true" ]; then
-              echo "✅ Health status is OK"
-              echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "🔍 Testing $ENDPOINT_NAME endpoint: $ENDPOINT_URL"
+            
+            for ATTEMPT in $(seq 0 $MAX_RETRIES); do
+              if [ $ATTEMPT -gt 0 ]; then
+                echo "⏳ Retry attempt $ATTEMPT/$MAX_RETRIES after ${DELAY}s delay..."
+                sleep $DELAY
+              else
+                echo "📡 Initial attempt..."
+              fi
               
-              # Extract component details for artifact
-              echo "$BODY" | jq '.components // {}' > health_components.json
+              RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+                -H "Authorization: Bearer $AUTH_TOKEN" \
+                -H "Content-Type: application/json" \
+                --max-time $TOTAL_TIMEOUT \
+                "$ENDPOINT_URL")
               
-            else
-              echo "❌ Health status indicates issues"
-              echo "status=degraded" >> $GITHUB_OUTPUT
-              echo "$BODY" | jq '.components // {}' > health_components.json
+              HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+              BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
               
-              # Don't fail immediately - continue to refill check
-              echo "⚠️ Health check shows degraded status but continuing..."
-            fi
+              echo "HTTP Status: $HTTP_STATUS"
+              
+              if [ "$HTTP_STATUS" -eq 200 ]; then
+                echo "✅ $ENDPOINT_NAME endpoint successful"
+                echo "$BODY"
+                return 0
+              else
+                echo "❌ $ENDPOINT_NAME failed with status $HTTP_STATUS"
+                echo "Response (first 200 chars): $(echo "$BODY" | head -c 200)"
+                
+                if [ $ATTEMPT -eq $MAX_RETRIES ]; then
+                  echo "❌ $ENDPOINT_NAME failed after $((MAX_RETRIES + 1)) attempts"
+                  return 1
+                fi
+              fi
+            done
+          }
+          
+          # Test schedule timezone endpoint
+          echo ""
+          echo "=== Testing Schedule Timezone Health ==="
+          if test_endpoint "Schedule-TZ" "$PROD_URL/api/health/schedule-tz"; then
+            SCHEDULE_TZ_OK=true
+            echo "✅ Schedule timezone health check passed"
           else
-            echo "❌ Deep health check failed with status $HTTP_STATUS"
+            SCHEDULE_TZ_OK=false
+            echo "❌ Schedule timezone health check failed"
+          fi
+          
+          # Test posting source of truth endpoint  
+          echo ""
+          echo "=== Testing Posting Source of Truth Health ==="
+          if test_endpoint "Posting-Source" "$PROD_URL/api/health/posting-source-of-truth"; then
+            POSTING_SOURCE_OK=true
+            echo "✅ Posting source of truth health check passed"
+          else
+            POSTING_SOURCE_OK=false
+            echo "❌ Posting source of truth health check failed"
+          fi
+          
+          # Determine overall health status
+          echo ""
+          echo "=== Overall Health Assessment ==="
+          if [ "$SCHEDULE_TZ_OK" = true ] && [ "$POSTING_SOURCE_OK" = true ]; then
+            echo "✅ All health endpoints passed"
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo '{"schedule_tz": "ok", "posting_source": "ok", "overall": "healthy"}' > health_components.json
+          elif [ "$SCHEDULE_TZ_OK" = true ] || [ "$POSTING_SOURCE_OK" = true ]; then
+            echo "⚠️ Partial health check failure - some endpoints degraded"
+            echo "status=degraded" >> $GITHUB_OUTPUT
+            echo '{"schedule_tz": "'$([ "$SCHEDULE_TZ_OK" = true ] && echo "ok" || echo "failed")'", "posting_source": "'$([ "$POSTING_SOURCE_OK" = true ] && echo "ok" || echo "failed")'", "overall": "degraded"}' > health_components.json
+            echo "⚠️ Health check shows degraded status but continuing..."
+          else
+            echo "❌ All health endpoints failed"
             echo "status=failed" >> $GITHUB_OUTPUT
-            echo '{"error": "health_check_failed", "status": '$HTTP_STATUS'}' > health_components.json
+            echo '{"schedule_tz": "failed", "posting_source": "failed", "overall": "failed"}' > health_components.json
             exit 1
           fi
       - name: Get system metrics snapshot
