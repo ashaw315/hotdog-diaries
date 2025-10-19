@@ -63,7 +63,7 @@ toRemove.forEach(item => {
 if (process.env.NODE_ENV === 'production') {
   console.log('\n📦 Pruning development dependencies...');
   try {
-    execSync('npm prune --production', { stdio: 'inherit' });
+    execSync('pnpm prune --prod', { stdio: 'inherit' });
     console.log('✅ Development dependencies removed');
   } catch (error) {
     console.error('❌ Error pruning dependencies:', error.message);
