@@ -139,8 +139,6 @@
     "js-yaml": "^4.1.0",
     "marked": "^12.0.2",
     "puppeteer": "^24.25.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "tsx": "^4.20.3"
   },
   "type": "module"
