@@ -39,6 +39,9 @@ env:
   PROD_URL: ${{ inputs.target_url || 'https://hotdog-diaries.vercel.app' }}
   AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
 jobs:
+  guard:
+    uses: ./.github/workflows/_posting-guard.yml
+  
   health-check:
     runs-on: ubuntu-latest
     name: Health & Metrics Validation
@@ -480,5 +483,3 @@ jobs:
               body: body,
               labels: ['deployment', 'failure', 'urgent', 'automated', 'post-deploy']
             })
-  guard:
-    uses: ./.github/workflows/_posting-guard.yml
