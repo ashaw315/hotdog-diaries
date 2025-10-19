@@ -1,0 +1,63 @@
+name: "CI Failure Drilldown (Read-Only)"
+on:
+  workflow_dispatch:
+    inputs:
+      lookback_runs:
+        description: "How many recent runs per workflow to analyze (<=10)"
+        required: false
+        type: number
+        default: 10
+      only_failed:
+        description: "Only download logs for failed/neutral/skipped"
+        required: false
+        type: boolean
+        default: true
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  issues: write
+jobs:
+  drilldown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+      - run: pnpm install --frozen-lockfile || pnpm install
+      - name: Fetch runs & logs
+        env:
+          LOOKBACK: ${{ inputs.lookback_runs }}
+          ONLY_FAILED: ${{ inputs.only_failed }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm tsx scripts/ci/failure-drilldown/fetch-runs-and-logs.ts --lookback "$LOOKBACK" --onlyFailed "$ONLY_FAILED"
+      - name: Classify failures
+        run: pnpm tsx scripts/ci/failure-drilldown/classify-failures.ts
+      - name: Assess usefulness
+        run: pnpm tsx scripts/ci/failure-drilldown/assess-usefulness.ts
+      - name: Emit drilldown report
+        run: pnpm tsx scripts/ci/failure-drilldown/emit-drilldown-report.ts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CI_FAILURE_DRILLDOWN
+          path: ci_audit/failure_drilldown/
+          retention-days: 14
+      - name: Open/Update issue with report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="CI Failure Drilldown (read-only)"
+          BODY="$(cat ci_audit/failure_drilldown/DRILLDOWN_REPORT.md)"
+          NUM=$(gh issue list --search "$TITLE" --state open --json number -q '.[0].number' || true)
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label "ci-forensics"
+          fi
