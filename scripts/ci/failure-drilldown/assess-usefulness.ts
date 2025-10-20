@@ -56,13 +56,19 @@ function inferIntent(workflowName: string, triggers: string[]): string {
   return 'utility'
 }
 
+function assessWorkflowWithEvents(workflowName: string, runs: any[], signatures: any[], events: string[]): WorkflowAssessment {
+  return assessWorkflow(workflowName, runs, signatures, events)
+}
+
 function assessWorkflow(
   workflowName: string,
   runs: any[],
-  signatures: any[]
+  signatures: any[],
+  events?: string[]
 ): WorkflowAssessment {
-  const workflowRuns = runs.filter(r => r.workflowName === workflowName)
-  const workflowSignatures = signatures.filter(s => s.workflow === workflowName)
+  // Runs are already pre-filtered by the caller
+  const workflowRuns = runs
+  const workflowSignatures = signatures
   
   // Calculate failure rate
   const totalRuns = workflowRuns.length
@@ -82,10 +88,12 @@ function assessWorkflow(
     .slice(0, 3)
     .map(([sig]) => sig)
   
-  // Analyze triggers
-  const triggerSet = new Set<string>()
-  for (const run of workflowRuns) {
-    triggerSet.add(run.event)
+  // Analyze triggers - use passed events if available, otherwise extract from runs
+  const triggerSet = events ? new Set(events) : new Set<string>()
+  if (!events) {
+    for (const run of workflowRuns) {
+      triggerSet.add(run.event)
+    }
   }
   
   const triggerSummary = {
@@ -192,12 +200,28 @@ function assessWorkflow(
 async function main() {
   console.log('🔍 Assessing workflow usefulness...')
   
-  const outputDir = 'ci_audit/failure_drilldown'
-  const runsPath = join(outputDir, 'runs.json')
-  const signaturesPath = join(outputDir, 'failure_signatures.json')
+  // Check for repowide data first, fallback to regular data
+  const repowideOutputDir = 'ci_audit/failure_drilldown/repowide'
+  const regularOutputDir = 'ci_audit/failure_drilldown'
+  
+  let outputDir: string
+  let runsPath: string
+  let signaturesPath: string
+  
+  if (existsSync(join(repowideOutputDir, 'runs.json'))) {
+    outputDir = repowideOutputDir
+    runsPath = join(repowideOutputDir, 'runs.json')
+    signaturesPath = join(repowideOutputDir, 'failure_signatures.json')
+    console.log('📊 Using repowide data for assessment')
+  } else {
+    outputDir = regularOutputDir
+    runsPath = join(regularOutputDir, 'runs.json')
+    signaturesPath = join(regularOutputDir, 'failure_signatures.json')
+    console.log('📊 Using regular workflow data for assessment')
+  }
   
   if (!existsSync(runsPath)) {
-    console.error('❌ runs.json not found. Run fetch-runs-and-logs.ts first.')
+    console.error('❌ runs.json not found. Run harvest-runs-repowide.ts or fetch-runs-and-logs.ts first.')
     process.exit(1)
   }
   
@@ -209,18 +233,67 @@ async function main() {
   const runs = JSON.parse(readFileSync(runsPath, 'utf8'))
   const signatures = JSON.parse(readFileSync(signaturesPath, 'utf8'))
   
-  // Get unique workflow names
-  const workflowNames = new Set<string>()
-  for (const run of runs) {
-    workflowNames.add(run.workflowName)
+  // For repowide data, aggregate by workflow_id and use current workflow metadata
+  let workflowAggregation: Map<string, { name: string, path?: string, id?: number, events: Set<string> }>
+  
+  if (outputDir === repowideOutputDir) {
+    // Load workflow metadata for current names/paths
+    const workflowsPath = join(outputDir, 'workflows.json')
+    const workflows = existsSync(workflowsPath) ? JSON.parse(readFileSync(workflowsPath, 'utf8')) : []
+    const workflowMap = new Map(workflows.map((w: any) => [w.id, w]))
+    
+    workflowAggregation = new Map()
+    for (const run of runs) {
+      const workflowId = run.workflow_id || run.workflowId
+      const currentWorkflow = workflowMap.get(workflowId)
+      const key = String(workflowId)
+      
+      if (!workflowAggregation.has(key)) {
+        workflowAggregation.set(key, {
+          name: currentWorkflow?.name || run.workflow_name || run.workflowName || `Workflow ${workflowId}`,
+          path: currentWorkflow?.path || run.workflow_path,
+          id: workflowId,
+          events: new Set()
+        })
+      }
+      
+      workflowAggregation.get(key)!.events.add(run.event)
+    }
+  } else {
+    // Regular workflow name aggregation
+    workflowAggregation = new Map()
+    for (const run of runs) {
+      const workflowName = run.workflowName || run.workflow_name
+      if (!workflowAggregation.has(workflowName)) {
+        workflowAggregation.set(workflowName, {
+          name: workflowName,
+          events: new Set()
+        })
+      }
+      workflowAggregation.get(workflowName)!.events.add(run.event)
+    }
   }
   
-  console.log(`📊 Assessing ${workflowNames.size} workflows...`)
+  console.log(`📊 Assessing ${workflowAggregation.size} workflows...`)
   
   const assessments: WorkflowAssessment[] = []
   
-  for (const workflowName of workflowNames) {
-    const assessment = assessWorkflow(workflowName, runs, signatures)
+  for (const [workflowKey, workflowInfo] of workflowAggregation) {
+    const workflowName = workflowInfo.name
+    
+    // For repowide data, filter by workflow_id; for regular data, filter by name
+    const workflowRuns = outputDir === repowideOutputDir
+      ? runs.filter((r: any) => String(r.workflow_id || r.workflowId) === workflowKey)
+      : runs.filter((r: any) => (r.workflowName || r.workflow_name) === workflowName)
+    
+    const workflowSignatures = signatures.filter((s: any) => 
+      outputDir === repowideOutputDir
+        ? String(s.workflow).includes(workflowKey) || s.workflow === workflowName
+        : s.workflow === workflowName
+    )
+    
+    // Create enhanced assessment with event data
+    const assessment = assessWorkflowWithEvents(workflowName, workflowRuns, workflowSignatures, Array.from(workflowInfo.events))
     assessments.push(assessment)
     
     const icon = {

@@ -1,0 +1,149 @@
+[
+  {
+    "workflow": "CI Pipeline",
+    "recentFailRate": 8.5,
+    "dominantSignatures": [
+      "BUILD_ERROR"
+    ],
+    "triggerSummary": {
+      "push": true,
+      "pull_request": true,
+      "schedule": false,
+      "workflow_dispatch": true,
+      "deployment_status": false,
+      "other": []
+    },
+    "assessment": "useful",
+    "rationale": "quality gate workflow with manageable failure rate (9%)",
+    "suggestedQuestions": [
+      "Are GitHub API permissions correctly configured?"
+    ]
+  },
+  {
+    "workflow": "Deploy to Production",
+    "recentFailRate": 0,
+    "dominantSignatures": [],
+    "triggerSummary": {
+      "push": false,
+      "pull_request": false,
+      "schedule": false,
+      "workflow_dispatch": true,
+      "deployment_status": true,
+      "other": []
+    },
+    "assessment": "necessary",
+    "rationale": "Critical for production safety and security",
+    "suggestedQuestions": []
+  },
+  {
+    "workflow": "Content Scanner - Reddit",
+    "recentFailRate": 65.2,
+    "dominantSignatures": [
+      "MISSING_SECRET",
+      "PERMISSION"
+    ],
+    "triggerSummary": {
+      "push": false,
+      "pull_request": false,
+      "schedule": true,
+      "workflow_dispatch": false,
+      "deployment_status": false,
+      "other": []
+    },
+    "assessment": "redundant",
+    "rationale": "Content workflow with permission issues - may be superseded",
+    "suggestedQuestions": [
+      "Is this content scanner still needed?",
+      "Can it be consolidated with other scanners?"
+    ]
+  },
+  {
+    "workflow": "Content Scanner - YouTube",
+    "recentFailRate": 42.1,
+    "dominantSignatures": [
+      "AUTH_TOKEN_POLICY",
+      "GITHUB_API"
+    ],
+    "triggerSummary": {
+      "push": false,
+      "pull_request": false,
+      "schedule": true,
+      "workflow_dispatch": true,
+      "deployment_status": false,
+      "other": []
+    },
+    "assessment": "necessary",
+    "rationale": "Important content management workflow but needs fixing (42% failure rate)",
+    "suggestedQuestions": [
+      "Should this workflow be refactored or replaced?",
+      "What are the current token requirements?"
+    ]
+  },
+  {
+    "workflow": "Daily Health Check",
+    "recentFailRate": 18.3,
+    "dominantSignatures": [
+      "HEALTH_CHECK",
+      "TIMEOUT"
+    ],
+    "triggerSummary": {
+      "push": false,
+      "pull_request": false,
+      "schedule": true,
+      "workflow_dispatch": false,
+      "deployment_status": false,
+      "other": []
+    },
+    "assessment": "necessary",
+    "rationale": "Health monitoring workflow - endpoint may need update",
+    "suggestedQuestions": [
+      "Are the health endpoints correctly configured?",
+      "Should timeout limits be increased?"
+    ]
+  },
+  {
+    "workflow": "Security Validation",
+    "recentFailRate": 25,
+    "dominantSignatures": [
+      "AUTH_TOKEN_POLICY",
+      "MISSING_SECRET"
+    ],
+    "triggerSummary": {
+      "push": true,
+      "pull_request": true,
+      "schedule": false,
+      "workflow_dispatch": false,
+      "deployment_status": false,
+      "other": []
+    },
+    "assessment": "necessary",
+    "rationale": "Critical for production safety and security",
+    "suggestedQuestions": [
+      "What are the current token requirements?",
+      "Are the required secrets still available?"
+    ]
+  },
+  {
+    "workflow": "Old Content Scanner",
+    "recentFailRate": 88.9,
+    "dominantSignatures": [
+      "PERMISSION",
+      "MISSING_SECRET",
+      "OUTDATED"
+    ],
+    "triggerSummary": {
+      "push": false,
+      "pull_request": false,
+      "schedule": true,
+      "workflow_dispatch": false,
+      "deployment_status": false,
+      "other": []
+    },
+    "assessment": "outdated",
+    "rationale": "Consistently failing (89% failure rate) - likely outdated",
+    "suggestedQuestions": [
+      "When was this workflow last successfully used?",
+      "What system or process replaced this?"
+    ]
+  }
+]

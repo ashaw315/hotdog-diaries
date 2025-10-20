@@ -7,6 +7,10 @@ interface ReportData {
   runs: any[]
   signatures: any[]
   assessments: any[]
+  snapshot?: any[]
+  workflows?: any[]
+  harvestSummary?: any
+  isRepowide?: boolean
   metadata: {
     generated: string
     totalWorkflows: number
@@ -15,8 +19,168 @@ interface ReportData {
   }
 }
 
+function generateRepowideSection(data: ReportData): string {
+  if (!data.isRepowide || !data.harvestSummary) return ''
+  
+  const { runs, workflows, harvestSummary } = data
+  
+  // Calculate workflow stats by non-success count
+  const workflowStats = new Map<number, { name: string, path: string, nonSuccessCount: number, eventMix: string[], lastFailure: string | null, primarySignature: string | null }>()
+  
+  for (const run of runs) {
+    const workflowId = run.workflow_id
+    const workflow = workflows?.find((w: any) => w.id === workflowId)
+    
+    if (!workflowStats.has(workflowId)) {
+      workflowStats.set(workflowId, {
+        name: workflow?.name || run.workflow_name || `Workflow ${workflowId}`,
+        path: workflow?.path || 'Unknown path',
+        nonSuccessCount: 0,
+        eventMix: [],
+        lastFailure: null,
+        primarySignature: null
+      })
+    }
+    
+    const stats = workflowStats.get(workflowId)!
+    
+    // Track non-success runs
+    if (run.conclusion !== 'success') {
+      stats.nonSuccessCount++
+      if (!stats.lastFailure || new Date(run.updated_at) > new Date(stats.lastFailure)) {
+        stats.lastFailure = run.updated_at
+      }
+    }
+    
+    // Track event types
+    if (!stats.eventMix.includes(run.event)) {
+      stats.eventMix.push(run.event)
+    }
+  }
+  
+  // Add signature data
+  for (const signature of data.signatures) {
+    const workflowName = signature.workflow
+    const workflowId = Array.from(workflowStats.keys()).find(id => {
+      const stats = workflowStats.get(id)!
+      return stats.name === workflowName || workflowName.includes(String(id))
+    })
+    
+    if (workflowId && !workflowStats.get(workflowId)!.primarySignature) {
+      workflowStats.get(workflowId)!.primarySignature = signature.signature
+    }
+  }
+  
+  // Sort by non-success count and take top 10
+  const topWorkflows = Array.from(workflowStats.entries())
+    .map(([id, stats]) => ({ id, ...stats }))
+    .sort((a, b) => b.nonSuccessCount - a.nonSuccessCount)
+    .slice(0, 10)
+    
+  const timeWindow = harvestSummary.timeWindow
+  const cutoffDate = new Date(timeWindow.cutoffTime).toISOString().split('T')[0]
+  const currentDate = new Date().toISOString().split('T')[0]
+  
+  return `
+## 📊 Repo-wide Analysis (${harvestSummary.timeWindow.sinceHours}h)
+
+**Time Window**: ${cutoffDate} to ${currentDate} (UTC)
+
+### Summary Totals
+- **Success**: ${harvestSummary.conclusions.success} runs
+- **Failure**: ${harvestSummary.conclusions.failure} runs  
+- **Neutral**: ${harvestSummary.conclusions.neutral} runs
+- **Skipped**: ${harvestSummary.conclusions.skipped} runs
+- **Cancelled**: ${harvestSummary.conclusions.cancelled} runs
+- **Other**: ${harvestSummary.conclusions.other} runs
+
+### Top 10 Workflows by Non-Success Count
+
+| Workflow Path | Event Mix | Non-Success | Last Failure | Primary Signature | Sample Evidence | Link |
+|---------------|-----------|-------------|--------------|-------------------|-----------------|------|
+${topWorkflows.map(w => {
+  const eventMix = w.eventMix.join(', ')
+  const lastFailure = w.lastFailure ? new Date(w.lastFailure).toLocaleDateString() : 'None'
+  const signature = w.primarySignature || 'None'
+  const sampleEvidence = data.signatures.find(s => s.workflow === w.name)?.evidenceLines[0] || 'None'
+  const truncatedEvidence = sampleEvidence.length > 40 ? sampleEvidence.substring(0, 40) + '...' : sampleEvidence
+  const workflowSlug = w.path.replace(/[^a-zA-Z0-9]/g, '_')
+  
+  return `| \`${w.path}\` | ${eventMix} | ${w.nonSuccessCount} | ${lastFailure} | ${signature} | \`${truncatedEvidence}\` | [View Workflow](${w.path}) |`
+}).join('\n')}
+
+`
+}
+
+function generateIdentityDriftSection(data: ReportData): string {
+  if (!data.isRepowide || !data.workflows) return ''
+  
+  const { runs, workflows } = data
+  
+  // Find workflows with runs but no current workflow file
+  const currentWorkflowIds = new Set(workflows.map((w: any) => w.id))
+  const runWorkflowIds = new Set(runs.map((r: any) => r.workflow_id))
+  
+  const orphanedWorkflows: any[] = []
+  const renamedWorkflows: any[] = []
+  
+  for (const workflowId of runWorkflowIds) {
+    if (!currentWorkflowIds.has(workflowId)) {
+      // This workflow has runs but no current definition - it was deleted
+      const runSample = runs.find((r: any) => r.workflow_id === workflowId)
+      orphanedWorkflows.push({
+        id: workflowId,
+        oldName: runSample?.workflow_name || 'Unknown',
+        lastSeen: Math.max(...runs.filter((r: any) => r.workflow_id === workflowId).map((r: any) => new Date(r.updated_at).getTime()))
+      })
+    }
+  }
+  
+  // Find potential renames (same name, different ID or path)
+  for (const workflow of workflows) {
+    const similarRuns = runs.filter((r: any) => 
+      r.workflow_name === workflow.name && r.workflow_id !== workflow.id
+    )
+    
+    if (similarRuns.length > 0) {
+      renamedWorkflows.push({
+        currentId: workflow.id,
+        currentPath: workflow.path,
+        currentName: workflow.name,
+        oldIds: [...new Set(similarRuns.map((r: any) => r.workflow_id))],
+        oldPaths: [...new Set(similarRuns.map((r: any) => r.workflow_path || 'Unknown'))]
+      })
+    }
+  }
+  
+  if (orphanedWorkflows.length === 0 && renamedWorkflows.length === 0) {
+    return ''
+  }
+  
+  return `
+## 🔄 Identity Drift Analysis
+
+${orphanedWorkflows.length > 0 ? `### Deleted Workflows (${orphanedWorkflows.length})
+${orphanedWorkflows.map(w => {
+  const lastSeenDate = new Date(w.lastSeen).toLocaleDateString()
+  return `- **${w.oldName}** (ID: ${w.id}) - Last seen: ${lastSeenDate}`
+}).join('\n')}
+
+*These workflows have recent runs but no current workflow file. Consider if their failures are still relevant.*
+` : ''}${renamedWorkflows.length > 0 ? `### Potential Renames (${renamedWorkflows.length})
+${renamedWorkflows.map(w => {
+  return `- **${w.currentName}**
+  - Current: \`${w.currentPath}\` (ID: ${w.currentId})
+  - Previous: ${w.oldPaths.join(', ')} (IDs: ${w.oldIds.join(', ')})`
+}).join('\n\n')}
+
+*These workflows may have been moved or renamed. Earlier failures belong to the old workflow IDs.*
+` : ''}
+`
+}
+
 function generateExecutiveSummary(data: ReportData): string {
-  const { assessments, runs, signatures } = data
+  const { assessments, runs, signatures, snapshot } = data
   
   const counts = {
     necessary: assessments.filter((a: any) => a.assessment === 'necessary').length,
@@ -45,8 +209,31 @@ function generateExecutiveSummary(data: ReportData): string {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
   
-  return `# CI Failure Drilldown - Executive Summary
+  // Calculate snapshot summary if available
+  let snapshotSection = ''
+  if (snapshot && snapshot.length > 0) {
+    const totalSnapshot = snapshot.reduce((sum, s) => sum + s.summary.total, 0)
+    const nonSuccessSnapshot = snapshot.reduce((sum, s) => 
+      sum + s.summary.neutral + s.summary.failure + s.summary.skipped + s.summary.cancelled, 0)
+    
+    snapshotSection = `
+## 📸 Last 24h Snapshot
 
+📋 [View Live Snapshot Matrix](./SNAPSHOT_MATRIX.md)
+
+- **Total Runs (24h)**: ${totalSnapshot}
+- **Non-Success Runs**: ${nonSuccessSnapshot}
+- **Success Rate**: ${totalSnapshot > 0 ? ((totalSnapshot - nonSuccessSnapshot) / totalSnapshot * 100).toFixed(1) : '0.0'}%
+
+`
+  }
+
+  // Generate repowide and identity drift sections
+  const repowideSection = generateRepowideSection(data)
+  const identityDriftSection = generateIdentityDriftSection(data)
+
+  return `# CI Failure Drilldown - Executive Summary
+${repowideSection}${identityDriftSection}
 ## 📊 Key Metrics
 
 - **Workflows Analyzed**: ${data.metadata.totalWorkflows}
@@ -54,7 +241,7 @@ function generateExecutiveSummary(data: ReportData): string {
 - **Overall Failure Rate**: ${overallFailRate.toFixed(1)}%
 - **Failure Signatures**: ${data.metadata.totalSignatures}
 
-## 🎯 Workflow Assessment
+${snapshotSection}## 🎯 Workflow Assessment
 
 | Assessment | Count | Percentage |
 |------------|-------|------------|
@@ -78,8 +265,21 @@ ${sortedSignatures.map(([sig, count]) => `- **${sig}**: ${count} occurrences`).j
 
 ## 🎯 Priority Actions
 
-${highFailureWorkflows.length > 0 
-  ? `### Immediate (Next Sprint)
+${data.metadata.totalRuns === 0 
+  ? `### ✅ No Recent Failures Detected
+
+No non-success conclusions found in the last ${runs.length || 'N'} runs analyzed. This indicates good CI health for the target workflows.
+
+**If you observed earlier failures:**
+- Increase lookback (currently limited) to capture older runs
+- Widen the time window for analysis  
+- Check if the specific workflows are triggered by deployment events
+- Verify workflow names/paths match the actual failing workflows
+
+**Target workflows analyzed:**
+${snapshot ? snapshot.map((s: any) => `- \`${s.workflowPath}\``).join('\n') : '- Configuration not available'}`
+  : highFailureWorkflows.length > 0 
+    ? `### Immediate (Next Sprint)
 ${highFailureWorkflows
     .filter((w: any) => w.assessment === 'necessary')
     .slice(0, 3)
@@ -92,7 +292,7 @@ ${assessments
     .slice(0, 3)
     .map((a: any) => `- Review ${a.workflow} for consolidation or removal`)
     .join('\n')}`
-  : '### Low Priority\n- All workflows appear to be functioning within acceptable parameters'
+    : '### Low Priority\n- All workflows appear to be functioning within acceptable parameters'
 }
 
 ---
@@ -290,7 +490,22 @@ ${assessments
 async function main() {
   console.log('📋 Generating drilldown reports...')
   
-  const outputDir = 'ci_audit/failure_drilldown'
+  // Check for repowide data first, fallback to regular data
+  const repowideOutputDir = 'ci_audit/failure_drilldown/repowide'
+  const regularOutputDir = 'ci_audit/failure_drilldown'
+  
+  let outputDir: string
+  let isRepowide = false
+  
+  if (existsSync(join(repowideOutputDir, 'runs.json'))) {
+    outputDir = repowideOutputDir
+    isRepowide = true
+    console.log('📊 Using repowide data for reporting')
+  } else {
+    outputDir = regularOutputDir
+    console.log('📊 Using regular workflow data for reporting')
+  }
+  
   const requiredFiles = ['runs.json', 'failure_signatures.json', 'workflow_assessments.json']
   
   for (const file of requiredFiles) {
@@ -306,10 +521,40 @@ async function main() {
   const signatures = JSON.parse(readFileSync(join(outputDir, 'failure_signatures.json'), 'utf8'))
   const assessments = JSON.parse(readFileSync(join(outputDir, 'workflow_assessments.json'), 'utf8'))
   
+  // Load additional repowide data
+  let workflows = null
+  let harvestSummary = null
+  if (isRepowide) {
+    const workflowsPath = join(outputDir, 'workflows.json')
+    const summaryPath = join(outputDir, 'harvest_summary.json')
+    
+    if (existsSync(workflowsPath)) {
+      workflows = JSON.parse(readFileSync(workflowsPath, 'utf8'))
+      console.log('📋 Loaded workflow metadata')
+    }
+    
+    if (existsSync(summaryPath)) {
+      harvestSummary = JSON.parse(readFileSync(summaryPath, 'utf8'))
+      console.log('📊 Loaded harvest summary')
+    }
+  }
+  
+  // Load snapshot data if available
+  let snapshot = null
+  const snapshotPath = join(outputDir, 'snapshot.json')
+  if (existsSync(snapshotPath)) {
+    snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8'))
+    console.log('📸 Loaded live snapshot data')
+  }
+  
   const data: ReportData = {
     runs,
     signatures,
     assessments,
+    snapshot,
+    workflows,
+    harvestSummary,
+    isRepowide,
     metadata: {
       generated: new Date().toISOString(),
       totalWorkflows: assessments.length,

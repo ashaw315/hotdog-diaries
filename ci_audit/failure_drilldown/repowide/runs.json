@@ -1,0 +1,4202 @@
+[
+  {
+    "id": 18619628147,
+    "workflow_id": 201,
+    "workflow_name": "Legacy CI Pipeline",
+    "workflow_path": ".github/workflows/legacy-ci.yml",
+    "name": "Legacy CI Pipeline #1",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0000def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 1,
+    "created_at": "2025-10-19T14:09:30.738Z",
+    "updated_at": "2025-10-19T14:09:30.738Z",
+    "jobs": [
+      {
+        "id": 20000000,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T14:09:30.738Z",
+        "completed_at": "2025-10-19T14:14:30.738Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 202,
+    "workflow_name": "Old Deploy Script",
+    "workflow_path": ".github/workflows/old-deploy.yml",
+    "name": "Old Deploy Script #2",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0001def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 2,
+    "created_at": "2025-10-16T03:32:23.717Z",
+    "updated_at": "2025-10-16T03:32:23.717Z",
+    "jobs": [
+      {
+        "id": 20000010,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T03:32:23.717Z",
+        "completed_at": "2025-10-16T03:37:23.717Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 201,
+    "workflow_name": "Legacy CI Pipeline",
+    "workflow_path": ".github/workflows/legacy-ci.yml",
+    "name": "Legacy CI Pipeline #3",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0002def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 3,
+    "created_at": "2025-10-14T06:02:08.979Z",
+    "updated_at": "2025-10-14T06:02:08.979Z",
+    "jobs": [
+      {
+        "id": 20000020,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T06:02:08.979Z",
+        "completed_at": "2025-10-14T06:07:08.979Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 202,
+    "workflow_name": "Old Deploy Script",
+    "workflow_path": ".github/workflows/old-deploy.yml",
+    "name": "Old Deploy Script #4",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0003def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 4,
+    "created_at": "2025-10-13T03:02:11.466Z",
+    "updated_at": "2025-10-13T03:02:11.466Z",
+    "jobs": [
+      {
+        "id": 20000030,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T03:02:11.466Z",
+        "completed_at": "2025-10-13T03:07:11.466Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 201,
+    "workflow_name": "Legacy CI Pipeline",
+    "workflow_path": ".github/workflows/legacy-ci.yml",
+    "name": "Legacy CI Pipeline #5",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0004def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 5,
+    "created_at": "2025-10-19T00:42:38.282Z",
+    "updated_at": "2025-10-19T00:42:38.282Z",
+    "jobs": [
+      {
+        "id": 20000040,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T00:42:38.282Z",
+        "completed_at": "2025-10-19T00:47:38.282Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 202,
+    "workflow_name": "Old Deploy Script",
+    "workflow_path": ".github/workflows/old-deploy.yml",
+    "name": "Old Deploy Script #6",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0005def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 6,
+    "created_at": "2025-10-13T23:07:47.781Z",
+    "updated_at": "2025-10-13T23:07:47.781Z",
+    "jobs": [
+      {
+        "id": 20000050,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T23:07:47.781Z",
+        "completed_at": "2025-10-13T23:12:47.781Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 201,
+    "workflow_name": "Legacy CI Pipeline",
+    "workflow_path": ".github/workflows/legacy-ci.yml",
+    "name": "Legacy CI Pipeline #7",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0006def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 7,
+    "created_at": "2025-10-14T00:03:30.049Z",
+    "updated_at": "2025-10-14T00:03:30.049Z",
+    "jobs": [
+      {
+        "id": 20000060,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T00:03:30.049Z",
+        "completed_at": "2025-10-14T00:08:30.049Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 202,
+    "workflow_name": "Old Deploy Script",
+    "workflow_path": ".github/workflows/old-deploy.yml",
+    "name": "Old Deploy Script #8",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0007def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 8,
+    "created_at": "2025-10-17T08:11:36.060Z",
+    "updated_at": "2025-10-17T08:11:36.060Z",
+    "jobs": [
+      {
+        "id": 20000070,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T08:11:36.060Z",
+        "completed_at": "2025-10-17T08:16:36.060Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 201,
+    "workflow_name": "Legacy CI Pipeline",
+    "workflow_path": ".github/workflows/legacy-ci.yml",
+    "name": "Legacy CI Pipeline #9",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0008def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 9,
+    "created_at": "2025-10-19T13:37:47.537Z",
+    "updated_at": "2025-10-19T13:37:47.537Z",
+    "jobs": [
+      {
+        "id": 20000080,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T13:37:47.537Z",
+        "completed_at": "2025-10-19T13:42:47.537Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 202,
+    "workflow_name": "Old Deploy Script",
+    "workflow_path": ".github/workflows/old-deploy.yml",
+    "name": "Old Deploy Script #10",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0009def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 10,
+    "created_at": "2025-10-14T15:01:56.085Z",
+    "updated_at": "2025-10-14T15:01:56.085Z",
+    "jobs": [
+      {
+        "id": 20000090,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T15:01:56.085Z",
+        "completed_at": "2025-10-14T15:06:56.085Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 301,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci-old.yml",
+    "name": "CI Pipeline #11",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0010def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 11,
+    "created_at": "2025-10-14T11:54:59.322Z",
+    "updated_at": "2025-10-14T11:54:59.322Z",
+    "jobs": [
+      {
+        "id": 20000100,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T11:54:59.322Z",
+        "completed_at": "2025-10-14T11:59:59.322Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 301,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci-old.yml",
+    "name": "CI Pipeline #12",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0011def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 12,
+    "created_at": "2025-10-17T18:56:38.849Z",
+    "updated_at": "2025-10-17T18:56:38.849Z",
+    "jobs": [
+      {
+        "id": 20000110,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T18:56:38.849Z",
+        "completed_at": "2025-10-17T19:01:38.849Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 301,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci-old.yml",
+    "name": "CI Pipeline #13",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0012def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 13,
+    "created_at": "2025-10-16T10:27:54.213Z",
+    "updated_at": "2025-10-16T10:27:54.213Z",
+    "jobs": [
+      {
+        "id": 20000120,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T10:27:54.213Z",
+        "completed_at": "2025-10-16T10:32:54.213Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 301,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci-old.yml",
+    "name": "CI Pipeline #14",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0013def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 14,
+    "created_at": "2025-10-15T11:07:18.748Z",
+    "updated_at": "2025-10-15T11:07:18.748Z",
+    "jobs": [
+      {
+        "id": 20000130,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T11:07:18.748Z",
+        "completed_at": "2025-10-15T11:12:18.748Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 301,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci-old.yml",
+    "name": "CI Pipeline #15",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0014def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 15,
+    "created_at": "2025-10-16T21:34:24.317Z",
+    "updated_at": "2025-10-16T21:34:24.317Z",
+    "jobs": [
+      {
+        "id": 20000140,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T21:34:24.317Z",
+        "completed_at": "2025-10-16T21:39:24.317Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #16",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0015def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 16,
+    "created_at": "2025-10-14T09:33:00.720Z",
+    "updated_at": "2025-10-14T09:33:00.720Z",
+    "jobs": [
+      {
+        "id": 20000150,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T09:33:00.720Z",
+        "completed_at": "2025-10-14T09:38:00.720Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #17",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0016def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 17,
+    "created_at": "2025-10-19T15:37:02.397Z",
+    "updated_at": "2025-10-19T15:37:02.397Z",
+    "jobs": [
+      {
+        "id": 20000160,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-19T15:37:02.397Z",
+        "completed_at": "2025-10-19T15:42:02.397Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #18",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0017def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 18,
+    "created_at": "2025-10-14T22:40:40.390Z",
+    "updated_at": "2025-10-14T22:40:40.390Z",
+    "jobs": [
+      {
+        "id": 20000170,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T22:40:40.390Z",
+        "completed_at": "2025-10-14T22:45:40.390Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #19",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "neutral",
+    "head_branch": "main",
+    "head_sha": "abc0018def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 19,
+    "created_at": "2025-10-16T02:31:30.160Z",
+    "updated_at": "2025-10-16T02:31:30.160Z",
+    "jobs": [
+      {
+        "id": 20000180,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "neutral",
+        "started_at": "2025-10-16T02:31:30.160Z",
+        "completed_at": "2025-10-16T02:36:30.160Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #20",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0019def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 20,
+    "created_at": "2025-10-17T07:05:43.892Z",
+    "updated_at": "2025-10-17T07:05:43.892Z",
+    "jobs": [
+      {
+        "id": 20000190,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T07:05:43.892Z",
+        "completed_at": "2025-10-17T07:10:43.892Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #21",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0020def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 21,
+    "created_at": "2025-10-18T19:20:28.989Z",
+    "updated_at": "2025-10-18T19:20:28.989Z",
+    "jobs": [
+      {
+        "id": 20000200,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-18T19:20:28.989Z",
+        "completed_at": "2025-10-18T19:25:28.989Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #22",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0021def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 22,
+    "created_at": "2025-10-14T03:16:11.300Z",
+    "updated_at": "2025-10-14T03:16:11.300Z",
+    "jobs": [
+      {
+        "id": 20000210,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T03:16:11.300Z",
+        "completed_at": "2025-10-14T03:21:11.300Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #23",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0022def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 23,
+    "created_at": "2025-10-16T03:18:49.245Z",
+    "updated_at": "2025-10-16T03:18:49.245Z",
+    "jobs": [
+      {
+        "id": 20000220,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T03:18:49.245Z",
+        "completed_at": "2025-10-16T03:23:49.245Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #24",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0023def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 24,
+    "created_at": "2025-10-15T12:20:28.895Z",
+    "updated_at": "2025-10-15T12:20:28.895Z",
+    "jobs": [
+      {
+        "id": 20000230,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T12:20:28.895Z",
+        "completed_at": "2025-10-15T12:25:28.895Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #25",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0024def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 25,
+    "created_at": "2025-10-12T20:34:16.985Z",
+    "updated_at": "2025-10-12T20:34:16.985Z",
+    "jobs": [
+      {
+        "id": 20000240,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-12T20:34:16.985Z",
+        "completed_at": "2025-10-12T20:39:16.985Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #26",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0025def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 26,
+    "created_at": "2025-10-16T15:56:59.749Z",
+    "updated_at": "2025-10-16T15:56:59.749Z",
+    "jobs": [
+      {
+        "id": 20000250,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T15:56:59.749Z",
+        "completed_at": "2025-10-16T16:01:59.749Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #27",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0026def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 27,
+    "created_at": "2025-10-13T22:24:27.328Z",
+    "updated_at": "2025-10-13T22:24:27.328Z",
+    "jobs": [
+      {
+        "id": 20000260,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T22:24:27.328Z",
+        "completed_at": "2025-10-13T22:29:27.328Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #28",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0027def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 28,
+    "created_at": "2025-10-18T10:38:47.292Z",
+    "updated_at": "2025-10-18T10:38:47.292Z",
+    "jobs": [
+      {
+        "id": 20000270,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T10:38:47.292Z",
+        "completed_at": "2025-10-18T10:43:47.292Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #29",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0028def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 29,
+    "created_at": "2025-10-13T13:59:23.520Z",
+    "updated_at": "2025-10-13T13:59:23.520Z",
+    "jobs": [
+      {
+        "id": 20000280,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T13:59:23.520Z",
+        "completed_at": "2025-10-13T14:04:23.520Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #30",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0029def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 30,
+    "created_at": "2025-10-19T19:10:12.703Z",
+    "updated_at": "2025-10-19T19:10:12.703Z",
+    "jobs": [
+      {
+        "id": 20000290,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T19:10:12.703Z",
+        "completed_at": "2025-10-19T19:15:12.703Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #31",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0030def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 31,
+    "created_at": "2025-10-14T07:05:55.742Z",
+    "updated_at": "2025-10-14T07:05:55.742Z",
+    "jobs": [
+      {
+        "id": 20000300,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T07:05:55.742Z",
+        "completed_at": "2025-10-14T07:10:55.742Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #32",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0031def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 32,
+    "created_at": "2025-10-17T23:57:29.107Z",
+    "updated_at": "2025-10-17T23:57:29.107Z",
+    "jobs": [
+      {
+        "id": 20000310,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-17T23:57:29.107Z",
+        "completed_at": "2025-10-18T00:02:29.107Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #33",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0032def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 33,
+    "created_at": "2025-10-13T15:38:01.487Z",
+    "updated_at": "2025-10-13T15:38:01.487Z",
+    "jobs": [
+      {
+        "id": 20000320,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T15:38:01.487Z",
+        "completed_at": "2025-10-13T15:43:01.487Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #34",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0033def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 34,
+    "created_at": "2025-10-17T06:31:10.382Z",
+    "updated_at": "2025-10-17T06:31:10.382Z",
+    "jobs": [
+      {
+        "id": 20000330,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T06:31:10.382Z",
+        "completed_at": "2025-10-17T06:36:10.382Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #35",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0034def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 35,
+    "created_at": "2025-10-18T06:35:25.631Z",
+    "updated_at": "2025-10-18T06:35:25.631Z",
+    "jobs": [
+      {
+        "id": 20000340,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-18T06:35:25.631Z",
+        "completed_at": "2025-10-18T06:40:25.631Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #36",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0035def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 36,
+    "created_at": "2025-10-13T00:09:28.225Z",
+    "updated_at": "2025-10-13T00:09:28.225Z",
+    "jobs": [
+      {
+        "id": 20000350,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-13T00:09:28.225Z",
+        "completed_at": "2025-10-13T00:14:28.225Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #37",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0036def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 37,
+    "created_at": "2025-10-13T09:59:44.197Z",
+    "updated_at": "2025-10-13T09:59:44.197Z",
+    "jobs": [
+      {
+        "id": 20000360,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T09:59:44.197Z",
+        "completed_at": "2025-10-13T10:04:44.197Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #38",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0037def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 38,
+    "created_at": "2025-10-18T10:15:39.507Z",
+    "updated_at": "2025-10-18T10:15:39.507Z",
+    "jobs": [
+      {
+        "id": 20000370,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T10:15:39.507Z",
+        "completed_at": "2025-10-18T10:20:39.507Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #39",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0038def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 39,
+    "created_at": "2025-10-15T11:24:06.739Z",
+    "updated_at": "2025-10-15T11:24:06.739Z",
+    "jobs": [
+      {
+        "id": 20000380,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T11:24:06.739Z",
+        "completed_at": "2025-10-15T11:29:06.739Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #40",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0039def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 40,
+    "created_at": "2025-10-16T22:27:54.465Z",
+    "updated_at": "2025-10-16T22:27:54.465Z",
+    "jobs": [
+      {
+        "id": 20000390,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T22:27:54.465Z",
+        "completed_at": "2025-10-16T22:32:54.465Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #41",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0040def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 41,
+    "created_at": "2025-10-12T20:54:06.721Z",
+    "updated_at": "2025-10-12T20:54:06.721Z",
+    "jobs": [
+      {
+        "id": 20000400,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-12T20:54:06.721Z",
+        "completed_at": "2025-10-12T20:59:06.721Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #42",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0041def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 42,
+    "created_at": "2025-10-12T21:04:49.272Z",
+    "updated_at": "2025-10-12T21:04:49.272Z",
+    "jobs": [
+      {
+        "id": 20000410,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-12T21:04:49.272Z",
+        "completed_at": "2025-10-12T21:09:49.272Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #43",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0042def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 43,
+    "created_at": "2025-10-17T14:30:43.941Z",
+    "updated_at": "2025-10-17T14:30:43.941Z",
+    "jobs": [
+      {
+        "id": 20000420,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T14:30:43.941Z",
+        "completed_at": "2025-10-17T14:35:43.941Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #44",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0043def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 44,
+    "created_at": "2025-10-19T05:12:15.704Z",
+    "updated_at": "2025-10-19T05:12:15.704Z",
+    "jobs": [
+      {
+        "id": 20000430,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T05:12:15.704Z",
+        "completed_at": "2025-10-19T05:17:15.704Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #45",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0044def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 45,
+    "created_at": "2025-10-12T22:42:16.567Z",
+    "updated_at": "2025-10-12T22:42:16.567Z",
+    "jobs": [
+      {
+        "id": 20000440,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-12T22:42:16.567Z",
+        "completed_at": "2025-10-12T22:47:16.567Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #46",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0045def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 46,
+    "created_at": "2025-10-15T11:50:40.886Z",
+    "updated_at": "2025-10-15T11:50:40.886Z",
+    "jobs": [
+      {
+        "id": 20000450,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T11:50:40.886Z",
+        "completed_at": "2025-10-15T11:55:40.886Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #47",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0046def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 47,
+    "created_at": "2025-10-14T20:45:57.029Z",
+    "updated_at": "2025-10-14T20:45:57.029Z",
+    "jobs": [
+      {
+        "id": 20000460,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T20:45:57.029Z",
+        "completed_at": "2025-10-14T20:50:57.029Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #48",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0047def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 48,
+    "created_at": "2025-10-15T14:22:52.299Z",
+    "updated_at": "2025-10-15T14:22:52.299Z",
+    "jobs": [
+      {
+        "id": 20000470,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T14:22:52.299Z",
+        "completed_at": "2025-10-15T14:27:52.299Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #49",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0048def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 49,
+    "created_at": "2025-10-14T20:05:50.848Z",
+    "updated_at": "2025-10-14T20:05:50.848Z",
+    "jobs": [
+      {
+        "id": 20000480,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T20:05:50.848Z",
+        "completed_at": "2025-10-14T20:10:50.848Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #50",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0049def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 50,
+    "created_at": "2025-10-17T14:29:55.091Z",
+    "updated_at": "2025-10-17T14:29:55.091Z",
+    "jobs": [
+      {
+        "id": 20000490,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T14:29:55.091Z",
+        "completed_at": "2025-10-17T14:34:55.091Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #51",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0050def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 51,
+    "created_at": "2025-10-18T18:23:37.285Z",
+    "updated_at": "2025-10-18T18:23:37.285Z",
+    "jobs": [
+      {
+        "id": 20000500,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T18:23:37.285Z",
+        "completed_at": "2025-10-18T18:28:37.285Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #52",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0051def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 52,
+    "created_at": "2025-10-18T14:19:29.103Z",
+    "updated_at": "2025-10-18T14:19:29.103Z",
+    "jobs": [
+      {
+        "id": 20000510,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T14:19:29.103Z",
+        "completed_at": "2025-10-18T14:24:29.103Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #53",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0052def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 53,
+    "created_at": "2025-10-12T21:12:15.048Z",
+    "updated_at": "2025-10-12T21:12:15.048Z",
+    "jobs": [
+      {
+        "id": 20000520,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-12T21:12:15.048Z",
+        "completed_at": "2025-10-12T21:17:15.048Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #54",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0053def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 54,
+    "created_at": "2025-10-13T13:47:57.782Z",
+    "updated_at": "2025-10-13T13:47:57.782Z",
+    "jobs": [
+      {
+        "id": 20000530,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T13:47:57.782Z",
+        "completed_at": "2025-10-13T13:52:57.782Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #55",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0054def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 55,
+    "created_at": "2025-10-15T00:09:02.297Z",
+    "updated_at": "2025-10-15T00:09:02.297Z",
+    "jobs": [
+      {
+        "id": 20000540,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T00:09:02.297Z",
+        "completed_at": "2025-10-15T00:14:02.297Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #56",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0055def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 56,
+    "created_at": "2025-10-13T17:30:27.969Z",
+    "updated_at": "2025-10-13T17:30:27.969Z",
+    "jobs": [
+      {
+        "id": 20000550,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T17:30:27.969Z",
+        "completed_at": "2025-10-13T17:35:27.969Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #57",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0056def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 57,
+    "created_at": "2025-10-17T15:08:15.522Z",
+    "updated_at": "2025-10-17T15:08:15.522Z",
+    "jobs": [
+      {
+        "id": 20000560,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T15:08:15.522Z",
+        "completed_at": "2025-10-17T15:13:15.522Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #58",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0057def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 58,
+    "created_at": "2025-10-15T08:08:15.022Z",
+    "updated_at": "2025-10-15T08:08:15.022Z",
+    "jobs": [
+      {
+        "id": 20000570,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T08:08:15.022Z",
+        "completed_at": "2025-10-15T08:13:15.022Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #59",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0058def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 59,
+    "created_at": "2025-10-16T05:47:31.537Z",
+    "updated_at": "2025-10-16T05:47:31.537Z",
+    "jobs": [
+      {
+        "id": 20000580,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T05:47:31.537Z",
+        "completed_at": "2025-10-16T05:52:31.537Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #60",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0059def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 60,
+    "created_at": "2025-10-18T12:18:51.066Z",
+    "updated_at": "2025-10-18T12:18:51.066Z",
+    "jobs": [
+      {
+        "id": 20000590,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-18T12:18:51.066Z",
+        "completed_at": "2025-10-18T12:23:51.066Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #61",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0060def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 61,
+    "created_at": "2025-10-16T04:44:05.472Z",
+    "updated_at": "2025-10-16T04:44:05.472Z",
+    "jobs": [
+      {
+        "id": 20000600,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-16T04:44:05.472Z",
+        "completed_at": "2025-10-16T04:49:05.472Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #62",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0061def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 62,
+    "created_at": "2025-10-16T06:18:47.747Z",
+    "updated_at": "2025-10-16T06:18:47.747Z",
+    "jobs": [
+      {
+        "id": 20000610,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T06:18:47.747Z",
+        "completed_at": "2025-10-16T06:23:47.747Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #63",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0062def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 63,
+    "created_at": "2025-10-19T05:59:59.986Z",
+    "updated_at": "2025-10-19T05:59:59.986Z",
+    "jobs": [
+      {
+        "id": 20000620,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-19T05:59:59.986Z",
+        "completed_at": "2025-10-19T06:04:59.986Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #64",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0063def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 64,
+    "created_at": "2025-10-14T19:27:06.962Z",
+    "updated_at": "2025-10-14T19:27:06.962Z",
+    "jobs": [
+      {
+        "id": 20000630,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T19:27:06.962Z",
+        "completed_at": "2025-10-14T19:32:06.962Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #65",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0064def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 65,
+    "created_at": "2025-10-18T03:19:51.023Z",
+    "updated_at": "2025-10-18T03:19:51.023Z",
+    "jobs": [
+      {
+        "id": 20000640,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T03:19:51.023Z",
+        "completed_at": "2025-10-18T03:24:51.023Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #66",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0065def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 66,
+    "created_at": "2025-10-17T15:13:17.721Z",
+    "updated_at": "2025-10-17T15:13:17.721Z",
+    "jobs": [
+      {
+        "id": 20000650,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T15:13:17.721Z",
+        "completed_at": "2025-10-17T15:18:17.721Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #67",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0066def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 67,
+    "created_at": "2025-10-19T07:31:48.635Z",
+    "updated_at": "2025-10-19T07:31:48.635Z",
+    "jobs": [
+      {
+        "id": 20000660,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-19T07:31:48.635Z",
+        "completed_at": "2025-10-19T07:36:48.635Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #68",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0067def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 68,
+    "created_at": "2025-10-18T07:26:39.022Z",
+    "updated_at": "2025-10-18T07:26:39.022Z",
+    "jobs": [
+      {
+        "id": 20000670,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T07:26:39.022Z",
+        "completed_at": "2025-10-18T07:31:39.022Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #69",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0068def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 69,
+    "created_at": "2025-10-19T03:13:40.207Z",
+    "updated_at": "2025-10-19T03:13:40.207Z",
+    "jobs": [
+      {
+        "id": 20000680,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T03:13:40.207Z",
+        "completed_at": "2025-10-19T03:18:40.207Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #70",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0069def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 70,
+    "created_at": "2025-10-15T06:31:55.342Z",
+    "updated_at": "2025-10-15T06:31:55.342Z",
+    "jobs": [
+      {
+        "id": 20000690,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T06:31:55.342Z",
+        "completed_at": "2025-10-15T06:36:55.342Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #71",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0070def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 71,
+    "created_at": "2025-10-17T00:06:56.659Z",
+    "updated_at": "2025-10-17T00:06:56.659Z",
+    "jobs": [
+      {
+        "id": 20000700,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T00:06:56.659Z",
+        "completed_at": "2025-10-17T00:11:56.659Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #72",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0071def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 72,
+    "created_at": "2025-10-18T20:35:28.456Z",
+    "updated_at": "2025-10-18T20:35:28.456Z",
+    "jobs": [
+      {
+        "id": 20000710,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T20:35:28.456Z",
+        "completed_at": "2025-10-18T20:40:28.456Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #73",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0072def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 73,
+    "created_at": "2025-10-17T11:28:09.589Z",
+    "updated_at": "2025-10-17T11:28:09.589Z",
+    "jobs": [
+      {
+        "id": 20000720,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T11:28:09.589Z",
+        "completed_at": "2025-10-17T11:33:09.589Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #74",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0073def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 74,
+    "created_at": "2025-10-15T10:45:35.697Z",
+    "updated_at": "2025-10-15T10:45:35.697Z",
+    "jobs": [
+      {
+        "id": 20000730,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T10:45:35.697Z",
+        "completed_at": "2025-10-15T10:50:35.697Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #75",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0074def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 75,
+    "created_at": "2025-10-18T12:48:52.887Z",
+    "updated_at": "2025-10-18T12:48:52.887Z",
+    "jobs": [
+      {
+        "id": 20000740,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T12:48:52.887Z",
+        "completed_at": "2025-10-18T12:53:52.887Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #76",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0075def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 76,
+    "created_at": "2025-10-15T21:49:51.994Z",
+    "updated_at": "2025-10-15T21:49:51.994Z",
+    "jobs": [
+      {
+        "id": 20000750,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T21:49:51.994Z",
+        "completed_at": "2025-10-15T21:54:51.994Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #77",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0076def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 77,
+    "created_at": "2025-10-18T06:08:16.163Z",
+    "updated_at": "2025-10-18T06:08:16.163Z",
+    "jobs": [
+      {
+        "id": 20000760,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T06:08:16.163Z",
+        "completed_at": "2025-10-18T06:13:16.163Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #78",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0077def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 78,
+    "created_at": "2025-10-15T15:08:11.488Z",
+    "updated_at": "2025-10-15T15:08:11.488Z",
+    "jobs": [
+      {
+        "id": 20000770,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T15:08:11.488Z",
+        "completed_at": "2025-10-15T15:13:11.488Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #79",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0078def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 79,
+    "created_at": "2025-10-17T06:01:23.172Z",
+    "updated_at": "2025-10-17T06:01:23.172Z",
+    "jobs": [
+      {
+        "id": 20000780,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T06:01:23.172Z",
+        "completed_at": "2025-10-17T06:06:23.172Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #80",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0079def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 80,
+    "created_at": "2025-10-19T01:11:17.607Z",
+    "updated_at": "2025-10-19T01:11:17.607Z",
+    "jobs": [
+      {
+        "id": 20000790,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-19T01:11:17.607Z",
+        "completed_at": "2025-10-19T01:16:17.607Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #81",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0080def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 81,
+    "created_at": "2025-10-15T18:03:42.825Z",
+    "updated_at": "2025-10-15T18:03:42.825Z",
+    "jobs": [
+      {
+        "id": 20000800,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T18:03:42.825Z",
+        "completed_at": "2025-10-15T18:08:42.825Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #82",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0081def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 82,
+    "created_at": "2025-10-13T12:20:55.592Z",
+    "updated_at": "2025-10-13T12:20:55.592Z",
+    "jobs": [
+      {
+        "id": 20000810,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T12:20:55.592Z",
+        "completed_at": "2025-10-13T12:25:55.592Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #83",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0082def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 83,
+    "created_at": "2025-10-14T21:12:29.317Z",
+    "updated_at": "2025-10-14T21:12:29.317Z",
+    "jobs": [
+      {
+        "id": 20000820,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T21:12:29.317Z",
+        "completed_at": "2025-10-14T21:17:29.317Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #84",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0083def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 84,
+    "created_at": "2025-10-16T08:41:31.786Z",
+    "updated_at": "2025-10-16T08:41:31.786Z",
+    "jobs": [
+      {
+        "id": 20000830,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T08:41:31.786Z",
+        "completed_at": "2025-10-16T08:46:31.786Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #85",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0084def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 85,
+    "created_at": "2025-10-13T15:36:04.941Z",
+    "updated_at": "2025-10-13T15:36:04.941Z",
+    "jobs": [
+      {
+        "id": 20000840,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T15:36:04.941Z",
+        "completed_at": "2025-10-13T15:41:04.941Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #86",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0085def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 86,
+    "created_at": "2025-10-17T03:11:25.986Z",
+    "updated_at": "2025-10-17T03:11:25.986Z",
+    "jobs": [
+      {
+        "id": 20000850,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T03:11:25.986Z",
+        "completed_at": "2025-10-17T03:16:25.986Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #87",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0086def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 87,
+    "created_at": "2025-10-18T11:13:33.897Z",
+    "updated_at": "2025-10-18T11:13:33.897Z",
+    "jobs": [
+      {
+        "id": 20000860,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T11:13:33.897Z",
+        "completed_at": "2025-10-18T11:18:33.897Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #88",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0087def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 88,
+    "created_at": "2025-10-18T17:16:50.424Z",
+    "updated_at": "2025-10-18T17:16:50.424Z",
+    "jobs": [
+      {
+        "id": 20000870,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-18T17:16:50.424Z",
+        "completed_at": "2025-10-18T17:21:50.424Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #89",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0088def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 89,
+    "created_at": "2025-10-18T15:53:13.639Z",
+    "updated_at": "2025-10-18T15:53:13.639Z",
+    "jobs": [
+      {
+        "id": 20000880,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T15:53:13.639Z",
+        "completed_at": "2025-10-18T15:58:13.639Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #90",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0089def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 90,
+    "created_at": "2025-10-19T08:48:49.557Z",
+    "updated_at": "2025-10-19T08:48:49.557Z",
+    "jobs": [
+      {
+        "id": 20000890,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T08:48:49.557Z",
+        "completed_at": "2025-10-19T08:53:49.557Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #91",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0090def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 91,
+    "created_at": "2025-10-19T05:12:07.835Z",
+    "updated_at": "2025-10-19T05:12:07.835Z",
+    "jobs": [
+      {
+        "id": 20000900,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-19T05:12:07.835Z",
+        "completed_at": "2025-10-19T05:17:07.835Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #92",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0091def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 92,
+    "created_at": "2025-10-18T11:42:39.145Z",
+    "updated_at": "2025-10-18T11:42:39.145Z",
+    "jobs": [
+      {
+        "id": 20000910,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-18T11:42:39.145Z",
+        "completed_at": "2025-10-18T11:47:39.145Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #93",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0092def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 93,
+    "created_at": "2025-10-19T13:55:49.571Z",
+    "updated_at": "2025-10-19T13:55:49.571Z",
+    "jobs": [
+      {
+        "id": 20000920,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T13:55:49.571Z",
+        "completed_at": "2025-10-19T14:00:49.571Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #94",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "neutral",
+    "head_branch": "main",
+    "head_sha": "abc0093def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 94,
+    "created_at": "2025-10-16T00:57:56.993Z",
+    "updated_at": "2025-10-16T00:57:56.993Z",
+    "jobs": [
+      {
+        "id": 20000930,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "neutral",
+        "started_at": "2025-10-16T00:57:56.993Z",
+        "completed_at": "2025-10-16T01:02:56.993Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #95",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0094def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 95,
+    "created_at": "2025-10-14T10:09:42.348Z",
+    "updated_at": "2025-10-14T10:09:42.348Z",
+    "jobs": [
+      {
+        "id": 20000940,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T10:09:42.348Z",
+        "completed_at": "2025-10-14T10:14:42.348Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #96",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0095def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 96,
+    "created_at": "2025-10-13T23:16:51.957Z",
+    "updated_at": "2025-10-13T23:16:51.957Z",
+    "jobs": [
+      {
+        "id": 20000950,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T23:16:51.957Z",
+        "completed_at": "2025-10-13T23:21:51.957Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #97",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0096def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 97,
+    "created_at": "2025-10-15T14:18:52.280Z",
+    "updated_at": "2025-10-15T14:18:52.280Z",
+    "jobs": [
+      {
+        "id": 20000960,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T14:18:52.280Z",
+        "completed_at": "2025-10-15T14:23:52.280Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #98",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0097def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 98,
+    "created_at": "2025-10-14T13:21:04.147Z",
+    "updated_at": "2025-10-14T13:21:04.147Z",
+    "jobs": [
+      {
+        "id": 20000970,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T13:21:04.147Z",
+        "completed_at": "2025-10-14T13:26:04.147Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #99",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0098def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 99,
+    "created_at": "2025-10-18T19:09:18.332Z",
+    "updated_at": "2025-10-18T19:09:18.332Z",
+    "jobs": [
+      {
+        "id": 20000980,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T19:09:18.332Z",
+        "completed_at": "2025-10-18T19:14:18.332Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #100",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0099def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 100,
+    "created_at": "2025-10-13T12:18:11.587Z",
+    "updated_at": "2025-10-13T12:18:11.587Z",
+    "jobs": [
+      {
+        "id": 20000990,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T12:18:11.587Z",
+        "completed_at": "2025-10-13T12:23:11.587Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #101",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0100def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 101,
+    "created_at": "2025-10-19T03:00:54.293Z",
+    "updated_at": "2025-10-19T03:00:54.293Z",
+    "jobs": [
+      {
+        "id": 20001000,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T03:00:54.293Z",
+        "completed_at": "2025-10-19T03:05:54.293Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #102",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0101def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 102,
+    "created_at": "2025-10-18T19:50:25.686Z",
+    "updated_at": "2025-10-18T19:50:25.686Z",
+    "jobs": [
+      {
+        "id": 20001010,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-18T19:50:25.686Z",
+        "completed_at": "2025-10-18T19:55:25.686Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #103",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0102def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 103,
+    "created_at": "2025-10-13T13:13:36.254Z",
+    "updated_at": "2025-10-13T13:13:36.254Z",
+    "jobs": [
+      {
+        "id": 20001020,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-13T13:13:36.254Z",
+        "completed_at": "2025-10-13T13:18:36.254Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #104",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0103def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 104,
+    "created_at": "2025-10-14T01:47:42.564Z",
+    "updated_at": "2025-10-14T01:47:42.564Z",
+    "jobs": [
+      {
+        "id": 20001030,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T01:47:42.564Z",
+        "completed_at": "2025-10-14T01:52:42.564Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #105",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0104def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 105,
+    "created_at": "2025-10-15T07:27:25.865Z",
+    "updated_at": "2025-10-15T07:27:25.865Z",
+    "jobs": [
+      {
+        "id": 20001040,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T07:27:25.865Z",
+        "completed_at": "2025-10-15T07:32:25.865Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #106",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0105def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 106,
+    "created_at": "2025-10-18T00:40:29.406Z",
+    "updated_at": "2025-10-18T00:40:29.406Z",
+    "jobs": [
+      {
+        "id": 20001050,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T00:40:29.406Z",
+        "completed_at": "2025-10-18T00:45:29.406Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #107",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0106def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 107,
+    "created_at": "2025-10-14T02:18:34.233Z",
+    "updated_at": "2025-10-14T02:18:34.233Z",
+    "jobs": [
+      {
+        "id": 20001060,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T02:18:34.233Z",
+        "completed_at": "2025-10-14T02:23:34.233Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #108",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0107def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 108,
+    "created_at": "2025-10-14T01:09:14.733Z",
+    "updated_at": "2025-10-14T01:09:14.733Z",
+    "jobs": [
+      {
+        "id": 20001070,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T01:09:14.733Z",
+        "completed_at": "2025-10-14T01:14:14.733Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #109",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0108def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 109,
+    "created_at": "2025-10-15T19:46:27.657Z",
+    "updated_at": "2025-10-15T19:46:27.657Z",
+    "jobs": [
+      {
+        "id": 20001080,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T19:46:27.657Z",
+        "completed_at": "2025-10-15T19:51:27.657Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #110",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0109def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 110,
+    "created_at": "2025-10-15T07:17:41.229Z",
+    "updated_at": "2025-10-15T07:17:41.229Z",
+    "jobs": [
+      {
+        "id": 20001090,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T07:17:41.229Z",
+        "completed_at": "2025-10-15T07:22:41.229Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #111",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0110def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 111,
+    "created_at": "2025-10-15T19:34:36.337Z",
+    "updated_at": "2025-10-15T19:34:36.337Z",
+    "jobs": [
+      {
+        "id": 20001100,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T19:34:36.337Z",
+        "completed_at": "2025-10-15T19:39:36.337Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #112",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0111def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 112,
+    "created_at": "2025-10-15T19:32:24.467Z",
+    "updated_at": "2025-10-15T19:32:24.467Z",
+    "jobs": [
+      {
+        "id": 20001110,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T19:32:24.467Z",
+        "completed_at": "2025-10-15T19:37:24.467Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #113",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0112def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 113,
+    "created_at": "2025-10-17T19:05:36.629Z",
+    "updated_at": "2025-10-17T19:05:36.629Z",
+    "jobs": [
+      {
+        "id": 20001120,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-17T19:05:36.629Z",
+        "completed_at": "2025-10-17T19:10:36.629Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #114",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0113def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 114,
+    "created_at": "2025-10-13T09:38:30.186Z",
+    "updated_at": "2025-10-13T09:38:30.186Z",
+    "jobs": [
+      {
+        "id": 20001130,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T09:38:30.186Z",
+        "completed_at": "2025-10-13T09:43:30.186Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #115",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0114def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 115,
+    "created_at": "2025-10-18T15:27:04.214Z",
+    "updated_at": "2025-10-18T15:27:04.214Z",
+    "jobs": [
+      {
+        "id": 20001140,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T15:27:04.214Z",
+        "completed_at": "2025-10-18T15:32:04.214Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #116",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0115def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 116,
+    "created_at": "2025-10-18T15:27:37.427Z",
+    "updated_at": "2025-10-18T15:27:37.427Z",
+    "jobs": [
+      {
+        "id": 20001150,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T15:27:37.427Z",
+        "completed_at": "2025-10-18T15:32:37.427Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #117",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0116def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 117,
+    "created_at": "2025-10-19T17:51:43.192Z",
+    "updated_at": "2025-10-19T17:51:43.192Z",
+    "jobs": [
+      {
+        "id": 20001160,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T17:51:43.192Z",
+        "completed_at": "2025-10-19T17:56:43.192Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #118",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0117def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 118,
+    "created_at": "2025-10-14T13:37:10.975Z",
+    "updated_at": "2025-10-14T13:37:10.975Z",
+    "jobs": [
+      {
+        "id": 20001170,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T13:37:10.975Z",
+        "completed_at": "2025-10-14T13:42:10.975Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #119",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0118def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 119,
+    "created_at": "2025-10-17T21:18:55.365Z",
+    "updated_at": "2025-10-17T21:18:55.365Z",
+    "jobs": [
+      {
+        "id": 20001180,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T21:18:55.365Z",
+        "completed_at": "2025-10-17T21:23:55.365Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #120",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0119def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 120,
+    "created_at": "2025-10-13T17:44:58.181Z",
+    "updated_at": "2025-10-13T17:44:58.181Z",
+    "jobs": [
+      {
+        "id": 20001190,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T17:44:58.181Z",
+        "completed_at": "2025-10-13T17:49:58.181Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #121",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0120def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 121,
+    "created_at": "2025-10-14T06:58:57.095Z",
+    "updated_at": "2025-10-14T06:58:57.095Z",
+    "jobs": [
+      {
+        "id": 20001200,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T06:58:57.095Z",
+        "completed_at": "2025-10-14T07:03:57.095Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #122",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0121def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 122,
+    "created_at": "2025-10-18T14:20:09.465Z",
+    "updated_at": "2025-10-18T14:20:09.465Z",
+    "jobs": [
+      {
+        "id": 20001210,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-18T14:20:09.465Z",
+        "completed_at": "2025-10-18T14:25:09.465Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #123",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0122def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 123,
+    "created_at": "2025-10-18T17:03:33.165Z",
+    "updated_at": "2025-10-18T17:03:33.165Z",
+    "jobs": [
+      {
+        "id": 20001220,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-18T17:03:33.165Z",
+        "completed_at": "2025-10-18T17:08:33.165Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #124",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0123def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 124,
+    "created_at": "2025-10-15T10:14:55.681Z",
+    "updated_at": "2025-10-15T10:14:55.681Z",
+    "jobs": [
+      {
+        "id": 20001230,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-15T10:14:55.681Z",
+        "completed_at": "2025-10-15T10:19:55.681Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #125",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0124def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 125,
+    "created_at": "2025-10-17T08:49:30.894Z",
+    "updated_at": "2025-10-17T08:49:30.894Z",
+    "jobs": [
+      {
+        "id": 20001240,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T08:49:30.894Z",
+        "completed_at": "2025-10-17T08:54:30.894Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #126",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0125def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 126,
+    "created_at": "2025-10-16T12:08:39.675Z",
+    "updated_at": "2025-10-16T12:08:39.675Z",
+    "jobs": [
+      {
+        "id": 20001250,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T12:08:39.675Z",
+        "completed_at": "2025-10-16T12:13:39.675Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #127",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0126def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 127,
+    "created_at": "2025-10-14T03:21:28.661Z",
+    "updated_at": "2025-10-14T03:21:28.661Z",
+    "jobs": [
+      {
+        "id": 20001260,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T03:21:28.661Z",
+        "completed_at": "2025-10-14T03:26:28.661Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #128",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0127def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 128,
+    "created_at": "2025-10-13T11:35:59.885Z",
+    "updated_at": "2025-10-13T11:35:59.885Z",
+    "jobs": [
+      {
+        "id": 20001270,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T11:35:59.885Z",
+        "completed_at": "2025-10-13T11:40:59.885Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #129",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0128def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 129,
+    "created_at": "2025-10-12T21:05:59.049Z",
+    "updated_at": "2025-10-12T21:05:59.049Z",
+    "jobs": [
+      {
+        "id": 20001280,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-12T21:05:59.049Z",
+        "completed_at": "2025-10-12T21:10:59.049Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #130",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0129def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 130,
+    "created_at": "2025-10-19T16:36:36.583Z",
+    "updated_at": "2025-10-19T16:36:36.583Z",
+    "jobs": [
+      {
+        "id": 20001290,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-19T16:36:36.583Z",
+        "completed_at": "2025-10-19T16:41:36.583Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #131",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0130def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 131,
+    "created_at": "2025-10-13T12:49:59.599Z",
+    "updated_at": "2025-10-13T12:49:59.599Z",
+    "jobs": [
+      {
+        "id": 20001300,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T12:49:59.599Z",
+        "completed_at": "2025-10-13T12:54:59.599Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #132",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0131def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 132,
+    "created_at": "2025-10-13T17:12:39.327Z",
+    "updated_at": "2025-10-13T17:12:39.327Z",
+    "jobs": [
+      {
+        "id": 20001310,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T17:12:39.327Z",
+        "completed_at": "2025-10-13T17:17:39.327Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #133",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0132def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 133,
+    "created_at": "2025-10-17T07:41:39.018Z",
+    "updated_at": "2025-10-17T07:41:39.018Z",
+    "jobs": [
+      {
+        "id": 20001320,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T07:41:39.018Z",
+        "completed_at": "2025-10-17T07:46:39.018Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #134",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0133def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 134,
+    "created_at": "2025-10-17T23:46:45.976Z",
+    "updated_at": "2025-10-17T23:46:45.976Z",
+    "jobs": [
+      {
+        "id": 20001330,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-17T23:46:45.976Z",
+        "completed_at": "2025-10-17T23:51:45.976Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #135",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0134def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 135,
+    "created_at": "2025-10-18T06:05:42.408Z",
+    "updated_at": "2025-10-18T06:05:42.408Z",
+    "jobs": [
+      {
+        "id": 20001340,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T06:05:42.408Z",
+        "completed_at": "2025-10-18T06:10:42.408Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #136",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0135def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 136,
+    "created_at": "2025-10-14T11:54:44.943Z",
+    "updated_at": "2025-10-14T11:54:44.943Z",
+    "jobs": [
+      {
+        "id": 20001350,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T11:54:44.943Z",
+        "completed_at": "2025-10-14T11:59:44.943Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #137",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0136def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 137,
+    "created_at": "2025-10-19T18:56:59.669Z",
+    "updated_at": "2025-10-19T18:56:59.669Z",
+    "jobs": [
+      {
+        "id": 20001360,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T18:56:59.669Z",
+        "completed_at": "2025-10-19T19:01:59.669Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #138",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0137def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 138,
+    "created_at": "2025-10-19T10:57:14.571Z",
+    "updated_at": "2025-10-19T10:57:14.571Z",
+    "jobs": [
+      {
+        "id": 20001370,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-19T10:57:14.571Z",
+        "completed_at": "2025-10-19T11:02:14.571Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #139",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "head_sha": "abc0138def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 139,
+    "created_at": "2025-10-15T13:34:21.203Z",
+    "updated_at": "2025-10-15T13:34:21.203Z",
+    "jobs": [
+      {
+        "id": 20001380,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-15T13:34:21.203Z",
+        "completed_at": "2025-10-15T13:39:21.203Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #140",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0139def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 140,
+    "created_at": "2025-10-17T17:35:12.417Z",
+    "updated_at": "2025-10-17T17:35:12.417Z",
+    "jobs": [
+      {
+        "id": 20001390,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-17T17:35:12.417Z",
+        "completed_at": "2025-10-17T17:40:12.417Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #141",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": null,
+    "head_sha": "abc0140def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 141,
+    "created_at": "2025-10-13T11:43:19.639Z",
+    "updated_at": "2025-10-13T11:43:19.639Z",
+    "jobs": [
+      {
+        "id": 20001400,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T11:43:19.639Z",
+        "completed_at": "2025-10-13T11:48:19.639Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #142",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0141def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 142,
+    "created_at": "2025-10-13T20:43:06.093Z",
+    "updated_at": "2025-10-13T20:43:06.093Z",
+    "jobs": [
+      {
+        "id": 20001410,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-13T20:43:06.093Z",
+        "completed_at": "2025-10-13T20:48:06.093Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #143",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": "develop",
+    "head_sha": "abc0142def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 143,
+    "created_at": "2025-10-14T13:08:26.068Z",
+    "updated_at": "2025-10-14T13:08:26.068Z",
+    "jobs": [
+      {
+        "id": 20001420,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T13:08:26.068Z",
+        "completed_at": "2025-10-14T13:13:26.068Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 104,
+    "workflow_name": "Content Scanner - YouTube",
+    "workflow_path": ".github/workflows/scan-youtube.yml",
+    "name": "Content Scanner - YouTube #144",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0143def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 144,
+    "created_at": "2025-10-16T06:18:50.921Z",
+    "updated_at": "2025-10-16T06:18:50.921Z",
+    "jobs": [
+      {
+        "id": 20001430,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-16T06:18:50.921Z",
+        "completed_at": "2025-10-16T06:23:50.921Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 105,
+    "workflow_name": "Daily Health Check",
+    "workflow_path": ".github/workflows/health-check.yml",
+    "name": "Daily Health Check #145",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0144def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 145,
+    "created_at": "2025-10-16T16:53:10.766Z",
+    "updated_at": "2025-10-16T16:53:10.766Z",
+    "jobs": [
+      {
+        "id": 20001440,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-16T16:53:10.766Z",
+        "completed_at": "2025-10-16T16:58:10.766Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628147,
+    "workflow_id": 106,
+    "workflow_name": "Security Validation",
+    "workflow_path": ".github/workflows/security.yml",
+    "name": "Security Validation #146",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0145def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628147",
+    "run_number": 146,
+    "created_at": "2025-10-14T01:04:35.846Z",
+    "updated_at": "2025-10-14T01:04:35.846Z",
+    "jobs": [
+      {
+        "id": 20001450,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-14T01:04:35.846Z",
+        "completed_at": "2025-10-14T01:09:35.846Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619615676,
+    "workflow_id": 107,
+    "workflow_name": "Old Content Scanner",
+    "workflow_path": ".github/workflows/old-scanner.yml",
+    "name": "Old Content Scanner #147",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "head_branch": null,
+    "head_sha": "abc0146def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619615676",
+    "run_number": 147,
+    "created_at": "2025-10-14T00:40:47.792Z",
+    "updated_at": "2025-10-14T00:40:47.792Z",
+    "jobs": [
+      {
+        "id": 20001460,
+        "name": "build-and-test",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2025-10-14T00:40:47.792Z",
+        "completed_at": "2025-10-14T00:45:47.792Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  },
+  {
+    "id": 18619563681,
+    "workflow_id": 101,
+    "workflow_name": "CI Pipeline",
+    "workflow_path": ".github/workflows/ci.yml",
+    "name": "CI Pipeline #148",
+    "event": "schedule",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "head_sha": "abc0147def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619563681",
+    "run_number": 148,
+    "created_at": "2025-10-18T15:29:52.314Z",
+    "updated_at": "2025-10-18T15:29:52.314Z",
+    "jobs": [
+      {
+        "id": 20001470,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T15:29:52.314Z",
+        "completed_at": "2025-10-18T15:34:52.314Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619628141,
+    "workflow_id": 102,
+    "workflow_name": "Deploy to Production",
+    "workflow_path": ".github/workflows/deploy.yml",
+    "name": "Deploy to Production #149",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "develop",
+    "head_sha": "abc0148def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619628141",
+    "run_number": 149,
+    "created_at": "2025-10-18T15:03:08.782Z",
+    "updated_at": "2025-10-18T15:03:08.782Z",
+    "jobs": [
+      {
+        "id": 20001480,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2025-10-18T15:03:08.782Z",
+        "completed_at": "2025-10-18T15:08:08.782Z"
+      }
+    ],
+    "primaryNonSuccessJob": null,
+    "logsAvailable": false
+  },
+  {
+    "id": 18619685384,
+    "workflow_id": 103,
+    "workflow_name": "Content Scanner - Reddit",
+    "workflow_path": ".github/workflows/scan-reddit.yml",
+    "name": "Content Scanner - Reddit #150",
+    "event": "deployment_status",
+    "status": "completed",
+    "conclusion": "neutral",
+    "head_branch": null,
+    "head_sha": "abc0149def",
+    "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18619685384",
+    "run_number": 150,
+    "created_at": "2025-10-15T22:06:09.080Z",
+    "updated_at": "2025-10-15T22:06:09.080Z",
+    "jobs": [
+      {
+        "id": 20001490,
+        "name": "setup",
+        "status": "completed",
+        "conclusion": "neutral",
+        "started_at": "2025-10-15T22:06:09.080Z",
+        "completed_at": "2025-10-15T22:11:09.080Z"
+      }
+    ],
+    "primaryNonSuccessJob": "build-and-test",
+    "logsAvailable": true
+  }
+]

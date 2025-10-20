@@ -94,11 +94,25 @@ function findFirstErrorTimestamp(content: string): string | null {
 async function main() {
   console.log('🔍 Classifying failure signatures...')
   
-  const outputDir = 'ci_audit/failure_drilldown'
-  const runsPath = join(outputDir, 'runs.json')
+  // Check for repowide data first, fallback to regular data
+  const repowideOutputDir = 'ci_audit/failure_drilldown/repowide'
+  const regularOutputDir = 'ci_audit/failure_drilldown'
+  
+  let outputDir: string
+  let runsPath: string
+  
+  if (existsSync(join(repowideOutputDir, 'runs.json'))) {
+    outputDir = repowideOutputDir
+    runsPath = join(repowideOutputDir, 'runs.json')
+    console.log('📊 Using repowide data for classification')
+  } else {
+    outputDir = regularOutputDir
+    runsPath = join(regularOutputDir, 'runs.json')
+    console.log('📊 Using regular workflow data for classification')
+  }
   
   if (!existsSync(runsPath)) {
-    console.error('❌ runs.json not found. Run fetch-runs-and-logs.ts first.')
+    console.error('❌ runs.json not found. Run harvest-runs-repowide.ts or fetch-runs-and-logs.ts first.')
     process.exit(1)
   }
   
@@ -108,8 +122,11 @@ async function main() {
   console.log(`📊 Analyzing ${runs.length} runs...`)
   
   for (const run of runs) {
-    const workflowDirName = run.workflowName.replace(/[^a-zA-Z0-9]/g, '_')
-    const runLogDir = join(outputDir, 'logs', workflowDirName, String(run.runId))
+    // For repowide data, use workflow_id instead of workflowName for directory structure
+    const workflowDirName = outputDir === repowideOutputDir 
+      ? String(run.workflow_id || run.workflowId)
+      : (run.workflowName || run.workflow_name || 'unknown').replace(/[^a-zA-Z0-9]/g, '_')
+    const runLogDir = join(outputDir, 'logs', workflowDirName, String(run.id || run.runId))
     
     if (!existsSync(runLogDir)) {
       continue
@@ -169,8 +186,8 @@ async function main() {
       // Create signature records
       for (const [signatureName, data] of sortedSignatures) {
         signatures.push({
-          workflow: run.workflowName,
-          runId: run.runId,
+          workflow: run.workflowName || run.workflow_name || `workflow_${run.workflow_id || run.workflowId}`,
+          runId: run.runId || run.id,
           job: job.name,
           signature: signatureName,
           evidenceLines: data.evidenceLines,
@@ -179,7 +196,7 @@ async function main() {
       }
       
       if (sortedSignatures.length > 0) {
-        console.log(`  ✅ ${run.workflowName} run ${run.runId} job "${job.name}": ${sortedSignatures.map(s => s[0]).join(', ')}`)
+        console.log(`  ✅ ${run.workflowName || run.workflow_name || run.workflow_id} run ${run.runId || run.id} job "${job.name}": ${sortedSignatures.map(s => s[0]).join(', ')}`)
       }
     }
   }
