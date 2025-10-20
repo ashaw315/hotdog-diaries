@@ -56,4 +56,6 @@ After updating the secrets, the workflow failed due to pnpm setup ordering:
 After fixing secret validation, discovered that AUTH_TOKEN fails in deploy gate with:
 - Error: "Invalid or expired JWT token" (401 status)
 - Root cause: Production JWT_SECRET differs from the one used to generate AUTH_TOKEN
-- Solution: Force deployment to sync new JWT_SECRET to production environment
+- Solution: Discovered production was using old JWT_SECRET from .env.production.local
+- Fixed: Generated AUTH_TOKEN using production's JWT_SECRET and synced GitHub secrets
+- Both JWT_SECRET and AUTH_TOKEN now match production environment
