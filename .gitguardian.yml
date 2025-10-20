@@ -38,6 +38,10 @@ secrets-ignore:
     
   - name: "SQLite Test DB"
     match: "test_hotdog_diaries.db"
+    
+  # Secret scanning patterns (not actual secrets)
+  - name: "JWT Pattern in Security Script"
+    match: "eyJ[A-Za-z0-9_-]{100,}"
 
 # File patterns for test secrets
 file-ignore:
