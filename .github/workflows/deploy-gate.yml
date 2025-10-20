@@ -33,16 +33,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
+      - uses: pnpm/action-setup@v4
+          
       - name: Setup Node.js with pnpm
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-          
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
           
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -143,16 +140,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
+      - uses: pnpm/action-setup@v4
+          
       - name: Setup Node.js with pnpm
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-          
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
           
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -328,16 +322,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
+      - uses: pnpm/action-setup@v4
+          
       - name: Setup Node.js with pnpm
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-          
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
           
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
