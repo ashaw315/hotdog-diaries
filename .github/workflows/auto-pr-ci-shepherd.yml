@@ -182,7 +182,15 @@ jobs:
             exit 0
           fi
           
-          # Handle permission errors gracefully
+          # Check if this is ANY PR context and skip watchdog (secrets not available)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "⚠️ PR context detected - prod-watchdog requires secrets not available in PR contexts"
+            echo "🔍 Production watchdog checks will run on merge to main branch"
+            echo "✅ PR validation completed - watchdog skipped for security"
+            exit 0
+          fi
+          
+          # Handle permission errors gracefully for non-PR contexts
           if ! pnpm tsx scripts/ops/ci-shepherd/run-and-wait-workflow.ts \
             --workflow .github/workflows/prod-watchdog.yml \
             --timeoutSec 900; then
@@ -192,14 +200,7 @@ jobs:
               exit 0
             else
               echo "❌ Watchdog failed with exit code $EXIT_CODE"
-              echo "🔍 Debug: This may be due to ref/permission issues in PR context"
-              # For PRs, treat workflow dispatch failures as warnings, not errors
-              if [ "${{ github.event_name }}" = "pull_request" ]; then
-                echo "⚠️ PR context: treating workflow dispatch failure as warning"
-                exit 0
-              else
-                exit $EXIT_CODE
-              fi
+              exit $EXIT_CODE
             fi
           fi
 
@@ -227,7 +228,15 @@ jobs:
             exit 0
           fi
           
-          # Handle permission errors gracefully  
+          # Check if this is ANY PR context and skip watchdog (secrets not available)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "⚠️ PR context detected - prod-watchdog requires secrets not available in PR contexts"
+            echo "🔍 Production watchdog checks will run on merge to main branch"
+            echo "✅ PR validation completed - watchdog skipped for security"
+            exit 0
+          fi
+          
+          # Handle permission errors gracefully for non-PR contexts
           if ! pnpm tsx scripts/ops/ci-shepherd/run-and-wait-workflow.ts \
             --workflow .github/workflows/prod-watchdog.yml \
             --timeoutSec 900; then
@@ -237,13 +246,7 @@ jobs:
               exit 0
             else
               echo "❌ Watchdog failed with exit code $EXIT_CODE"
-              # For PRs, treat workflow dispatch failures as warnings, not errors
-              if [ "${{ github.event_name }}" = "pull_request" ]; then
-                echo "⚠️ PR context: treating workflow dispatch failure as warning"
-                exit 0
-              else
-                exit $EXIT_CODE
-              fi
+              exit $EXIT_CODE
             fi
           fi
 
@@ -281,7 +284,15 @@ jobs:
         run: |
           echo "🔍 Running pre-merge production watchdog..."
           
-          # Handle permission errors gracefully
+          # Check if this is ANY PR context and skip watchdog (secrets not available)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "⚠️ PR context detected - prod-watchdog requires secrets not available in PR contexts"
+            echo "🔍 Production watchdog checks will run on merge to main branch"
+            echo "✅ PR validation completed - watchdog skipped for security"
+            exit 0
+          fi
+          
+          # Handle permission errors gracefully for non-PR contexts
           if ! pnpm tsx scripts/ops/ci-shepherd/run-and-wait-workflow.ts \
             --workflow .github/workflows/prod-watchdog.yml \
             --timeoutSec 900; then
@@ -325,7 +336,15 @@ jobs:
         run: |
           echo "🔍 Running post-merge production watchdog..."
           
-          # Handle permission errors gracefully
+          # Check if this is ANY PR context and skip watchdog (secrets not available)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "⚠️ PR context detected - prod-watchdog requires secrets not available in PR contexts"
+            echo "🔍 Production watchdog checks will run on merge to main branch"
+            echo "✅ PR validation completed - watchdog skipped for security"
+            exit 0
+          fi
+          
+          # Handle permission errors gracefully for non-PR contexts
           if ! pnpm tsx scripts/ops/ci-shepherd/run-and-wait-workflow.ts \
             --workflow .github/workflows/prod-watchdog.yml \
             --timeoutSec 900; then
