@@ -51,3 +51,9 @@ After updating the secrets, the workflow failed due to pnpm setup ordering:
 - ✅ Tokens meet all strength requirements (length, format, patterns)
 - ✅ GitHub Actions Secret Validation workflow now passes
 - ✅ CI run 18660811570 completed successfully with all jobs passing
+
+### Next Issue: Deploy Gate AUTH_TOKEN Validation
+After fixing secret validation, discovered that AUTH_TOKEN fails in deploy gate with:
+- Error: "Invalid or expired JWT token" (401 status)
+- Root cause: Production JWT_SECRET differs from the one used to generate AUTH_TOKEN
+- Solution: Force deployment to sync new JWT_SECRET to production environment
