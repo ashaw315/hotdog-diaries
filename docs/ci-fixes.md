@@ -36,10 +36,18 @@ pnpm run validate-secrets -- --strict
 - `AUTH_TOKEN`: Updated 2025-10-20T18:05:40Z
 
 ### Files Modified
-- No code changes required - issue was with secret values, not validation logic
-- Added this documentation file for future reference
+- **GitHub Secrets**: Updated `JWT_SECRET` and `AUTH_TOKEN` values
+- **docs/ci-fixes.md**: Added this documentation file
+- **.github/workflows/secret-validation.yml**: Fixed pnpm setup order
+
+### Additional Fix Required
+After updating the secrets, the workflow failed due to pnpm setup ordering:
+- **Issue**: "Unable to locate executable file: pnpm"
+- **Root Cause**: Node.js setup was trying to cache pnpm before pnpm was installed
+- **Solution**: Moved `Setup pnpm` step before `Setup Node.js with pnpm` step
 
 ### Verification
-- Local validation passes in both normal and strict modes
-- Tokens meet all strength requirements (length, format, patterns)
-- Ready for CI testing
+- ✅ Local validation passes in both normal and strict modes
+- ✅ Tokens meet all strength requirements (length, format, patterns)
+- ✅ GitHub Actions Secret Validation workflow now passes
+- ✅ CI run 18660811570 completed successfully with all jobs passing
