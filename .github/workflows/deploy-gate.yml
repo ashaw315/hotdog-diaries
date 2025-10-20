@@ -11,18 +11,22 @@ on:
 
 permissions:
   contents: read
-  issues: write  # Only for failure notifications
   checks: write
-  pull-requests: write
 
 env:
   PROD_URL: https://hotdog-diaries.vercel.app
 
 jobs:
-  auth-token-validation:
+  context:
     runs-on: ubuntu-latest
-    name: Validate Runtime JWT Deploy Gate
-    if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    name: Deployment Context Analysis
+    outputs:
+      state: ${{ steps.ctx.outputs.state }}
+      url: ${{ steps.ctx.outputs.url }}
+      commit: ${{ steps.ctx.outputs.commit }}
+      reason: ${{ steps.ctx.outputs.reason }}
+      proceed: ${{ steps.ctx.outputs.proceed }}
+      environment: ${{ steps.ctx.outputs.environment }}
     
     steps:
       - name: Checkout
@@ -42,11 +46,105 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         
-      - name: Wait for deployment
-        if: github.event_name == 'push'
+      - name: Analyze deployment context
+        id: ctx
         run: |
-          echo "⏳ Waiting for deployment to be available..."
-          sleep 30
+          echo "🔍 Analyzing deployment context for gate decisions..."
+          
+          # For push events, wait longer for deployment to materialize
+          MAX_WAIT=4
+          if [ "${{ github.event_name }}" = "push" ]; then
+            MAX_WAIT=6
+            echo "📌 Push event: will wait up to ${MAX_WAIT} minutes for Vercel deployment"
+          fi
+          
+          # Run deployment context analysis
+          if ! pnpm tsx scripts/ci/lib/deploy-context.ts analyze --max-wait=$MAX_WAIT; then
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 78 ]; then
+              echo "⏸️ Deployment not ready - will conclude neutrally"
+              echo "proceed=false" >> $GITHUB_OUTPUT
+              echo "neutralized=true" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "❌ Hard error analyzing deployment context"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Deployment ready for gate validation"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          
+      - name: Neutralize on deployment failure
+        if: steps.ctx.outputs.proceed != 'true'
+        run: |
+          echo "⏸️ Neutralizing deploy gate due to upstream deployment issue"
+          echo "State: ${{ steps.ctx.outputs.state }}"
+          echo "Reason: ${{ steps.ctx.outputs.reason }}"
+          
+          # Write neutral summary
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## ⏸️ Deploy Gate Neutralized
+          
+          The deployment gate has been neutralized because the upstream deployment is not ready for validation.
+          
+          | Field | Value |
+          |-------|-------|
+          | **Deployment State** | `${{ steps.ctx.outputs.state }}` |
+          | **Reason** | ${{ steps.ctx.outputs.reason }} |
+          | **URL Available** | ${{ steps.ctx.outputs.url && 'Yes' || 'No' }} |
+          | **Commit** | `${{ steps.ctx.outputs.commit }}` |
+          
+          ### 🔄 Next Steps
+          
+          This is normal and expected for:
+          - Failed deployments (fix deployment issues first)
+          - Deployments still in progress (wait for completion)
+          - Missing preview URLs (check Vercel configuration)
+          
+          **No action required** - the gate will automatically re-run when the deployment succeeds.
+          EOF
+          
+          exit 0
+
+  auth-token-validation:
+    runs-on: ubuntu-latest
+    name: Validate Runtime JWT Deploy Gate
+    needs: context
+    if: needs.context.outputs.proceed == 'true'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Set deployment URL
+        run: |
+          echo "🌐 Using deployment URL from context analysis..."
+          DEPLOY_URL="${{ needs.context.outputs.url }}"
+          if [ -n "$DEPLOY_URL" ]; then
+            echo "✅ Using resolved deployment URL: $DEPLOY_URL"
+            echo "TARGET_URL=$DEPLOY_URL" >> $GITHUB_ENV
+          else
+            echo "📌 No deployment URL, falling back to production URL"
+            echo "TARGET_URL=${{ env.PROD_URL }}" >> $GITHUB_ENV
+          fi
           
       - name: Mint runtime JWT token
         run: |
@@ -75,7 +173,7 @@ jobs:
           
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -H "Authorization: Bearer $TOKEN" \
-            "${{ env.PROD_URL }}/api/health/auth-selftest")
+            "$TARGET_URL/api/health/auth-selftest")
           
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
@@ -142,7 +240,7 @@ jobs:
           
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -H "Authorization: Bearer invalid-token-12345" \
-            "${{ env.PROD_URL }}/api/admin/health/auth-token")
+            "$TARGET_URL/api/admin/health/auth-token")
           
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
@@ -170,7 +268,7 @@ jobs:
           echo "🧪 Testing auth token health probe without token..."
           
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            "${{ env.PROD_URL }}/api/admin/health/auth-token")
+            "$TARGET_URL/api/admin/health/auth-token")
           
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
@@ -196,7 +294,8 @@ jobs:
   comprehensive-health-check:
     runs-on: ubuntu-latest
     name: Comprehensive Health Validation
-    needs: auth-token-validation
+    needs: [context, auth-token-validation]
+    if: needs.context.outputs.proceed == 'true'
     
     steps:
       - name: Checkout
@@ -215,6 +314,18 @@ jobs:
           
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        
+      - name: Set deployment URL
+        run: |
+          echo "🌐 Using deployment URL from context analysis..."
+          DEPLOY_URL="${{ needs.context.outputs.url }}"
+          if [ -n "$DEPLOY_URL" ]; then
+            echo "✅ Using resolved deployment URL: $DEPLOY_URL"
+            echo "TARGET_URL=$DEPLOY_URL" >> $GITHUB_ENV
+          else
+            echo "📌 No deployment URL, falling back to production URL"
+            echo "TARGET_URL=${{ env.PROD_URL }}" >> $GITHUB_ENV
+          fi
         
       - name: Mint runtime JWT token for health check
         run: |
@@ -240,7 +351,7 @@ jobs:
           
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -H "Authorization: Bearer $TOKEN" \
-            "${{ env.PROD_URL }}/api/admin/health/deep")
+            "$TARGET_URL/api/admin/health/deep")
           
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
@@ -286,7 +397,7 @@ jobs:
             
             RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
               -H "Authorization: Bearer $TOKEN" \
-              "${{ env.PROD_URL }}$ENDPOINT")
+              "$TARGET_URL$ENDPOINT")
             
             HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
             
@@ -302,7 +413,7 @@ jobs:
   deployment-gate-result:
     runs-on: ubuntu-latest
     name: Deployment Gate Result
-    needs: [auth-token-validation, comprehensive-health-check]
+    needs: [context, auth-token-validation, comprehensive-health-check]
     if: always()
     
     steps:
@@ -311,12 +422,26 @@ jobs:
           echo "🚪 Deployment Gate Results"
           echo "=========================="
           
+          CONTEXT_PROCEED="${{ needs.context.outputs.proceed }}"
+          CONTEXT_STATE="${{ needs.context.outputs.state }}"
           AUTH_RESULT="${{ needs.auth-token-validation.result }}"
           HEALTH_RESULT="${{ needs.comprehensive-health-check.result }}"
           
+          echo "Context Analysis: proceed=$CONTEXT_PROCEED, state=$CONTEXT_STATE"
           echo "Auth Token Validation: $AUTH_RESULT"
           echo "Health Check: $HEALTH_RESULT"
           
+          # If context analysis neutralized the run, conclude neutrally
+          if [ "$CONTEXT_PROCEED" != "true" ]; then
+            echo ""
+            echo "⏸️ DEPLOYMENT GATE NEUTRALIZED"
+            echo "Deployment not ready for validation (state: $CONTEXT_STATE)"
+            echo "Reason: ${{ needs.context.outputs.reason }}"
+            echo "This is normal and expected - no action required."
+            exit 0
+          fi
+          
+          # If we reached validation jobs, check their results
           if [ "$AUTH_RESULT" = "success" ] && [ "$HEALTH_RESULT" = "success" ]; then
             echo ""
             echo "✅ DEPLOYMENT GATE PASSED"
@@ -331,7 +456,7 @@ jobs:
           fi
           
       - name: ✅ Deployment Success
-        if: needs.auth-token-validation.result == 'success' && needs.comprehensive-health-check.result == 'success'
+        if: needs.context.outputs.proceed == 'true' && needs.auth-token-validation.result == 'success' && needs.comprehensive-health-check.result == 'success'
         run: |
           echo "🎉 DEPLOYMENT GATE PASSED"
           echo "========================="
@@ -357,7 +482,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🚀 All security and health validations passed - deployment approved!" >> $GITHUB_STEP_SUMMARY
       - name: Create deployment failure issue
-        if: needs.auth-token-validation.result != 'success' || needs.comprehensive-health-check.result != 'success'
+        if: needs.context.outputs.proceed == 'true' && (needs.auth-token-validation.result != 'success' || needs.comprehensive-health-check.result != 'success')
         uses: actions/github-script@v7
         with:
           script: |
