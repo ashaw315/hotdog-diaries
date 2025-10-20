@@ -31,6 +31,7 @@ on:
         default: https://hotdog-diaries.vercel.app
 permissions:
   contents: read
+  actions: read
   checks: write
 concurrency:
   group: post-deploy-${{ github.ref }}
@@ -134,13 +135,21 @@ jobs:
   guard:
     uses: ./.github/workflows/_posting-guard.yml
     needs: context
-    if: needs.context.outputs.proceed == 'true'
+    if: |
+      needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
   
   health-check:
     runs-on: ubuntu-latest
     name: Health & Metrics Validation
     needs: [context, guard]
-    if: needs.context.outputs.proceed == 'true'
+    if: |
+      needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     timeout-minutes: 10
     outputs:
       health-status: ${{ steps.health.outputs.status }}
@@ -326,7 +335,13 @@ jobs:
     runs-on: ubuntu-latest
     name: Two-Day Refill Validation
     needs: [context, health-check]
-    if: needs.context.outputs.proceed == 'true' && needs.health-check.outputs.health-status != 'failed' && inputs.skip_refill_check != true
+    if: |
+      needs.context.outputs.proceed == 'true' && 
+      needs.health-check.outputs.health-status != 'failed' && 
+      inputs.skip_refill_check != true && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     timeout-minutes: 8
     outputs:
       refill-status: ${{ steps.refill.outputs.status }}
@@ -493,7 +508,11 @@ jobs:
       - context
       - health-check
       - refill-check
-    if: always() && needs.context.outputs.proceed == 'true'
+    if: |\
+      always() && needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     steps:
       - name: Download artifacts from previous jobs
         run: >
@@ -604,7 +623,11 @@ jobs:
       - health-check
       - refill-check
       - upload-artifacts
-    if: always() && needs.context.outputs.proceed == 'true'
+    if: |\
+      always() && needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     steps:
       - name: Set deployment URL
         run: |
@@ -712,3 +735,21 @@ jobs:
               body: body,
               labels: ['deployment', 'failure', 'urgent', 'automated', 'post-deploy']
             })
+
+  neutralize:
+    runs-on: ubuntu-latest
+    name: Neutralize Post-Deploy Check
+    needs: [context]
+    if: needs.context.outputs.proceed != 'true'
+    
+    steps:
+      - name: Checkout for neutralize action
+        uses: actions/checkout@v4
+        
+      - name: Neutralize with summary
+        uses: ./.github/actions/neutralize
+        with:
+          reason: "Upstream deployment not successful or preview URL unavailable"
+          deploy_state: ${{ needs.context.outputs.state }}
+          deploy_reason: ${{ needs.context.outputs.reason }}
+          deploy_url: ${{ needs.context.outputs.url }}

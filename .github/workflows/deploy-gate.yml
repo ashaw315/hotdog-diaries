@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   checks: write
 
 env:
@@ -110,11 +111,33 @@ jobs:
           
           exit 0
 
+  neutralize:
+    runs-on: ubuntu-latest
+    name: Neutralize Deployment Gate
+    needs: [context]
+    if: needs.context.outputs.proceed != 'true'
+    
+    steps:
+      - name: Checkout for neutralize action
+        uses: actions/checkout@v4
+        
+      - name: Neutralize with summary
+        uses: ./.github/actions/neutralize
+        with:
+          reason: "Upstream deployment not successful or preview URL unavailable"
+          deploy_state: ${{ needs.context.outputs.state }}
+          deploy_reason: ${{ needs.context.outputs.reason }}
+          deploy_url: ${{ needs.context.outputs.url }}
+
   auth-token-validation:
     runs-on: ubuntu-latest
     name: Validate Runtime JWT Deploy Gate
     needs: context
-    if: needs.context.outputs.proceed == 'true'
+    if: |
+      needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     
     steps:
       - name: Checkout
@@ -295,7 +318,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Comprehensive Health Validation
     needs: [context, auth-token-validation]
-    if: needs.context.outputs.proceed == 'true'
+    if: |
+      needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     
     steps:
       - name: Checkout
@@ -413,7 +440,7 @@ jobs:
   deployment-gate-result:
     runs-on: ubuntu-latest
     name: Deployment Gate Result
-    needs: [context, auth-token-validation, comprehensive-health-check]
+    needs: [context, neutralize, auth-token-validation, comprehensive-health-check]
     if: always()
     
     steps:
@@ -442,7 +469,13 @@ jobs:
           fi
           
           # If we reached validation jobs, check their results
-          if [ "$AUTH_RESULT" = "success" ] && [ "$HEALTH_RESULT" = "success" ]; then
+          # Handle neutralized case: when context says don't proceed, jobs are skipped
+          if [ "$AUTH_RESULT" = "skipped" ] && [ "$HEALTH_RESULT" = "skipped" ]; then
+            echo ""
+            echo "⏸️ DEPLOYMENT GATE NEUTRALIZED" 
+            echo "Validation jobs skipped due to upstream deployment issues."
+            echo "This is expected for failed/pending deployments."
+          elif [ "$AUTH_RESULT" = "success" ] && [ "$HEALTH_RESULT" = "success" ]; then
             echo ""
             echo "✅ DEPLOYMENT GATE PASSED"
             echo "All security and health validations successful."
@@ -451,6 +484,7 @@ jobs:
             echo ""
             echo "❌ DEPLOYMENT GATE FAILED"
             echo "Security or health validations failed."
+            echo "Auth result: $AUTH_RESULT, Health result: $HEALTH_RESULT"
             echo "Deployment should be rolled back or investigated."
             exit 1
           fi
