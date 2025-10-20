@@ -32,12 +32,13 @@ on:
 permissions:
   contents: read
   issues: write
+  checks: write
+  pull-requests: write
 concurrency:
   group: post-deploy-${{ github.ref }}
   cancel-in-progress: false
 env:
   PROD_URL: ${{ inputs.target_url || 'https://hotdog-diaries.vercel.app' }}
-  AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
 jobs:
   guard:
     uses: ./.github/workflows/_posting-guard.yml
@@ -52,24 +53,95 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Setup Node.js with cache
-        uses: ./.github/actions/setup-node
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache-key-suffix: post-deploy
-          install-dependencies: "false"
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Mint runtime JWT token
+        run: |
+          echo "🔐 Minting runtime JWT token for post-deploy checks..."
+          
+          # Try runtime token first, fall back to legacy AUTH_TOKEN if minting fails
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 20m --sub post-deploy --aud ci --iss hotdog-diaries 2>/dev/null); then
+            echo "✅ Successfully minted runtime JWT token"
+            echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+            echo "TOKEN_TYPE=runtime" >> $GITHUB_ENV
+          elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then
+            echo "⚠️ Runtime token minting failed, falling back to legacy AUTH_TOKEN"
+            echo "TOKEN=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_ENV
+            echo "TOKEN_TYPE=legacy" >> $GITHUB_ENV
+          else
+            echo "❌ No token available for post-deploy checks"
+            exit 1
+          fi
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
       - name: Wait for deployment readiness
         if: github.event_name == 'push' || github.event_name == 'deployment_status'
         run: |
           echo "⏳ Waiting for deployment to be ready..."
           sleep 30
+      - name: Test auth self-test endpoint
+        run: |
+          echo "🔍 Testing auth self-test endpoint..."
+          echo "Token type: $TOKEN_TYPE"
+          
+          SELFTEST_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $TOKEN" \
+            --max-time 15 \
+            "$PROD_URL/api/health/auth-selftest")
+          
+          SELFTEST_STATUS=$(echo $SELFTEST_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          SELFTEST_BODY=$(echo $SELFTEST_RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "Auth Self-Test Status: $SELFTEST_STATUS"
+          
+          if [ "$SELFTEST_STATUS" -eq 200 ]; then
+            echo "✅ Auth self-test passed"
+            
+            # Parse auth details
+            if echo "$SELFTEST_BODY" | jq -e '.ok == true' > /dev/null; then
+              ISS=$(echo "$SELFTEST_BODY" | jq -r '.iss // "unknown"')
+              AUD=$(echo "$SELFTEST_BODY" | jq -r '.aud // "unknown"')
+              SUB=$(echo "$SELFTEST_BODY" | jq -r '.sub // "unknown"')
+              KEY_VERSION=$(echo "$SELFTEST_BODY" | jq -r '.keyVersion // "null"')
+              EXP=$(echo "$SELFTEST_BODY" | jq -r '.exp // "unknown"')
+              
+              echo "📊 Auth Details:"
+              echo "  - Token Type: $TOKEN_TYPE"
+              echo "  - Issuer: $ISS"
+              echo "  - Audience: $AUD"
+              echo "  - Subject: $SUB"
+              echo "  - Key Version: $KEY_VERSION"
+              echo "  - Expires: $EXP"
+            fi
+          else
+            echo "❌ Auth self-test failed with status $SELFTEST_STATUS"
+            
+            if [ "$SELFTEST_STATUS" -eq 401 ]; then
+              CODE=$(echo "$SELFTEST_BODY" | jq -r '.code // "unknown"')
+              echo "🚨 Auth error: $CODE"
+              if [ "$CODE" = "INVALID_SIGNATURE" ]; then
+                echo "JWT_SECRET mismatch detected - deployment may need rollback"
+              fi
+            fi
+            
+            exit 1
+          fi
       - name: Test deep health endpoint
         id: health
         run: |
           echo "🏥 Testing /admin/health/deep endpoint..."
 
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             --max-time 30 \
             "$PROD_URL/api/admin/health/deep")
@@ -161,12 +233,33 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Setup Node.js with cache
-        uses: ./.github/actions/setup-node
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache-key-suffix: post-deploy-refill
-          install-dependencies: "false"
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Mint runtime JWT token for refill check
+        run: |
+          echo "🔐 Minting runtime JWT token for refill validation..."
+          
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 15m --sub refill-check --aud ci --iss hotdog-diaries 2>/dev/null); then
+            echo "✅ Successfully minted runtime JWT token"
+            echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+          elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then
+            echo "⚠️ Runtime token minting failed, falling back to legacy AUTH_TOKEN"
+            echo "TOKEN=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_ENV
+          else
+            echo "❌ No token available for refill check"
+            exit 1
+          fi
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
       - name: Test two-day forecast endpoint
         id: refill
         run: |
@@ -180,7 +273,7 @@ jobs:
 
           # Test today's forecast
           TODAY_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Authorization: Bearer $TOKEN" \
             --max-time 30 \
             "$PROD_URL/api/admin/schedule/forecast?date=$TODAY")
 
@@ -189,7 +282,7 @@ jobs:
 
           # Test tomorrow's forecast
           TOMORROW_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Authorization: Bearer $TOKEN" \
             --max-time 30 \
             "$PROD_URL/api/admin/schedule/forecast?date=$TOMORROW")
 

@@ -12,6 +12,8 @@ on:
 permissions:
   contents: read
   issues: write  # Only for failure notifications
+  checks: write
+  pull-requests: write
 
 env:
   PROD_URL: https://hotdog-diaries.vercel.app
@@ -19,23 +21,61 @@ env:
 jobs:
   auth-token-validation:
     runs-on: ubuntu-latest
-    name: Validate AUTH_TOKEN Deploy Gate
+    name: Validate Runtime JWT Deploy Gate
     if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
       - name: Wait for deployment
         if: github.event_name == 'push'
         run: |
           echo "⏳ Waiting for deployment to be available..."
           sleep 30
           
-      - name: Test health probe with valid token
+      - name: Mint runtime JWT token
         run: |
-          echo "🔍 Testing auth token health probe..."
+          echo "🔐 Minting runtime JWT token for deploy gate..."
+          
+          # Try runtime token first, fall back to legacy AUTH_TOKEN if minting fails
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 15m --sub ci-gate --aud ci --iss hotdog-diaries 2>/dev/null); then
+            echo "✅ Successfully minted runtime JWT token"
+            echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+            echo "TOKEN_TYPE=runtime" >> $GITHUB_ENV
+          elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then
+            echo "⚠️ Runtime token minting failed, falling back to legacy AUTH_TOKEN"
+            echo "TOKEN=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_ENV
+            echo "TOKEN_TYPE=legacy" >> $GITHUB_ENV
+          else
+            echo "❌ No token available - neither runtime minting nor legacy AUTH_TOKEN works"
+            exit 1
+          fi
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          
+      - name: Test auth self-test endpoint with runtime token
+        run: |
+          echo "🔍 Testing auth self-test endpoint..."
+          echo "Token type: $TOKEN_TYPE"
           
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
-            "${{ env.PROD_URL }}/api/admin/health/auth-token")
+            -H "Authorization: Bearer $TOKEN" \
+            "${{ env.PROD_URL }}/api/health/auth-selftest")
           
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
@@ -44,25 +84,53 @@ jobs:
           echo "Response Body: $BODY"
           
           if [ "$HTTP_STATUS" -eq 200 ]; then
-            echo "✅ Auth token validation passed"
+            echo "✅ Auth self-test validation passed"
             
-            # Verify response contains success code
-            if echo "$BODY" | jq -e '.code == "AUTH_TOKEN_VALID"' > /dev/null; then
-              echo "✅ Response contains valid success code"
+            # Parse and display auth details
+            if echo "$BODY" | jq -e '.ok == true' > /dev/null; then
+              echo "✅ Auth self-test successful"
+              
+              # Extract key details
+              ISS=$(echo "$BODY" | jq -r '.iss // "unknown"')
+              AUD=$(echo "$BODY" | jq -r '.aud // "unknown"') 
+              SUB=$(echo "$BODY" | jq -r '.sub // "unknown"')
+              KEY_VERSION=$(echo "$BODY" | jq -r '.keyVersion // "null"')
+              EXP=$(echo "$BODY" | jq -r '.exp // "unknown"')
+              
+              echo "📊 Token Details:"
+              echo "  - Issuer: $ISS"
+              echo "  - Audience: $AUD"
+              echo "  - Subject: $SUB"
+              echo "  - Key Version: $KEY_VERSION"
+              echo "  - Expires: $EXP"
+              echo "  - Token Type: $TOKEN_TYPE"
+              
             else
-              echo "❌ Response missing valid success code"
+              echo "❌ Auth self-test response missing success indicator"
               exit 1
             fi
           else
-            echo "❌ Auth token validation failed with status $HTTP_STATUS"
+            echo "❌ Auth self-test failed with status $HTTP_STATUS"
             
-            # Check if it's an auth mismatch
+            # Parse error details
             if [ "$HTTP_STATUS" -eq 401 ]; then
               CODE=$(echo "$BODY" | jq -r '.code // "unknown"')
-              if [ "$CODE" = "AUTH_TOKEN_MISMATCH" ]; then
-                echo "🚨 AUTH_TOKEN_MISMATCH detected - deployment blocked!"
-                echo "The AUTH_TOKEN secret may be incorrect or expired."
-              fi
+              DETAIL=$(echo "$BODY" | jq -r '.detail // "no details"')
+              
+              case "$CODE" in
+                "INVALID_SIGNATURE")
+                  echo "🚨 JWT_SECRET mismatch between CI and Prod (key drift). Rotate or sync."
+                  ;;
+                "EXPIRED")
+                  echo "🚨 Token TTL too short or clock skew."
+                  ;;
+                "MISSING")
+                  echo "🚨 No authentication token provided."
+                  ;;
+                *)
+                  echo "🚨 Auth error: $CODE - $DETAIL"
+                  ;;
+              esac
             fi
             
             exit 1
@@ -131,12 +199,47 @@ jobs:
     needs: auth-token-validation
     
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Mint runtime JWT token for health check
+        run: |
+          echo "🔐 Minting runtime JWT token for health validation..."
+          
+          # Try runtime token first, fall back to legacy AUTH_TOKEN if minting fails
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 10m --sub ci-health --aud ci --iss hotdog-diaries 2>/dev/null); then
+            echo "✅ Successfully minted runtime JWT token for health check"
+            echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+          elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then
+            echo "⚠️ Runtime token minting failed, falling back to legacy AUTH_TOKEN"
+            echo "TOKEN=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_ENV
+          else
+            echo "❌ No token available for health check"
+            exit 1
+          fi
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      
       - name: Deep health check
         run: |
           echo "🏥 Running comprehensive health validation..."
           
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Authorization: Bearer $TOKEN" \
             "${{ env.PROD_URL }}/api/admin/health/deep")
           
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
@@ -182,7 +285,7 @@ jobs:
             echo "Testing $ENDPOINT..."
             
             RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-              -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+              -H "Authorization: Bearer $TOKEN" \
               "${{ env.PROD_URL }}$ENDPOINT")
             
             HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
