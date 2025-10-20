@@ -54,3 +54,8 @@ credentials/
 *.tmp
 *.temp
 .DS_Store
+
+# Security - prevent accidental commit of files containing secrets
+SECURITY-INCIDENT-RECOVERY.md
+cookies_new.txt
+scripts.backup.*/
