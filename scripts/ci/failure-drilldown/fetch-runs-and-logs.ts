@@ -6,6 +6,7 @@ import { join } from 'path'
 
 interface WorkflowRun {
   workflowName: string
+  workflowPath: string
   workflowId: number
   runId: number
   htmlUrl: string
@@ -29,12 +30,30 @@ interface JobInfo {
   }>
 }
 
+interface RunMini {
+  workflowPath: string
+  runId: number
+  conclusion: string | null
+  primaryNonSuccessJob: string | null
+  event: string
+  htmlUrl: string
+  updatedAt: string
+}
+
 const TARGET_WORKFLOWS = [
   "Auto PR CI Shepherd",
   "Deploy Gate", 
   "Post-Deploy Check",
   "Secret Validation",
   "🚪 Deployment Gate"
+]
+
+const TARGET_WORKFLOW_PATHS = [
+  ".github/workflows/auto-pr-ci-shepherd.yml",
+  ".github/workflows/deploy-gate.yml",
+  ".github/workflows/post-deploy-check.yml",
+  ".github/workflows/secret-validation.yml",
+  ".github/workflows/deployment-gate.yml"
 ]
 
 const TARGET_JOBS = {
@@ -52,11 +71,22 @@ async function main() {
   const args = process.argv.slice(2)
   const lookbackIdx = args.indexOf('--lookback')
   const onlyFailedIdx = args.indexOf('--onlyFailed')
+  const pathsIdx = args.indexOf('--paths')
+  const includeNeutralIdx = args.indexOf('--includeNeutral')
+  const includeSkippedIdx = args.indexOf('--includeSkipped')
   
-  const lookback = lookbackIdx !== -1 ? Math.min(10, parseInt(args[lookbackIdx + 1]) || 10) : 10
-  const onlyFailed = onlyFailedIdx !== -1 ? args[onlyFailedIdx + 1] === 'true' : true
+  const lookback = lookbackIdx !== -1 ? Math.min(30, parseInt(args[lookbackIdx + 1]) || 20) : 20
+  const onlyFailed = onlyFailedIdx !== -1 ? args[onlyFailedIdx + 1] === 'true' : false
+  const includeNeutral = includeNeutralIdx !== -1 ? args[includeNeutralIdx + 1] === 'true' : true
+  const includeSkipped = includeSkippedIdx !== -1 ? args[includeSkippedIdx + 1] === 'true' : true
   
-  console.log(`📊 Config: lookback=${lookback}, onlyFailed=${onlyFailed}`)
+  // Parse workflow paths if provided
+  const workflowPaths = pathsIdx !== -1 
+    ? args[pathsIdx + 1].split(',').map(p => p.trim())
+    : TARGET_WORKFLOW_PATHS
+  
+  console.log(`📊 Config: lookback=${lookback}, onlyFailed=${onlyFailed}, includeNeutral=${includeNeutral}, includeSkipped=${includeSkipped}`)
+  console.log(`📋 Target workflows: ${workflowPaths.length} paths`)
   
   // Get repo info from environment
   const repoEnv = process.env.GITHUB_REPOSITORY
@@ -74,6 +104,7 @@ async function main() {
   mkdirSync(join(outputDir, 'logs'), { recursive: true })
   
   const allRuns: WorkflowRun[] = []
+  const runsMini: RunMini[] = []
   
   // Fetch workflows
   console.log('📥 Fetching workflows...')
@@ -85,14 +116,14 @@ async function main() {
   const workflowsData = JSON.parse(workflowsJson)
   const workflows = workflowsData.workflows || []
   
-  for (const targetName of TARGET_WORKFLOWS) {
-    console.log(`\n🔍 Processing: ${targetName}`)
+  for (const workflowPath of workflowPaths) {
+    console.log(`\n🔍 Processing: ${workflowPath}`)
     
-    // Find matching workflows by name
-    const matchingWorkflows = workflows.filter((w: any) => w.name === targetName)
+    // Find matching workflows by path
+    const matchingWorkflows = workflows.filter((w: any) => w.path === workflowPath)
     
     if (matchingWorkflows.length === 0) {
-      console.warn(`⚠️ No workflow found with name: ${targetName}`)
+      console.warn(`⚠️ No workflow found with path: ${workflowPath}`)
       continue
     }
     
@@ -112,15 +143,16 @@ async function main() {
         console.log(`  📊 Found ${runs.length} recent runs`)
         
         for (const run of runs) {
-          // Check if we should process this run
+          // Check if we should process this run - expanded criteria
+          const isNonSuccess = run.conclusion !== 'success'
           const shouldProcess = !onlyFailed || 
             run.conclusion === 'failure' || 
-            run.conclusion === 'neutral' || 
-            run.conclusion === 'skipped' ||
+            (includeNeutral && run.conclusion === 'neutral') ||
+            (includeSkipped && run.conclusion === 'skipped') ||
             run.status !== 'completed'
           
           if (!shouldProcess) {
-            console.log(`  ⏩ Skipping successful run ${run.id}`)
+            console.log(`  ⏩ Skipping run ${run.id} (${run.conclusion || run.status})`)
             continue
           }
           
@@ -135,30 +167,41 @@ async function main() {
           const jobsData = JSON.parse(jobsJson)
           const jobs = jobsData.jobs || []
           
-          // Filter to target jobs or all failed jobs
-          const targetJobNames = TARGET_JOBS[targetName] || []
+          // Filter to target jobs or all non-success jobs
+          const workflowName = workflow.name
+          const targetJobNames = TARGET_JOBS[workflowName] || []
           const relevantJobs = jobs.filter((job: any) => {
             if (targetJobNames.length > 0 && targetJobNames.includes(job.name)) {
               return true
             }
-            // If no specific target jobs, keep all failed ones
-            return job.conclusion === 'failure' || job.conclusion === 'skipped' || job.conclusion === 'neutral'
+            // Include all non-success jobs (broader scope)
+            return job.conclusion !== 'success' || job.status !== 'completed'
           })
+          
+          // Find primary non-success job for mini run
+          const primaryNonSuccessJob = jobs.find((job: any) => 
+            job.conclusion !== 'success' && job.conclusion !== null
+          )?.name || null
           
           // Download logs if we have relevant jobs
           if (relevantJobs.length > 0) {
-            const logDir = join(outputDir, 'logs', targetName.replace(/[^a-zA-Z0-9]/g, '_'), String(run.id))
+            const logDir = join(outputDir, 'logs', workflowPath.replace(/[^a-zA-Z0-9]/g, '_'), String(run.id))
             mkdirSync(logDir, { recursive: true })
             
             try {
               console.log(`  📥 Downloading logs for run ${run.id}...`)
               const logsZipPath = `/tmp/run_${run.id}.zip`
               
-              // Download logs archive
-              execSync(
-                `gh api repos/${owner}/${repo}/actions/runs/${run.id}/logs > ${logsZipPath}`,
-                { env: { ...process.env, GH_TOKEN: process.env.GH_TOKEN || process.env.GITHUB_TOKEN } }
-              )
+              // Download logs archive - handle missing archives gracefully
+              try {
+                execSync(
+                  `gh api repos/${owner}/${repo}/actions/runs/${run.id}/logs > ${logsZipPath}`,
+                  { env: { ...process.env, GH_TOKEN: process.env.GH_TOKEN || process.env.GITHUB_TOKEN } }
+                )
+              } catch (logError) {
+                console.warn(`  ⚠️ Could not download logs for run ${run.id} (${run.conclusion}): archive may not exist`)
+                // Continue without logs but still record run metadata
+              }
               
               // Extract logs
               const extractDir = `/tmp/run_${run.id}_extracted`
@@ -198,7 +241,8 @@ async function main() {
           
           // Create run record
           const runRecord: WorkflowRun = {
-            workflowName: targetName,
+            workflowName: workflow.name,
+            workflowPath: workflowPath,
             workflowId: workflow.id,
             runId: run.id,
             htmlUrl: run.html_url,
@@ -220,7 +264,19 @@ async function main() {
             }))
           }
           
+          // Create mini run record
+          const miniRun: RunMini = {
+            workflowPath: workflowPath,
+            runId: run.id,
+            conclusion: run.conclusion,
+            primaryNonSuccessJob: primaryNonSuccessJob,
+            event: run.event,
+            htmlUrl: run.html_url,
+            updatedAt: run.updated_at
+          }
+          
           allRuns.push(runRecord)
+          runsMini.push(miniRun)
         }
       } catch (err) {
         console.error(`  ❌ Failed to fetch runs for workflow ${workflow.id}: ${err}`)
@@ -234,9 +290,16 @@ async function main() {
     JSON.stringify(allRuns, null, 2)
   )
   
+  // Save compact mini runs
+  writeFileSync(
+    join(outputDir, 'runs-mini.json'),
+    JSON.stringify(runsMini, null, 2)
+  )
+  
   console.log('\n✅ Fetch complete!')
-  console.log(`📊 Analyzed ${allRuns.length} runs across ${TARGET_WORKFLOWS.length} workflows`)
+  console.log(`📊 Analyzed ${allRuns.length} runs across ${workflowPaths.length} workflows`)
   console.log(`📁 Output: ${outputDir}/`)
+  console.log(`📋 Mini runs: ${runsMini.length} compact records saved`)
 }
 
 // Run if this file is executed directly

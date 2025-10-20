@@ -5,30 +5,120 @@ on:
     - cron: '0 4,16 * * *'  # Twice daily (4 AM, 4 PM UTC) - quota limits
   workflow_dispatch:
 
+concurrency:
+  group: scan-youtube-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  scan-youtube:
+  preflight:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      should_skip: ${{ steps.preflight.outputs.should_skip }}
     steps:
-      - name: Scan YouTube
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Preflight Secret Check
+        id: preflight
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx tsx scripts/ci/lib/preflight.ts "YouTube Scanner" "YOUTUBE_API_KEY,AUTH_TOKEN,SITE_URL"
+
+  scan-youtube:
+    needs: preflight
+    if: needs.preflight.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Scan YouTube with Retry Logic
         run: |
           echo "🎬 Scanning YouTube for hotdog content..."
           
-          RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/youtube/scan" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"maxPosts": 10}' \
-            --silent --show-error --retry 2)
+          # Retry configuration
+          MAX_ATTEMPTS=3
+          ATTEMPT=1
+          BACKOFF_BASE=2
           
-          if [ $? -eq 0 ]; then
-            FOUND=$(echo "$RESULT" | jq -r '.totalFound // 0')
-            PROCESSED=$(echo "$RESULT" | jq -r '.processed // 0')
-            echo "✅ YouTube scan successful: Found $FOUND, processed $PROCESSED"
-          else
-            echo "❌ YouTube scan failed (possibly quota exceeded)"
-          fi
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "📡 Attempt $ATTEMPT/$MAX_ATTEMPTS..."
+            
+            RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/youtube/scan" \
+              -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{"maxPosts": 10}' \
+              --silent --show-error --write-out "\nHTTP_CODE:%{http_code}" \
+              --max-time 30)
+            
+            CURL_EXIT=$?
+            HTTP_CODE=$(echo "$RESULT" | tail -n 1 | sed 's/.*HTTP_CODE://')
+            RESPONSE_BODY=$(echo "$RESULT" | sed '$d')
+            
+            echo "HTTP Code: $HTTP_CODE, Curl Exit: $CURL_EXIT"
+            
+            if [ $CURL_EXIT -eq 0 ] && [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              FOUND=$(echo "$RESPONSE_BODY" | jq -r '.totalFound // 0' 2>/dev/null || echo "0")
+              PROCESSED=$(echo "$RESPONSE_BODY" | jq -r '.processed // 0' 2>/dev/null || echo "0")
+              echo "✅ YouTube scan successful: Found $FOUND, processed $PROCESSED"
+              exit 0
+            elif [ "$HTTP_CODE" = "429" ] || [ "$HTTP_CODE" -ge 500 ]; then
+              # Rate limit or server error - retry with backoff
+              echo "⚠️ Retryable error (HTTP $HTTP_CODE). First error line:"
+              echo "$RESPONSE_BODY" | head -n 1 | cut -c1-200
+              
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                DELAY=$((BACKOFF_BASE ** (ATTEMPT - 1)))
+                echo "🕐 Waiting ${DELAY}s before retry..."
+                sleep $DELAY
+                ATTEMPT=$((ATTEMPT + 1))
+              else
+                echo "❌ Max retries exceeded. YouTube scan failed."
+                exit 1
+              fi
+            else
+              # Non-retryable error
+              echo "❌ YouTube scan failed with non-retryable error (HTTP $HTTP_CODE)"
+              echo "Error response: $(echo "$RESPONSE_BODY" | head -n 1 | cut -c1-200)"
+              exit 1
+            fi
+          done
       
       - name: Handle Quota Issues
         if: failure()
         run: |
-          echo "⚠️ YouTube scan failed - likely quota limit reached"
-          echo "Will retry on next scheduled run"
+          echo "⚠️ YouTube scan failed after retries"
+          echo "This could be due to:"
+          echo "  - API quota exceeded (will reset daily)"
+          echo "  - Network connectivity issues"
+          echo "  - Service unavailability"
+          echo "Will retry on next scheduled run at next cron interval"
+          
+  skip-scan:
+    needs: preflight
+    if: needs.preflight.outputs.should_skip == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    steps:
+      - name: Skip Scan (Missing Secrets)
+        run: |
+          echo "⏸️ YouTube scan skipped due to missing required secrets"
+          echo "Required secrets: YOUTUBE_API_KEY, AUTH_TOKEN, SITE_URL"
+          echo "📋 Please check the automatically created GitHub issue for setup instructions"
+          echo "Once secrets are configured, this workflow will resume automatically"
+          exit 78  # Neutral exit code

@@ -1,0 +1,62 @@
+[
+  {
+    "workflow": "Content Scanner - Reddit",
+    "runId": 18619628147,
+    "job": "scan-content",
+    "signature": "MISSING_SECRET",
+    "evidenceLines": [
+      "Error: REDDIT_CLIENT_ID not set",
+      "Missing required environment variable",
+      "Authentication failed"
+    ],
+    "firstErrorAt": "10:30:15"
+  },
+  {
+    "workflow": "Content Scanner - YouTube",
+    "runId": 18619615676,
+    "job": "fetch-videos",
+    "signature": "AUTH_TOKEN_POLICY",
+    "evidenceLines": [
+      "YouTube API key does not meet requirements",
+      "Token validation failed",
+      "API key must be valid"
+    ],
+    "firstErrorAt": "11:45:22"
+  },
+  {
+    "workflow": "Daily Health Check",
+    "runId": 18619563681,
+    "job": "health-endpoints",
+    "signature": "HEALTH_CHECK",
+    "evidenceLines": [
+      "Health check failed for /health/deep",
+      "Deep health check endpoint returned 500",
+      "Service unavailable"
+    ],
+    "firstErrorAt": "09:15:30"
+  },
+  {
+    "workflow": "Security Validation",
+    "runId": 18619628141,
+    "job": "token-validation",
+    "signature": "AUTH_TOKEN_POLICY",
+    "evidenceLines": [
+      "AUTH_TOKEN weak or invalid",
+      "Token policy validation failed",
+      "Security requirements not met"
+    ],
+    "firstErrorAt": "14:20:45"
+  },
+  {
+    "workflow": "Old Content Scanner",
+    "runId": 18619685384,
+    "job": "legacy-scan",
+    "signature": "PERMISSION",
+    "evidenceLines": [
+      "Resource not accessible by integration",
+      "Insufficient permissions for repository",
+      "403 Forbidden"
+    ],
+    "firstErrorAt": "16:35:10"
+  }
+]

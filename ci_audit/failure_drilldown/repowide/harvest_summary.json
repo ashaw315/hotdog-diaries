@@ -1,0 +1,43 @@
+{
+  "generated": "2025-10-19T19:14:41.165Z",
+  "timeWindow": {
+    "sinceHours": 168,
+    "cutoffTime": "2025-10-12T19:14:41.165Z"
+  },
+  "totals": {
+    "workflows": 7,
+    "runs": 150,
+    "explicitRuns": 5,
+    "logsDownloaded": 47
+  },
+  "conclusions": {
+    "success": 103,
+    "failure": 44,
+    "neutral": 3,
+    "skipped": 0,
+    "cancelled": 0,
+    "other": 0
+  },
+  "events": [
+    [
+      "push",
+      30
+    ],
+    [
+      "pull_request",
+      30
+    ],
+    [
+      "schedule",
+      30
+    ],
+    [
+      "workflow_dispatch",
+      30
+    ],
+    [
+      "deployment_status",
+      30
+    ]
+  ]
+}
