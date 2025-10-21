@@ -112,6 +112,16 @@ ignored-matches:
   - name: cli-jwt-verify-example  
     match: 'pnpm tsx scripts/ci/lib/jwt.ts verify "eyJhbGc'
     
+  # CLI command documentation (without tokens)
+  - name: cli-jwt-decode-command
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts decode --token'
+    
+  - name: cli-jwt-verify-command
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts verify --token'
+    
+  - name: cli-jwt-mint-command
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts mint'
+    
   # JWT header patterns (partial tokens in documentation)
   - name: jwt-header-hs256
     match: "eyJhbGciOiJIUzI1NiJ9"
