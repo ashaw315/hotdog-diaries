@@ -305,8 +305,8 @@ jobs:
           echo "**Workflow**: \`spec-drift.yml\`" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp**: $(date -Iseconds)" >> $GITHUB_STEP_SUMMARY
 
-  auto-update-spec:
-    name: Auto-update OpenAPI Spec (PR only)
+  auto-refresh-spec:
+    name: Auto-refresh OpenAPI Spec (PR only)
     runs-on: ubuntu-latest
     needs: detect-api-drift
     if: github.event_name == 'pull_request' && needs.detect-api-drift.outputs.drift-detected == 'true'
@@ -315,6 +315,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
           
       - uses: pnpm/action-setup@v4
           
@@ -327,25 +328,64 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         
-      - name: Generate and update OpenAPI spec
+      - name: Auto-refresh OpenAPI spec
         run: |
-          echo "🔄 Auto-updating OpenAPI spec to fix drift..."
+          echo "🔄 Auto-refreshing OpenAPI spec to resolve drift..."
           
-          # Generate current spec
-          pnpm tsx scripts/openapi/export.ts --out tmp/openapi.gen.json
+          # Check if openapi.json exists
+          if [ ! -f "docs/openapi.json" ]; then
+            echo "📝 Creating initial openapi.json from yaml..."
+            # Convert YAML to JSON if needed
+            if [ -f "docs/openapi.yaml" ]; then
+              yq eval '.' docs/openapi.yaml > docs/openapi.json
+            else
+              echo "❌ No OpenAPI spec found to refresh"
+              exit 1
+            fi
+          fi
           
-          # Run diff and auto-update
-          node scripts/openapi/diff.mjs
+          # Generate fresh route inventory
+          echo "📊 Generating fresh route inventory..."
+          pnpm tsx scripts/route-inventory.ts
           
-          # Check if there are changes to commit
-          if git diff --quiet openapi.json; then
-            echo "✅ No changes needed to OpenAPI spec"
+          # Auto-refresh the spec based on current routes
+          echo "🔄 Refreshing OpenAPI spec with current routes..."
+          if [ -f "scripts/openapi/refresh.ts" ]; then
+            pnpm tsx scripts/openapi/refresh.ts --auto-commit
+          elif [ -f "scripts/openapi/export.ts" ]; then
+            # Fallback to export if refresh doesn't exist
+            pnpm tsx scripts/openapi/export.ts --out docs/openapi.json --format json
           else
-            echo "📝 Committing OpenAPI spec updates..."
+            echo "⚠️ No OpenAPI refresh script found - updating spec format only"
+            # Ensure JSON format is consistent
+            yq eval '.' docs/openapi.yaml > docs/openapi.json.tmp
+            mv docs/openapi.json.tmp docs/openapi.json
+          fi
+          
+      - name: Commit refreshed spec
+        run: |
+          # Check if there are changes to commit
+          if git diff --quiet docs/openapi.json docs/api-inventory.json; then
+            echo "✅ No changes needed - OpenAPI spec is current"
+          else
+            echo "📝 Committing refreshed OpenAPI spec..."
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add openapi.json
-            git commit -m "fix: auto-update OpenAPI spec to resolve drift"
+            
+            # Add both the refreshed spec and updated inventory
+            git add docs/openapi.json docs/api-inventory.json
+            
+            # Create commit with details about what was refreshed
+            CHANGED_ROUTES=$(git diff --name-only HEAD~1 -- 'app/api/**/*.ts' | wc -l)
+            git commit -m "fix: auto-refresh OpenAPI spec to resolve drift
+            
+            🔄 Refreshed OpenAPI specification to match current API routes
+            📊 Updated route inventory with $CHANGED_ROUTES changed route files
+            🤖 Auto-committed by spec-drift workflow
+            
+            Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+            
             git push
-            echo "✅ OpenAPI spec updated and committed to PR"
+            echo "✅ OpenAPI spec refreshed and committed to PR"
+            echo "📋 This will automatically resolve the detected drift"
           fi

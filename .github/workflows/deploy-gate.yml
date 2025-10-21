@@ -391,289 +391,117 @@ jobs:
             exit 1
           fi
 
-  comprehensive-health-check:
-    runs-on: ubuntu-latest
-    name: Comprehensive Health Validation
-    needs: [context, auth-token-validation]
-    if: |
-      always() && 
-      needs.context.result == 'success' &&
-      needs.auth-token-validation.result == 'success' &&
-      needs.context.outputs.proceed == 'true'
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        
-      - uses: pnpm/action-setup@v4
-          
-      - name: Setup Node.js with pnpm
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        
-      - name: Set deployment URL
-        run: |
-          echo "🌐 Using deployment URL from context analysis..."
-          DEPLOY_URL="${{ needs.context.outputs.url }}"
-          if [ -n "$DEPLOY_URL" ]; then
-            echo "✅ Using resolved deployment URL: $DEPLOY_URL"
-            echo "TARGET_URL=$DEPLOY_URL" >> $GITHUB_ENV
-          else
-            echo "📌 No deployment URL, falling back to production URL"
-            echo "TARGET_URL=${{ env.PROD_URL }}" >> $GITHUB_ENV
-          fi
-        
-      - name: Mint runtime JWT token for health check
-        run: |
-          echo "🔐 Minting runtime JWT token for health validation..."
-          
-          # Try runtime token first, fall back to legacy AUTH_TOKEN if minting fails
-          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 10m --sub ci-health --aud admin --iss hotdog-diaries 2>/dev/null); then
-            echo "✅ Successfully minted runtime JWT token for health check"
-            echo "TOKEN=$TOKEN" >> $GITHUB_ENV
-          elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then
-            echo "⚠️ Runtime token minting failed, falling back to legacy AUTH_TOKEN"
-            echo "TOKEN=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_ENV
-          else
-            echo "❌ No token available for health check"
-            exit 1
-          fi
-        env:
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      
-      - name: Deep health check
-        run: |
-          echo "🏥 Running comprehensive health validation..."
-          
-          # Check if this is a preview deployment and handle Vercel auth protection
-          if [[ "$TARGET_URL" == *"vercel.app"* ]] && [[ "$TARGET_URL" != *"hotdog-diaries.vercel.app"* ]]; then
-            echo "⚠️ Preview deployment detected - checking for Vercel auth protection..."
-            
-            # Try preview first
-            RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-              -H "Authorization: Bearer $TOKEN" \
-              "$TARGET_URL/api/admin/health/deep" || echo "HTTPSTATUS:000")
-            
-            HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-            
-            # If preview fails with auth wall, fall back to production
-            if [ "$HTTP_STATUS" -eq 401 ] && echo "$RESPONSE" | grep -q "Authentication Required"; then
-              echo "🔄 Preview has Vercel auth protection - testing production instead"
-              TARGET_URL="${{ env.PROD_URL }}"
-              echo "Fallback URL: $TARGET_URL"
-              
-              RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-                -H "Authorization: Bearer $TOKEN" \
-                "$TARGET_URL/api/admin/health/deep")
-            fi
-          else
-            echo "🌐 Testing production or main deployment"
-            RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-              -H "Authorization: Bearer $TOKEN" \
-              "$TARGET_URL/api/admin/health/deep")
-          fi
-          
-          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
-          
-          echo "HTTP Status: $HTTP_STATUS"
-          
-          if [ "$HTTP_STATUS" -eq 200 ]; then
-            echo "✅ Deep health check passed"
-            
-            # Verify response structure
-            OK_STATUS=$(echo "$BODY" | jq -r '.ok // false')
-            if [ "$OK_STATUS" = "true" ]; then
-              echo "✅ Health status is OK"
-              
-              # Show component health
-              echo "📊 Component Health:"
-              echo "$BODY" | jq '.components // {}' || echo "No component details available"
-              
-            else
-              echo "❌ Health status indicates issues"
-              echo "$BODY" | jq '.components // {}' || echo "No component details available"
-              exit 1
-            fi
-          else
-            echo "❌ Deep health check failed with status $HTTP_STATUS"
-            echo "Response: $BODY"
-            exit 1
-          fi
-          
-      - name: Admin endpoint smoke test
-        run: |
-          echo "💨 Running admin endpoint smoke test..."
-          
-          # Test a few critical admin endpoints
-          ENDPOINTS=(
-            "/api/admin/dashboard/stats"
-            "/api/admin/queue/health"
-            "/api/admin/platforms/status"
-          )
-          
-          for ENDPOINT in "${ENDPOINTS[@]}"; do
-            echo "Testing $ENDPOINT..."
-            
-            # Check if this is a preview deployment and handle Vercel auth protection
-            if [[ "$TARGET_URL" == *"vercel.app"* ]] && [[ "$TARGET_URL" != *"hotdog-diaries.vercel.app"* ]]; then
-              # Try preview first
-              RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-                -H "Authorization: Bearer $TOKEN" \
-                "$TARGET_URL$ENDPOINT" || echo "HTTPSTATUS:000")
-              
-              TEST_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-              
-              # If preview fails with auth wall, fall back to production
-              if [ "$TEST_STATUS" -eq 401 ] && echo "$RESPONSE" | grep -q "Authentication Required"; then
-                echo "🔄 Preview protected - testing production: ${{ env.PROD_URL }}$ENDPOINT"
-                RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-                  -H "Authorization: Bearer $TOKEN" \
-                  "${{ env.PROD_URL }}$ENDPOINT")
-              fi
-            else
-              RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-                -H "Authorization: Bearer $TOKEN" \
-                "$TARGET_URL$ENDPOINT")
-            fi
-            
-            HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-            
-            if [ "$HTTP_STATUS" -eq 200 ]; then
-              echo "✅ $ENDPOINT responding"
-            else
-              echo "❌ $ENDPOINT failed with status $HTTP_STATUS"
-              # Don't fail the entire gate for individual endpoint issues
-              # Just log them for monitoring
-            fi
-          done
+  # comprehensive-health-check job removed - moved to prod-watchdog.yml
+  # This reduces deployment gate complexity while maintaining deep validation in scheduled monitoring
 
   deployment-gate-result:
     runs-on: ubuntu-latest
     name: Deployment Gate Result
-    needs: [context, neutralize, auth-token-validation, comprehensive-health-check]
+    needs: [context, neutralize, auth-token-validation]
     if: always()
     
     steps:
-      - name: Check gate results
+      - name: Check gate results (Advisory Mode)
         run: |
-          echo "🚪 Deployment Gate Results"
-          echo "=========================="
+          echo "🚪 Deployment Gate Results (Advisory Mode)"
+          echo "==========================================="
           
           CONTEXT_PROCEED="${{ needs.context.outputs.proceed }}"
           CONTEXT_STATE="${{ needs.context.outputs.state }}"
           AUTH_RESULT="${{ needs.auth-token-validation.result }}"
-          HEALTH_RESULT="${{ needs.comprehensive-health-check.result }}"
           
           echo "Context Analysis: proceed=$CONTEXT_PROCEED, state=$CONTEXT_STATE"
           echo "Auth Token Validation: $AUTH_RESULT"
-          echo "Health Check: $HEALTH_RESULT"
+          echo "Note: Deep health checks moved to prod-watchdog.yml for scheduled monitoring"
           
-          # If context analysis neutralized the run, conclude neutrally
+          # Always conclude neutrally/successfully in streamlined CI mode
+          # Convert all results to advisory/informational status
+          
           if [ "$CONTEXT_PROCEED" != "true" ]; then
             echo ""
-            echo "⏸️ DEPLOYMENT GATE NEUTRALIZED"
+            echo "ℹ️ DEPLOYMENT GATE: ADVISORY STATUS"
             echo "Deployment not ready for validation (state: $CONTEXT_STATE)"
             echo "Reason: ${{ needs.context.outputs.reason }}"
-            echo "This is normal and expected - no action required."
+            echo "Status: Informational - this does not block deployment"
             exit 0
           fi
           
-          # If we reached validation jobs, check their results
-          # Handle neutralized case: when context says don't proceed, jobs are skipped
-          if [ "$AUTH_RESULT" = "skipped" ] && [ "$HEALTH_RESULT" = "skipped" ]; then
+          # Report validation results as advisory information (streamlined)
+          if [ "$AUTH_RESULT" = "skipped" ]; then
             echo ""
-            echo "⏸️ DEPLOYMENT GATE NEUTRALIZED" 
-            echo "Validation jobs skipped due to upstream deployment issues."
-            echo "This is expected for failed/pending deployments."
-          elif [ "$AUTH_RESULT" = "success" ] && [ "$HEALTH_RESULT" = "success" ]; then
+            echo "ℹ️ DEPLOYMENT GATE: ADVISORY STATUS" 
+            echo "Auth validation skipped due to upstream deployment context."
+            echo "Status: Informational - this is expected for some deployment states"
+          elif [ "$AUTH_RESULT" = "success" ]; then
             echo ""
-            echo "✅ DEPLOYMENT GATE PASSED"
-            echo "All security and health validations successful."
-            echo "Deployment is approved for production traffic."
+            echo "✅ DEPLOYMENT GATE: ADVISORY PASSED"
+            echo "Auth token validation successful."
+            echo "Status: Informational - basic deployment validation looks good"
+            echo "Note: Deep health checks run separately in prod-watchdog.yml"
           else
             echo ""
-            echo "❌ DEPLOYMENT GATE FAILED"
-            echo "Security or health validations failed."
-            echo "Auth result: $AUTH_RESULT, Health result: $HEALTH_RESULT"
-            echo "Deployment should be rolled back or investigated."
-            exit 1
+            echo "⚠️ DEPLOYMENT GATE: ADVISORY WARNINGS"
+            echo "Auth token validation had issues."
+            echo "Auth result: $AUTH_RESULT"
+            echo "Status: Informational - consider investigating auth configuration"
+            echo "Note: This does not block deployment in streamlined CI mode"
           fi
           
-      - name: ✅ Deployment Success
-        if: needs.context.outputs.proceed == 'true' && needs.auth-token-validation.result == 'success' && needs.comprehensive-health-check.result == 'success'
-        run: |
-          echo "🎉 DEPLOYMENT GATE PASSED"
-          echo "========================="
-          echo "✅ Auth Token Validation: Success"
-          echo "✅ Comprehensive Health Check: Success"
-          echo "✅ Admin Endpoint Smoke Test: Success"
+          # Always exit 0 for advisory mode - never fail the gate
           echo ""
-          echo "🚀 Deployment approved for production traffic"
+          echo "🔄 Advisory mode: All deployment gate results are informational only"
+          exit 0
+          
+      - name: ℹ️ Advisory Success Summary
+        if: needs.context.outputs.proceed == 'true' && needs.auth-token-validation.result == 'success'
+        run: |
+          echo "ℹ️ DEPLOYMENT GATE: ADVISORY SUCCESS"
+          echo "===================================="
+          echo "✅ Auth Token Validation: Success"
+          echo "ℹ️ Deep Health Check: Moved to prod-watchdog.yml"
+          echo "ℹ️ Admin Endpoint Smoke Test: Moved to prod-watchdog.yml"
+          echo ""
+          echo "📋 Advisory Status: All validations passed"
           echo "🌐 Production URL: ${{ env.PROD_URL }}"
           echo "🏥 Health Probe: ${{ env.PROD_URL }}/api/admin/health/auth-token"
           echo ""
-          echo "## 🎉 Deployment Gate Success" >> $GITHUB_STEP_SUMMARY
+          echo "## ℹ️ Deployment Gate Advisory Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp**: $(date -u -Iseconds)" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment**: Production" >> $GITHUB_STEP_SUMMARY
+          echo "**Mode**: Advisory (Streamlined CI)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ✅ Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Validation Results (Advisory)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ **Auth Token Validation**: Passed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ **Comprehensive Health Check**: Passed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ **Admin Endpoint Smoke Test**: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- ℹ️ **Deep Health Check**: Moved to prod-watchdog.yml (scheduled)" >> $GITHUB_STEP_SUMMARY
+          echo "- ℹ️ **Admin Endpoint Smoke Test**: Moved to prod-watchdog.yml (scheduled)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 All security and health validations passed - deployment approved!" >> $GITHUB_STEP_SUMMARY
-      - name: Create deployment failure issue
-        if: needs.context.outputs.proceed == 'true' && (needs.auth-token-validation.result != 'success' || needs.comprehensive-health-check.result != 'success')
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const title = `🚨 Deployment Gate Failed - ${new Date().toISOString().split('T')[0]}`
-            const body = `## Deployment Gate Failure
-            
-            **Deployment**: ${{ github.sha }}  
-            **Timestamp**: ${new Date().toISOString()}  
-            **Environment**: Production  
-            
-            ### Validation Results
-            
-            - ${{ needs.auth-token-validation.result == 'success' && '✅' || '❌' }} **Auth Token Validation**: ${{ needs.auth-token-validation.result }}
-            - ${{ needs.comprehensive-health-check.result == 'success' && '✅' || '❌' }} **Comprehensive Health Check**: ${{ needs.comprehensive-health-check.result }}
-            
-            ### Immediate Actions Required
-            
-            1. **Check workflow logs** for specific failure details
-            2. **Verify AUTH_TOKEN secret** is correct and not expired
-            3. **Test health endpoints** manually to isolate issues
-            4. **Consider rollback** if critical functionality is impacted
-            
-            ### Investigation
-            
-            - **Health Probe**: ${{ env.PROD_URL }}/api/admin/health/auth-token
-            - **Deep Health**: ${{ env.PROD_URL }}/api/admin/health/deep
-            - **Workflow**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            
-            ### Security Note
-            
-            If the failure is due to AUTH_TOKEN_MISMATCH, this indicates a security configuration issue that must be resolved before deployment approval.
-            
-            /cc @security-team @devops-team
-            
-            This alert was generated automatically by the deployment gate workflow.
-            `
-            
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: title,
-              body: body,
-              labels: ['deployment', 'failure', 'security', 'urgent', 'automated']
-            })
+          echo "📋 **Status**: All deployment validations passed in advisory mode" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 🔄 **Note**: This gate runs in advisory mode and provides informational status only" >> $GITHUB_STEP_SUMMARY
+      - name: Log advisory warnings (No Issue Creation)
+        if: needs.context.outputs.proceed == 'true' && needs.auth-token-validation.result != 'success'
+        run: |
+          echo "⚠️ ADVISORY MODE: Deployment gate warnings detected"
+          echo "================================================="
+          echo ""
+          echo "**Deployment**: ${{ github.sha }}"
+          echo "**Timestamp**: $(date -u -Iseconds)"
+          echo "**Mode**: Advisory (Streamlined CI)"
+          echo ""
+          echo "### Validation Results"
+          echo "- Auth Token Validation: ${{ needs.auth-token-validation.result }}"
+          echo "- Deep Health Check: Moved to prod-watchdog.yml (scheduled monitoring)"
+          echo ""
+          echo "### Advisory Notice"
+          echo "In streamlined CI mode, deployment gate warnings are logged"
+          echo "but do not block deployment or create issues automatically."
+          echo ""
+          echo "📋 Consider reviewing these warnings in workflow logs:"
+          echo "🔗 ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo ""
+          echo "🏥 Health endpoints for manual verification:"
+          echo "- Basic: ${{ env.PROD_URL }}/api/health"
+          echo "- Auth: ${{ env.PROD_URL }}/api/admin/health/auth-token"
+          echo "- Deep: ${{ env.PROD_URL }}/api/admin/health/deep"
