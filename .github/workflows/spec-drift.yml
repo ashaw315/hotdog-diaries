@@ -103,12 +103,19 @@ jobs:
           
           for section in "${REQUIRED_SECTIONS[@]}"; do
             # Convert dot notation to yq path format
-            yq_path=$(echo "$section" | sed 's/\./\"\]\[\"/'g)
-            yq_path="[\"${yq_path}\"]"
-            
-            if ! yq eval "has(${yq_path})" docs/openapi.yaml | grep -q "true"; then
-              echo "❌ Missing required section: $section"
-              exit 1
+            if [[ "$section" == *"."* ]]; then
+              # Handle nested paths like "components.schemas"
+              yq_path=".$section"
+              if ! yq eval "has($yq_path)" docs/openapi.yaml | grep -q "true"; then
+                echo "❌ Missing required section: $section"
+                exit 1
+              fi
+            else
+              # Handle simple paths like "openapi"
+              if ! yq eval "has(\"$section\")" docs/openapi.yaml | grep -q "true"; then
+                echo "❌ Missing required section: $section"
+                exit 1
+              fi
             fi
             echo "✅ Found section: $section"
           done
