@@ -178,6 +178,31 @@
       "pattern": "^/supabase-scan$",
       "reason": "Database scanning utility",
       "description": "Database scanning utility endpoint"
+    },
+    {
+      "pattern": "^/content/\\[id\\]$",
+      "reason": "Frontend content API",
+      "description": "Dynamic frontend content endpoint - not public API"
+    },
+    {
+      "pattern": "^/content/\\[id\\]/post$",
+      "reason": "Frontend content API",
+      "description": "Dynamic frontend content posting endpoint - not public API"
+    },
+    {
+      "pattern": "^/feed$",
+      "reason": "Frontend feed API",
+      "description": "Frontend data feed endpoint - not public API"
+    },
+    {
+      "pattern": "^/posts$",
+      "reason": "Frontend posts API",
+      "description": "Frontend posts listing endpoint - not public API"
+    },
+    {
+      "pattern": "^/posts/\\[slug\\]$",
+      "reason": "Frontend posts API",
+      "description": "Dynamic frontend post endpoint - not public API"
     }
   ],
   "notes": [
