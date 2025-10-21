@@ -50,9 +50,94 @@
       "description": "Files served statically, not API endpoints"
     },
     {
-      "pattern": "^/api/test/.*",
+      "pattern": "^/api/test.*",
       "reason": "Test endpoints",
       "description": "Testing and development endpoints not for production use"
+    },
+    {
+      "pattern": "^/test-.*",
+      "reason": "Test endpoints",
+      "description": "Testing endpoints at root level not for production use"
+    },
+    {
+      "pattern": "^/debug.*",
+      "reason": "Debug endpoints",
+      "description": "Debug and diagnostic endpoints for development only"
+    },
+    {
+      "pattern": "^/admin/test.*",
+      "reason": "Admin test endpoints",
+      "description": "Admin testing endpoints not for production API documentation"
+    },
+    {
+      "pattern": "^/admin/debug.*",
+      "reason": "Admin debug endpoints", 
+      "description": "Admin debug and diagnostic endpoints"
+    },
+    {
+      "pattern": "^/temp-content.*",
+      "reason": "Temporary content endpoints",
+      "description": "Temporary testing endpoints for content management"
+    },
+    {
+      "pattern": "^/quick-fix$",
+      "reason": "Development utility endpoint",
+      "description": "Temporary development endpoint"
+    },
+    {
+      "pattern": "^/setup.*",
+      "reason": "Setup utility endpoints",
+      "description": "Database and system setup endpoints for development"
+    },
+    {
+      "pattern": "^/init-db$",
+      "reason": "Database initialization endpoint",
+      "description": "Development database setup endpoint"
+    },
+    {
+      "pattern": "^/seed-demo-content$",
+      "reason": "Demo content seeding endpoint",
+      "description": "Development content seeding endpoint"
+    },
+    {
+      "pattern": "^/check-.*",
+      "reason": "Health check utilities",
+      "description": "Various health check and diagnostic utilities"
+    },
+    {
+      "pattern": "^/simple-health$",
+      "reason": "Simple health endpoint",
+      "description": "Basic health endpoint without complex schema needs"
+    },
+    {
+      "pattern": "^/public-health$", 
+      "reason": "Public health endpoint",
+      "description": "Public health endpoint without authentication requirements"
+    },
+    {
+      "pattern": "^/platform-dashboard$",
+      "reason": "Platform dashboard endpoint",
+      "description": "Development platform overview endpoint"
+    },
+    {
+      "pattern": "^/env-check$",
+      "reason": "Environment check endpoint",
+      "description": "Development environment verification endpoint"
+    },
+    {
+      "pattern": "^/full-diagnostic$",
+      "reason": "Full diagnostic endpoint", 
+      "description": "Comprehensive diagnostic endpoint for development"
+    },
+    {
+      "pattern": "^/rejected-analysis$",
+      "reason": "Analysis utility endpoint",
+      "description": "Content rejection analysis utility"
+    },
+    {
+      "pattern": "^/supabase-scan$",
+      "reason": "Database scanning utility",
+      "description": "Database scanning utility endpoint"
     }
   ],
   "notes": [

@@ -109,25 +109,21 @@ components:
           example: "2023-10-15T13:00:00.000Z"
           description: UTC timestamp for this slot
         content_id:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
           example: 1234
           description: ID of scheduled content, null if slot is empty
         content_preview:
-          type: string
-          nullable: true
+          type: [string, "null"]
           example: "Delicious hotdog with mustard and relish"
           description: Preview of scheduled content
         platform:
-          type: string
-          nullable: true
+          type: [string, "null"]
           example: "reddit"
           description: Source platform of the content
         content_type:
-          type: string
-          nullable: true
+          type: [string, "null"]
           example: "image"
-          enum: ["text", "image", "video", "gif"]
+          enum: ["text", "image", "video", "gif", null]
           description: Type of content
         status:
           type: string

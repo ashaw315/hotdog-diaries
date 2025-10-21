@@ -44,6 +44,8 @@ jobs:
       - name: Install OpenAPI validation tools
         run: |
           npm install -g @redocly/cli swagger-parser
+          # Install yq for YAML parsing
+          sudo snap install yq || brew install yq || (curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o yq && chmod +x yq && sudo mv yq /usr/local/bin/)
           
       - name: Validate OpenAPI specification syntax
         run: |
@@ -55,13 +57,24 @@ jobs:
             exit 1
           fi
           
-          # Validate with Redocly CLI
+          # Check OpenAPI version first
+          OPENAPI_VERSION=$(yq eval '.openapi' docs/openapi.yaml)
+          echo "📋 Detected OpenAPI version: $OPENAPI_VERSION"
+          
+          # Validate with Redocly CLI (supports 3.1.0)
           echo "📋 Running Redocly validation..."
           redocly lint docs/openapi.yaml --skip-rule=no-unused-components
           
-          # Validate with swagger-parser (additional validation)
-          echo "📋 Running swagger-parser validation..."
-          npx swagger-parser validate docs/openapi.yaml
+          # For OpenAPI 3.1.0, use @apidevtools/swagger-parser which supports it better
+          if [[ "$OPENAPI_VERSION" == "3.1"* ]]; then
+            echo "📋 Running OpenAPI 3.1.0 compatible validation..."
+            # Install newer parser that supports 3.1.0
+            npm install -g @apidevtools/swagger-parser@latest
+            npx @apidevtools/swagger-parser validate docs/openapi.yaml
+          else
+            echo "📋 Running swagger-parser validation..."
+            npx swagger-parser validate docs/openapi.yaml
+          fi
           
           echo "✅ OpenAPI specification is valid"
           
