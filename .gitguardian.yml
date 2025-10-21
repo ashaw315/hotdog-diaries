@@ -50,6 +50,35 @@ ignored-matches:
   - name: example-auth-token
     match: "example-auth-token"
     
+  # Repeated character test secrets (not real secrets)
+  - name: test-jwt-secret-repeated-a
+    match: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    
+  - name: test-jwt-secret-repeated-b  
+    match: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    
+  - name: test-jwt-constant-pattern
+    match: "TEST_JWT_SECRET"
+    
+  - name: wrong-jwt-constant-pattern
+    match: "WRONG_JWT_SECRET"
+    
+  # Test JWT tokens (clearly fake/test tokens)
+  - name: test-jwt-token-hs256-1
+    match: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.invalid"
+    
+  - name: test-jwt-token-expired
+    match: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoidGVzdCIsImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoxNjAwMDAwMDAxfQ.invalid"
+    
+  - name: test-jwt-token-partial
+    match: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+    
+  - name: test-jwt-token-bluesky
+    match: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    
+  - name: test-jwt-token-rs256
+    match: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.invalid"
+    
   # Test database URLs
   - name: test-database-url
     match: "postgresql://test:test@localhost"
