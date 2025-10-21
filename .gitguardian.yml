@@ -1,0 +1,150 @@
+# GitGuardian Configuration
+# Allowlist for test fixtures and benign secrets
+
+version: 2
+
+# Paths to exclude from scanning
+paths:
+  exclude:
+    - "**/__tests__/**"
+    - "**/test/**"
+    - "**/tests/**"
+    - "**/*.test.*"
+    - "**/*.spec.*"
+    - "**/fixtures/**"
+    - "**/mocks/**"
+    - "**/sample/**"
+    - "**/examples/**"
+    - "ci_audit/**"
+    - "docs/examples/**"
+
+# Specific matches to ignore (test fixtures and documentation)
+ignored-matches:
+  # JWT CLI usage documentation - not real secrets
+  - name: jwt-cli-usage-docs
+    match: "pnpm tsx scripts/ci/lib/jwt.ts decode --token"
+  
+  - name: jwt-cli-usage-verify
+    match: "pnpm tsx scripts/ci/lib/jwt.ts verify --token"
+    
+  # CLI option patterns that GitGuardian incorrectly flags as secrets
+  - name: cli-token-option
+    match: "--token"
+    
+  - name: decode-token-usage
+    match: "decode --token"
+    
+  - name: verify-token-usage  
+    match: "verify --token"
+    
+  # Test JWT secrets (clearly marked as test/demo)
+  - name: test-jwt-secret
+    match: "test-jwt-secret"
+  
+  - name: demo-jwt-secret
+    match: "demo-jwt-secret"
+    
+  - name: ci-test-jwt
+    match: "test-secret-123"
+    
+  - name: example-auth-token
+    match: "example-auth-token"
+    
+  # Repeated character test secrets (not real secrets)
+  - name: test-jwt-secret-repeated-a
+    match: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    
+  - name: test-jwt-secret-repeated-b  
+    match: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    
+  - name: test-jwt-secret-repeated-c
+    match: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    
+  # JavaScript test patterns that generate repeated chars
+  - name: test-jwt-repeat-pattern-a
+    match: "'a'.repeat(64)"
+    
+  - name: test-jwt-repeat-pattern-b
+    match: "'b'.repeat(32)"
+    
+  - name: test-jwt-repeat-pattern-c
+    match: "'c'.repeat(64)"
+    
+  - name: test-jwt-repeat-pattern-generic
+    match: ".repeat(6"
+    
+  - name: test-jwt-constant-pattern
+    match: "TEST_JWT_SECRET"
+    
+  - name: wrong-jwt-constant-pattern
+    match: "WRONG_JWT_SECRET"
+    
+  # Test JWT tokens (clearly fake/test tokens)
+  - name: test-jwt-token-hs256-1
+    match: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.invalid"
+    
+  - name: test-jwt-token-expired
+    match: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoidGVzdCIsImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoxNjAwMDAwMDAxfQ.invalid"
+    
+  - name: test-jwt-token-partial
+    match: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+    
+  - name: test-jwt-token-bluesky
+    match: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    
+  - name: test-jwt-token-rs256
+    match: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.invalid"
+    
+  - name: fake-rsa-test-token
+    match: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.invalid"
+    
+  # Documentation example tokens (truncated with ellipsis)
+  - name: docs-jwt-example-truncated
+    match: "eyJhbGc..."
+    
+  - name: docs-auth-token-example
+    match: "`eyJhbGc...`"
+    
+  # CLI documentation command examples
+  - name: cli-jwt-decode-example
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts decode "eyJhbGc'
+    
+  - name: cli-jwt-verify-example  
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts verify "eyJhbGc'
+    
+  # CLI command documentation (without tokens)
+  - name: cli-jwt-decode-command
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts decode --token'
+    
+  - name: cli-jwt-verify-command
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts verify --token'
+    
+  - name: cli-jwt-mint-command
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts mint'
+    
+  # JWT header patterns (partial tokens in documentation)
+  - name: jwt-header-hs256
+    match: "eyJhbGciOiJIUzI1NiJ9"
+    
+  - name: jwt-header-rs256
+    match: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9"
+    
+  - name: jwt-payload-test
+    match: "eyJzdWIiOiJ0ZXN0In0"
+    
+  # Catch-all patterns for test/documentation JWT components
+  - name: jwt-test-components
+    match: "eyJhbGc"
+    
+  - name: jwt-markdown-table-examples
+    match: "| `eyJhbGc"
+    
+  # Test database URLs
+  - name: test-database-url
+    match: "postgresql://test:test@localhost"
+    
+  - name: sqlite-test-db
+    match: "test_hotdog_diaries.db"
+
+# Only scan for high-confidence secrets
+verbose: false

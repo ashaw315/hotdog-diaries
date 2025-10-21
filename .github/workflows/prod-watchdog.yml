@@ -41,18 +41,164 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile || pnpm install
+      - name: Mint runtime JWT token for watchdog checks
+        run: |
+          echo "🔐 Minting runtime JWT token for production watchdog..."
+          
+          # Try runtime token first, fall back to legacy AUTH_TOKEN if minting fails
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 30m --sub prod-watchdog --aud watchdog --iss hotdog-diaries 2>/dev/null); then
+            echo "✅ Successfully minted runtime JWT token"
+            echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+            echo "TOKEN_TYPE=runtime" >> $GITHUB_ENV
+          elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then
+            echo "⚠️ Runtime token minting failed, falling back to legacy AUTH_TOKEN"
+            echo "TOKEN=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_ENV
+            echo "TOKEN_TYPE=legacy" >> $GITHUB_ENV
+          else
+            echo "❌ No token available for watchdog checks"
+            exit 1
+          fi
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      - name: Test auth self-test endpoint before watchdog checks
+        run: |
+          echo "🔍 Testing auth self-test endpoint before running watchdog..."
+          echo "Token type: $TOKEN_TYPE"
+          
+          SELFTEST_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $TOKEN" \
+            --max-time 10 \
+            "$PROD_BASE_URL/api/health/auth-selftest")
+          
+          SELFTEST_STATUS=$(echo $SELFTEST_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          SELFTEST_BODY=$(echo $SELFTEST_RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "Auth Self-Test Status: $SELFTEST_STATUS"
+          
+          if [ "$SELFTEST_STATUS" -eq 200 ]; then
+            echo "✅ Auth self-test passed - token valid"
+            
+            # Parse auth details for logging
+            if echo "$SELFTEST_BODY" | jq -e '.ok == true' > /dev/null; then
+              ISS=$(echo "$SELFTEST_BODY" | jq -r '.iss // "unknown"')
+              AUD=$(echo "$SELFTEST_BODY" | jq -r '.aud // "unknown"')
+              SUB=$(echo "$SELFTEST_BODY" | jq -r '.sub // "unknown"')
+              KEY_VERSION=$(echo "$SELFTEST_BODY" | jq -r '.keyVersion // "null"')
+              
+              echo "📊 Token Details:"
+              echo "  - Type: $TOKEN_TYPE"
+              echo "  - Issuer: $ISS"
+              echo "  - Audience: $AUD"
+              echo "  - Subject: $SUB"
+              echo "  - Key Version: $KEY_VERSION"
+            fi
+          else
+            echo "❌ Auth self-test failed with status $SELFTEST_STATUS"
+            
+            if [ "$SELFTEST_STATUS" -eq 401 ]; then
+              CODE=$(echo "$SELFTEST_BODY" | jq -r '.code // "unknown"')
+              echo "🚨 Auth error: $CODE"
+              if [ "$CODE" = "INVALID_SIGNATURE" ]; then
+                echo "JWT_SECRET mismatch - production auth config issue"
+              fi
+            fi
+            
+            echo "⚠️ Watchdog will continue with degraded auth status"
+          fi
       - name: Actions check
         run: pnpm tsx scripts/prod/check-actions-today.ts --date "${{ inputs.date }}"
+        env:
+          AUTH_TOKEN: ${{ env.TOKEN }}
       - name: DB check
         run: pnpm tsx scripts/prod/check-db-posting.ts --date "${{ inputs.date }}"
+        env:
+          AUTH_TOKEN: ${{ env.TOKEN }}
       - name: UI probe
         run: pnpm tsx scripts/prod/probe-ui.ts --date "${{ inputs.date }}"
+        env:
+          AUTH_TOKEN: ${{ env.TOKEN }}
+      - name: Deep deployment health validation
+        run: |
+          echo "🏥 Running comprehensive deployment health validation..."
+          
+          # Deep health check (moved from deploy-gate.yml)
+          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $TOKEN" \
+            "$PROD_BASE_URL/api/admin/health/deep")
+          
+          HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "Deep Health Status: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Deep health check passed"
+            
+            # Verify response structure
+            OK_STATUS=$(echo "$BODY" | jq -r '.ok // false')
+            if [ "$OK_STATUS" = "true" ]; then
+              echo "✅ Health status is OK"
+              echo "📊 Component Health:"
+              echo "$BODY" | jq '.components // {}' || echo "No component details available"
+            else
+              echo "⚠️ Health status indicates issues"
+              echo "$BODY" | jq '.components // {}' || echo "No component details available"
+            fi
+          else
+            echo "❌ Deep health check failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+          fi
+      
+      - name: Admin endpoint smoke test suite
+        run: |
+          echo "💨 Running comprehensive admin endpoint smoke test..."
+          
+          # Test critical admin endpoints (moved from deploy-gate.yml)
+          ENDPOINTS=(
+            "/api/admin/dashboard/stats"
+            "/api/admin/queue/health"
+            "/api/admin/platforms/status"
+            "/api/admin/metrics"
+            "/api/admin/content/scheduled"
+            "/api/admin/content/recent"
+          )
+          
+          FAILED_ENDPOINTS=()
+          
+          for ENDPOINT in "${ENDPOINTS[@]}"; do
+            echo "Testing $ENDPOINT..."
+            
+            RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+              -H "Authorization: Bearer $TOKEN" \
+              "$PROD_BASE_URL$ENDPOINT")
+            
+            HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+            
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ $ENDPOINT responding"
+            else
+              echo "❌ $ENDPOINT failed with status $HTTP_STATUS"
+              FAILED_ENDPOINTS+=("$ENDPOINT")
+            fi
+          done
+          
+          if [ ${#FAILED_ENDPOINTS[@]} -eq 0 ]; then
+            echo "✅ All admin endpoints passed smoke test"
+          else
+            echo "⚠️ ${#FAILED_ENDPOINTS[@]} admin endpoints failed:"
+            printf '  - %s\n' "${FAILED_ENDPOINTS[@]}"
+          fi
+      
       - name: Canary (optional)
         if: ${{ inputs.run_canary == true }}
         run: pnpm tsx scripts/prod/synthetic-post-canary.ts
+        env:
+          AUTH_TOKEN: ${{ env.TOKEN }}
       - name: Emit report
         id: report
         run: pnpm tsx scripts/prod/emit-watchdog-report.ts --date "${{ inputs.date }}"
+        env:
+          AUTH_TOKEN: ${{ env.TOKEN }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

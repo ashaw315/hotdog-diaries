@@ -1,0 +1,3538 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Hotdog Diaries API",
+    "version": "1.0.0",
+    "description": "API for the Hotdog Diaries social media content aggregator"
+  },
+  "servers": [
+    {
+      "url": "https://hotdog-diaries.vercel.app/api",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Development"
+    }
+  ],
+  "paths": {
+    "/admin/alerts/history": {
+      "get": {
+        "summary": "GET /admin/alerts/history",
+        "operationId": "getadminalertshistory",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/analytics": {
+      "get": {
+        "summary": "GET /admin/analytics",
+        "operationId": "getadminanalytics",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/analyze-duplicates": {
+      "get": {
+        "summary": "GET /admin/analyze-duplicates",
+        "operationId": "getadminanalyzeduplicates",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/auth": {
+      "get": {
+        "summary": "GET /admin/auth",
+        "operationId": "getadminauth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/auth/me": {
+      "get": {
+        "summary": "GET /admin/auth/me",
+        "operationId": "getadminauthme",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/auth/refresh": {
+      "get": {
+        "summary": "GET /admin/auth/refresh",
+        "operationId": "getadminauthrefresh",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/auto-approve": {
+      "get": {
+        "summary": "GET /admin/auto-approve",
+        "operationId": "getadminautoapprove",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/auto-scan": {
+      "get": {
+        "summary": "GET /admin/auto-scan",
+        "operationId": "getadminautoscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/automation-health": {
+      "get": {
+        "summary": "GET /admin/automation-health",
+        "operationId": "getadminautomationhealth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/automation-status": {
+      "get": {
+        "summary": "GET /admin/automation-status",
+        "operationId": "getadminautomationstatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/bluesky/scan": {
+      "get": {
+        "summary": "GET /admin/bluesky/scan",
+        "operationId": "getadminblueskyscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/bluesky/stats": {
+      "get": {
+        "summary": "GET /admin/bluesky/stats",
+        "operationId": "getadminblueskystats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/bluesky/status": {
+      "get": {
+        "summary": "GET /admin/bluesky/status",
+        "operationId": "getadminblueskystatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/bluesky/test": {
+      "get": {
+        "summary": "GET /admin/bluesky/test",
+        "operationId": "getadminblueskytest",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/cleanup-duplicates": {
+      "get": {
+        "summary": "GET /admin/cleanup-duplicates",
+        "operationId": "getadmincleanupduplicates",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content": {
+      "get": {
+        "summary": "GET /admin/content",
+        "operationId": "getadmincontent",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/[id]": {
+      "get": {
+        "summary": "GET /admin/content/[id]",
+        "operationId": "getadmincontentid",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/[id]/post": {
+      "get": {
+        "summary": "GET /admin/content/[id]/post",
+        "operationId": "getadmincontentidpost",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/bulk": {
+      "get": {
+        "summary": "GET /admin/content/bulk",
+        "operationId": "getadmincontentbulk",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/bulk-review": {
+      "get": {
+        "summary": "GET /admin/content/bulk-review",
+        "operationId": "getadmincontentbulkreview",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/bulk-schedule": {
+      "get": {
+        "summary": "GET /admin/content/bulk-schedule",
+        "operationId": "getadmincontentbulkschedule",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/export": {
+      "get": {
+        "summary": "GET /admin/content/export",
+        "operationId": "getadmincontentexport",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/history": {
+      "get": {
+        "summary": "GET /admin/content/history",
+        "operationId": "getadmincontenthistory",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/metrics": {
+      "get": {
+        "summary": "GET /admin/content/metrics",
+        "operationId": "getadmincontentmetrics",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/posted": {
+      "get": {
+        "summary": "GET /admin/content/posted",
+        "operationId": "getadmincontentposted",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/posted/[id]/hide": {
+      "get": {
+        "summary": "GET /admin/content/posted/[id]/hide",
+        "operationId": "getadmincontentpostedidhide",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/process": {
+      "get": {
+        "summary": "GET /admin/content/process",
+        "operationId": "getadmincontentprocess",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/queue": {
+      "get": {
+        "summary": "GET /admin/content/queue",
+        "operationId": "getadmincontentqueue",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/simple-queue": {
+      "get": {
+        "summary": "GET /admin/content/simple-queue",
+        "operationId": "getadmincontentsimplequeue",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/content/stats": {
+      "get": {
+        "summary": "GET /admin/content/stats",
+        "operationId": "getadmincontentstats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/create-tables": {
+      "get": {
+        "summary": "GET /admin/create-tables",
+        "operationId": "getadmincreatetables",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/cron-status": {
+      "get": {
+        "summary": "GET /admin/cron-status",
+        "operationId": "getadmincronstatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/dashboard": {
+      "get": {
+        "summary": "GET /admin/dashboard",
+        "operationId": "getadmindashboard",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/dashboard/activity": {
+      "get": {
+        "summary": "GET /admin/dashboard/activity",
+        "operationId": "getadmindashboardactivity",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/dashboard/stats": {
+      "get": {
+        "summary": "GET /admin/dashboard/stats",
+        "operationId": "getadmindashboardstats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/db-health": {
+      "get": {
+        "summary": "GET /admin/db-health",
+        "operationId": "getadmindbhealth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/debug": {
+      "get": {
+        "summary": "GET /admin/debug",
+        "operationId": "getadmindebug",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/debug-db": {
+      "get": {
+        "summary": "GET /admin/debug-db",
+        "operationId": "getadmindebugdb",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/debug-duplicates": {
+      "get": {
+        "summary": "GET /admin/debug-duplicates",
+        "operationId": "getadmindebugduplicates",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/debug-hashes": {
+      "get": {
+        "summary": "GET /admin/debug-hashes",
+        "operationId": "getadmindebughashes",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/debug-scan": {
+      "get": {
+        "summary": "GET /admin/debug-scan",
+        "operationId": "getadmindebugscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/debug/database": {
+      "get": {
+        "summary": "GET /admin/debug/database",
+        "operationId": "getadmindebugdatabase",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/debug/scheduled": {
+      "get": {
+        "summary": "GET /admin/debug/scheduled",
+        "operationId": "getadmindebugscheduled",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/docs/openapi": {
+      "get": {
+        "summary": "GET /admin/docs/openapi",
+        "operationId": "getadmindocsopenapi",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/emergency-rebalance": {
+      "get": {
+        "summary": "GET /admin/emergency-rebalance",
+        "operationId": "getadminemergencyrebalance",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/emergency-scan": {
+      "get": {
+        "summary": "GET /admin/emergency-scan",
+        "operationId": "getadminemergencyscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/filtering/stats": {
+      "get": {
+        "summary": "GET /admin/filtering/stats",
+        "operationId": "getadminfilteringstats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/filters": {
+      "get": {
+        "summary": "GET /admin/filters",
+        "operationId": "getadminfilters",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/filters/test": {
+      "get": {
+        "summary": "GET /admin/filters/test",
+        "operationId": "getadminfilterstest",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/fix-chicago-duplicate": {
+      "get": {
+        "summary": "GET /admin/fix-chicago-duplicate",
+        "operationId": "getadminfixchicagoduplicate",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/fix-content-balance": {
+      "get": {
+        "summary": "GET /admin/fix-content-balance",
+        "operationId": "getadminfixcontentbalance",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/fix-duplicate-content": {
+      "get": {
+        "summary": "GET /admin/fix-duplicate-content",
+        "operationId": "getadminfixduplicatecontent",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/giphy/scan": {
+      "get": {
+        "summary": "GET /admin/giphy/scan",
+        "operationId": "getadmingiphyscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/giphy/stats": {
+      "get": {
+        "summary": "GET /admin/giphy/stats",
+        "operationId": "getadmingiphystats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/giphy/status": {
+      "get": {
+        "summary": "GET /admin/giphy/status",
+        "operationId": "getadmingiphystatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/giphy/test": {
+      "get": {
+        "summary": "GET /admin/giphy/test",
+        "operationId": "getadmingiphytest",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/health/auth-token": {
+      "get": {
+        "summary": "GET /admin/health/auth-token",
+        "operationId": "getadminhealthauthtoken",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/health/deep": {
+      "get": {
+        "summary": "GET /admin/health/deep",
+        "operationId": "getadminhealthdeep",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/imgur/scan": {
+      "get": {
+        "summary": "GET /admin/imgur/scan",
+        "operationId": "getadminimgurscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/imgur/stats": {
+      "get": {
+        "summary": "GET /admin/imgur/stats",
+        "operationId": "getadminimgurstats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/imgur/status": {
+      "get": {
+        "summary": "GET /admin/imgur/status",
+        "operationId": "getadminimgurstatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/imgur/test-connection": {
+      "get": {
+        "summary": "GET /admin/imgur/test-connection",
+        "operationId": "getadminimgurtestconnection",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/initial-scan": {
+      "get": {
+        "summary": "GET /admin/initial-scan",
+        "operationId": "getadmininitialscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/logout": {
+      "get": {
+        "summary": "GET /admin/logout",
+        "operationId": "getadminlogout",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/me": {
+      "get": {
+        "summary": "GET /admin/me",
+        "operationId": "getadminme",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/metrics": {
+      "get": {
+        "summary": "GET /admin/metrics",
+        "operationId": "getadminmetrics",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/metrics/diversity": {
+      "get": {
+        "summary": "GET /admin/metrics/diversity",
+        "operationId": "getadminmetricsdiversity",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/metrics/summary": {
+      "get": {
+        "summary": "GET /admin/metrics/summary",
+        "operationId": "getadminmetricssummary",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/migrate-db": {
+      "get": {
+        "summary": "GET /admin/migrate-db",
+        "operationId": "getadminmigratedb",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/monitor/duplicates": {
+      "get": {
+        "summary": "GET /admin/monitor/duplicates",
+        "operationId": "getadminmonitorduplicates",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/pixabay/scan": {
+      "get": {
+        "summary": "GET /admin/pixabay/scan",
+        "operationId": "getadminpixabayscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/pixabay/status": {
+      "get": {
+        "summary": "GET /admin/pixabay/status",
+        "operationId": "getadminpixabaystatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/platform-audit": {
+      "get": {
+        "summary": "GET /admin/platform-audit",
+        "operationId": "getadminplatformaudit",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/platform-balance-report": {
+      "get": {
+        "summary": "GET /admin/platform-balance-report",
+        "operationId": "getadminplatformbalancereport",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/platform-diversity": {
+      "get": {
+        "summary": "GET /admin/platform-diversity",
+        "operationId": "getadminplatformdiversity",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/platforms/scan": {
+      "get": {
+        "summary": "GET /admin/platforms/scan",
+        "operationId": "getadminplatformsscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/platforms/status": {
+      "get": {
+        "summary": "GET /admin/platforms/status",
+        "operationId": "getadminplatformsstatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/post/trigger": {
+      "get": {
+        "summary": "GET /admin/post/trigger",
+        "operationId": "getadminposttrigger",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/posting/execute": {
+      "get": {
+        "summary": "GET /admin/posting/execute",
+        "operationId": "getadminpostingexecute",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/posting/manual": {
+      "get": {
+        "summary": "GET /admin/posting/manual",
+        "operationId": "getadminpostingmanual",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/posting/post-now": {
+      "get": {
+        "summary": "GET /admin/posting/post-now",
+        "operationId": "getadminpostingpostnow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/posting/stats": {
+      "get": {
+        "summary": "GET /admin/posting/stats",
+        "operationId": "getadminpostingstats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/posting/status": {
+      "get": {
+        "summary": "GET /admin/posting/status",
+        "operationId": "getadminpostingstatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/posting/test": {
+      "get": {
+        "summary": "GET /admin/posting/test",
+        "operationId": "getadminpostingtest",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/production-platform-analysis": {
+      "get": {
+        "summary": "GET /admin/production-platform-analysis",
+        "operationId": "getadminproductionplatformanalysis",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/queue-health": {
+      "get": {
+        "summary": "GET /admin/queue-health",
+        "operationId": "getadminqueuehealth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/queue/alerts": {
+      "get": {
+        "summary": "GET /admin/queue/alerts",
+        "operationId": "getadminqueuealerts",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/queue/health": {
+      "get": {
+        "summary": "GET /admin/queue/health",
+        "operationId": "getadminqueuehealth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/queue/recommendations": {
+      "get": {
+        "summary": "GET /admin/queue/recommendations",
+        "operationId": "getadminqueuerecommendations",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/queue/schedule": {
+      "get": {
+        "summary": "GET /admin/queue/schedule",
+        "operationId": "getadminqueueschedule",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/queue/stats": {
+      "get": {
+        "summary": "GET /admin/queue/stats",
+        "operationId": "getadminqueuestats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/reddit/scan-history": {
+      "get": {
+        "summary": "GET /admin/reddit/scan-history",
+        "operationId": "getadminredditscanhistory",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/reddit/settings": {
+      "get": {
+        "summary": "GET /admin/reddit/settings",
+        "operationId": "getadminredditsettings",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/reddit/setup-tables": {
+      "get": {
+        "summary": "GET /admin/reddit/setup-tables",
+        "operationId": "getadminredditsetuptables",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/reddit/stats": {
+      "get": {
+        "summary": "GET /admin/reddit/stats",
+        "operationId": "getadminredditstats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/reddit/status": {
+      "get": {
+        "summary": "GET /admin/reddit/status",
+        "operationId": "getadminredditstatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/reddit/test-connection": {
+      "get": {
+        "summary": "GET /admin/reddit/test-connection",
+        "operationId": "getadminreddittestconnection",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/refresh": {
+      "get": {
+        "summary": "GET /admin/refresh",
+        "operationId": "getadminrefresh",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/review-queue": {
+      "get": {
+        "summary": "GET /admin/review-queue",
+        "operationId": "getadminreviewqueue",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/scan-bluesky-now": {
+      "get": {
+        "summary": "GET /admin/scan-bluesky-now",
+        "operationId": "getadminscanblueskynow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/scan-imgur-now": {
+      "get": {
+        "summary": "GET /admin/scan-imgur-now",
+        "operationId": "getadminscanimgurnow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/scan-lemmy-now": {
+      "get": {
+        "summary": "GET /admin/scan-lemmy-now",
+        "operationId": "getadminscanlemmynow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/scan-mastodon-now": {
+      "get": {
+        "summary": "GET /admin/scan-mastodon-now",
+        "operationId": "getadminscanmastodonnow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/scan-pixabay-now": {
+      "get": {
+        "summary": "GET /admin/scan-pixabay-now",
+        "operationId": "getadminscanpixabaynow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/scan-reddit-now": {
+      "get": {
+        "summary": "GET /admin/scan-reddit-now",
+        "operationId": "getadminscanredditnow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/scan-tumblr-now": {
+      "get": {
+        "summary": "GET /admin/scan-tumblr-now",
+        "operationId": "getadminscantumblrnow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/scan-youtube-now": {
+      "get": {
+        "summary": "GET /admin/scan-youtube-now",
+        "operationId": "getadminscanyoutubenow",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule": {
+      "get": {
+        "summary": "GET /admin/schedule",
+        "operationId": "getadminschedule",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/daily": {
+      "get": {
+        "summary": "GET /admin/schedule/daily",
+        "operationId": "getadminscheduledaily",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/forecast": {
+      "get": {
+        "summary": "GET /admin/schedule/forecast",
+        "operationId": "getadminscheduleforecast",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/forecast/health": {
+      "get": {
+        "summary": "GET /admin/schedule/forecast/health",
+        "operationId": "getadminscheduleforecasthealth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/forecast/reconcile": {
+      "get": {
+        "summary": "GET /admin/schedule/forecast/reconcile",
+        "operationId": "getadminscheduleforecastreconcile",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/forecast/refill": {
+      "get": {
+        "summary": "GET /admin/schedule/forecast/refill",
+        "operationId": "getadminscheduleforecastrefill",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/next": {
+      "get": {
+        "summary": "GET /admin/schedule/next",
+        "operationId": "getadminschedulenext",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/pause": {
+      "get": {
+        "summary": "GET /admin/schedule/pause",
+        "operationId": "getadminschedulepause",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/projected": {
+      "get": {
+        "summary": "GET /admin/schedule/projected",
+        "operationId": "getadminscheduleprojected",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schedule/trigger": {
+      "get": {
+        "summary": "GET /admin/schedule/trigger",
+        "operationId": "getadminscheduletrigger",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/schema/verify": {
+      "get": {
+        "summary": "GET /admin/schema/verify",
+        "operationId": "getadminschemaverify",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/simple-login": {
+      "get": {
+        "summary": "GET /admin/simple-login",
+        "operationId": "getadminsimplelogin",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/social/distribution": {
+      "get": {
+        "summary": "GET /admin/social/distribution",
+        "operationId": "getadminsocialdistribution",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/social/performance": {
+      "get": {
+        "summary": "GET /admin/social/performance",
+        "operationId": "getadminsocialperformance",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/social/scan": {
+      "get": {
+        "summary": "GET /admin/social/scan",
+        "operationId": "getadminsocialscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/social/scan-all": {
+      "get": {
+        "summary": "GET /admin/social/scan-all",
+        "operationId": "getadminsocialscanall",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/social/settings": {
+      "get": {
+        "summary": "GET /admin/social/settings",
+        "operationId": "getadminsocialsettings",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/social/stats": {
+      "get": {
+        "summary": "GET /admin/social/stats",
+        "operationId": "getadminsocialstats",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/social/status": {
+      "get": {
+        "summary": "GET /admin/social/status",
+        "operationId": "getadminsocialstatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/sync/posted-flags": {
+      "get": {
+        "summary": "GET /admin/sync/posted-flags",
+        "operationId": "getadminsyncpostedflags",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/system-verification": {
+      "get": {
+        "summary": "GET /admin/system-verification",
+        "operationId": "getadminsystemverification",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/test-duplicate-prevention": {
+      "get": {
+        "summary": "GET /admin/test-duplicate-prevention",
+        "operationId": "getadmintestduplicateprevention",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/test-login": {
+      "get": {
+        "summary": "GET /admin/test-login",
+        "operationId": "getadmintestlogin",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/test-pixabay-insert": {
+      "get": {
+        "summary": "GET /admin/test-pixabay-insert",
+        "operationId": "getadmintestpixabayinsert",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/test-schema": {
+      "get": {
+        "summary": "GET /admin/test-schema",
+        "operationId": "getadmintestschema",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/test-youtube-api": {
+      "get": {
+        "summary": "GET /admin/test-youtube-api",
+        "operationId": "getadmintestyoutubeapi",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/unsplash/config": {
+      "get": {
+        "summary": "GET /admin/unsplash/config",
+        "operationId": "getadminunsplashconfig",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/unsplash/scan": {
+      "get": {
+        "summary": "GET /admin/unsplash/scan",
+        "operationId": "getadminunsplashscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/unsplash/scans": {
+      "get": {
+        "summary": "GET /admin/unsplash/scans",
+        "operationId": "getadminunsplashscans",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/unsplash/search": {
+      "get": {
+        "summary": "GET /admin/unsplash/search",
+        "operationId": "getadminunsplashsearch",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/unsplash/status": {
+      "get": {
+        "summary": "GET /admin/unsplash/status",
+        "operationId": "getadminunsplashstatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/unsplash/test": {
+      "get": {
+        "summary": "GET /admin/unsplash/test",
+        "operationId": "getadminunsplashtest",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/video-errors": {
+      "get": {
+        "summary": "GET /admin/video-errors",
+        "operationId": "getadminvideoerrors",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/youtube-quota": {
+      "get": {
+        "summary": "GET /admin/youtube-quota",
+        "operationId": "getadminyoutubequota",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/youtube/config": {
+      "get": {
+        "summary": "GET /admin/youtube/config",
+        "operationId": "getadminyoutubeconfig",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/youtube/debug": {
+      "get": {
+        "summary": "GET /admin/youtube/debug",
+        "operationId": "getadminyoutubedebug",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/youtube/scan": {
+      "get": {
+        "summary": "GET /admin/youtube/scan",
+        "operationId": "getadminyoutubescan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/youtube/scans": {
+      "get": {
+        "summary": "GET /admin/youtube/scans",
+        "operationId": "getadminyoutubescans",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/youtube/status": {
+      "get": {
+        "summary": "GET /admin/youtube/status",
+        "operationId": "getadminyoutubestatus",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/admin/youtube/test": {
+      "get": {
+        "summary": "GET /admin/youtube/test",
+        "operationId": "getadminyoutubetest",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "get": {
+        "summary": "GET /auth/refresh",
+        "operationId": "getauthrefresh",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/check-all-platforms": {
+      "get": {
+        "summary": "GET /check-all-platforms",
+        "operationId": "getcheckallplatforms",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/check-db": {
+      "get": {
+        "summary": "GET /check-db",
+        "operationId": "getcheckdb",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/client-error": {
+      "get": {
+        "summary": "GET /client-error",
+        "operationId": "getclienterror",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/content/[id]": {
+      "get": {
+        "summary": "GET /content/[id]",
+        "operationId": "getcontentid",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/content/[id]/post": {
+      "get": {
+        "summary": "GET /content/[id]/post",
+        "operationId": "getcontentidpost",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/cron/automated-post": {
+      "get": {
+        "summary": "GET /cron/automated-post",
+        "operationId": "getcronautomatedpost",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/cron/daily": {
+      "get": {
+        "summary": "GET /cron/daily",
+        "operationId": "getcrondaily",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/cron/post-content": {
+      "get": {
+        "summary": "GET /cron/post-content",
+        "operationId": "getcronpostcontent",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/cron/post-scheduled": {
+      "get": {
+        "summary": "GET /cron/post-scheduled",
+        "operationId": "getcronpostscheduled",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/cron/scan-content": {
+      "get": {
+        "summary": "GET /cron/scan-content",
+        "operationId": "getcronscancontent",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/debug-cookies": {
+      "get": {
+        "summary": "GET /debug-cookies",
+        "operationId": "getdebugcookies",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/debug-env": {
+      "get": {
+        "summary": "GET /debug-env",
+        "operationId": "getdebugenv",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/debug/content-pipeline": {
+      "get": {
+        "summary": "GET /debug/content-pipeline",
+        "operationId": "getdebugcontentpipeline",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/debug/database": {
+      "get": {
+        "summary": "GET /debug/database",
+        "operationId": "getdebugdatabase",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/debug/reddit-scan": {
+      "get": {
+        "summary": "GET /debug/reddit-scan",
+        "operationId": "getdebugredditscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/debug/tables": {
+      "get": {
+        "summary": "GET /debug/tables",
+        "operationId": "getdebugtables",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/env-check": {
+      "get": {
+        "summary": "GET /env-check",
+        "operationId": "getenvcheck",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/example-usage": {
+      "get": {
+        "summary": "GET /example-usage",
+        "operationId": "getexampleusage",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/feed": {
+      "get": {
+        "summary": "GET /feed",
+        "operationId": "getfeed",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/full-diagnostic": {
+      "get": {
+        "summary": "GET /full-diagnostic",
+        "operationId": "getfulldiagnostic",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/health/auth-selftest": {
+      "get": {
+        "summary": "GET /health/auth-selftest",
+        "operationId": "gethealthauthselftest",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/health/posting-source-of-truth": {
+      "get": {
+        "summary": "GET /health/posting-source-of-truth",
+        "operationId": "gethealthpostingsourceoftruth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/health/schedule-tz": {
+      "get": {
+        "summary": "GET /health/schedule-tz",
+        "operationId": "gethealthscheduletz",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/init-db": {
+      "get": {
+        "summary": "GET /init-db",
+        "operationId": "getinitdb",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/ping": {
+      "get": {
+        "summary": "GET /ping",
+        "operationId": "getping",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/platform-dashboard": {
+      "get": {
+        "summary": "GET /platform-dashboard",
+        "operationId": "getplatformdashboard",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/posts": {
+      "get": {
+        "summary": "GET /posts",
+        "operationId": "getposts",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/posts/[slug]": {
+      "get": {
+        "summary": "GET /posts/[slug]",
+        "operationId": "getpostsslug",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/proxy/bluesky-image": {
+      "get": {
+        "summary": "GET /proxy/bluesky-image",
+        "operationId": "getproxyblueskyimage",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/proxy/pixabay-image": {
+      "get": {
+        "summary": "GET /proxy/pixabay-image",
+        "operationId": "getproxypixabayimage",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/public-health": {
+      "get": {
+        "summary": "GET /public-health",
+        "operationId": "getpublichealth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/quick-fix": {
+      "get": {
+        "summary": "GET /quick-fix",
+        "operationId": "getquickfix",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/rejected-analysis": {
+      "get": {
+        "summary": "GET /rejected-analysis",
+        "operationId": "getrejectedanalysis",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/seed-demo-content": {
+      "get": {
+        "summary": "GET /seed-demo-content",
+        "operationId": "getseeddemocontent",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/setup": {
+      "get": {
+        "summary": "GET /setup",
+        "operationId": "getsetup",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/setup-admin": {
+      "get": {
+        "summary": "GET /setup-admin",
+        "operationId": "getsetupadmin",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/simple-health": {
+      "get": {
+        "summary": "GET /simple-health",
+        "operationId": "getsimplehealth",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/supabase-scan": {
+      "get": {
+        "summary": "GET /supabase-scan",
+        "operationId": "getsupabasescan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/system/metrics": {
+      "get": {
+        "summary": "GET /system/metrics",
+        "operationId": "getsystemmetrics",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/temp-content/get": {
+      "get": {
+        "summary": "GET /temp-content/get",
+        "operationId": "gettempcontentget",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/temp-content/scan": {
+      "get": {
+        "summary": "GET /temp-content/scan",
+        "operationId": "gettempcontentscan",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/test-content-processor": {
+      "get": {
+        "summary": "GET /test-content-processor",
+        "operationId": "gettestcontentprocessor",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/test-db": {
+      "get": {
+        "summary": "GET /test-db",
+        "operationId": "gettestdb",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/test-db-ssl": {
+      "get": {
+        "summary": "GET /test-db-ssl",
+        "operationId": "gettestdbssl",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/test-insert-content": {
+      "get": {
+        "summary": "GET /test-insert-content",
+        "operationId": "gettestinsertcontent",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/test-supabase": {
+      "get": {
+        "summary": "GET /test-supabase",
+        "operationId": "gettestsupabase",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/test-working-queue": {
+      "get": {
+        "summary": "GET /test-working-queue",
+        "operationId": "gettestworkingqueue",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/test-youtube-autoplay": {
+      "get": {
+        "summary": "GET /test-youtube-autoplay",
+        "operationId": "gettestyoutubeautoplay",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/video-errors": {
+      "get": {
+        "summary": "GET /video-errors",
+        "operationId": "getvideoerrors",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/youtube-proxy": {
+      "get": {
+        "summary": "GET /youtube-proxy",
+        "operationId": "getyoutubeproxy",
+        "tags": [
+          "default"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AdminToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Admin JWT token for protected endpoints"
+      }
+    },
+    "schemas": {}
+  }
+}

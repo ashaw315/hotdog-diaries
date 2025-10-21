@@ -125,8 +125,12 @@ class TodayPostingMatrixGenerator {
   }
 
   private createSupabaseClient() {
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://ulaadphxfsrihoubjdrb.supabase.co'
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsYWFkcGh4ZnNyaWhvdWJqZHJiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTYxNjI1NiwiZXhwIjoyMDcxMTkyMjU2fQ.8u_cd_4_apKd_1baqPq82k3YuWUmmnM51lvZE7muLE4'
+    const supabaseUrl = process.env.SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required')
+    }
     
     console.log('🔗 Connecting to Supabase production database...')
     return createClient(supabaseUrl, supabaseKey)

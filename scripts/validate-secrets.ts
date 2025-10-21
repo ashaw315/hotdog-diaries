@@ -239,8 +239,11 @@ class SecretValidator {
       const skipVars = [
         'NODE_ENV', 'PORT', 'PWD', 'PATH', 'HOME', 'USER',
         'VERCEL', 'VERCEL_ENV', 'VERCEL_URL', 'VERCEL_REGION',
-        'GITHUB_ACTIONS', 'GITHUB_SHA', 'GITHUB_REF',
-        'CI', 'BUILD_ID', 'NEXT_RUNTIME'
+        'GITHUB_ACTIONS', 'GITHUB_SHA', 'GITHUB_REF', 'GITHUB_HEAD_REF',
+        'GITHUB_EVENT_NAME', 'GITHUB_EVENT_PATH', 'GITHUB_OUTPUT',
+        'GITHUB_STEP_SUMMARY', 'GITHUB_WORKSPACE', 'GITHUB_REPOSITORY',
+        'GITHUB_RUN_ID', 'GITHUB_RUN_NUMBER', 'GITHUB_ACTOR',
+        'CI', 'BUILD_ID', 'NEXT_RUNTIME', 'JWT_KEY_VERSION', 'TARGET_URL'
       ]
       
       return !skipVars.includes(varName) && !envExampleSet.has(varName)
