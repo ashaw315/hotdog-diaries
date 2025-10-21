@@ -91,40 +91,33 @@ jobs:
         run: |
           echo "🔍 Checking OpenAPI specification completeness..."
           
-          # Check for required sections
-          REQUIRED_SECTIONS=(
-            "openapi"
-            "info"
-            "servers"
-            "paths"
-            "components.schemas"
-            "components.securitySchemes"
+          # Basic grep checks for required sections (more reliable than complex yq)
+          REQUIRED_STRINGS=(
+            "^openapi:"
+            "^info:"
+            "^servers:"
+            "^paths:"
+            "^components:"
+            "  schemas:"
+            "  securitySchemes:"
+            "AdminToken:"
           )
           
-          for section in "${REQUIRED_SECTIONS[@]}"; do
-            # Convert dot notation to yq path format
-            if [[ "$section" == *"."* ]]; then
-              # Handle nested paths like "components.schemas"
-              yq_path=".$section"
-              if ! yq eval "has($yq_path)" docs/openapi.yaml | grep -q "true"; then
-                echo "❌ Missing required section: $section"
-                exit 1
-              fi
-            else
-              # Handle simple paths like "openapi"
-              if ! yq eval "has(\"$section\")" docs/openapi.yaml | grep -q "true"; then
-                echo "❌ Missing required section: $section"
-                exit 1
-              fi
+          for pattern in "${REQUIRED_STRINGS[@]}"; do
+            if ! grep -q "$pattern" docs/openapi.yaml; then
+              echo "❌ Missing required pattern: $pattern"
+              exit 1
             fi
-            echo "✅ Found section: $section"
+            echo "✅ Found pattern: $pattern"
           done
           
-          # Check for security schemes
-          if ! yq eval '.components.securitySchemes | has("AdminToken")' docs/openapi.yaml | grep -q "true"; then
-            echo "❌ Missing AdminToken security scheme"
+          # Check that we have actual paths defined
+          PATH_COUNT=$(yq eval '.paths | keys | length' docs/openapi.yaml 2>/dev/null || echo "0")
+          if [ "$PATH_COUNT" -eq 0 ]; then
+            echo "❌ No API paths defined in specification"
             exit 1
           fi
+          echo "✅ Found $PATH_COUNT API paths in specification"
           
           echo "✅ OpenAPI specification is complete"
 
