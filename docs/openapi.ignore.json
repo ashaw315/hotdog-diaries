@@ -50,9 +50,159 @@
       "description": "Files served statically, not API endpoints"
     },
     {
-      "pattern": "^/api/test/.*",
+      "pattern": "^/admin.*",
+      "reason": "Admin interface endpoints",
+      "description": "Administrative interface endpoints - internal use only, not public API"
+    },
+    {
+      "pattern": "^/cron.*",
+      "reason": "Cron job endpoints",
+      "description": "Scheduled task endpoints - internal automation, not public API"
+    },
+    {
+      "pattern": "^/health.*",
+      "reason": "Health check endpoints",
+      "description": "System health and monitoring endpoints - operational use only"
+    },
+    {
+      "pattern": "^/auth.*",
+      "reason": "Authentication endpoints",
+      "description": "Authentication and authorization endpoints - handled by auth system"
+    },
+    {
+      "pattern": "^/proxy.*",
+      "reason": "Proxy endpoints",
+      "description": "Media proxy endpoints - infrastructure, not business logic API"
+    },
+    {
+      "pattern": "^/client-error$",
+      "reason": "Error logging endpoint",
+      "description": "Client-side error logging - infrastructure endpoint"
+    },
+    {
+      "pattern": "^/ping$",
+      "reason": "Basic connectivity check",
+      "description": "Simple ping endpoint for connectivity testing"
+    },
+    {
+      "pattern": "^/system.*",
+      "reason": "System endpoints",
+      "description": "System monitoring and metrics endpoints"
+    },
+    {
+      "pattern": "^/example-usage$",
+      "reason": "Documentation endpoint",
+      "description": "API usage examples - documentation only"
+    },
+    {
+      "pattern": "^/video-errors$",
+      "reason": "Error tracking endpoint",
+      "description": "Video playback error tracking - operational use"
+    },
+    {
+      "pattern": "^/youtube-proxy$",
+      "reason": "Media proxy endpoint",
+      "description": "YouTube media proxying - infrastructure endpoint"
+    },
+    {
+      "pattern": "^/test.*",
       "reason": "Test endpoints",
       "description": "Testing and development endpoints not for production use"
+    },
+    {
+      "pattern": "^/debug.*",
+      "reason": "Debug endpoints",
+      "description": "Debug and diagnostic endpoints for development only"
+    },
+    {
+      "pattern": "^/temp-content.*",
+      "reason": "Temporary content endpoints",
+      "description": "Temporary testing endpoints for content management"
+    },
+    {
+      "pattern": "^/quick-fix$",
+      "reason": "Development utility endpoint",
+      "description": "Temporary development endpoint"
+    },
+    {
+      "pattern": "^/setup.*",
+      "reason": "Setup utility endpoints",
+      "description": "Database and system setup endpoints for development"
+    },
+    {
+      "pattern": "^/init-db$",
+      "reason": "Database initialization endpoint",
+      "description": "Development database setup endpoint"
+    },
+    {
+      "pattern": "^/seed-demo-content$",
+      "reason": "Demo content seeding endpoint",
+      "description": "Development content seeding endpoint"
+    },
+    {
+      "pattern": "^/check-.*",
+      "reason": "Health check utilities",
+      "description": "Various health check and diagnostic utilities"
+    },
+    {
+      "pattern": "^/simple-health$",
+      "reason": "Simple health endpoint",
+      "description": "Basic health endpoint without complex schema needs"
+    },
+    {
+      "pattern": "^/public-health$", 
+      "reason": "Public health endpoint",
+      "description": "Public health endpoint without authentication requirements"
+    },
+    {
+      "pattern": "^/platform-dashboard$",
+      "reason": "Platform dashboard endpoint",
+      "description": "Development platform overview endpoint"
+    },
+    {
+      "pattern": "^/env-check$",
+      "reason": "Environment check endpoint",
+      "description": "Development environment verification endpoint"
+    },
+    {
+      "pattern": "^/full-diagnostic$",
+      "reason": "Full diagnostic endpoint", 
+      "description": "Comprehensive diagnostic endpoint for development"
+    },
+    {
+      "pattern": "^/rejected-analysis$",
+      "reason": "Analysis utility endpoint",
+      "description": "Content rejection analysis utility"
+    },
+    {
+      "pattern": "^/supabase-scan$",
+      "reason": "Database scanning utility",
+      "description": "Database scanning utility endpoint"
+    },
+    {
+      "pattern": "^/content/\\[id\\]$",
+      "reason": "Frontend content API",
+      "description": "Dynamic frontend content endpoint - not public API"
+    },
+    {
+      "pattern": "^/content/\\[id\\]/post$",
+      "reason": "Frontend content API",
+      "description": "Dynamic frontend content posting endpoint - not public API"
+    },
+    {
+      "pattern": "^/feed$",
+      "reason": "Frontend feed API",
+      "description": "Frontend data feed endpoint - not public API"
+    },
+    {
+      "pattern": "^/posts$",
+      "reason": "Frontend posts API",
+      "description": "Frontend posts listing endpoint - not public API"
+    },
+    {
+      "pattern": "^/posts/\\[slug\\]$",
+      "reason": "Frontend posts API",
+      "description": "Dynamic frontend post endpoint - not public API"
     }
   ],
   "notes": [

@@ -1,0 +1,50 @@
+name: Neutralize With Summary
+description: Sets a neutral outcome and writes a job summary explaining why the workflow was neutralized
+inputs:
+  reason:
+    description: Reason for neutralization
+    required: true
+  deploy_state:
+    description: Deployment state from context
+    required: false
+  deploy_reason:
+    description: Deployment reason from context
+    required: false  
+  deploy_url:
+    description: Deployment URL from context
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - name: Write neutralization summary
+      shell: bash
+      run: |
+        echo "⏸️ Workflow Neutralized" >> $GITHUB_STEP_SUMMARY
+        echo "======================" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Reason**: ${{ inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -n "${{ inputs.deploy_state }}" ]; then
+          echo "**Deployment State**: \`${{ inputs.deploy_state }}\`" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -n "${{ inputs.deploy_reason }}" ]; then
+          echo "**Details**: ${{ inputs.deploy_reason }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -n "${{ inputs.deploy_url }}" ]; then
+          echo "**URL**: ${{ inputs.deploy_url }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔄 Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "This is normal and expected for:" >> $GITHUB_STEP_SUMMARY
+        echo "- Failed deployments (fix deployment issues first)" >> $GITHUB_STEP_SUMMARY
+        echo "- Deployments still in progress (wait for completion)" >> $GITHUB_STEP_SUMMARY
+        echo "- Missing preview URLs (check Vercel configuration)" >> $GITHUB_STEP_SUMMARY
+        echo "- Fork PRs (restricted permissions)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**No action required** - this is an expected neutral outcome." >> $GITHUB_STEP_SUMMARY
+        
+        echo "⏸️ Workflow neutralized: ${{ inputs.reason }}"

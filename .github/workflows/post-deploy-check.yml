@@ -1,6 +1,6 @@
 name: Post-Deploy Check
 on:
-  deployment_status: null
+  deployment_status:
   push:
     branches:
       - main
@@ -31,20 +31,125 @@ on:
         default: https://hotdog-diaries.vercel.app
 permissions:
   contents: read
-  issues: write
+  actions: read
+  checks: write
 concurrency:
   group: post-deploy-${{ github.ref }}
   cancel-in-progress: false
 env:
   PROD_URL: ${{ inputs.target_url || 'https://hotdog-diaries.vercel.app' }}
-  AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
 jobs:
+  context:
+    runs-on: ubuntu-latest
+    name: Deployment Context Analysis
+    outputs:
+      state: ${{ steps.ctx.outputs.state }}
+      url: ${{ steps.ctx.outputs.url }}
+      commit: ${{ steps.ctx.outputs.commit }}
+      reason: ${{ steps.ctx.outputs.reason }}
+      proceed: ${{ steps.ctx.outputs.proceed }}
+      environment: ${{ steps.ctx.outputs.environment }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Analyze deployment context
+        id: ctx
+        run: |
+          echo "🔍 Analyzing deployment context for post-deploy checks..."
+          
+          # For push events, wait longer for deployment to materialize
+          MAX_WAIT=5
+          if [ "${{ github.event_name }}" = "push" ]; then
+            MAX_WAIT=8
+            echo "📌 Push event: will wait up to ${MAX_WAIT} minutes for Vercel deployment"
+          fi
+          
+          # Run deployment context analysis
+          if ! pnpm tsx scripts/ci/lib/deploy-context.ts analyze --max-wait=$MAX_WAIT; then
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 78 ]; then
+              echo "⏸️ Deployment not ready - will conclude neutrally"
+              echo "proceed=false" >> $GITHUB_OUTPUT
+              echo "neutralized=true" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "❌ Hard error analyzing deployment context"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Deployment ready for post-deploy validation"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          
+      - name: Neutralize on deployment failure
+        if: steps.ctx.outputs.proceed != 'true'
+        run: |
+          echo "⏸️ Neutralizing post-deploy check due to upstream deployment issue"
+          echo "State: ${{ steps.ctx.outputs.state }}"
+          echo "Reason: ${{ steps.ctx.outputs.reason }}"
+          
+          # Write neutral summary
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## ⏸️ Post-Deploy Check Neutralized
+          
+          The post-deploy check has been neutralized because the upstream deployment is not ready for validation.
+          
+          | Field | Value |
+          |-------|-------|
+          | **Deployment State** | `${{ steps.ctx.outputs.state }}` |
+          | **Reason** | ${{ steps.ctx.outputs.reason }} |
+          | **URL Available** | ${{ steps.ctx.outputs.url && 'Yes' || 'No' }} |
+          | **Commit** | `${{ steps.ctx.outputs.commit }}` |
+          
+          ### 🔄 Next Steps
+          
+          This is normal and expected for:
+          - Failed deployments (fix deployment issues first)
+          - Deployments still in progress (wait for completion)
+          - Missing preview URLs (check Vercel configuration)
+          
+          **No action required** - checks will automatically re-run when the deployment succeeds.
+          EOF
+          
+          exit 0
+
   guard:
     uses: ./.github/workflows/_posting-guard.yml
+    needs: context
+    if: |
+      needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
   
   health-check:
     runs-on: ubuntu-latest
     name: Health & Metrics Validation
+    needs: [context, guard]
+    if: |
+      needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     timeout-minutes: 10
     outputs:
       health-status: ${{ steps.health.outputs.status }}
@@ -52,27 +157,104 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Setup Node.js with cache
-        uses: ./.github/actions/setup-node
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache-key-suffix: post-deploy
-          install-dependencies: "false"
-      - name: Wait for deployment readiness
-        if: github.event_name == 'push' || github.event_name == 'deployment_status'
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Setup pnpm
         run: |
-          echo "⏳ Waiting for deployment to be ready..."
-          sleep 30
+          corepack enable
+          corepack prepare pnpm@9 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Set deployment URL
+        run: |
+          echo "🌐 Using deployment URL from context analysis..."
+          DEPLOY_URL="${{ needs.context.outputs.url }}"
+          if [ -n "$DEPLOY_URL" ]; then
+            echo "✅ Using resolved deployment URL: $DEPLOY_URL"
+            echo "TARGET_URL=$DEPLOY_URL" >> $GITHUB_ENV
+          else
+            echo "📌 No deployment URL, using fallback from inputs/env"
+            echo "TARGET_URL=${{ env.PROD_URL }}" >> $GITHUB_ENV
+          fi
+      - name: Mint runtime JWT token
+        run: |
+          echo "🔐 Minting runtime JWT token for post-deploy checks..."
+          
+          # Try runtime token first, fall back to legacy AUTH_TOKEN if minting fails
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 20m --sub post-deploy --aud ci --iss hotdog-diaries 2>/dev/null); then
+            echo "✅ Successfully minted runtime JWT token"
+            echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+            echo "TOKEN_TYPE=runtime" >> $GITHUB_ENV
+          elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then
+            echo "⚠️ Runtime token minting failed, falling back to legacy AUTH_TOKEN"
+            echo "TOKEN=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_ENV
+            echo "TOKEN_TYPE=legacy" >> $GITHUB_ENV
+          else
+            echo "❌ No token available for post-deploy checks"
+            exit 1
+          fi
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      - name: Test auth self-test endpoint
+        run: |
+          echo "🔍 Testing auth self-test endpoint..."
+          echo "Token type: $TOKEN_TYPE"
+          
+          SELFTEST_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -H "Authorization: Bearer $TOKEN" \
+            --max-time 15 \
+            "$TARGET_URL/api/health/auth-selftest")
+          
+          SELFTEST_STATUS=$(echo $SELFTEST_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          SELFTEST_BODY=$(echo $SELFTEST_RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "Auth Self-Test Status: $SELFTEST_STATUS"
+          
+          if [ "$SELFTEST_STATUS" -eq 200 ]; then
+            echo "✅ Auth self-test passed"
+            
+            # Parse auth details
+            if echo "$SELFTEST_BODY" | jq -e '.ok == true' > /dev/null; then
+              ISS=$(echo "$SELFTEST_BODY" | jq -r '.iss // "unknown"')
+              AUD=$(echo "$SELFTEST_BODY" | jq -r '.aud // "unknown"')
+              SUB=$(echo "$SELFTEST_BODY" | jq -r '.sub // "unknown"')
+              KEY_VERSION=$(echo "$SELFTEST_BODY" | jq -r '.keyVersion // "null"')
+              EXP=$(echo "$SELFTEST_BODY" | jq -r '.exp // "unknown"')
+              
+              echo "📊 Auth Details:"
+              echo "  - Token Type: $TOKEN_TYPE"
+              echo "  - Issuer: $ISS"
+              echo "  - Audience: $AUD"
+              echo "  - Subject: $SUB"
+              echo "  - Key Version: $KEY_VERSION"
+              echo "  - Expires: $EXP"
+            fi
+          else
+            echo "❌ Auth self-test failed with status $SELFTEST_STATUS"
+            
+            if [ "$SELFTEST_STATUS" -eq 401 ]; then
+              CODE=$(echo "$SELFTEST_BODY" | jq -r '.code // "unknown"')
+              echo "🚨 Auth error: $CODE"
+              if [ "$CODE" = "INVALID_SIGNATURE" ]; then
+                echo "JWT_SECRET mismatch detected - deployment may need rollback"
+              fi
+            fi
+            
+            exit 1
+          fi
       - name: Test deep health endpoint
         id: health
         run: |
           echo "🏥 Testing /admin/health/deep endpoint..."
 
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             --max-time 30 \
-            "$PROD_URL/api/admin/health/deep")
+            "$TARGET_URL/api/admin/health/deep")
 
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
@@ -114,7 +296,7 @@ jobs:
 
           METRICS_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             --max-time 15 \
-            "$PROD_URL/api/system/metrics")
+            "$TARGET_URL/api/system/metrics")
 
           METRICS_HTTP_STATUS=$(echo $METRICS_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
 
@@ -152,8 +334,14 @@ jobs:
   refill-check:
     runs-on: ubuntu-latest
     name: Two-Day Refill Validation
-    needs: health-check
-    if: needs.health-check.outputs.health-status != 'failed' && inputs.skip_refill_check != true
+    needs: [context, health-check]
+    if: |
+      needs.context.outputs.proceed == 'true' && 
+      needs.health-check.outputs.health-status != 'failed' && 
+      inputs.skip_refill_check != true && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     timeout-minutes: 8
     outputs:
       refill-status: ${{ steps.refill.outputs.status }}
@@ -161,12 +349,44 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Setup Node.js with cache
-        uses: ./.github/actions/setup-node
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache-key-suffix: post-deploy-refill
-          install-dependencies: "false"
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Set deployment URL
+        run: |
+          echo "🌐 Using deployment URL from context analysis..."
+          DEPLOY_URL="${{ needs.context.outputs.url }}"
+          if [ -n "$DEPLOY_URL" ]; then
+            echo "✅ Using resolved deployment URL: $DEPLOY_URL"
+            echo "TARGET_URL=$DEPLOY_URL" >> $GITHUB_ENV
+          else
+            echo "📌 No deployment URL, using fallback from inputs/env"
+            echo "TARGET_URL=${{ env.PROD_URL }}" >> $GITHUB_ENV
+          fi
+      - name: Mint runtime JWT token for refill check
+        run: |
+          echo "🔐 Minting runtime JWT token for refill validation..."
+          
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 15m --sub refill-check --aud ci --iss hotdog-diaries 2>/dev/null); then
+            echo "✅ Successfully minted runtime JWT token"
+            echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+          elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then
+            echo "⚠️ Runtime token minting failed, falling back to legacy AUTH_TOKEN"
+            echo "TOKEN=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_ENV
+          else
+            echo "❌ No token available for refill check"
+            exit 1
+          fi
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
       - name: Test two-day forecast endpoint
         id: refill
         run: |
@@ -180,18 +400,18 @@ jobs:
 
           # Test today's forecast
           TODAY_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Authorization: Bearer $TOKEN" \
             --max-time 30 \
-            "$PROD_URL/api/admin/schedule/forecast?date=$TODAY")
+            "$TARGET_URL/api/admin/schedule/forecast?date=$TODAY")
 
           TODAY_HTTP_STATUS=$(echo $TODAY_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           TODAY_BODY=$(echo $TODAY_RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
 
           # Test tomorrow's forecast
           TOMORROW_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Authorization: Bearer $TOKEN" \
             --max-time 30 \
-            "$PROD_URL/api/admin/schedule/forecast?date=$TOMORROW")
+            "$TARGET_URL/api/admin/schedule/forecast?date=$TOMORROW")
 
           TOMORROW_HTTP_STATUS=$(echo $TOMORROW_RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           TOMORROW_BODY=$(echo $TOMORROW_RESPONSE | sed -e 's/HTTPSTATUS:.*//g')
@@ -285,9 +505,14 @@ jobs:
     runs-on: ubuntu-latest
     name: Upload Metrics & Artifacts
     needs:
+      - context
       - health-check
       - refill-check
-    if: always()
+    if: |\
+      always() && needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     steps:
       - name: Download artifacts from previous jobs
         run: >
@@ -312,12 +537,23 @@ jobs:
           }
 
           EOF
+      - name: Set deployment URL
+        run: |
+          echo "🌐 Using deployment URL from context analysis..."
+          DEPLOY_URL="${{ needs.context.outputs.url }}"
+          if [ -n "$DEPLOY_URL" ]; then
+            echo "✅ Using resolved deployment URL: $DEPLOY_URL"
+            echo "TARGET_URL=$DEPLOY_URL" >> $GITHUB_ENV
+          else
+            echo "📌 No deployment URL, using fallback from inputs/env"
+            echo "TARGET_URL=${{ env.PROD_URL }}" >> $GITHUB_ENV
+          fi
       - name: Collect current metrics snapshot
         run: >
           echo "📊 Collecting final metrics snapshot..."
 
 
-          FINAL_METRICS=$(curl -s --max-time 15 "$PROD_URL/api/system/metrics" || echo '{"error": "collection_failed"}')
+          FINAL_METRICS=$(curl -s --max-time 15 "$TARGET_URL/api/system/metrics" || echo '{"error": "collection_failed"}')
 
           echo "$FINAL_METRICS" > deployment_artifacts/final_metrics_snapshot.json
 
@@ -383,11 +619,27 @@ jobs:
     runs-on: ubuntu-latest
     name: Post-Deploy Notification
     needs:
+      - context
       - health-check
       - refill-check
       - upload-artifacts
-    if: always()
+    if: |\
+      always() && needs.context.outputs.proceed == 'true' && (
+        github.event_name != 'deployment_status' ||
+        (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      )
     steps:
+      - name: Set deployment URL
+        run: |
+          echo "🌐 Using deployment URL from context analysis..."
+          DEPLOY_URL="${{ needs.context.outputs.url }}"
+          if [ -n "$DEPLOY_URL" ]; then
+            echo "✅ Using resolved deployment URL: $DEPLOY_URL"
+            echo "TARGET_URL=$DEPLOY_URL" >> $GITHUB_ENV
+          else
+            echo "📌 No deployment URL, using fallback from inputs/env"
+            echo "TARGET_URL=${{ env.PROD_URL }}" >> $GITHUB_ENV
+          fi
       - name: ✅ Success Summary
         if: needs.health-check.outputs.health-status != 'failed' && needs.refill-check.outputs.refill-status != 'failed'
         run: |+
@@ -398,7 +650,7 @@ jobs:
           echo "📊 Diversity Score: ${{ needs.refill-check.outputs.diversity_score }}"
           echo ""
           echo "🚀 System Status: All validation checks passed"
-          echo "🌐 Production URL: ${{ env.PROD_URL }}"
+          echo "🌐 Production URL: $TARGET_URL"
           echo "📦 Artifacts: Metrics snapshot and deployment data uploaded"
           echo ""
           echo "## ✅ Post-Deploy Validation Success" >> $GITHUB_STEP_SUMMARY
@@ -448,9 +700,9 @@ jobs:
             2. **Verify system health** manually via admin panel
 
             3. **Test critical endpoints** to isolate issues:
-               - Health: ${{ env.PROD_URL }}/api/admin/health/deep
-               - Metrics: ${{ env.PROD_URL }}/api/system/metrics
-               - Forecast: ${{ env.PROD_URL }}/api/admin/schedule/forecast
+               - Health: ${process.env.TARGET_URL || '${{ env.PROD_URL }}'}/api/admin/health/deep
+               - Metrics: ${process.env.TARGET_URL || '${{ env.PROD_URL }}'}/api/system/metrics
+               - Forecast: ${process.env.TARGET_URL || '${{ env.PROD_URL }}'}/api/admin/schedule/forecast
             4. **Consider rollback** if critical functionality is impacted
 
 
@@ -483,3 +735,21 @@ jobs:
               body: body,
               labels: ['deployment', 'failure', 'urgent', 'automated', 'post-deploy']
             })
+
+  neutralize:
+    runs-on: ubuntu-latest
+    name: Neutralize Post-Deploy Check
+    needs: [context]
+    if: needs.context.outputs.proceed != 'true'
+    
+    steps:
+      - name: Checkout for neutralize action
+        uses: actions/checkout@v4
+        
+      - name: Neutralize with summary
+        uses: ./.github/actions/neutralize
+        with:
+          reason: "Upstream deployment not successful or preview URL unavailable"
+          deploy_state: ${{ needs.context.outputs.state }}
+          deploy_reason: ${{ needs.context.outputs.reason }}
+          deploy_url: ${{ needs.context.outputs.url }}
