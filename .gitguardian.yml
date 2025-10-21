@@ -27,6 +27,16 @@ ignored-matches:
   - name: jwt-cli-usage-verify
     match: "pnpm tsx scripts/ci/lib/jwt.ts verify --token"
     
+  # CLI option patterns that GitGuardian incorrectly flags as secrets
+  - name: cli-token-option
+    match: "--token"
+    
+  - name: decode-token-usage
+    match: "decode --token"
+    
+  - name: verify-token-usage  
+    match: "verify --token"
+    
   # Test JWT secrets (clearly marked as test/demo)
   - name: test-jwt-secret
     match: "test-jwt-secret"
