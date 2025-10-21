@@ -1,0 +1,107 @@
+{
+  "timestamp": "2025-10-21T20:20:30Z",
+  "step": "F", 
+  "action": "next_action_proposals",
+  "immediate_actions": {
+    "priority": "P0_CRITICAL",
+    "timeframe": "Next 15-30 minutes",
+    "actions": [
+      {
+        "action": "Monitor secret propagation",
+        "description": "Continue monitoring GitHub Actions workflows for successful runs",
+        "command": "gh run list --workflow=scheduler.yml --limit 3",
+        "success_criteria": "Scheduler workflow shows 'success' conclusion",
+        "reasoning": "Secret propagation can take 30-60 minutes in GitHub"
+      },
+      {
+        "action": "Manual workflow dispatch retry",
+        "description": "Re-trigger scheduler workflow to test secret propagation",
+        "command": "gh workflow run scheduler.yml --ref main -f operation=twoDays",
+        "success_criteria": "Workflow completes successfully",
+        "reasoning": "Force test of updated secret in GitHub Actions environment"
+      }
+    ]
+  },
+  "short_term_actions": {
+    "priority": "P1_HIGH", 
+    "timeframe": "Next 1-2 hours",
+    "actions": [
+      {
+        "action": "Complete schedule population",
+        "description": "Ensure tomorrow's schedule gets populated (currently 0/6)",
+        "success_criteria": "Tomorrow shows 6/6 scheduled posts",
+        "reasoning": "Critical for maintaining 6 posts/day cadence"
+      },
+      {
+        "action": "Verify posting execution",
+        "description": "Monitor that scheduled posts actually execute at their times",
+        "success_criteria": "Actual posts appear with 'posted' status in database",
+        "reasoning": "Confirm end-to-end posting pipeline functionality"
+      }
+    ]
+  },
+  "medium_term_actions": {
+    "priority": "P2_MEDIUM",
+    "timeframe": "Next 4-24 hours", 
+    "actions": [
+      {
+        "action": "Fix timezone function error",
+        "description": "Resolve 'zonedTimeToUtc is not defined' in /api/health/schedule-tz",
+        "technical_details": "Import already added to app/api/health/schedule-tz/route.ts:2",
+        "success_criteria": "Health endpoint returns 200 status",
+        "reasoning": "Restore full health endpoint functionality"
+      },
+      {
+        "action": "Comprehensive system validation",
+        "description": "Run full end-to-end testing of posting/forecast system",
+        "success_criteria": "All workflows green, all health endpoints 200",
+        "reasoning": "Confirm complete system recovery"
+      }
+    ]
+  },
+  "preventive_actions": {
+    "priority": "P3_LOW",
+    "timeframe": "Next sprint",
+    "actions": [
+      {
+        "action": "Secret rotation monitoring",
+        "description": "Add alerts for GitHub secret expiration",
+        "reasoning": "Prevent future service role key expiration issues"
+      },
+      {
+        "action": "Enhanced pre-flight checks", 
+        "description": "Improve workflow environment validation",
+        "reasoning": "Fail fast with better error messages on environment issues"
+      },
+      {
+        "action": "Backup secret management",
+        "description": "Maintain secondary service role keys",
+        "reasoning": "Enable faster recovery during secret rotation"
+      }
+    ]
+  },
+  "monitoring_plan": {
+    "continuous_monitoring": [
+      "GitHub Actions workflow success rates",
+      "Supabase connectivity health checks", 
+      "Schedule population completeness",
+      "Actual content posting execution"
+    ],
+    "success_indicators": [
+      "Scheduler workflow: ✅ SUCCESS conclusion",
+      "Database: 6/6 posts scheduled for tomorrow",
+      "Posting: Content actually published on schedule",
+      "Health: All endpoints return 200 status"
+    ],
+    "failure_indicators": [
+      "Continued GitHub Actions failures after 60 minutes",
+      "Schedule population remains incomplete",
+      "No actual content posting by end of day"
+    ]
+  },
+  "escalation_criteria": {
+    "if_secret_propagation_exceeds_60_minutes": "Re-update secret or contact GitHub support",
+    "if_schedule_remains_incomplete": "Manual schedule population required",
+    "if_posting_fails_end_to_end": "Investigate posting workflow implementation"
+  }
+}

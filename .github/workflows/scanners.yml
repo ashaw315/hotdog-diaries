@@ -47,7 +47,7 @@ jobs:
     env:
       TARGET_URL: ${{ vars.SITE_URL || secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SCAN_MIN_PER_PLATFORM: ${{ vars.SCAN_MIN_PER_PLATFORM || '40' }}
       SCAN_MAX_PER_PLATFORM: ${{ vars.SCAN_MAX_PER_PLATFORM || '120' }}
       SCAN_GLOBAL_MAX: ${{ vars.SCAN_GLOBAL_MAX || '800' }}
@@ -221,7 +221,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Platform-specific setup
@@ -332,7 +332,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Platform-specific setup
@@ -441,7 +441,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Generate scan summary

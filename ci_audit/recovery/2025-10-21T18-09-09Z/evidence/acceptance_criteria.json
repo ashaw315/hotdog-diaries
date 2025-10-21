@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Supabase REST API",
+    "passed": true,
+    "evidence": "HTTP 200"
+  },
+  {
+    "name": "Today schedule (≥6 posts)",
+    "passed": false,
+    "evidence": "0 posts scheduled"
+  },
+  {
+    "name": "Tomorrow schedule (≥6 posts)",
+    "passed": false,
+    "evidence": "0 posts scheduled"
+  },
+  {
+    "name": "Queue readiness (≥12 approved)",
+    "passed": true,
+    "evidence": "100 approved items"
+  },
+  {
+    "name": "Posting health endpoint",
+    "passed": false,
+    "evidence": "HTTP 500"
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "timestamp": "2025-10-21T20:15:00Z",
+  "step": "C", 
+  "action": "ci_signals_analysis",
+  "github_actions_status": {
+    "critical_workflows": {
+      "scheduler": {
+        "status": "FAILING",
+        "consecutive_failures": 10,
+        "last_success": "unknown",
+        "failure_pattern": "All runs since 2025-10-21T02:39:25Z failing",
+        "most_recent_runs": [
+          {"conclusion": "failure", "created": "2025-10-21T19:11:59Z", "url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18694911866"},
+          {"conclusion": "failure", "created": "2025-10-21T18:47:45Z", "url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18694310641"},
+          {"conclusion": "failure", "created": "2025-10-21T18:44:37Z", "url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18694236259"}
+        ]
+      },
+      "database_cleanup": {
+        "status": "FAILING",
+        "consecutive_failures": 5,
+        "failure_pattern": "All runs since 2025-10-18T06:14:11Z failing",
+        "most_recent_failure": "2025-10-21T18:52:09Z"
+      }
+    },
+    "working_workflows": {
+      "pixabay_scanning": {
+        "status": "HEALTHY",
+        "last_success": "2025-10-21T19:10:33Z",
+        "pattern": "Consistent success rate",
+        "note": "This workflow does not require Supabase service key"
+      },
+      "ci_deployment": {
+        "status": "HEALTHY", 
+        "recent_successes": [
+          "🚪 Deployment Gate - 2025-10-21T18:42:04Z",
+          "Deploy Gate - 2025-10-21T18:42:04Z",
+          "CI Test - 2025-10-21T18:39:02Z"
+        ]
+      }
+    }
+  },
+  "secret_propagation_analysis": {
+    "recovery_timestamp": "2025-10-21T18:44:32Z",
+    "post_recovery_runs": [
+      {"workflow": "scheduler", "time": "2025-10-21T18:47:45Z", "result": "failure"},
+      {"workflow": "scheduler", "time": "2025-10-21T19:11:59Z", "result": "failure"},
+      {"workflow": "database_cleanup", "time": "2025-10-21T18:52:09Z", "result": "failure"}
+    ],
+    "propagation_delay": "25+ minutes and counting",
+    "status": "STILL_PROPAGATING"
+  },
+  "failure_correlation": {
+    "supabase_dependent_workflows": "ALL_FAILING", 
+    "non_supabase_workflows": "HEALTHY",
+    "confirms_root_cause": "GitHub Actions still using old/invalid SUPABASE_SERVICE_ROLE_KEY"
+  },
+  "status": "SECRET_PROPAGATION_PENDING"
+}

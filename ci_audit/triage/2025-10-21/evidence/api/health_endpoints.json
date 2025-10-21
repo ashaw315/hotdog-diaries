@@ -1,0 +1,74 @@
+{
+  "investigation_timestamp": "2025-10-21T17:32:00Z",
+  "endpoints": {
+    "/api/health/schedule-tz": {
+      "status": 500,
+      "response_time": 1.198128,
+      "response": {
+        "status": "error",
+        "current_time_et": "2025-10-21 13:32:45 EDT",
+        "current_time_utc": "2025-10-21T17:32:45.265Z",
+        "timezone_offset_hours": 4,
+        "slot_conversions": [
+          {"slot_index": 0, "time_et": "08:00", "time_utc": "CONVERSION_FAILED", "is_valid": false},
+          {"slot_index": 1, "time_et": "12:00", "time_utc": "CONVERSION_FAILED", "is_valid": false},
+          {"slot_index": 2, "time_et": "15:00", "time_utc": "CONVERSION_FAILED", "is_valid": false},
+          {"slot_index": 3, "time_et": "18:00", "time_utc": "CONVERSION_FAILED", "is_valid": false},
+          {"slot_index": 4, "time_et": "21:00", "time_utc": "CONVERSION_FAILED", "is_valid": false},
+          {"slot_index": 5, "time_et": "23:30", "time_utc": "CONVERSION_FAILED", "is_valid": false}
+        ],
+        "issues": [
+          "Conversion failed for slot 0 (08:00 ET): Failed to convert ET time 08:00 on 2025-10-21 to UTC: ReferenceError: zonedTimeToUtc is not defined",
+          "Conversion failed for slot 1 (12:00 ET): Failed to convert ET time 12:00 on 2025-10-21 to UTC: ReferenceError: zonedTimeToUtc is not defined",
+          "Conversion failed for slot 2 (15:00 ET): Failed to convert ET time 15:00 on 2025-10-21 to UTC: ReferenceError: zonedTimeToUtc is not defined",
+          "Conversion failed for slot 3 (18:00 ET): Failed to convert ET time 18:00 on 2025-10-21 to UTC: ReferenceError: zonedTimeToUtc is not defined",
+          "Conversion failed for slot 4 (21:00 ET): Failed to convert ET time 21:00 on 2025-10-21 to UTC: ReferenceError: zonedTimeToUtc is not defined",
+          "Conversion failed for slot 5 (23:30 ET): Failed to convert ET time 23:30 on 2025-10-21 to UTC: ReferenceError: zonedTimeToUtc is not defined",
+          "Unexpected timezone offset during DST: 4 hours (expected ~-4)",
+          "6 slot conversions failed"
+        ],
+        "metadata": {
+          "timezone": "America/New_York",
+          "dst_active": true,
+          "check_timestamp": "2025-10-21T17:32:45.265Z"
+        }
+      }
+    },
+    "/api/health/posting-source-of-truth": {
+      "status": 500,
+      "response_time": 1.991514,
+      "response": {
+        "status": "error",
+        "feature_flag_active": false,
+        "total_recent_posts": 19,
+        "linked_posts": 0,
+        "orphan_posts": 19,
+        "orphan_percentage": 100,
+        "scheduled_posts_count": 25,
+        "posting_compliance_score": 0,
+        "issues": [
+          "ENFORCE_SCHEDULE_SOURCE_OF_TRUTH feature flag is not active",
+          "19 orphan posts found (100.0% of recent posts)"
+        ],
+        "recommendations": [
+          "Set ENFORCE_SCHEDULE_SOURCE_OF_TRUTH=true to enforce scheduled_posts as single source of truth",
+          "Run backfill job: npx tsx scripts/ops/backfill-post-links.ts --date YYYY-MM-DD --write"
+        ],
+        "metadata": {
+          "check_period_days": 7,
+          "check_timestamp": "2025-10-21T17:32:53.351Z",
+          "database_type": "supabase"
+        }
+      }
+    },
+    "/api/health/auth-selftest": {
+      "status": 401,
+      "response_time": 0.153828,
+      "response": {
+        "ok": false,
+        "code": "MISSING",
+        "detail": "No authentication token provided. Use Authorization: Bearer <token> or x-admin-token header"
+      }
+    }
+  }
+}

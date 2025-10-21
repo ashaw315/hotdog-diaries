@@ -98,7 +98,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Clean up duplicate content
@@ -157,7 +157,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Check for dead links
@@ -302,7 +302,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Monitor content queue health
@@ -371,7 +371,7 @@ jobs:
             MISSING_SECRETS="$MISSING_SECRETS SUPABASE_URL"
           fi
           
-          if [[ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
+          if [[ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
             MISSING_SECRETS="$MISSING_SECRETS SUPABASE_SERVICE_ROLE_KEY"
           fi
           

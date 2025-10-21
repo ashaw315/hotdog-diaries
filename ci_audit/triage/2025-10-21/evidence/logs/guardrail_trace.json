@@ -1,0 +1,89 @@
+{
+  "investigation_timestamp": "2025-10-21T17:50:00Z",
+  "guardrail_analysis": {
+    "posting_guard": {
+      "workflow": "_posting-guard.yml",
+      "purpose": "Verify schedule ready before posting",
+      "current_status": "FAILING",
+      "failure_point": "actions/setup-node@v4 step",
+      "description": "Reusable workflow that validates schedule readiness"
+    },
+    "scheduler_environment_setup": {
+      "action": ".github/actions/setup-supabase-rest",
+      "purpose": "Configure Supabase connection for scheduler operations", 
+      "current_status": "FAILING",
+      "failure_point": "Verify Supabase connection step (lines 49-85)",
+      "failure_mechanism": "curl test to Supabase REST API returning non-200 status",
+      "test_endpoint": "$SUPABASE_URL/rest/v1/",
+      "required_secrets": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "DATABASE_URL"
+      ]
+    },
+    "cascade_failure_pattern": {
+      "root_cause": "Supabase connection verification failure",
+      "affected_workflows": [
+        "scheduler.yml",
+        "post-breakfast.yml",
+        "post-lunch.yml", 
+        "post-dinner.yml",
+        "post-evening.yml",
+        "post-late-night.yml",
+        "post-snack.yml",
+        "queue-readiness.yml",
+        "scheduler-sla-guard.yml",
+        "schedule-reconcile.yml"
+      ],
+      "neutralization_effect": "All dependent jobs skip execution when environment setup fails",
+      "timeline": "Started failing around Oct 17-18, 2025"
+    },
+    "guardian_effectiveness": {
+      "intended_behavior": "Fail fast when dependencies unavailable",
+      "actual_behavior": "Successfully preventing broken operations",
+      "side_effect": "Complete system shutdown due to environment issue",
+      "evaluation": "WORKING AS DESIGNED - preventing bad operations but blocking all operations"
+    }
+  },
+  "environment_validation_steps": {
+    "step_1_env_vars": {
+      "action": "Configure environment variables (lines 31-47)",
+      "likely_status": "SUCCESS",
+      "description": "Sets SUPABASE_URL, SERVICE_KEY, NODE_ENV, DATABASE_URL"
+    },
+    "step_2_rest_test": {
+      "action": "Verify Supabase connection (lines 49-85)",
+      "likely_status": "FAILURE", 
+      "test_command": "curl -H 'apikey: $SERVICE_KEY' -H 'Authorization: Bearer $SERVICE_KEY' '$SUPABASE_URL/rest/v1/'",
+      "expected_response": "HTTP 200",
+      "failure_condition": "Non-200 HTTP status causes exit 1"
+    },
+    "step_3_db_config": {
+      "action": "Configure database-specific settings (lines 87-99)",
+      "likely_status": "SKIPPED",
+      "description": "Sets production DB config, only runs if step 2 succeeds"
+    }
+  },
+  "secret_dependency_analysis": {
+    "SUPABASE_URL": {
+      "required_for": "REST API endpoint base URL",
+      "expected_format": "https://projectid.supabase.co",
+      "test_method": "curl GET to /rest/v1/"
+    },
+    "SUPABASE_SERVICE_ROLE_KEY": {
+      "required_for": "API authentication header",
+      "expected_format": "JWT token starting with 'eyJhbGciOiJIUzI1NiI...'",
+      "test_method": "Used in apikey and Authorization headers"
+    },
+    "DATABASE_URL": {
+      "required_for": "Direct database connection",
+      "expected_format": "postgresql://user:pass@host:port/db",
+      "test_method": "Set as env var, not directly tested in action"
+    }
+  },
+  "hypothesis": {
+    "primary": "Supabase service secrets are invalid/expired/misconfigured",
+    "secondary": "Supabase project is down or access is blocked",
+    "tertiary": "Network connectivity issues from GitHub Actions to Supabase"
+  }
+}
