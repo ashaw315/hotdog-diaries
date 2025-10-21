@@ -59,3 +59,4 @@ credentials/
 SECURITY-INCIDENT-RECOVERY.md
 cookies_new.txt
 scripts.backup.*/
+tmp/
