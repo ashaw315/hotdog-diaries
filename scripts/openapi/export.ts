@@ -8,17 +8,21 @@
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { Command } from 'commander';
 
-const program = new Command();
+// Parse CLI arguments manually
+const args = process.argv.slice(2);
+const options = {
+  out: 'openapi.json',
+  format: 'json'
+};
 
-program
-  .option('--out <file>', 'Output file path', 'openapi.json')
-  .option('--format <format>', 'Output format (json|yaml)', 'json')
-  .parse();
-
-const options = program.opts();
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--out' && args[i + 1]) {
+    options.out = args[++i];
+  } else if (args[i] === '--format' && args[i + 1]) {
+    options.format = args[++i];
+  }
+}
 
 // Basic OpenAPI spec structure
 const spec = {

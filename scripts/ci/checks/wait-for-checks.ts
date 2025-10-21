@@ -5,19 +5,45 @@
  */
 
 import { Octokit } from '@octokit/rest';
-import { Command } from 'commander';
 
-const program = new Command();
+// Parse CLI arguments manually
+const args = process.argv.slice(2);
+const options: any = {
+  sha: '',
+  targets: [] as string[],
+  timeout: '12m',
+  repo: process.env.GITHUB_REPOSITORY || 'ashaw315/hotdog-diaries',
+  interval: '15'
+};
 
-program
-  .requiredOption('--sha <sha>', 'Git SHA to check')
-  .requiredOption('--targets <targets...>', 'Check name patterns to wait for')
-  .option('--timeout <timeout>', 'Timeout duration (e.g., 12m, 600s)', '12m')
-  .option('--repo <repo>', 'Repository in format owner/repo', process.env.GITHUB_REPOSITORY || 'ashaw315/hotdog-diaries')
-  .option('--interval <interval>', 'Poll interval in seconds', '15')
-  .parse();
+// Parse arguments
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+  if (arg === '--sha' && args[i + 1]) {
+    options.sha = args[++i];
+  } else if (arg === '--targets') {
+    // Collect all following args until next flag
+    while (args[i + 1] && !args[i + 1].startsWith('--')) {
+      options.targets.push(args[++i]);
+    }
+  } else if (arg === '--timeout' && args[i + 1]) {
+    options.timeout = args[++i];
+  } else if (arg === '--repo' && args[i + 1]) {
+    options.repo = args[++i];
+  } else if (arg === '--interval' && args[i + 1]) {
+    options.interval = args[++i];
+  }
+}
 
-const options = program.opts();
+// Validate required options
+if (!options.sha) {
+  console.error('Error: --sha is required');
+  process.exit(1);
+}
+if (options.targets.length === 0) {
+  console.error('Error: --targets is required');
+  process.exit(1);
+}
 
 // Parse timeout to milliseconds
 function parseTimeout(timeout: string): number {
