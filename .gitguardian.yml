@@ -95,6 +95,33 @@ ignored-matches:
   - name: test-jwt-token-rs256
     match: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.invalid"
     
+  - name: fake-rsa-test-token
+    match: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.invalid"
+    
+  # Documentation example tokens (truncated with ellipsis)
+  - name: docs-jwt-example-truncated
+    match: "eyJhbGc..."
+    
+  - name: docs-auth-token-example
+    match: "`eyJhbGc...`"
+    
+  # CLI documentation command examples
+  - name: cli-jwt-decode-example
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts decode "eyJhbGc'
+    
+  - name: cli-jwt-verify-example  
+    match: 'pnpm tsx scripts/ci/lib/jwt.ts verify "eyJhbGc'
+    
+  # JWT header patterns (partial tokens in documentation)
+  - name: jwt-header-hs256
+    match: "eyJhbGciOiJIUzI1NiJ9"
+    
+  - name: jwt-header-rs256
+    match: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9"
+    
+  - name: jwt-payload-test
+    match: "eyJzdWIiOiJ0ZXN0In0"
+    
   # Test database URLs
   - name: test-database-url
     match: "postgresql://test:test@localhost"
