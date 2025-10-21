@@ -44,7 +44,16 @@ async function main() {
 
   console.log(`🚀 Dispatching workflow: ${args.workflow}`)
   
-  const ref = process.env.GITHUB_SHA || process.env.GITHUB_REF || 'main'
+  // For PRs, use HEAD ref instead of merge commit SHA to avoid "No ref found" errors
+  let ref: string
+  if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
+    // Use the actual HEAD branch for PR dispatch
+    ref = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF || 'main'
+    console.log(`  PR context: using HEAD ref ${ref}`)
+  } else {
+    // For push events, use SHA or ref normally
+    ref = process.env.GITHUB_SHA || process.env.GITHUB_REF || 'main'
+  }
   console.log(`  Branch/SHA: ${ref}`)
   
   // Step 1: Dispatch workflow

@@ -119,9 +119,19 @@ Configure these in GitHub repository settings:
 
 | Secret | Description | Example |
 |--------|-------------|---------|
+| `JWT_SECRET` | **Primary auth secret** (64+ hex chars) | `a694aa9b...` |
 | `SUPABASE_URL` | Supabase project URL | `https://xxx.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (read-only ops) | `eyJhbGc...` |
+| `AUTH_TOKEN` | **Legacy fallback** (being deprecated) | `eyJhbGc...` |
 | `ALERT_WEBHOOK_URL` | Optional webhook for alerts | Slack/Discord webhook |
+
+### Authentication Methods
+
+The watchdog uses **JWT runtime minting** as the primary authentication method:
+
+1. **Primary**: Uses `JWT_SECRET` to mint short-lived tokens (15-30 minutes)
+2. **Fallback**: Falls back to static `AUTH_TOKEN` if JWT minting fails
+3. **Validation**: Tests auth self-test endpoint before running checks
 
 Variables (optional):
 | Variable | Description | Default |
@@ -194,6 +204,32 @@ gh workflow run manual-operations.yml --ref main \
 2. Verify posting service configuration
 3. Review canary timing (must be 06:20-06:40 ET)
 
+### Scenario: Authentication Failures
+
+**Symptoms**: Auth self-test endpoint fails, JWT minting errors
+
+**Actions**:
+```bash
+# Test JWT_SECRET manually
+echo $JWT_SECRET | wc -c  # Should be 65 (64 chars + newline)
+
+# Test JWT minting locally
+JWT_SECRET="your-secret" pnpm tsx scripts/ci/lib/jwt.ts mint --ttl 5m
+
+# Test auth endpoint directly
+TOKEN="..." curl -H "Authorization: Bearer $TOKEN" \
+  "https://hotdog-diaries.vercel.app/api/health/auth-selftest"
+
+# Check production auth self-test
+curl "https://hotdog-diaries.vercel.app/api/health/auth-selftest"
+```
+
+**Common Issues**:
+- `JWT_SECRET` not 64 hex characters exactly
+- Secret mismatch between CI and production
+- Auth self-test endpoint not deployed
+- Network issues during token minting
+
 ## 📈 Performance Baselines
 
 Expected metrics:
@@ -218,7 +254,9 @@ Expected metrics:
 
 ## 🔗 Related Documentation
 
+- [Auth Token Rotation & Deprecation Guide](../ci/auth-rotation.md)
 - [Posting Reliability Runbook](./posting-reliability.md)
+- [Secrets Management](../secrets.md)
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [Supabase Documentation](https://supabase.com/docs)
 
@@ -248,5 +286,5 @@ If watchdog consistently fails:
 
 ---
 
-*Last Updated: 2025-10-18*  
-*Next Review: 2025-11-18*
+*Last Updated: 2025-10-20*  
+*Next Review: 2025-11-20*
