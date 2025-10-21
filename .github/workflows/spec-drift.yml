@@ -73,9 +73,13 @@ jobs:
           # For OpenAPI 3.1.0, use @apidevtools/swagger-parser which supports it better
           if [[ "$OPENAPI_VERSION" == "3.1"* ]]; then
             echo "📋 Running OpenAPI 3.1.0 compatible validation..."
-            # Install newer parser that supports 3.1.0
-            npm install -g @apidevtools/swagger-parser@latest
-            npx @apidevtools/swagger-parser validate docs/openapi.yaml
+            # Use installed parser directly
+            node -e "
+              const SwaggerParser = require('@apidevtools/swagger-parser');
+              SwaggerParser.validate('docs/openapi.yaml')
+                .then(() => console.log('✅ OpenAPI 3.1.0 validation passed'))
+                .catch(err => { console.error('❌ Validation failed:', err.message); process.exit(1); });
+            "
           else
             echo "📋 Running swagger-parser validation..."
             npx swagger-parser validate docs/openapi.yaml
