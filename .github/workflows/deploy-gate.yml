@@ -195,7 +195,7 @@ jobs:
           echo "🔐 Minting runtime JWT token for deploy gate..."
           
           # Try runtime token first, fall back to legacy AUTH_TOKEN if minting fails
-          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 15m --sub ci-gate --aud ci --iss hotdog-diaries 2>/dev/null); then
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 15m --sub ci-gate --aud admin --iss hotdog-diaries 2>/dev/null); then
             echo "✅ Successfully minted runtime JWT token"
             echo "TOKEN=$TOKEN" >> $GITHUB_ENV
             echo "TOKEN_TYPE=runtime" >> $GITHUB_ENV
@@ -433,7 +433,7 @@ jobs:
           echo "🔐 Minting runtime JWT token for health validation..."
           
           # Try runtime token first, fall back to legacy AUTH_TOKEN if minting fails
-          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 10m --sub ci-health --aud ci --iss hotdog-diaries 2>/dev/null); then
+          if TOKEN=$(pnpm -s tsx scripts/ci/lib/jwt.ts mint --ttl 10m --sub ci-health --aud admin --iss hotdog-diaries 2>/dev/null); then
             echo "✅ Successfully minted runtime JWT token for health check"
             echo "TOKEN=$TOKEN" >> $GITHUB_ENV
           elif [ -n "${{ secrets.AUTH_TOKEN }}" ]; then

@@ -16,6 +16,9 @@ export interface JWTPayload {
   iat: number
   exp: number
   jti?: string
+  // AuthService compatibility fields
+  userId?: number
+  username?: string
 }
 
 export interface JWTHeader {
@@ -62,21 +65,26 @@ function parseTTL(ttl: string): number {
 }
 
 /**
- * Validate JWT_SECRET strength
+ * Validate JWT_SECRET strength and format
  */
-function validateJWTSecret(secret: string): void {
+function validateJWTSecret(secret: string): { secretBuffer: Buffer; isHex: boolean } {
   if (!secret) {
     throw new Error('JWT_SECRET is required but not provided')
   }
   
-  // Must be at least 64 hex chars (32 bytes)
-  if (secret.length < 64) {
-    throw new Error(`JWT_SECRET too weak: ${secret.length} chars < 64 required (32 bytes minimum)`)
-  }
+  // Check if secret is in hex format
+  const isHex = /^[0-9a-fA-F]+$/.test(secret) && secret.length >= 64
   
-  // Validate hex format
-  if (!/^[0-9a-fA-F]+$/.test(secret)) {
-    throw new Error('JWT_SECRET must be hexadecimal format')
+  if (isHex) {
+    // Hex format - convert to buffer
+    return { secretBuffer: Buffer.from(secret, 'hex'), isHex: true }
+  } else {
+    // String format (compatible with jsonwebtoken library)
+    // Ensure minimum length for security
+    if (secret.length < 32) {
+      throw new Error(`JWT_SECRET too weak: ${secret.length} chars < 32 required minimum`)
+    }
+    return { secretBuffer: Buffer.from(secret, 'utf8'), isHex: false }
   }
 }
 
@@ -115,7 +123,7 @@ export function mintToken(options: MintOptions = {}): string {
     throw new Error('JWT_SECRET environment variable is required')
   }
   
-  validateJWTSecret(jwtSecret)
+  const { secretBuffer } = validateJWTSecret(jwtSecret)
   
   const now = Math.floor(Date.now() / 1000)
   const exp = now + parseTTL(ttl)
@@ -141,6 +149,12 @@ export function mintToken(options: MintOptions = {}): string {
     ...(jti && { jti })
   }
   
+  // Add AuthService compatibility fields for admin tokens
+  if (aud === 'admin' || aud === 'ci') {
+    payload.userId = 1  // Admin user ID
+    payload.username = 'admin'  // Admin username
+  }
+  
   // Encode header and payload
   const encodedHeader = base64urlEncode(JSON.stringify(header))
   const encodedPayload = base64urlEncode(JSON.stringify(payload))
@@ -148,7 +162,7 @@ export function mintToken(options: MintOptions = {}): string {
   // Create signature
   const signingInput = `${encodedHeader}.${encodedPayload}`
   const signature = crypto
-    .createHmac('sha256', Buffer.from(jwtSecret, 'hex'))
+    .createHmac('sha256', secretBuffer)
     .update(signingInput)
     .digest('base64')
     .replace(/\+/g, '-')
@@ -187,13 +201,14 @@ export function verifyToken(token: string): JWTPayload {
     throw new Error('JWT_SECRET environment variable is required')
   }
   
+  const { secretBuffer } = validateJWTSecret(jwtSecret)
   const decoded = decodeUnsafe(token)
   
   // Verify signature
   const parts = token.split('.')
   const signingInput = `${parts[0]}.${parts[1]}`
   const expectedSignature = crypto
-    .createHmac('sha256', Buffer.from(jwtSecret, 'hex'))
+    .createHmac('sha256', secretBuffer)
     .update(signingInput)
     .digest('base64')
     .replace(/\+/g, '-')
