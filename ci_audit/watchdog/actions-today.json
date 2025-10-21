@@ -1,0 +1,42 @@
+{
+  "date": "2025-10-21",
+  "checkedAt": "2025-10-21T20:18:29.329Z",
+  "slots": [
+    {
+      "slot": "breakfast",
+      "timeET": "08:00",
+      "status": "MISSING_EXECUTION",
+      "message": "No run found for past slot"
+    },
+    {
+      "slot": "lunch",
+      "timeET": "12:00",
+      "status": "MISSING_EXECUTION",
+      "message": "No run found for past slot"
+    },
+    {
+      "slot": "snack",
+      "timeET": "15:00",
+      "status": "MISSING_EXECUTION",
+      "message": "No run found for past slot"
+    },
+    {
+      "slot": "dinner",
+      "timeET": "18:00",
+      "status": "NOT_EXECUTED_YET",
+      "message": "Scheduled for future"
+    },
+    {
+      "slot": "evening",
+      "timeET": "21:00",
+      "status": "NOT_EXECUTED_YET",
+      "message": "Scheduled for future"
+    },
+    {
+      "slot": "late-night",
+      "timeET": "23:30",
+      "status": "NOT_EXECUTED_YET",
+      "message": "Scheduled for future"
+    }
+  ]
+}

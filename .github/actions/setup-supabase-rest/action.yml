@@ -36,6 +36,12 @@ runs:
         echo "SUPABASE_SERVICE_ROLE_KEY=${{ inputs.supabase-service-key }}" >> $GITHUB_ENV
         echo "NODE_ENV=${{ inputs.node-env }}" >> $GITHUB_ENV
         
+        # Sanity guard
+        if [ -z "${{ inputs.supabase-service-key }}" ]; then
+          echo "Missing SUPABASE_SERVICE_ROLE_KEY" >&2
+          exit 1
+        fi
+        
         # Set database URL if provided
         if [[ -n "${{ inputs.database-url }}" ]]; then
           echo "DATABASE_URL=${{ inputs.database-url }}" >> $GITHUB_ENV
@@ -44,6 +50,16 @@ runs:
         # Configure for production-like environment
         echo "POSTGRES_URL=${{ inputs.database-url }}" >> $GITHUB_ENV
         echo "VERCEL_ENV=production" >> $GITHUB_ENV
+        
+    - name: Supabase reachability (status only)
+      shell: bash
+      run: |
+        code=$(curl -sS -o /dev/null -w "%{http_code}" \
+          -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+          -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+          "${SUPABASE_URL}/rest/v1/")
+        echo "SUPABASE_REST_CODE=${code}"
+        test "${code}" = "200"
         
     - name: Verify Supabase connection
       id: verify

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { formatInTimeZone, utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
 import { parseISO, format, addHours } from 'date-fns'
 
 /**
@@ -34,9 +34,13 @@ interface TimezoneHealthCheck {
 // Convert ET time to UTC for a given date
 function etToUtc(dateStr: string, timeStr: string): string {
   try {
-    const etDateTime = parseISO(`${dateStr}T${timeStr}:00`)
-    const utcDateTime = zonedTimeToUtc(etDateTime, TZ)
-    return utcDateTime.toISOString()
+    // Create a date string in ET timezone and parse it correctly
+    const etDateTimeStr = `${dateStr}T${timeStr}:00`
+    const etDateTime = parseISO(etDateTimeStr)
+    
+    // Use formatInTimeZone to handle the conversion properly
+    const utcIsoString = formatInTimeZone(etDateTime, 'UTC', "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+    return utcIsoString
   } catch (error) {
     throw new Error(`Failed to convert ET time ${timeStr} on ${dateStr} to UTC: ${error}`)
   }

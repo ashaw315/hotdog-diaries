@@ -113,7 +113,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "🔧 Running backfill job for orphan posts..."
           echo "Target date: ${{ steps.date.outputs.target_date }}"

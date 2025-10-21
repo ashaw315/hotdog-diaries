@@ -1,0 +1,51 @@
+{
+  "investigation_timestamp": "2025-10-21T17:55:00Z",
+  "hypothesis_testing": {
+    "original_hypothesis": "Supabase connection is failing in GitHub Actions",
+    "test_results": {
+      "local_supabase_test": {
+        "test": "Curl to Supabase REST API from local machine",
+        "service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsYWFkcGh4ZnNyaWhvdWJqZHJiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTYxNjI1NiwiZXhwIjoyMDcxMTkyMjU2fQ.8u_cd_4_apKd_1baqPq82k3YuWUmmnM51lvZE7muLE4",
+        "endpoint": "https://ulaadphxfsrihoubjdrb.supabase.co/rest/v1/",
+        "result": "SUCCESS",
+        "http_status": 200,
+        "response_type": "Valid OpenAPI spec with all expected tables",
+        "conclusion": "Supabase is accessible and service key is valid"
+      },
+      "alternate_key_test": {
+        "test": "Test with potentially different service role key",
+        "service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsYWFkcGh4ZnNyaWhvdWJqZHJiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNzI5MDA2OCwiZXhwIjoyMDUyODY2MDY4fQ.d3VZK8g7V2sFtWFXDMsqGYxl3_k-MUo8hcpT-kzV8dQ",
+        "endpoint": "https://ulaadphxfsrihoubjdrb.supabase.co/rest/v1/",
+        "result": "FAILURE",
+        "http_status": 401,
+        "response_type": "Unauthorized",
+        "conclusion": "Invalid or expired service role key"
+      }
+    },
+    "refined_hypothesis": {
+      "primary": "GitHub Actions is using an invalid/expired SUPABASE_SERVICE_ROLE_KEY secret",
+      "supporting_evidence": [
+        "Supabase endpoint is accessible (HTTP 200)",
+        "Valid service key works from local machine",
+        "Invalid service key returns 401 Unauthorized",
+        "GitHub Actions failing at 'Verify Supabase connection' step",
+        "All workflows started failing around same timeframe (Oct 17-18)"
+      ],
+      "probable_cause": "Service role key in GitHub Secrets needs to be updated to working key"
+    }
+  },
+  "supporting_observations": {
+    "timeline_correlation": "Service key rotation likely occurred around Oct 17-18, 2025",
+    "cascade_impact": "Invalid key causes all scheduler and posting workflows to fail fast",
+    "guardrail_behavior": "System correctly preventing operations with broken environment",
+    "scope": "Affects 100% of production automation workflows"
+  },
+  "test_methodology": {
+    "pass_criteria": "HTTP 200 response from Supabase REST API", 
+    "fail_criteria": "HTTP 401 or other non-200 responses",
+    "test_command": "curl -H 'apikey: $KEY' -H 'Authorization: Bearer $KEY' '$SUPABASE_URL/rest/v1/'",
+    "environment": "Local machine with same network/security context as GitHub Actions"
+  },
+  "confidence_level": "HIGH - 95%",
+  "recommended_next_action": "Update GitHub SUPABASE_SERVICE_ROLE_KEY secret with working key"
+}

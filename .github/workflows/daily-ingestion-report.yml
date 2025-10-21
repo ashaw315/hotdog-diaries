@@ -31,7 +31,7 @@ jobs:
       - name: Generate Ingestion Balance Report
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ "${{ github.event.inputs.format }}" = "json" ]; then
             npx tsx scripts/ingestion-balance-report.ts --format=json
@@ -42,7 +42,7 @@ jobs:
       - name: Check Alert Thresholds
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npx tsx scripts/ingestion-balance-report.ts --alert-thresholds
         continue-on-error: true
         id: alerts

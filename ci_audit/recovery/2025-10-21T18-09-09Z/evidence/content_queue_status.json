@@ -1,0 +1,46 @@
+{
+  "total": 1000,
+  "approved": 899,
+  "sample": [
+    {
+      "is_approved": true,
+      "source_platform": "pixabay"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "pixabay"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "tumblr"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "tumblr"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "tumblr"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "pixabay"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "pixabay"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "pixabay"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "pixabay"
+    },
+    {
+      "is_approved": true,
+      "source_platform": "pixabay"
+    }
+  ]
+}

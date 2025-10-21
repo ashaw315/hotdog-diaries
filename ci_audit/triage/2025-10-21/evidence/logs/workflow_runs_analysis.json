@@ -1,0 +1,83 @@
+{
+  "investigation_timestamp": "2025-10-21T17:40:00Z",
+  "analysis_period": "last_72_hours",
+  "workflow_failure_summary": {
+    "scheduler.yml": {
+      "pattern": "100% FAILURE RATE",
+      "last_success": "unknown",
+      "recent_failures": 10,
+      "impact": "CRITICAL - No new posts being scheduled"
+    },
+    "posting_workflows": {
+      "post-breakfast.yml": {
+        "pattern": "100% FAILURE RATE (recent)",
+        "last_success": "not in recent 5 runs",
+        "impact": "Morning posts not working"
+      },
+      "post-lunch.yml": {
+        "pattern": "Mostly failing, last success 2025-10-17",
+        "last_success": "2025-10-17T12:34:43Z",
+        "impact": "Lunch posts failing since Oct 18"
+      },
+      "post-dinner.yml": {
+        "pattern": "Failing since Oct 18, last success Oct 17",
+        "last_success": "2025-10-17T18:22:08Z", 
+        "impact": "Dinner posts broken"
+      },
+      "post-evening.yml": {
+        "pattern": "Failing since Oct 18, last success Oct 17",
+        "last_success": "2025-10-17T20:12:53Z",
+        "impact": "Evening posts broken"
+      },
+      "post-late-night.yml": {
+        "pattern": "Failing since Oct 17, last success Oct 16",
+        "last_success": "2025-10-16T22:34:18Z",
+        "impact": "Late night posts broken"
+      },
+      "post-snack.yml": {
+        "pattern": "Failing since Oct 17, last success Oct 17",
+        "last_success": "2025-10-17T15:15:05Z",
+        "impact": "Snack posts broken"
+      }
+    },
+    "guardrail_workflows": {
+      "queue-readiness.yml": {
+        "pattern": "100% FAILURE RATE",
+        "last_success": "unknown",
+        "impact": "Queue health checks failing"
+      },
+      "scheduler-sla-guard.yml": {
+        "pattern": "100% FAILURE RATE", 
+        "last_success": "unknown",
+        "impact": "SLA monitoring broken"
+      },
+      "schedule-reconcile.yml": {
+        "pattern": "100% FAILURE RATE",
+        "last_success": "unknown", 
+        "impact": "Schedule reconciliation broken"
+      }
+    }
+  },
+  "failure_timeline": {
+    "oct_16": "Most posting workflows working",
+    "oct_17": "Some posting workflows still working, late-night starts failing",
+    "oct_18": "Major posting workflow failures begin", 
+    "oct_19": "All posting workflows failing",
+    "oct_20": "Continued complete failure",
+    "oct_21": "Complete system failure continues"
+  },
+  "critical_observations": [
+    "COMPLETE SYSTEM FAILURE since ~Oct 17-18",
+    "scheduler.yml has been failing for 10+ consecutive runs",
+    "ALL posting workflows failing (6/6 workflow types)",
+    "ALL guardrail workflows failing (3/3 types)",
+    "No posts being scheduled (explains 0 posts in database for today/tomorrow)",
+    "Posting failures explain timezone errors (no schedule to post)",
+    "System breakdown occurred around Oct 17-18 timeframe"
+  ],
+  "sample_failed_runs": {
+    "scheduler_recent": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18683756570",
+    "post_lunch_today": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18684022917",
+    "queue_readiness": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18680549632"
+  }
+}

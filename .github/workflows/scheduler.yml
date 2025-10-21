@@ -99,7 +99,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Refill content schedule
@@ -166,7 +166,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Generate schedule forecast
@@ -232,7 +232,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Reconcile content and schedule
@@ -299,7 +299,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           
       - name: Check queue health

@@ -1,0 +1,15 @@
+{
+  "date": "2025-10-21",
+  "tomorrow": "2025-10-22",
+  "scheduleTodayCount": 6,
+  "scheduleTodayNonNull": 6,
+  "scheduleTomorrowCount": 0,
+  "scheduleTomorrowNonNull": 0,
+  "postedTodayCount": 0,
+  "flags": {
+    "SCHEDULE_TODAY_OK": true,
+    "SCHEDULE_TOMORROW_OK": false,
+    "NON_NULL_BIND_RATIO_TODAY": 1,
+    "POSTED_COUNT_TODAY": 0
+  }
+}
