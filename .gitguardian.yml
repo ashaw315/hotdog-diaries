@@ -57,6 +57,22 @@ ignored-matches:
   - name: test-jwt-secret-repeated-b  
     match: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     
+  - name: test-jwt-secret-repeated-c
+    match: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    
+  # JavaScript test patterns that generate repeated chars
+  - name: test-jwt-repeat-pattern-a
+    match: "'a'.repeat(64)"
+    
+  - name: test-jwt-repeat-pattern-b
+    match: "'b'.repeat(32)"
+    
+  - name: test-jwt-repeat-pattern-c
+    match: "'c'.repeat(64)"
+    
+  - name: test-jwt-repeat-pattern-generic
+    match: ".repeat(6"
+    
   - name: test-jwt-constant-pattern
     match: "TEST_JWT_SECRET"
     
