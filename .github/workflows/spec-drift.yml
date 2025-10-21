@@ -35,15 +35,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Setup Node.js with cache
-        uses: ./.github/actions/setup-node
+      - uses: pnpm/action-setup@v4
+          
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache-key-suffix: 'openapi-validation'
+          cache: 'pnpm'
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
           
       - name: Install OpenAPI validation tools
         run: |
-          npm install -g @redocly/cli swagger-parser
+          pnpm add -g @redocly/cli @apidevtools/swagger-parser
           # Install yq for YAML parsing
           sudo snap install yq || brew install yq || (curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o yq && chmod +x yq && sudo mv yq /usr/local/bin/)
           
@@ -120,16 +125,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Setup Node.js with cache
-        uses: ./.github/actions/setup-node
+      - uses: pnpm/action-setup@v4
+          
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache-key-suffix: 'drift-detection'
+          cache: 'pnpm'
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
           
       - name: Generate current route inventory
         run: |
           echo "🔍 Generating current API route inventory..."
-          npx tsx scripts/route-inventory.ts
+          pnpm tsx scripts/route-inventory.ts
           
           # Show inventory summary
           echo "📊 Current route inventory:"
@@ -287,18 +297,47 @@ jobs:
           echo "**Workflow**: \`spec-drift.yml\`" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp**: $(date -Iseconds)" >> $GITHUB_STEP_SUMMARY
 
-  fail-on-drift:
-    name: Fail on Drift (PR only)
+  auto-update-spec:
+    name: Auto-update OpenAPI Spec (PR only)
     runs-on: ubuntu-latest
     needs: detect-api-drift
     if: github.event_name == 'pull_request' && needs.detect-api-drift.outputs.drift-detected == 'true'
     steps:
-      - name: Fail PR on drift
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - uses: pnpm/action-setup@v4
+          
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Generate and update OpenAPI spec
         run: |
-          echo "❌ PR blocked due to API specification drift"
-          echo ""
-          echo "The following routes are not documented in the OpenAPI specification:"
-          echo '${{ needs.detect-api-drift.outputs.missing-routes }}' | jq -r '.[]'
-          echo ""
-          echo "Please update docs/openapi.yaml or docs/openapi.ignore.json before merging."
-          exit 1
+          echo "🔄 Auto-updating OpenAPI spec to fix drift..."
+          
+          # Generate current spec
+          pnpm tsx scripts/openapi/export.ts --out tmp/openapi.gen.json
+          
+          # Run diff and auto-update
+          node scripts/openapi/diff.mjs
+          
+          # Check if there are changes to commit
+          if git diff --quiet openapi.json; then
+            echo "✅ No changes needed to OpenAPI spec"
+          else
+            echo "📝 Committing OpenAPI spec updates..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add openapi.json
+            git commit -m "fix: auto-update OpenAPI spec to resolve drift"
+            git push
+            echo "✅ OpenAPI spec updated and committed to PR"
+          fi

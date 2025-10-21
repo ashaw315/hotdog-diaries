@@ -1,0 +1,6 @@
+/api/admin/schedule/forecast
+/api/admin/schedule/forecast/refill
+/api/admin/schedule/forecast/reconcile
+/api/admin/health/deep
+/api/admin/health/auth-token
+/api/system/metrics

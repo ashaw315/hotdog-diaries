@@ -220,6 +220,7 @@ async function cli() {
   const args = process.argv.slice(2)
   
   if (args.length === 0) {
+    // Documentation examples only - not real secrets (configured in .gitguardian.yml)
     console.log(`
 Usage:
   pnpm tsx scripts/ci/lib/jwt.ts mint [options]    Mint a new JWT token

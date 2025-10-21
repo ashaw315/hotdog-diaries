@@ -1,63 +1,51 @@
 # GitGuardian Configuration
 # Allowlist for test fixtures and benign secrets
 
-version: v1
+version: 2
 
-# Paths to ignore completely  
-paths-ignore:
-  - "**/__tests__/**"
-  - "**/test/**"
-  - "**/tests/**"
-  - "**/*.test.*"
-  - "**/*.spec.*"
-  - "**/fixtures/**"
-  - "**/mocks/**"
-  - "**/sample/**"
-  - "**/examples/**"
-  - "scripts/ci/**"
-  - "ci_audit/**"
+# Paths to exclude from scanning
+paths:
+  exclude:
+    - "**/__tests__/**"
+    - "**/test/**"
+    - "**/tests/**"
+    - "**/*.test.*"
+    - "**/*.spec.*"
+    - "**/fixtures/**"
+    - "**/mocks/**"
+    - "**/sample/**"
+    - "**/examples/**"
+    - "ci_audit/**"
+    - "docs/examples/**"
 
-# Specific secrets to ignore (test fixtures only)
-secrets-ignore:
+# Specific matches to ignore (test fixtures and documentation)
+ignored-matches:
+  # JWT CLI usage documentation - not real secrets
+  - name: jwt-cli-usage-docs
+    match: "pnpm tsx scripts/ci/lib/jwt.ts decode --token"
+  
+  - name: jwt-cli-usage-verify
+    match: "pnpm tsx scripts/ci/lib/jwt.ts verify --token"
+    
   # Test JWT secrets (clearly marked as test/demo)
-  - name: "Test JWT Secret"
+  - name: test-jwt-secret
     match: "test-jwt-secret"
   
-  - name: "Demo JWT Secret"  
+  - name: demo-jwt-secret
     match: "demo-jwt-secret"
     
-  - name: "CI Test JWT"
+  - name: ci-test-jwt
     match: "test-secret-123"
     
-  - name: "Example Auth Token"
+  - name: example-auth-token
     match: "example-auth-token"
     
   # Test database URLs
-  - name: "Test Database URL"
+  - name: test-database-url
     match: "postgresql://test:test@localhost"
     
-  - name: "SQLite Test DB"
+  - name: sqlite-test-db
     match: "test_hotdog_diaries.db"
-    
-  # Secret scanning patterns (not actual secrets)
-  - name: "JWT Pattern in Security Script"
-    match: "eyJ[A-Za-z0-9_-]{100,}"
-
-# File patterns for test secrets
-file-ignore:
-  - "*.env.example"
-  - "*.env.test" 
-  - ".env.ci"
-  - "*.sample"
-  - "package.json"
-  - "package-lock.json"
-  - "pnpm-lock.yaml"
 
 # Only scan for high-confidence secrets
-minimum-occurrences: 2
-minimum-entropy: 3.5
-
-# Specific detectors to disable for test files
-detectors-ignore:
-  - "generic_high_entropy_secret"  # Often false positives in test data
-  - "generic_password"             # Test passwords are acceptable
+verbose: false
