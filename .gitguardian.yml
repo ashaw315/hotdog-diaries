@@ -122,6 +122,13 @@ ignored-matches:
   - name: jwt-payload-test
     match: "eyJzdWIiOiJ0ZXN0In0"
     
+  # Catch-all patterns for test/documentation JWT components
+  - name: jwt-test-components
+    match: "eyJhbGc"
+    
+  - name: jwt-markdown-table-examples
+    match: "| `eyJhbGc"
+    
   # Test database URLs
   - name: test-database-url
     match: "postgresql://test:test@localhost"
