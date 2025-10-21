@@ -50,29 +50,69 @@
       "description": "Files served statically, not API endpoints"
     },
     {
-      "pattern": "^/api/test.*",
-      "reason": "Test endpoints",
-      "description": "Testing and development endpoints not for production use"
+      "pattern": "^/admin.*",
+      "reason": "Admin interface endpoints",
+      "description": "Administrative interface endpoints - internal use only, not public API"
     },
     {
-      "pattern": "^/test-.*",
+      "pattern": "^/cron.*",
+      "reason": "Cron job endpoints",
+      "description": "Scheduled task endpoints - internal automation, not public API"
+    },
+    {
+      "pattern": "^/health.*",
+      "reason": "Health check endpoints",
+      "description": "System health and monitoring endpoints - operational use only"
+    },
+    {
+      "pattern": "^/auth.*",
+      "reason": "Authentication endpoints",
+      "description": "Authentication and authorization endpoints - handled by auth system"
+    },
+    {
+      "pattern": "^/proxy.*",
+      "reason": "Proxy endpoints",
+      "description": "Media proxy endpoints - infrastructure, not business logic API"
+    },
+    {
+      "pattern": "^/client-error$",
+      "reason": "Error logging endpoint",
+      "description": "Client-side error logging - infrastructure endpoint"
+    },
+    {
+      "pattern": "^/ping$",
+      "reason": "Basic connectivity check",
+      "description": "Simple ping endpoint for connectivity testing"
+    },
+    {
+      "pattern": "^/system.*",
+      "reason": "System endpoints",
+      "description": "System monitoring and metrics endpoints"
+    },
+    {
+      "pattern": "^/example-usage$",
+      "reason": "Documentation endpoint",
+      "description": "API usage examples - documentation only"
+    },
+    {
+      "pattern": "^/video-errors$",
+      "reason": "Error tracking endpoint",
+      "description": "Video playback error tracking - operational use"
+    },
+    {
+      "pattern": "^/youtube-proxy$",
+      "reason": "Media proxy endpoint",
+      "description": "YouTube media proxying - infrastructure endpoint"
+    },
+    {
+      "pattern": "^/test.*",
       "reason": "Test endpoints",
-      "description": "Testing endpoints at root level not for production use"
+      "description": "Testing and development endpoints not for production use"
     },
     {
       "pattern": "^/debug.*",
       "reason": "Debug endpoints",
       "description": "Debug and diagnostic endpoints for development only"
-    },
-    {
-      "pattern": "^/admin/test.*",
-      "reason": "Admin test endpoints",
-      "description": "Admin testing endpoints not for production API documentation"
-    },
-    {
-      "pattern": "^/admin/debug.*",
-      "reason": "Admin debug endpoints", 
-      "description": "Admin debug and diagnostic endpoints"
     },
     {
       "pattern": "^/temp-content.*",
