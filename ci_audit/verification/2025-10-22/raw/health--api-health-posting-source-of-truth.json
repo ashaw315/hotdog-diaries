@@ -1,0 +1,21 @@
+{
+  "status": 500,
+  "headers": {
+    "cache-control": "no-cache, no-store, must-revalidate",
+    "content-type": "application/json",
+    "date": "Wed, 22 Oct 2025 14:09:43 GMT",
+    "pragma": "no-cache",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "Vercel",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "transfer-encoding": "chunked",
+    "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "x-matched-path": "/api/health/posting-source-of-truth",
+    "x-vercel-cache": "BYPASS",
+    "x-vercel-id": "iad1::iad1::snvc2-1761142182089-40bb910ad63f",
+    "x-xss-protection": "1; mode=block"
+  },
+  "body": "{\"status\":\"error\",\"feature_flag_active\":false,\"total_recent_posts\":14,\"linked_posts\":0,\"orphan_posts\":14,\"orphan_percentage\":100,\"scheduled_posts_count\":25,\"posting_compliance_score\":0,\"issues\":[\"ENFORCE_SCHEDULE_SOURCE_OF_TRUTH feature flag is not active\",\"14 orphan posts found (100.0% of recent posts)\"],\"recommendations\":[\"Set ENFORCE_SCHEDULE_SOURCE_OF_TRUTH=true to enforce scheduled_posts as single source of truth\",\"Run backfill job: npx tsx scripts/ops/backfill-post-links.ts --date YYYY-MM-DD --write\"],\"metadata\":{\"check_period_days\":7,\"check_timestamp\":\"2025-10-22T14:09:43.029Z\",\"database_type\":\"supabase\"}}"
+}

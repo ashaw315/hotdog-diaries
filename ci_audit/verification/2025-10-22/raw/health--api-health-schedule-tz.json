@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "headers": {
+    "cache-control": "no-cache, no-store, must-revalidate",
+    "content-encoding": "gzip",
+    "content-type": "application/json",
+    "date": "Wed, 22 Oct 2025 14:09:42 GMT",
+    "pragma": "no-cache",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "Vercel",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "transfer-encoding": "chunked",
+    "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "x-matched-path": "/api/health/schedule-tz",
+    "x-vercel-cache": "BYPASS",
+    "x-vercel-id": "iad1::iad1::md6rf-1761142180930-109e2085faea",
+    "x-xss-protection": "1; mode=block"
+  },
+  "body": "{\"status\":\"warning\",\"current_time_et\":\"2025-10-22 10:09:42 EDT\",\"current_time_utc\":\"2025-10-22T14:09:42.010Z\",\"timezone_offset_hours\":4,\"slot_conversions\":[{\"slot_index\":0,\"time_et\":\"08:00\",\"time_utc\":\"2025-10-22T08:00:00.000Z\",\"is_valid\":true},{\"slot_index\":1,\"time_et\":\"12:00\",\"time_utc\":\"2025-10-22T12:00:00.000Z\",\"is_valid\":true},{\"slot_index\":2,\"time_et\":\"15:00\",\"time_utc\":\"2025-10-22T15:00:00.000Z\",\"is_valid\":true},{\"slot_index\":3,\"time_et\":\"18:00\",\"time_utc\":\"2025-10-22T18:00:00.000Z\",\"is_valid\":true},{\"slot_index\":4,\"time_et\":\"21:00\",\"time_utc\":\"2025-10-22T21:00:00.000Z\",\"is_valid\":true},{\"slot_index\":5,\"time_et\":\"23:30\",\"time_utc\":\"2025-10-22T23:30:00.000Z\",\"is_valid\":true}],\"issues\":[\"Unexpected timezone offset during DST: 4 hours (expected ~-4)\"],\"metadata\":{\"timezone\":\"America/New_York\",\"dst_active\":true,\"check_timestamp\":\"2025-10-22T14:09:42.010Z\"}}"
+}

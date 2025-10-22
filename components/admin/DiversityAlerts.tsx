@@ -70,18 +70,95 @@ export default function DiversityAlerts({
     try {
       setError(null)
       const targetDate = date || new Date().toISOString().split('T')[0]
-      const response = await fetch(`/api/admin/metrics/diversity?date=${targetDate}`, {
+      const response = await fetch(`/api/admin/diversity-summary?date=${targetDate}`, {
         credentials: 'include'
       })
 
       if (response.ok) {
         const data = await response.json()
-        setMetrics(data)
+        
+        // Handle structured error responses gracefully
+        if (data.status === 'error') {
+          setError(data.issues?.join('; ') || 'Diversity metrics unavailable')
+          // Still try to render any partial data we might have
+          if (data.summary) {
+            setMetrics({
+              date: data.date || targetDate,
+              overallScore: data.summary.diversity_score || 0,
+              platformBalance: {
+                distribution: data.summary.platforms || {},
+                variance: 0,
+                dominantPlatform: '',
+                dominantPercentage: 0
+              },
+              temporalAnalysis: {
+                consecutivePlatforms: 0,
+                averageSpacing: 0,
+                maxSpacing: 0,
+                minSpacing: 0
+              },
+              contentTypes: {
+                distribution: data.summary.content_types || {},
+                alternationScore: 100
+              },
+              alerts: [],
+              recommendations: data.recommendations || [],
+              historical: {
+                currentScore: data.summary.diversity_score || 0,
+                yesterdayScore: 0,
+                weekAverageScore: 0,
+                scoreTrend: 'stable' as const,
+                dropPercentage: 0
+              },
+              summary: {
+                status: 'warning' as const,
+                score: data.summary.diversity_score || 0,
+                trend: 'stable' as const,
+                totalPosts: data.summary.filled_slots || 0,
+                alertCount: 0
+              }
+            })
+          }
+        } else {
+          // Transform the simplified API response to match the expected interface
+          setMetrics({
+            date: data.date || targetDate,
+            overallScore: data.summary?.diversity_score || 0,
+            platformBalance: {
+              distribution: data.summary?.platforms || {},
+              variance: 0,
+              dominantPlatform: '',
+              dominantPercentage: 0
+            },
+            temporalAnalysis: {
+              consecutivePlatforms: 0,
+              averageSpacing: 0,
+              maxSpacing: 0,
+              minSpacing: 0
+            },
+            contentTypes: {
+              distribution: data.summary?.content_types || {},
+              alternationScore: 100
+            },
+            alerts: [],
+            recommendations: data.recommendations || [],
+            historical: {
+              currentScore: data.summary?.diversity_score || 0,
+              yesterdayScore: 0,
+              weekAverageScore: 0,
+              scoreTrend: 'stable' as const,
+              dropPercentage: 0
+            },
+            summary: {
+              status: 'healthy' as const,
+              score: data.summary?.diversity_score || 0,
+              trend: 'stable' as const,
+              totalPosts: data.summary?.filled_slots || 0,
+              alertCount: 0
+            }
+          })
+        }
         setLastUpdate(new Date())
-      } else if (response.status === 404) {
-        setError('No scheduled content found for this date')
-      } else if (response.status === 401) {
-        setError('Unauthorized access to diversity metrics')
       } else {
         setError(`Failed to load diversity metrics (${response.status})`)
       }

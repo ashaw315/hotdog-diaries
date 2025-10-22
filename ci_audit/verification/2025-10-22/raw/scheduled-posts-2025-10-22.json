@@ -1,0 +1,32 @@
+[
+  {
+    "id": 44,
+    "content_id": 91,
+    "platform": "pixabay",
+    "content_type": "image",
+    "source": "Dreblow",
+    "title": "sausage, food, meal, yummy, hearty, sausages, home cooking, vesper, sausage, sausage, sausage, sausa",
+    "scheduled_post_time": "2025-10-22T01:00:00+00:00",
+    "scheduled_slot_index": 4,
+    "actual_posted_at": null,
+    "reasoning": "creating new row for empty slot (constraint level: diversity-optimized, diversity score: 0.900)",
+    "created_at": "2025-10-21T09:26:30.751381+00:00",
+    "updated_at": "2025-10-21T09:26:30.734+00:00",
+    "scheduled_day": "2025-10-22"
+  },
+  {
+    "id": 45,
+    "content_id": 8034,
+    "platform": "imgur",
+    "content_type": "image",
+    "source": "richardstinks",
+    "title": "🖼️ I made a giant chili dog.\nFinished product first with background for scale. (Out of bananas) Ove",
+    "scheduled_post_time": "2025-10-22T03:30:00+00:00",
+    "scheduled_slot_index": 5,
+    "actual_posted_at": null,
+    "reasoning": "creating new row for empty slot (constraint level: diversity-optimized, diversity score: 0.392)",
+    "created_at": "2025-10-21T09:26:31.249251+00:00",
+    "updated_at": "2025-10-21T09:26:31.23+00:00",
+    "scheduled_day": "2025-10-22"
+  }
+]

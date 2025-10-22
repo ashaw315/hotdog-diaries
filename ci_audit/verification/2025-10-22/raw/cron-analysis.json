@@ -1,0 +1,294 @@
+{
+  "allCronJobs": [
+    {
+      "expression": "0 8 * * 1",
+      "workflow": "weekly-smoke-test",
+      "etTime": "4:00 AM",
+      "utcTime": "08:00 UTC",
+      "nextRun": "2025-10-23T08:00:00.000Z"
+    },
+    {
+      "expression": "0 6 * * 1",
+      "workflow": "spec-drift",
+      "etTime": "2:00 AM",
+      "utcTime": "06:00 UTC",
+      "nextRun": "2025-10-23T06:00:00.000Z"
+    },
+    {
+      "expression": "0 9 * * 1",
+      "workflow": "secret-validation",
+      "etTime": "5:00 AM",
+      "utcTime": "09:00 UTC",
+      "nextRun": "2025-10-23T09:00:00.000Z"
+    },
+    {
+      "expression": "0 1 * * *",
+      "workflow": "scheduler",
+      "etTime": "9:00 PM",
+      "utcTime": "01:00 UTC",
+      "nextRun": "2025-10-23T01:00:00.000Z"
+    },
+    {
+      "expression": "0 12 * * *",
+      "workflow": "scheduler",
+      "etTime": "8:00 AM",
+      "utcTime": "12:00 UTC",
+      "nextRun": "2025-10-23T12:00:00.000Z"
+    },
+    {
+      "expression": "0 0 * * 0",
+      "workflow": "scheduler",
+      "etTime": "8:00 PM",
+      "utcTime": "00:00 UTC",
+      "nextRun": "2025-10-23T00:00:00.000Z"
+    },
+    {
+      "expression": "10 10 * * *",
+      "workflow": "scheduler-sla-guard",
+      "etTime": "6:10 AM",
+      "utcTime": "10:10 UTC",
+      "nextRun": "2025-10-23T10:10:00.000Z"
+    },
+    {
+      "expression": "30 6 * * *",
+      "workflow": "schedule-reconcile",
+      "etTime": "2:30 AM",
+      "utcTime": "06:30 UTC",
+      "nextRun": "2025-10-23T06:30:00.000Z"
+    },
+    {
+      "expression": "0 4,16 * * *",
+      "workflow": "scan-youtube",
+      "etTime": "12:00 AM",
+      "utcTime": "04:00 UTC",
+      "nextRun": "2025-10-23T04:00:00.000Z"
+    },
+    {
+      "expression": "5 6,14,22 * * *",
+      "workflow": "scan-tumblr",
+      "etTime": "2:05 AM",
+      "utcTime": "06:05 UTC",
+      "nextRun": "2025-10-23T06:05:00.000Z"
+    },
+    {
+      "expression": "0 1,9,17 * * *",
+      "workflow": "scan-social-platforms",
+      "etTime": "9:00 PM",
+      "utcTime": "01:00 UTC",
+      "nextRun": "2025-10-23T01:00:00.000Z"
+    },
+    {
+      "expression": "0 2,10,18 * * *",
+      "workflow": "scan-reddit",
+      "etTime": "10:00 PM",
+      "utcTime": "02:00 UTC",
+      "nextRun": "2025-10-23T02:00:00.000Z"
+    },
+    {
+      "expression": "0 3,11,19 * * *",
+      "workflow": "scan-pixabay",
+      "etTime": "11:00 PM",
+      "utcTime": "03:00 UTC",
+      "nextRun": "2025-10-23T03:00:00.000Z"
+    },
+    {
+      "expression": "3 6,14,22 * * *",
+      "workflow": "scan-niche-platforms",
+      "etTime": "2:03 AM",
+      "utcTime": "06:03 UTC",
+      "nextRun": "2025-10-23T06:03:00.000Z"
+    },
+    {
+      "expression": "0 5,13,21 * * *",
+      "workflow": "scan-lemmy",
+      "etTime": "1:00 AM",
+      "utcTime": "05:00 UTC",
+      "nextRun": "2025-10-23T05:00:00.000Z"
+    },
+    {
+      "expression": "0 4,12,20 * * *",
+      "workflow": "scan-imgur",
+      "etTime": "12:00 AM",
+      "utcTime": "04:00 UTC",
+      "nextRun": "2025-10-23T04:00:00.000Z"
+    },
+    {
+      "expression": "0 2,10,18 * * *",
+      "workflow": "scan-giphy",
+      "etTime": "10:00 PM",
+      "utcTime": "02:00 UTC",
+      "nextRun": "2025-10-23T02:00:00.000Z"
+    },
+    {
+      "expression": "0 1,9,17 * * *",
+      "workflow": "scan-bluesky",
+      "etTime": "9:00 PM",
+      "utcTime": "01:00 UTC",
+      "nextRun": "2025-10-23T01:00:00.000Z"
+    },
+    {
+      "expression": "0 10 * * *",
+      "workflow": "queue-readiness",
+      "etTime": "6:00 AM",
+      "utcTime": "10:00 UTC",
+      "nextRun": "2025-10-23T10:00:00.000Z"
+    },
+    {
+      "expression": "0 9 * * 2",
+      "workflow": "production-audit",
+      "etTime": "5:00 AM",
+      "utcTime": "09:00 UTC",
+      "nextRun": "2025-10-23T09:00:00.000Z"
+    },
+    {
+      "expression": "7 10 * * *",
+      "workflow": "prod-watchdog",
+      "etTime": "6:07 AM",
+      "utcTime": "10:07 UTC",
+      "nextRun": "2025-10-23T10:07:00.000Z"
+    },
+    {
+      "expression": "37 10 * * *",
+      "workflow": "prod-watchdog",
+      "etTime": "6:37 AM",
+      "utcTime": "10:37 UTC",
+      "nextRun": "2025-10-23T10:37:00.000Z"
+    },
+    {
+      "expression": "7 11 * * *",
+      "workflow": "prod-watchdog",
+      "etTime": "7:07 AM",
+      "utcTime": "11:07 UTC",
+      "nextRun": "2025-10-23T11:07:00.000Z"
+    },
+    {
+      "expression": "0 13 * * *",
+      "workflow": "post",
+      "etTime": "9:00 AM",
+      "utcTime": "13:00 UTC",
+      "nextRun": "2025-10-23T13:00:00.000Z"
+    },
+    {
+      "expression": "0 17 * * *",
+      "workflow": "post",
+      "etTime": "1:00 PM",
+      "utcTime": "17:00 UTC",
+      "nextRun": "2025-10-22T17:00:00.000Z"
+    },
+    {
+      "expression": "0 20 * * *",
+      "workflow": "post",
+      "etTime": "4:00 PM",
+      "utcTime": "20:00 UTC",
+      "nextRun": "2025-10-22T20:00:00.000Z"
+    },
+    {
+      "expression": "0 23 * * *",
+      "workflow": "post",
+      "etTime": "7:00 PM",
+      "utcTime": "23:00 UTC",
+      "nextRun": "2025-10-22T23:00:00.000Z"
+    },
+    {
+      "expression": "0 2 * * *",
+      "workflow": "post",
+      "etTime": "10:00 PM",
+      "utcTime": "02:00 UTC",
+      "nextRun": "2025-10-23T02:00:00.000Z"
+    },
+    {
+      "expression": "30 4 * * *",
+      "workflow": "post",
+      "etTime": "12:30 AM",
+      "utcTime": "04:30 UTC",
+      "nextRun": "2025-10-23T04:30:00.000Z"
+    },
+    {
+      "expression": "0 7 * * *",
+      "workflow": "post-breakfast",
+      "etTime": "3:00 AM",
+      "utcTime": "07:00 UTC",
+      "nextRun": "2025-10-23T07:00:00.000Z"
+    },
+    {
+      "expression": "30 3 * * *",
+      "workflow": "planner-contract",
+      "etTime": "11:30 PM",
+      "utcTime": "03:30 UTC",
+      "nextRun": "2025-10-23T03:30:00.000Z"
+    },
+    {
+      "expression": "0 8 * * 1",
+      "workflow": "meta-ci-audit",
+      "etTime": "4:00 AM",
+      "utcTime": "08:00 UTC",
+      "nextRun": "2025-10-23T08:00:00.000Z"
+    },
+    {
+      "expression": "0 3 * * 1",
+      "workflow": "housekeeping",
+      "etTime": "11:00 PM",
+      "utcTime": "03:00 UTC",
+      "nextRun": "2025-10-23T03:00:00.000Z"
+    },
+    {
+      "expression": "0 6 * * *",
+      "workflow": "housekeeping",
+      "etTime": "2:00 AM",
+      "utcTime": "06:00 UTC",
+      "nextRun": "2025-10-23T06:00:00.000Z"
+    },
+    {
+      "expression": "0 2 * * *",
+      "workflow": "e2e",
+      "etTime": "10:00 PM",
+      "utcTime": "02:00 UTC",
+      "nextRun": "2025-10-23T02:00:00.000Z"
+    },
+    {
+      "expression": "0 0 * * *",
+      "workflow": "daily-report",
+      "etTime": "8:00 PM",
+      "utcTime": "00:00 UTC",
+      "nextRun": "2025-10-23T00:00:00.000Z"
+    },
+    {
+      "expression": "0 9 * * *",
+      "workflow": "daily-ingestion-report",
+      "etTime": "5:00 AM",
+      "utcTime": "09:00 UTC",
+      "nextRun": "2025-10-23T09:00:00.000Z"
+    },
+    {
+      "expression": "0 6 * * *",
+      "workflow": "cleanup-duplicates",
+      "etTime": "2:00 AM",
+      "utcTime": "06:00 UTC",
+      "nextRun": "2025-10-23T06:00:00.000Z"
+    }
+  ],
+  "collisions": [
+    {
+      "timeSlot": "02:00",
+      "workflows": [
+        "scan-reddit",
+        "scan-giphy",
+        "post",
+        "e2e"
+      ],
+      "count": 4
+    }
+  ],
+  "severeCollisions": [
+    {
+      "timeSlot": "02:00",
+      "workflows": [
+        "scan-reddit",
+        "scan-giphy",
+        "post",
+        "e2e"
+      ],
+      "count": 4
+    }
+  ]
+}
