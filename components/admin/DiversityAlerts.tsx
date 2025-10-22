@@ -66,107 +66,135 @@ export default function DiversityAlerts({
   const [error, setError] = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
 
-  const fetchDiversityMetrics = async () => {
+  // Safe fetch with defensive null checks
+  const safeFetchJson = async (url: string, options: RequestInit = {}) => {
     try {
-      setError(null)
-      const targetDate = date || new Date().toISOString().split('T')[0]
-      const response = await fetch(`/api/admin/diversity-summary?date=${targetDate}`, {
-        credentials: 'include'
+      const response = await fetch(url, {
+        credentials: 'include',
+        ...options
       })
-
-      if (response.ok) {
-        const data = await response.json()
-        
-        // Handle structured error responses gracefully
-        if (data.status === 'error') {
-          setError(data.issues?.join('; ') || 'Diversity metrics unavailable')
-          // Still try to render any partial data we might have
-          if (data.summary) {
-            setMetrics({
-              date: data.date || targetDate,
-              overallScore: data.summary.diversity_score || 0,
-              platformBalance: {
-                distribution: data.summary.platforms || {},
-                variance: 0,
-                dominantPlatform: '',
-                dominantPercentage: 0
-              },
-              temporalAnalysis: {
-                consecutivePlatforms: 0,
-                averageSpacing: 0,
-                maxSpacing: 0,
-                minSpacing: 0
-              },
-              contentTypes: {
-                distribution: data.summary.content_types || {},
-                alternationScore: 100
-              },
-              alerts: [],
-              recommendations: data.recommendations || [],
-              historical: {
-                currentScore: data.summary.diversity_score || 0,
-                yesterdayScore: 0,
-                weekAverageScore: 0,
-                scoreTrend: 'stable' as const,
-                dropPercentage: 0
-              },
-              summary: {
-                status: 'warning' as const,
-                score: data.summary.diversity_score || 0,
-                trend: 'stable' as const,
-                totalPosts: data.summary.filled_slots || 0,
-                alertCount: 0
-              }
-            })
-          }
-        } else {
-          // Transform the simplified API response to match the expected interface
-          setMetrics({
-            date: data.date || targetDate,
-            overallScore: data.summary?.diversity_score || 0,
-            platformBalance: {
-              distribution: data.summary?.platforms || {},
-              variance: 0,
-              dominantPlatform: '',
-              dominantPercentage: 0
-            },
-            temporalAnalysis: {
-              consecutivePlatforms: 0,
-              averageSpacing: 0,
-              maxSpacing: 0,
-              minSpacing: 0
-            },
-            contentTypes: {
-              distribution: data.summary?.content_types || {},
-              alternationScore: 100
-            },
-            alerts: [],
-            recommendations: data.recommendations || [],
-            historical: {
-              currentScore: data.summary?.diversity_score || 0,
-              yesterdayScore: 0,
-              weekAverageScore: 0,
-              scoreTrend: 'stable' as const,
-              dropPercentage: 0
-            },
-            summary: {
-              status: 'healthy' as const,
-              score: data.summary?.diversity_score || 0,
-              trend: 'stable' as const,
-              totalPosts: data.summary?.filled_slots || 0,
-              alertCount: 0
-            }
-          })
-        }
-        setLastUpdate(new Date())
-      } else {
-        setError(`Failed to load diversity metrics (${response.status})`)
+      
+      if (!response) {
+        return { data: null, error: 'No response received', status: 0 }
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch diversity metrics')
-    } finally {
-      setLoading(false)
+      
+      if (!response.ok) {
+        return { data: null, error: `HTTP ${response.status}`, status: response.status }
+      }
+      
+      const data = await response.json()
+      return { data: data || null, error: null, status: response.status }
+    } catch (error) {
+      return { data: null, error: error instanceof Error ? error.message : 'Unknown error', status: 0 }
     }
+  }
+
+  const fetchDiversityMetrics = async () => {
+    setError(null)
+    const targetDate = date || new Date().toISOString().split('T')[0]
+    const result = await safeFetchJson(`/api/admin/diversity-summary?date=${targetDate}`)
+
+    if (result.error) {
+      setError(`Failed to load diversity metrics: ${result.error}`)
+      setLoading(false)
+      return
+    }
+
+    const data = result.data
+    if (!data) {
+      setError('No data received from diversity metrics API')
+      setLoading(false)
+      return
+    }
+
+    // Handle structured error responses gracefully with defensive checks
+    if (data.status === 'error') {
+      const issues = Array.isArray(data.issues) ? data.issues : []
+      setError(issues.join('; ') || 'Diversity metrics unavailable')
+      
+      // Still try to render any partial data we might have with defensive checks
+      if (data.summary && typeof data.summary === 'object') {
+        setMetrics({
+          date: data.date || targetDate,
+          overallScore: (data.summary && typeof data.summary.diversity_score === 'number') ? data.summary.diversity_score : 0,
+          platformBalance: {
+            distribution: (data.summary && typeof data.summary.platforms === 'object') ? data.summary.platforms : {},
+            variance: 0,
+            dominantPlatform: '',
+            dominantPercentage: 0
+          },
+          temporalAnalysis: {
+            consecutivePlatforms: 0,
+            averageSpacing: 0,
+            maxSpacing: 0,
+            minSpacing: 0
+          },
+          contentTypes: {
+            distribution: (data.summary && typeof data.summary.content_types === 'object') ? data.summary.content_types : {},
+            alternationScore: 100
+          },
+          alerts: [],
+          recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
+          historical: {
+            currentScore: (data.summary && typeof data.summary.diversity_score === 'number') ? data.summary.diversity_score : 0,
+            yesterdayScore: 0,
+            weekAverageScore: 0,
+            scoreTrend: 'stable' as const,
+            dropPercentage: 0
+          },
+          summary: {
+            status: 'warning' as const,
+            score: (data.summary && typeof data.summary.diversity_score === 'number') ? data.summary.diversity_score : 0,
+            trend: 'stable' as const,
+            totalPosts: (data.summary && typeof data.summary.filled_slots === 'number') ? data.summary.filled_slots : 0,
+            alertCount: 0
+          }
+        })
+      }
+    } else {
+      // Transform the simplified API response to match the expected interface with defensive checks
+      const summary = (data.summary && typeof data.summary === 'object') ? data.summary : {}
+      
+      setMetrics({
+        date: data.date || targetDate,
+        overallScore: (typeof summary.diversity_score === 'number') ? summary.diversity_score : 0,
+        platformBalance: {
+          distribution: (typeof summary.platforms === 'object' && summary.platforms) ? summary.platforms : {},
+          variance: 0,
+          dominantPlatform: '',
+          dominantPercentage: 0
+        },
+        temporalAnalysis: {
+          consecutivePlatforms: 0,
+          averageSpacing: 0,
+          maxSpacing: 0,
+          minSpacing: 0
+        },
+        contentTypes: {
+          distribution: (typeof summary.content_types === 'object' && summary.content_types) ? summary.content_types : {},
+          alternationScore: 100
+        },
+        alerts: [],
+        recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
+        historical: {
+          currentScore: (typeof summary.diversity_score === 'number') ? summary.diversity_score : 0,
+          yesterdayScore: 0,
+          weekAverageScore: 0,
+          scoreTrend: 'stable' as const,
+          dropPercentage: 0
+        },
+        summary: {
+          status: 'healthy' as const,
+          score: (typeof summary.diversity_score === 'number') ? summary.diversity_score : 0,
+          trend: 'stable' as const,
+          totalPosts: (typeof summary.filled_slots === 'number') ? summary.filled_slots : 0,
+          alertCount: 0
+        }
+      })
+    }
+    
+    setLastUpdate(new Date())
+    setLoading(false)
   }
 
   useEffect(() => {

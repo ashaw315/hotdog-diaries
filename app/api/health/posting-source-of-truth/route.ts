@@ -1,106 +1,89 @@
-// @ts-nocheck adjust as needed for your project
+// @ts-nocheck
 import { NextResponse } from "next/server";
-import { featureFlagSourceOfTruth, hasAllCoreEnv } from "@/app/lib/server/env";
-import { supabaseServiceClient } from "@/app/lib/server/supabase";
+import { ffSourceOfTruth, coreEnvState } from "@/app/lib/server/env";
+import { supabaseService } from "@/app/lib/server/supabase";
 
 export async function GET() {
   const startedAt = new Date().toISOString();
-
-  // Default response shape your UI expects
-  const base = {
+  const out = {
     status: "ok" as const,
-    metadata: { check_timestamp: startedAt, database_type: "supabase" },
-    issues: [] as string[],
-    recommendations: [] as string[],
-    feature_flag_active: featureFlagSourceOfTruth(),
+    feature_flag_active: ffSourceOfTruth(),
     scheduled_posts_count: 0,
     total_recent_posts: 0,
     orphan_posts: 0,
     orphan_percentage: 0,
     posting_compliance_score: 100,
     linked_posts: 0,
+    issues: [] as string[],
+    recommendations: [] as string[],
+    metadata: { check_timestamp: startedAt, database_type: "supabase" },
   };
 
   try {
-    // Validate env presence (do NOT throw fatal 500; report as issue)
-    const envState = hasAllCoreEnv();
+    const envState = coreEnvState();
     if (!envState.ok) {
-      base.status = "error";
-      base.issues.push(`Missing env vars: ${envState.missing.join(", ")}`);
-      base.recommendations.push("Set required env vars in Vercel and redeploy.");
+      out.status = "error";
+      out.issues.push(`Missing env vars: ${envState.missing.join(", ")}`);
+      out.recommendations.push("Set required env vars in Vercel and redeploy.");
     }
 
-    if (!base.feature_flag_active) {
-      base.status = "error";
-      base.issues.push("ENFORCE_SCHEDULE_SOURCE_OF_TRUTH feature flag is not active");
-      base.recommendations.push("Set ENFORCE_SCHEDULE_SOURCE_OF_TRUTH=true to enforce scheduled_posts as single source of truth");
+    if (!out.feature_flag_active) {
+      out.status = "error";
+      out.issues.push("ENFORCE_SCHEDULE_SOURCE_OF_TRUTH feature flag is not active");
+      out.recommendations.push("Set ENFORCE_SCHEDULE_SOURCE_OF_TRUTH=true to enforce scheduled_posts as source of truth");
     }
 
-    // Attempt DB queries gracefully
     try {
-      const supabase = supabaseServiceClient();
+      const supabase = supabaseService();
 
-      // EXAMPLE QUERIES — replace with your exact tables/filters
-      // Count scheduled posts in next 48h
-      const { data: scheduled, error: schErr } = await supabase
+      // Count scheduled posts (example: all future; adjust window as needed)
+      const { count: schedCount, error: schedErr } = await supabase
         .from("scheduled_posts")
-        .select("id", { count: "exact", head: true });
-      if (schErr) {
-        base.status = "error";
-        base.issues.push(`scheduled_posts query failed: ${schErr.message}`);
+        .select("*", { count: "exact", head: true });
+      if (schedErr) {
+        out.status = "error";
+        out.issues.push(`scheduled_posts count failed: ${schedErr.message}`);
       } else {
-        // @ts-ignore: count available on head request
-        base.scheduled_posts_count = scheduled?.length ?? (scheduled as any)?.count ?? 0;
+        out.scheduled_posts_count = schedCount ?? 0;
       }
 
-      // Detect orphans (recent posts not linked to schedule)
-      // Replace with your real orphan detection; below is illustrative
-      const { data: recentPosts, error: postErr } = await supabase
+      // Recent posted_content (last 7 days), detect orphans
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: posts, error: postsErr } = await supabase
         .from("posted_content")
         .select("id, scheduled_post_id")
-        .gte("created_at", new Date(Date.now() - 7 * 86400e3).toISOString()); // last 7d
-      if (postErr) {
-        base.status = "error";
-        base.issues.push(`posted_content query failed: ${postErr.message}`);
+        .gte("created_at", since);
+      if (postsErr) {
+        out.status = "error";
+        out.issues.push(`posted_content query failed: ${postsErr.message}`);
       } else {
-        const total = recentPosts?.length ?? 0;
-        const orphans = (recentPosts ?? []).filter(p => !p.scheduled_post_id).length;
-        base.total_recent_posts = total;
-        base.orphan_posts = orphans;
-        base.orphan_percentage = total > 0 ? Math.round((orphans / total) * 100) : 0;
-        base.posting_compliance_score = total > 0 ? Math.max(0, 100 - base.orphan_percentage) : 0;
-        base.linked_posts = total - orphans;
+        const total = posts?.length ?? 0;
+        const orphans = (posts ?? []).filter((p) => !p.scheduled_post_id).length;
+        out.total_recent_posts = total;
+        out.orphan_posts = orphans;
+        out.orphan_percentage = total > 0 ? Math.round((orphans / total) * 100) : 0;
+        out.posting_compliance_score = total > 0 ? Math.max(0, 100 - out.orphan_percentage) : 0;
+        out.linked_posts = total - orphans;
 
         if (orphans > 0) {
-          base.status = "error";
-          base.issues.push(`${orphans} orphan posts found (${base.orphan_percentage}% of recent posts)`);
-          base.recommendations.push("Run backfill job: npx tsx scripts/ops/backfill-post-links.ts --date YYYY-MM-DD --write");
+          out.status = "error";
+          out.issues.push(`${orphans} orphan posts found (${out.orphan_percentage}% of recent posts)`);
+          out.recommendations.push("Run backfill: npx tsx scripts/ops/backfill-post-links.ts --date YYYY-MM-DD --write");
         }
       }
-    } catch (dbFatal: any) {
-      // Only unexpected DB init errors should mark as 503
+    } catch (dbInitErr: any) {
+      console.error("[health/posting-source-of-truth] DB init error:", dbInitErr);
       return NextResponse.json(
-        {
-          ...base,
-          status: "error",
-          issues: [...base.issues, "Unhandled DB init failure"],
-          error: String(dbFatal?.message ?? dbFatal),
-        },
+        { ...out, status: "error", issues: [...out.issues, "DB init failure"], error: String(dbInitErr?.message ?? dbInitErr) },
         { status: 503 }
       );
     }
 
-    // Always 200 for expected problem states; UI can render details
-    return NextResponse.json(base, { status: 200 });
+    return NextResponse.json(out, { status: 200 });
   } catch (fatal: any) {
-    // Last-resort safety net
+    console.error("[health/posting-source-of-truth] Fatal:", fatal);
     return NextResponse.json(
-      {
-        status: "error",
-        issues: ["Unhandled exception in posting-source-of-truth health route"],
-        error: String(fatal?.message ?? fatal),
-        metadata: { check_timestamp: startedAt },
-      },
+      { status: "error", issues: ["Unhandled exception"], error: String(fatal?.message ?? fatal), metadata: { check_timestamp: startedAt } },
       { status: 503 }
     );
   }

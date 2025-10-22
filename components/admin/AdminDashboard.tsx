@@ -80,21 +80,50 @@ export default function AdminDashboard() {
     }
   }
 
+  // Safe fetch with defensive null checks
+  const safeFetchJson = async (url: string, options: RequestInit = {}) => {
+    try {
+      const response = await fetch(url, {
+        credentials: 'include',
+        ...options
+      })
+      
+      if (!response) {
+        return { data: null, error: 'No response received', status: 0 }
+      }
+      
+      if (!response.ok) {
+        return { data: null, error: `HTTP ${response.status}`, status: response.status }
+      }
+      
+      const data = await response.json()
+      return { data: data || null, error: null, status: response.status }
+    } catch (error) {
+      return { data: null, error: error instanceof Error ? error.message : 'Unknown error', status: 0 }
+    }
+  }
+
   // Fetch recent activity separately as it's not in the main dashboard hook
   useEffect(() => {
     const fetchRecentActivity = async () => {
-      try {
-        const activityResponse = await fetch('/api/admin/dashboard?view=activity', {
-          credentials: 'include'
-        })
-        if (activityResponse.ok) {
-          const activityData = await activityResponse.json()
-          setRecentActivity(activityData || [])
-        } else if (activityResponse.status === 401) {
+      const result = await safeFetchJson('/api/admin/dashboard?view=activity')
+      
+      if (result.error) {
+        if (result.status === 401) {
           console.warn('Unauthorized access to dashboard activity')
+        } else {
+          console.error('Failed to fetch recent activity:', result.error)
         }
-      } catch (error) {
-        console.error('Failed to fetch recent activity:', error)
+        return
+      }
+      
+      // Defensive null check - ensure we have valid array data
+      const activityData = result.data
+      if (Array.isArray(activityData)) {
+        setRecentActivity(activityData)
+      } else {
+        console.warn('Activity data is not an array:', activityData)
+        setRecentActivity([])
       }
     }
 

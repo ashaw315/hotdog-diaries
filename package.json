@@ -60,7 +60,8 @@
     "api:check-drift": "npm run api:inventory && npm run api:validate",
     "runbook:pdf": "npx tsx scripts/md-to-pdf.ts",
     "test:planner": "node --test scripts/scan-plan.test.mjs",
-    "test:planner-contract": "node --test --test-reporter=spec scripts/scan-plan.test.mjs"
+    "test:planner-contract": "node --test --test-reporter=spec scripts/scan-plan.test.mjs",
+    "verify:no-500s": "npx tsx scripts/verify-no-500s.ts"
   },
   "dependencies": {
     "@radix-ui/react-separator": "^1.1.7",

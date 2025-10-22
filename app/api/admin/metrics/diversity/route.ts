@@ -1,47 +1,35 @@
-// @ts-nocheck adjust as needed
+// @ts-nocheck
 import { NextResponse } from "next/server";
-import { supabaseServiceClient } from "@/app/lib/server/supabase";
+import { supabaseService } from "@/app/lib/server/supabase";
 
 export async function GET(req: Request) {
-  const startedAt = new Date().toISOString();
+  const ts = new Date().toISOString();
   const url = new URL(req.url);
   const date = url.searchParams.get("date");
 
-  const base = {
-    status: "ok" as const,
-    issues: [] as string[],
-    recommendations: [] as string[],
-    date,
-    metadata: { check_timestamp: startedAt }
-  };
+  const base = { status: "ok" as const, date, issues: [] as string[], recommendations: [] as string[], metadata: { check_timestamp: ts } };
 
   try {
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json(
-        {
-          ...base,
-          status: "error",
-          issues: ["Missing or invalid ?date=YYYY-MM-DD"],
-          recommendations: ["Provide ?date=YYYY-MM-DD"],
-        },
+        { ...base, status: "error", issues: ["Missing or invalid ?date=YYYY-MM-DD"], recommendations: ["Provide ?date=YYYY-MM-DD"] },
         { status: 200 }
       );
     }
 
-    const supabase = supabaseServiceClient();
+    const supabase = supabaseService();
+    const start = `${date}T00:00:00.000Z`;
+    const end   = `${date}T23:59:59.999Z`;
 
-    // Query scheduled posts for the specified date
+    // Replace columns with your schema
     const { data, error } = await supabase
       .from("scheduled_posts")
-      .select("id, platform, content_type, scheduled_post_time")
-      .gte("scheduled_post_time", `${date}T00:00:00.000Z`)
-      .lte("scheduled_post_time", `${date}T23:59:59.999Z`);
+      .select("id, platform, author, category, scheduled_at")
+      .gte("scheduled_at", start)
+      .lte("scheduled_at", end);
 
     if (error) {
-      return NextResponse.json(
-        { ...base, status: "error", issues: [`Diversity metrics query failed: ${error.message}`] },
-        { status: 200 }
-      );
+      return NextResponse.json({ ...base, status: "error", issues: [`Diversity query failed: ${error.message}`] }, { status: 200 });
     }
 
     const items = data ?? [];
@@ -50,42 +38,28 @@ export async function GET(req: Request) {
         {
           ...base,
           status: "error",
-          issues: ["No scheduled posts for the requested date"],
-          recommendations: ["Trigger scheduler refill for the target date"],
-          metrics: { platforms: {}, content_types: {}, total_posts: 0 }
+          issues: ["No scheduled posts for requested date"],
+          recommendations: ["Run scheduler refill for that date"],
+          metrics: { platforms: {}, authors: {}, categories: {}, count: 0 }
         },
         { status: 200 }
       );
     }
 
-    // Simple aggregation for diversity metrics
     const platforms: Record<string, number> = {};
-    const content_types: Record<string, number> = {};
-
-    for (const p of items) {
-      const platform = p.platform ?? "unknown";
-      const content_type = p.content_type ?? "text";
-      
-      platforms[platform] = (platforms[platform] ?? 0) + 1;
-      content_types[content_type] = (content_types[content_type] ?? 0) + 1;
+    const authors: Record<string, number> = {};
+    const categories: Record<string, number> = {};
+    for (const r of items) {
+      platforms[r.platform ?? "unknown"] = (platforms[r.platform ?? "unknown"] ?? 0) + 1;
+      authors[r.author ?? "unknown"] = (authors[r.author ?? "unknown"] ?? 0) + 1;
+      categories[r.category ?? "unknown"] = (categories[r.category ?? "unknown"] ?? 0) + 1;
     }
 
-    return NextResponse.json(
-      { 
-        ...base, 
-        metrics: { platforms, content_types, total_posts: items.length },
-        count: items.length 
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ ...base, metrics: { platforms, authors, categories, count: items.length } }, { status: 200 });
   } catch (fatal: any) {
+    console.error("[admin/metrics/diversity] Fatal:", fatal);
     return NextResponse.json(
-      {
-        ...base,
-        status: "error",
-        issues: ["Unhandled exception in diversity metrics route"],
-        error: String(fatal?.message ?? fatal),
-      },
+      { ...base, status: "error", issues: ["Unhandled exception"], error: String(fatal?.message ?? fatal) },
       { status: 503 }
     );
   }

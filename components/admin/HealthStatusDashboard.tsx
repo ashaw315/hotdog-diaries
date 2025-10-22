@@ -30,33 +30,57 @@ export default function HealthStatusDashboard() {
     }
   ])
 
-  const checkHealthEndpoint = async (endpoint: HealthEndpointStatus) => {
+  // Safe fetch with defensive null checks
+  const safeFetchJson = async (url: string, options: RequestInit = {}) => {
     try {
-      const response = await fetch(endpoint.endpoint, {
-        credentials: 'include'
+      const response = await fetch(url, {
+        credentials: 'include',
+        ...options
       })
       
-      const data = await response.json()
-      
-      return {
-        ...endpoint,
-        status: data.status || (response.ok ? 'healthy' : 'error'),
-        message: data.issues?.length > 0 
-          ? `${data.issues.length} issues found`
-          : response.ok 
-            ? 'All checks passed' 
-            : 'Health check failed',
-        lastCheck: new Date().toISOString(),
-        details: data
+      if (!response) {
+        return { data: null, error: 'No response received', status: 0 }
       }
-    } catch (error: any) {
+      
+      if (!response.ok) {
+        return { data: null, error: `HTTP ${response.status}`, status: response.status }
+      }
+      
+      const data = await response.json()
+      return { data: data || null, error: null, status: response.status }
+    } catch (error) {
+      return { data: null, error: error instanceof Error ? error.message : 'Unknown error', status: 0 }
+    }
+  }
+
+  const checkHealthEndpoint = async (endpoint: HealthEndpointStatus) => {
+    const result = await safeFetchJson(endpoint.endpoint)
+    
+    if (result.error) {
       return {
         ...endpoint,
         status: 'error' as const,
-        message: `Connection failed: ${error.message}`,
+        message: `Connection failed: ${result.error}`,
         lastCheck: new Date().toISOString(),
         details: null
       }
+    }
+    
+    // Defensive null checks on the response data
+    const data = result.data || {}
+    const issues = Array.isArray(data.issues) ? data.issues : []
+    const dataStatus = typeof data.status === 'string' ? data.status : null
+    
+    return {
+      ...endpoint,
+      status: dataStatus || (result.status === 200 ? 'healthy' : 'error'),
+      message: issues.length > 0 
+        ? `${issues.length} issues found`
+        : result.status === 200 
+          ? 'All checks passed' 
+          : 'Health check failed',
+      lastCheck: new Date().toISOString(),
+      details: data
     }
   }
 
