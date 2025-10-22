@@ -327,10 +327,6 @@ jobs:
             echo '{"error": "metrics_unavailable", "timestamp": "'$(date -Iseconds)'"}' > metrics_snapshot.json
             echo "snapshot=failed" >> $GITHUB_OUTPUT
           fi
-    needs: guard
-    concurrency:
-      group: health-check-${{ github.ref }}
-      cancel-in-progress: true
   refill-check:
     runs-on: ubuntu-latest
     name: Two-Day Refill Validation

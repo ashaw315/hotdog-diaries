@@ -1,0 +1,1517 @@
+{
+  "generated_at": "2025-10-21T23:49:26.481Z",
+  "timezone": "America/New_York",
+  "dst_note": "Eastern Time observes DST (UTC-4 in summer, UTC-5 in winter). Cron expressions run in UTC.",
+  "entries": [
+    {
+      "workflow_name": "Auto-Approve Content",
+      "filename": "auto-approve.yml",
+      "cron_expression": "0 */6 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "*/6",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:00:00.000Z",
+        "2025-10-22T10:00:00.000Z",
+        "2025-10-22T16:00:00.000Z",
+        "2025-10-22T22:00:00.000Z",
+        "2025-10-23T04:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:00:00 EDT",
+        "2025-10-22 06:00:00 EDT",
+        "2025-10-22 12:00:00 EDT",
+        "2025-10-22 18:00:00 EDT",
+        "2025-10-23 00:00:00 EDT"
+      ],
+      "description": "At */6:00 UTC"
+    },
+    {
+      "workflow_name": "Auto Queue Manager",
+      "filename": "auto-queue-manager.yml",
+      "cron_expression": "0 */6 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "*/6",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:00:00.000Z",
+        "2025-10-22T10:00:00.000Z",
+        "2025-10-22T16:00:00.000Z",
+        "2025-10-22T22:00:00.000Z",
+        "2025-10-23T04:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:00:00 EDT",
+        "2025-10-22 06:00:00 EDT",
+        "2025-10-22 12:00:00 EDT",
+        "2025-10-22 18:00:00 EDT",
+        "2025-10-23 00:00:00 EDT"
+      ],
+      "description": "At */6:00 UTC"
+    },
+    {
+      "workflow_name": "Database Cleanup",
+      "filename": "cleanup-duplicates.yml",
+      "cron_expression": "0 6 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "6",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T10:00:00.000Z",
+        "2025-10-23T10:00:00.000Z",
+        "2025-10-24T10:00:00.000Z",
+        "2025-10-25T10:00:00.000Z",
+        "2025-10-26T10:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 06:00:00 EDT",
+        "2025-10-23 06:00:00 EDT",
+        "2025-10-24 06:00:00 EDT",
+        "2025-10-25 06:00:00 EDT",
+        "2025-10-26 06:00:00 EDT"
+      ],
+      "description": "At 6:00 UTC"
+    },
+    {
+      "workflow_name": "Daily Ingestion Balance Report",
+      "filename": "daily-ingestion-report.yml",
+      "cron_expression": "0 9 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "9",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T13:00:00.000Z",
+        "2025-10-23T13:00:00.000Z",
+        "2025-10-24T13:00:00.000Z",
+        "2025-10-25T13:00:00.000Z",
+        "2025-10-26T13:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 09:00:00 EDT",
+        "2025-10-23 09:00:00 EDT",
+        "2025-10-24 09:00:00 EDT",
+        "2025-10-25 09:00:00 EDT",
+        "2025-10-26 09:00:00 EDT"
+      ],
+      "description": "At 9:00 UTC"
+    },
+    {
+      "workflow_name": "Daily Summary Report",
+      "filename": "daily-report.yml",
+      "cron_expression": "0 0 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "0",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:00:00.000Z",
+        "2025-10-23T04:00:00.000Z",
+        "2025-10-24T04:00:00.000Z",
+        "2025-10-25T04:00:00.000Z",
+        "2025-10-26T04:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:00:00 EDT",
+        "2025-10-23 00:00:00 EDT",
+        "2025-10-24 00:00:00 EDT",
+        "2025-10-25 00:00:00 EDT",
+        "2025-10-26 00:00:00 EDT"
+      ],
+      "description": "At 0:00 UTC"
+    },
+    {
+      "workflow_name": "Housekeeping",
+      "filename": "housekeeping.yml",
+      "cron_expression": "0 3 * * 1",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "3",
+        "day": "*",
+        "month": "*",
+        "dow": "1"
+      },
+      "sample_times_utc": [
+        "2025-10-22T07:00:00.000Z",
+        "2025-10-23T07:00:00.000Z",
+        "2025-10-24T07:00:00.000Z",
+        "2025-10-25T07:00:00.000Z",
+        "2025-10-26T07:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 03:00:00 EDT",
+        "2025-10-23 03:00:00 EDT",
+        "2025-10-24 03:00:00 EDT",
+        "2025-10-25 03:00:00 EDT",
+        "2025-10-26 03:00:00 EDT"
+      ],
+      "description": "At 3:00 on Mon UTC"
+    },
+    {
+      "workflow_name": "Housekeeping",
+      "filename": "housekeeping.yml",
+      "cron_expression": "0 6 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "6",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T10:00:00.000Z",
+        "2025-10-23T10:00:00.000Z",
+        "2025-10-24T10:00:00.000Z",
+        "2025-10-25T10:00:00.000Z",
+        "2025-10-26T10:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 06:00:00 EDT",
+        "2025-10-23 06:00:00 EDT",
+        "2025-10-24 06:00:00 EDT",
+        "2025-10-25 06:00:00 EDT",
+        "2025-10-26 06:00:00 EDT"
+      ],
+      "description": "At 6:00 UTC"
+    },
+    {
+      "workflow_name": "Meta CI Audit",
+      "filename": "meta-ci-audit.yml",
+      "cron_expression": "0 8 * * 1",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "8",
+        "day": "*",
+        "month": "*",
+        "dow": "1"
+      },
+      "sample_times_utc": [
+        "2025-10-22T12:00:00.000Z",
+        "2025-10-23T12:00:00.000Z",
+        "2025-10-24T12:00:00.000Z",
+        "2025-10-25T12:00:00.000Z",
+        "2025-10-26T12:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 08:00:00 EDT",
+        "2025-10-23 08:00:00 EDT",
+        "2025-10-24 08:00:00 EDT",
+        "2025-10-25 08:00:00 EDT",
+        "2025-10-26 08:00:00 EDT"
+      ],
+      "description": "At 8:00 on Mon UTC"
+    },
+    {
+      "workflow_name": "📋 Planner Contract",
+      "filename": "planner-contract.yml",
+      "cron_expression": "30 3 * * *",
+      "parsed_utc": {
+        "minute": "30",
+        "hour": "3",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T07:30:00.000Z",
+        "2025-10-23T07:30:00.000Z",
+        "2025-10-24T07:30:00.000Z",
+        "2025-10-25T07:30:00.000Z",
+        "2025-10-26T07:30:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 03:30:00 EDT",
+        "2025-10-23 03:30:00 EDT",
+        "2025-10-24 03:30:00 EDT",
+        "2025-10-25 03:30:00 EDT",
+        "2025-10-26 03:30:00 EDT"
+      ],
+      "description": "At 3:30 UTC"
+    },
+    {
+      "workflow_name": "Post Breakfast Content",
+      "filename": "post-breakfast.yml",
+      "cron_expression": "0 7 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "7",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T11:00:00.000Z",
+        "2025-10-23T11:00:00.000Z",
+        "2025-10-24T11:00:00.000Z",
+        "2025-10-25T11:00:00.000Z",
+        "2025-10-26T11:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 07:00:00 EDT",
+        "2025-10-23 07:00:00 EDT",
+        "2025-10-24 07:00:00 EDT",
+        "2025-10-25 07:00:00 EDT",
+        "2025-10-26 07:00:00 EDT"
+      ],
+      "description": "At 7:00 UTC"
+    },
+    {
+      "workflow_name": "Post Dinner Content",
+      "filename": "post-dinner.yml",
+      "cron_expression": "0 18 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "18",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T22:00:00.000Z",
+        "2025-10-23T22:00:00.000Z",
+        "2025-10-24T22:00:00.000Z",
+        "2025-10-25T22:00:00.000Z",
+        "2025-10-26T22:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 18:00:00 EDT",
+        "2025-10-23 18:00:00 EDT",
+        "2025-10-24 18:00:00 EDT",
+        "2025-10-25 18:00:00 EDT",
+        "2025-10-26 18:00:00 EDT"
+      ],
+      "description": "At 18:00 UTC"
+    },
+    {
+      "workflow_name": "Post Evening Content",
+      "filename": "post-evening.yml",
+      "cron_expression": "0 22 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "22",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T02:00:00.000Z",
+        "2025-10-23T02:00:00.000Z",
+        "2025-10-24T02:00:00.000Z",
+        "2025-10-25T02:00:00.000Z",
+        "2025-10-26T02:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-21 22:00:00 EDT",
+        "2025-10-22 22:00:00 EDT",
+        "2025-10-23 22:00:00 EDT",
+        "2025-10-24 22:00:00 EDT",
+        "2025-10-25 22:00:00 EDT"
+      ],
+      "description": "At 22:00 UTC"
+    },
+    {
+      "workflow_name": "Post Late Night Content",
+      "filename": "post-late-night.yml",
+      "cron_expression": "30 22 * * *",
+      "parsed_utc": {
+        "minute": "30",
+        "hour": "22",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T02:30:00.000Z",
+        "2025-10-23T02:30:00.000Z",
+        "2025-10-24T02:30:00.000Z",
+        "2025-10-25T02:30:00.000Z",
+        "2025-10-26T02:30:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-21 22:30:00 EDT",
+        "2025-10-22 22:30:00 EDT",
+        "2025-10-23 22:30:00 EDT",
+        "2025-10-24 22:30:00 EDT",
+        "2025-10-25 22:30:00 EDT"
+      ],
+      "description": "At 22:30 UTC"
+    },
+    {
+      "workflow_name": "Post Lunch Content",
+      "filename": "post-lunch.yml",
+      "cron_expression": "0 12 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "12",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T16:00:00.000Z",
+        "2025-10-23T16:00:00.000Z",
+        "2025-10-24T16:00:00.000Z",
+        "2025-10-25T16:00:00.000Z",
+        "2025-10-26T16:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 12:00:00 EDT",
+        "2025-10-23 12:00:00 EDT",
+        "2025-10-24 12:00:00 EDT",
+        "2025-10-25 12:00:00 EDT",
+        "2025-10-26 12:00:00 EDT"
+      ],
+      "description": "At 12:00 UTC"
+    },
+    {
+      "workflow_name": "Post Afternoon Snack",
+      "filename": "post-snack.yml",
+      "cron_expression": "0 15 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "15",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T19:00:00.000Z",
+        "2025-10-23T19:00:00.000Z",
+        "2025-10-24T19:00:00.000Z",
+        "2025-10-25T19:00:00.000Z",
+        "2025-10-26T19:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 15:00:00 EDT",
+        "2025-10-23 15:00:00 EDT",
+        "2025-10-24 15:00:00 EDT",
+        "2025-10-25 15:00:00 EDT",
+        "2025-10-26 15:00:00 EDT"
+      ],
+      "description": "At 15:00 UTC"
+    },
+    {
+      "workflow_name": "Content Posting",
+      "filename": "post.yml",
+      "cron_expression": "0 13 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "13",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T17:00:00.000Z",
+        "2025-10-23T17:00:00.000Z",
+        "2025-10-24T17:00:00.000Z",
+        "2025-10-25T17:00:00.000Z",
+        "2025-10-26T17:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 13:00:00 EDT",
+        "2025-10-23 13:00:00 EDT",
+        "2025-10-24 13:00:00 EDT",
+        "2025-10-25 13:00:00 EDT",
+        "2025-10-26 13:00:00 EDT"
+      ],
+      "description": "At 13:00 UTC"
+    },
+    {
+      "workflow_name": "Content Posting",
+      "filename": "post.yml",
+      "cron_expression": "0 17 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "17",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T21:00:00.000Z",
+        "2025-10-23T21:00:00.000Z",
+        "2025-10-24T21:00:00.000Z",
+        "2025-10-25T21:00:00.000Z",
+        "2025-10-26T21:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 17:00:00 EDT",
+        "2025-10-23 17:00:00 EDT",
+        "2025-10-24 17:00:00 EDT",
+        "2025-10-25 17:00:00 EDT",
+        "2025-10-26 17:00:00 EDT"
+      ],
+      "description": "At 17:00 UTC"
+    },
+    {
+      "workflow_name": "Content Posting",
+      "filename": "post.yml",
+      "cron_expression": "0 20 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "20",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T00:00:00.000Z",
+        "2025-10-23T00:00:00.000Z",
+        "2025-10-24T00:00:00.000Z",
+        "2025-10-25T00:00:00.000Z",
+        "2025-10-26T00:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-21 20:00:00 EDT",
+        "2025-10-22 20:00:00 EDT",
+        "2025-10-23 20:00:00 EDT",
+        "2025-10-24 20:00:00 EDT",
+        "2025-10-25 20:00:00 EDT"
+      ],
+      "description": "At 20:00 UTC"
+    },
+    {
+      "workflow_name": "Content Posting",
+      "filename": "post.yml",
+      "cron_expression": "0 23 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "23",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T03:00:00.000Z",
+        "2025-10-23T03:00:00.000Z",
+        "2025-10-24T03:00:00.000Z",
+        "2025-10-25T03:00:00.000Z",
+        "2025-10-26T03:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-21 23:00:00 EDT",
+        "2025-10-22 23:00:00 EDT",
+        "2025-10-23 23:00:00 EDT",
+        "2025-10-24 23:00:00 EDT",
+        "2025-10-25 23:00:00 EDT"
+      ],
+      "description": "At 23:00 UTC"
+    },
+    {
+      "workflow_name": "Content Posting",
+      "filename": "post.yml",
+      "cron_expression": "0 2 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "2",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T06:00:00.000Z",
+        "2025-10-23T06:00:00.000Z",
+        "2025-10-24T06:00:00.000Z",
+        "2025-10-25T06:00:00.000Z",
+        "2025-10-26T06:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 02:00:00 EDT",
+        "2025-10-23 02:00:00 EDT",
+        "2025-10-24 02:00:00 EDT",
+        "2025-10-25 02:00:00 EDT",
+        "2025-10-26 02:00:00 EDT"
+      ],
+      "description": "At 2:00 UTC"
+    },
+    {
+      "workflow_name": "Content Posting",
+      "filename": "post.yml",
+      "cron_expression": "30 4 * * *",
+      "parsed_utc": {
+        "minute": "30",
+        "hour": "4",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T08:30:00.000Z",
+        "2025-10-23T08:30:00.000Z",
+        "2025-10-24T08:30:00.000Z",
+        "2025-10-25T08:30:00.000Z",
+        "2025-10-26T08:30:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 04:30:00 EDT",
+        "2025-10-23 04:30:00 EDT",
+        "2025-10-24 04:30:00 EDT",
+        "2025-10-25 04:30:00 EDT",
+        "2025-10-26 04:30:00 EDT"
+      ],
+      "description": "At 4:30 UTC"
+    },
+    {
+      "workflow_name": "Production Autonomy Watchdog",
+      "filename": "prod-watchdog.yml",
+      "cron_expression": "7 * * * *",
+      "parsed_utc": {
+        "minute": "7",
+        "hour": "*",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:07:00.000Z",
+        "2025-10-22T10:07:00.000Z",
+        "2025-10-22T16:07:00.000Z",
+        "2025-10-22T22:07:00.000Z",
+        "2025-10-23T04:07:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:07:00 EDT",
+        "2025-10-22 06:07:00 EDT",
+        "2025-10-22 12:07:00 EDT",
+        "2025-10-22 18:07:00 EDT",
+        "2025-10-23 00:07:00 EDT"
+      ],
+      "description": "Complex schedule UTC"
+    },
+    {
+      "workflow_name": "Production Autonomy Watchdog",
+      "filename": "prod-watchdog.yml",
+      "cron_expression": "7 10 * * *",
+      "parsed_utc": {
+        "minute": "7",
+        "hour": "10",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T14:07:00.000Z",
+        "2025-10-23T14:07:00.000Z",
+        "2025-10-24T14:07:00.000Z",
+        "2025-10-25T14:07:00.000Z",
+        "2025-10-26T14:07:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 10:07:00 EDT",
+        "2025-10-23 10:07:00 EDT",
+        "2025-10-24 10:07:00 EDT",
+        "2025-10-25 10:07:00 EDT",
+        "2025-10-26 10:07:00 EDT"
+      ],
+      "description": "At 10:07 UTC"
+    },
+    {
+      "workflow_name": "Production Autonomy Watchdog",
+      "filename": "prod-watchdog.yml",
+      "cron_expression": "37 10 * * *",
+      "parsed_utc": {
+        "minute": "37",
+        "hour": "10",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T14:37:00.000Z",
+        "2025-10-23T14:37:00.000Z",
+        "2025-10-24T14:37:00.000Z",
+        "2025-10-25T14:37:00.000Z",
+        "2025-10-26T14:37:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 10:37:00 EDT",
+        "2025-10-23 10:37:00 EDT",
+        "2025-10-24 10:37:00 EDT",
+        "2025-10-25 10:37:00 EDT",
+        "2025-10-26 10:37:00 EDT"
+      ],
+      "description": "At 10:37 UTC"
+    },
+    {
+      "workflow_name": "Production Autonomy Watchdog",
+      "filename": "prod-watchdog.yml",
+      "cron_expression": "7 11 * * *",
+      "parsed_utc": {
+        "minute": "7",
+        "hour": "11",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T15:07:00.000Z",
+        "2025-10-23T15:07:00.000Z",
+        "2025-10-24T15:07:00.000Z",
+        "2025-10-25T15:07:00.000Z",
+        "2025-10-26T15:07:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 11:07:00 EDT",
+        "2025-10-23 11:07:00 EDT",
+        "2025-10-24 11:07:00 EDT",
+        "2025-10-25 11:07:00 EDT",
+        "2025-10-26 11:07:00 EDT"
+      ],
+      "description": "At 11:07 UTC"
+    },
+    {
+      "workflow_name": "🔍 Production Audit",
+      "filename": "production-audit.yml",
+      "cron_expression": "0 9 * * 2",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "9",
+        "day": "*",
+        "month": "*",
+        "dow": "2"
+      },
+      "sample_times_utc": [
+        "2025-10-22T13:00:00.000Z",
+        "2025-10-23T13:00:00.000Z",
+        "2025-10-24T13:00:00.000Z",
+        "2025-10-25T13:00:00.000Z",
+        "2025-10-26T13:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 09:00:00 EDT",
+        "2025-10-23 09:00:00 EDT",
+        "2025-10-24 09:00:00 EDT",
+        "2025-10-25 09:00:00 EDT",
+        "2025-10-26 09:00:00 EDT"
+      ],
+      "description": "At 9:00 on Tue UTC"
+    },
+    {
+      "workflow_name": "Monitor Queue Health & Scan if Needed",
+      "filename": "queue-monitor.yml",
+      "cron_expression": "0 */3 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "*/3",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:00:00.000Z",
+        "2025-10-22T07:00:00.000Z",
+        "2025-10-22T10:00:00.000Z",
+        "2025-10-22T13:00:00.000Z",
+        "2025-10-23T04:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:00:00 EDT",
+        "2025-10-22 03:00:00 EDT",
+        "2025-10-22 06:00:00 EDT",
+        "2025-10-22 09:00:00 EDT",
+        "2025-10-23 00:00:00 EDT"
+      ],
+      "description": "At */3:00 UTC"
+    },
+    {
+      "workflow_name": "Queue Readiness",
+      "filename": "queue-readiness.yml",
+      "cron_expression": "0 10 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "10",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T14:00:00.000Z",
+        "2025-10-23T14:00:00.000Z",
+        "2025-10-24T14:00:00.000Z",
+        "2025-10-25T14:00:00.000Z",
+        "2025-10-26T14:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 10:00:00 EDT",
+        "2025-10-23 10:00:00 EDT",
+        "2025-10-24 10:00:00 EDT",
+        "2025-10-25 10:00:00 EDT",
+        "2025-10-26 10:00:00 EDT"
+      ],
+      "description": "At 10:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Bluesky for Content",
+      "filename": "scan-bluesky.yml",
+      "cron_expression": "0 1,9,17 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "1,9,17",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T05:00:00.000Z",
+        "2025-10-22T13:00:00.000Z",
+        "2025-10-22T21:00:00.000Z",
+        "2025-10-23T05:00:00.000Z",
+        "2025-10-23T13:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 01:00:00 EDT",
+        "2025-10-22 09:00:00 EDT",
+        "2025-10-22 17:00:00 EDT",
+        "2025-10-23 01:00:00 EDT",
+        "2025-10-23 09:00:00 EDT"
+      ],
+      "description": "At 1,9,17:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Giphy for Content",
+      "filename": "scan-giphy.yml",
+      "cron_expression": "0 2,10,18 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "2,10,18",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T06:00:00.000Z",
+        "2025-10-22T14:00:00.000Z",
+        "2025-10-22T22:00:00.000Z",
+        "2025-10-23T06:00:00.000Z",
+        "2025-10-23T14:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 02:00:00 EDT",
+        "2025-10-22 10:00:00 EDT",
+        "2025-10-22 18:00:00 EDT",
+        "2025-10-23 02:00:00 EDT",
+        "2025-10-23 10:00:00 EDT"
+      ],
+      "description": "At 2,10,18:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Imgur for Content",
+      "filename": "scan-imgur.yml",
+      "cron_expression": "0 4,12,20 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "4,12,20",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T00:00:00.000Z",
+        "2025-10-22T08:00:00.000Z",
+        "2025-10-22T16:00:00.000Z",
+        "2025-10-23T00:00:00.000Z",
+        "2025-10-23T08:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-21 20:00:00 EDT",
+        "2025-10-22 04:00:00 EDT",
+        "2025-10-22 12:00:00 EDT",
+        "2025-10-22 20:00:00 EDT",
+        "2025-10-23 04:00:00 EDT"
+      ],
+      "description": "At 4,12,20:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Lemmy for Content",
+      "filename": "scan-lemmy.yml",
+      "cron_expression": "0 5,13,21 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "5,13,21",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T01:00:00.000Z",
+        "2025-10-22T09:00:00.000Z",
+        "2025-10-22T17:00:00.000Z",
+        "2025-10-23T01:00:00.000Z",
+        "2025-10-23T09:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-21 21:00:00 EDT",
+        "2025-10-22 05:00:00 EDT",
+        "2025-10-22 13:00:00 EDT",
+        "2025-10-22 21:00:00 EDT",
+        "2025-10-23 05:00:00 EDT"
+      ],
+      "description": "At 5,13,21:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Niche Platforms",
+      "filename": "scan-niche-platforms.yml",
+      "cron_expression": "0 6,14,22 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "6,14,22",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T02:00:00.000Z",
+        "2025-10-22T10:00:00.000Z",
+        "2025-10-22T18:00:00.000Z",
+        "2025-10-23T02:00:00.000Z",
+        "2025-10-23T10:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-21 22:00:00 EDT",
+        "2025-10-22 06:00:00 EDT",
+        "2025-10-22 14:00:00 EDT",
+        "2025-10-22 22:00:00 EDT",
+        "2025-10-23 06:00:00 EDT"
+      ],
+      "description": "At 6,14,22:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Pixabay for Content",
+      "filename": "scan-pixabay.yml",
+      "cron_expression": "0 3,11,19 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "3,11,19",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T07:00:00.000Z",
+        "2025-10-22T15:00:00.000Z",
+        "2025-10-22T23:00:00.000Z",
+        "2025-10-23T07:00:00.000Z",
+        "2025-10-23T15:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 03:00:00 EDT",
+        "2025-10-22 11:00:00 EDT",
+        "2025-10-22 19:00:00 EDT",
+        "2025-10-23 03:00:00 EDT",
+        "2025-10-23 11:00:00 EDT"
+      ],
+      "description": "At 3,11,19:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Reddit for Content",
+      "filename": "scan-reddit.yml",
+      "cron_expression": "0 2,10,18 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "2,10,18",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T06:00:00.000Z",
+        "2025-10-22T14:00:00.000Z",
+        "2025-10-22T22:00:00.000Z",
+        "2025-10-23T06:00:00.000Z",
+        "2025-10-23T14:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 02:00:00 EDT",
+        "2025-10-22 10:00:00 EDT",
+        "2025-10-22 18:00:00 EDT",
+        "2025-10-23 02:00:00 EDT",
+        "2025-10-23 10:00:00 EDT"
+      ],
+      "description": "At 2,10,18:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Social Platforms",
+      "filename": "scan-social-platforms.yml",
+      "cron_expression": "0 1,9,17 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "1,9,17",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T05:00:00.000Z",
+        "2025-10-22T13:00:00.000Z",
+        "2025-10-22T21:00:00.000Z",
+        "2025-10-23T05:00:00.000Z",
+        "2025-10-23T13:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 01:00:00 EDT",
+        "2025-10-22 09:00:00 EDT",
+        "2025-10-22 17:00:00 EDT",
+        "2025-10-23 01:00:00 EDT",
+        "2025-10-23 09:00:00 EDT"
+      ],
+      "description": "At 1,9,17:00 UTC"
+    },
+    {
+      "workflow_name": "Scan Tumblr for Content",
+      "filename": "scan-tumblr.yml",
+      "cron_expression": "0 6,14,22 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "6,14,22",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T02:00:00.000Z",
+        "2025-10-22T10:00:00.000Z",
+        "2025-10-22T18:00:00.000Z",
+        "2025-10-23T02:00:00.000Z",
+        "2025-10-23T10:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-21 22:00:00 EDT",
+        "2025-10-22 06:00:00 EDT",
+        "2025-10-22 14:00:00 EDT",
+        "2025-10-22 22:00:00 EDT",
+        "2025-10-23 06:00:00 EDT"
+      ],
+      "description": "At 6,14,22:00 UTC"
+    },
+    {
+      "workflow_name": "Scan YouTube for Content",
+      "filename": "scan-youtube.yml",
+      "cron_expression": "0 4,16 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "4,16",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T08:00:00.000Z",
+        "2025-10-22T20:00:00.000Z",
+        "2025-10-23T08:00:00.000Z",
+        "2025-10-23T20:00:00.000Z",
+        "2025-10-24T08:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 04:00:00 EDT",
+        "2025-10-22 16:00:00 EDT",
+        "2025-10-23 04:00:00 EDT",
+        "2025-10-23 16:00:00 EDT",
+        "2025-10-24 04:00:00 EDT"
+      ],
+      "description": "At 4,16:00 UTC"
+    },
+    {
+      "workflow_name": "Content Scanners",
+      "filename": "scanners.yml",
+      "cron_expression": "0 */4 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "*/4",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:00:00.000Z",
+        "2025-10-22T08:00:00.000Z",
+        "2025-10-22T12:00:00.000Z",
+        "2025-10-22T16:00:00.000Z",
+        "2025-10-23T04:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:00:00 EDT",
+        "2025-10-22 04:00:00 EDT",
+        "2025-10-22 08:00:00 EDT",
+        "2025-10-22 12:00:00 EDT",
+        "2025-10-23 00:00:00 EDT"
+      ],
+      "description": "At */4:00 UTC"
+    },
+    {
+      "workflow_name": "Content Scanners",
+      "filename": "scanners.yml",
+      "cron_expression": "30 */6 * * *",
+      "parsed_utc": {
+        "minute": "30",
+        "hour": "*/6",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:30:00.000Z",
+        "2025-10-22T10:30:00.000Z",
+        "2025-10-22T16:30:00.000Z",
+        "2025-10-22T22:30:00.000Z",
+        "2025-10-23T04:30:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:30:00 EDT",
+        "2025-10-22 06:30:00 EDT",
+        "2025-10-22 12:30:00 EDT",
+        "2025-10-22 18:30:00 EDT",
+        "2025-10-23 00:30:00 EDT"
+      ],
+      "description": "At */6:30 UTC"
+    },
+    {
+      "workflow_name": "Content Scanners",
+      "filename": "scanners.yml",
+      "cron_expression": "15 */8 * * *",
+      "parsed_utc": {
+        "minute": "15",
+        "hour": "*/8",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:15:00.000Z",
+        "2025-10-22T04:15:00.000Z",
+        "2025-10-22T12:15:00.000Z",
+        "2025-10-22T20:15:00.000Z",
+        "2025-10-23T04:15:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:15:00 EDT",
+        "2025-10-22 00:15:00 EDT",
+        "2025-10-22 08:15:00 EDT",
+        "2025-10-22 16:15:00 EDT",
+        "2025-10-23 00:15:00 EDT"
+      ],
+      "description": "At */8:15 UTC"
+    },
+    {
+      "workflow_name": "Schedule Reconciliation",
+      "filename": "schedule-reconcile.yml",
+      "cron_expression": "30 6 * * *",
+      "parsed_utc": {
+        "minute": "30",
+        "hour": "6",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T10:30:00.000Z",
+        "2025-10-23T10:30:00.000Z",
+        "2025-10-24T10:30:00.000Z",
+        "2025-10-25T10:30:00.000Z",
+        "2025-10-26T10:30:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 06:30:00 EDT",
+        "2025-10-23 06:30:00 EDT",
+        "2025-10-24 06:30:00 EDT",
+        "2025-10-25 06:30:00 EDT",
+        "2025-10-26 06:30:00 EDT"
+      ],
+      "description": "At 6:30 UTC"
+    },
+    {
+      "workflow_name": "Scheduler SLA Guard",
+      "filename": "scheduler-sla-guard.yml",
+      "cron_expression": "10 10 * * *",
+      "parsed_utc": {
+        "minute": "10",
+        "hour": "10",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T14:10:00.000Z",
+        "2025-10-23T14:10:00.000Z",
+        "2025-10-24T14:10:00.000Z",
+        "2025-10-25T14:10:00.000Z",
+        "2025-10-26T14:10:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 10:10:00 EDT",
+        "2025-10-23 10:10:00 EDT",
+        "2025-10-24 10:10:00 EDT",
+        "2025-10-25 10:10:00 EDT",
+        "2025-10-26 10:10:00 EDT"
+      ],
+      "description": "At 10:10 UTC"
+    },
+    {
+      "workflow_name": "Content Scheduler",
+      "filename": "scheduler.yml",
+      "cron_expression": "0 1 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "1",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T05:00:00.000Z",
+        "2025-10-23T05:00:00.000Z",
+        "2025-10-24T05:00:00.000Z",
+        "2025-10-25T05:00:00.000Z",
+        "2025-10-26T05:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 01:00:00 EDT",
+        "2025-10-23 01:00:00 EDT",
+        "2025-10-24 01:00:00 EDT",
+        "2025-10-25 01:00:00 EDT",
+        "2025-10-26 01:00:00 EDT"
+      ],
+      "description": "At 1:00 UTC"
+    },
+    {
+      "workflow_name": "Content Scheduler",
+      "filename": "scheduler.yml",
+      "cron_expression": "0 12 * * *",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "12",
+        "day": "*",
+        "month": "*",
+        "dow": "*"
+      },
+      "sample_times_utc": [
+        "2025-10-22T16:00:00.000Z",
+        "2025-10-23T16:00:00.000Z",
+        "2025-10-24T16:00:00.000Z",
+        "2025-10-25T16:00:00.000Z",
+        "2025-10-26T16:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 12:00:00 EDT",
+        "2025-10-23 12:00:00 EDT",
+        "2025-10-24 12:00:00 EDT",
+        "2025-10-25 12:00:00 EDT",
+        "2025-10-26 12:00:00 EDT"
+      ],
+      "description": "At 12:00 UTC"
+    },
+    {
+      "workflow_name": "Content Scheduler",
+      "filename": "scheduler.yml",
+      "cron_expression": "0 0 * * 0",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "0",
+        "day": "*",
+        "month": "*",
+        "dow": "0"
+      },
+      "sample_times_utc": [
+        "2025-10-22T04:00:00.000Z",
+        "2025-10-23T04:00:00.000Z",
+        "2025-10-24T04:00:00.000Z",
+        "2025-10-25T04:00:00.000Z",
+        "2025-10-26T04:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 00:00:00 EDT",
+        "2025-10-23 00:00:00 EDT",
+        "2025-10-24 00:00:00 EDT",
+        "2025-10-25 00:00:00 EDT",
+        "2025-10-26 00:00:00 EDT"
+      ],
+      "description": "At 0:00 on Sun UTC"
+    },
+    {
+      "workflow_name": "Secret Validation",
+      "filename": "secret-validation.yml",
+      "cron_expression": "0 9 * * 1",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "9",
+        "day": "*",
+        "month": "*",
+        "dow": "1"
+      },
+      "sample_times_utc": [
+        "2025-10-22T13:00:00.000Z",
+        "2025-10-23T13:00:00.000Z",
+        "2025-10-24T13:00:00.000Z",
+        "2025-10-25T13:00:00.000Z",
+        "2025-10-26T13:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 09:00:00 EDT",
+        "2025-10-23 09:00:00 EDT",
+        "2025-10-24 09:00:00 EDT",
+        "2025-10-25 09:00:00 EDT",
+        "2025-10-26 09:00:00 EDT"
+      ],
+      "description": "At 9:00 on Mon UTC"
+    },
+    {
+      "workflow_name": "OpenAPI Spec Drift Detection",
+      "filename": "spec-drift.yml",
+      "cron_expression": "0 6 * * 1",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "6",
+        "day": "*",
+        "month": "*",
+        "dow": "1"
+      },
+      "sample_times_utc": [
+        "2025-10-22T10:00:00.000Z",
+        "2025-10-23T10:00:00.000Z",
+        "2025-10-24T10:00:00.000Z",
+        "2025-10-25T10:00:00.000Z",
+        "2025-10-26T10:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 06:00:00 EDT",
+        "2025-10-23 06:00:00 EDT",
+        "2025-10-24 06:00:00 EDT",
+        "2025-10-25 06:00:00 EDT",
+        "2025-10-26 06:00:00 EDT"
+      ],
+      "description": "At 6:00 on Mon UTC"
+    },
+    {
+      "workflow_name": "🔥 Weekly Smoke Test",
+      "filename": "weekly-smoke-test.yml",
+      "cron_expression": "0 8 * * 1",
+      "parsed_utc": {
+        "minute": "0",
+        "hour": "8",
+        "day": "*",
+        "month": "*",
+        "dow": "1"
+      },
+      "sample_times_utc": [
+        "2025-10-22T12:00:00.000Z",
+        "2025-10-23T12:00:00.000Z",
+        "2025-10-24T12:00:00.000Z",
+        "2025-10-25T12:00:00.000Z",
+        "2025-10-26T12:00:00.000Z"
+      ],
+      "sample_times_et": [
+        "2025-10-22 08:00:00 EDT",
+        "2025-10-23 08:00:00 EDT",
+        "2025-10-24 08:00:00 EDT",
+        "2025-10-25 08:00:00 EDT",
+        "2025-10-26 08:00:00 EDT"
+      ],
+      "description": "At 8:00 on Mon UTC"
+    }
+  ],
+  "collisions": [
+    {
+      "time_window": "06:00",
+      "colliding_workflows": [
+        "Auto-Approve Content",
+        "Auto Queue Manager",
+        "Database Cleanup",
+        "Housekeeping",
+        "Monitor Queue Health & Scan if Needed",
+        "Scan Niche Platforms",
+        "Scan Tumblr for Content",
+        "OpenAPI Spec Drift Detection"
+      ],
+      "severity": "severe"
+    },
+    {
+      "time_window": "00:00",
+      "colliding_workflows": [
+        "Auto-Approve Content",
+        "Auto Queue Manager",
+        "Daily Summary Report",
+        "Monitor Queue Health & Scan if Needed",
+        "Content Scanners",
+        "Content Scheduler"
+      ],
+      "severity": "severe"
+    },
+    {
+      "time_window": "12:00",
+      "colliding_workflows": [
+        "Auto-Approve Content",
+        "Auto Queue Manager",
+        "Post Lunch Content",
+        "Scan Imgur for Content",
+        "Content Scanners",
+        "Content Scheduler"
+      ],
+      "severity": "severe"
+    },
+    {
+      "time_window": "09:00",
+      "colliding_workflows": [
+        "Daily Ingestion Balance Report",
+        "🔍 Production Audit",
+        "Monitor Queue Health & Scan if Needed",
+        "Scan Bluesky for Content",
+        "Scan Social Platforms",
+        "Secret Validation"
+      ],
+      "severity": "severe"
+    },
+    {
+      "time_window": "18:00",
+      "colliding_workflows": [
+        "Auto-Approve Content",
+        "Auto Queue Manager",
+        "Post Dinner Content",
+        "Scan Giphy for Content",
+        "Scan Reddit for Content"
+      ],
+      "severity": "severe"
+    },
+    {
+      "time_window": "03:00",
+      "colliding_workflows": [
+        "Housekeeping",
+        "Monitor Queue Health & Scan if Needed",
+        "Scan Pixabay for Content"
+      ],
+      "severity": "moderate"
+    },
+    {
+      "time_window": "08:00",
+      "colliding_workflows": [
+        "Meta CI Audit",
+        "Content Scanners",
+        "🔥 Weekly Smoke Test"
+      ],
+      "severity": "moderate"
+    },
+    {
+      "time_window": "22:00",
+      "colliding_workflows": [
+        "Post Evening Content",
+        "Scan Niche Platforms",
+        "Scan Tumblr for Content"
+      ],
+      "severity": "moderate"
+    },
+    {
+      "time_window": "17:00",
+      "colliding_workflows": [
+        "Content Posting",
+        "Scan Bluesky for Content",
+        "Scan Social Platforms"
+      ],
+      "severity": "moderate"
+    },
+    {
+      "time_window": "02:00",
+      "colliding_workflows": [
+        "Content Posting",
+        "Scan Giphy for Content",
+        "Scan Reddit for Content"
+      ],
+      "severity": "moderate"
+    },
+    {
+      "time_window": "10:00",
+      "colliding_workflows": [
+        "Queue Readiness",
+        "Scan Giphy for Content",
+        "Scan Reddit for Content"
+      ],
+      "severity": "moderate"
+    },
+    {
+      "time_window": "01:00",
+      "colliding_workflows": [
+        "Scan Bluesky for Content",
+        "Scan Social Platforms",
+        "Content Scheduler"
+      ],
+      "severity": "moderate"
+    },
+    {
+      "time_window": "04:00",
+      "colliding_workflows": [
+        "Scan Imgur for Content",
+        "Scan YouTube for Content",
+        "Content Scanners"
+      ],
+      "severity": "moderate"
+    },
+    {
+      "time_window": "13:00",
+      "colliding_workflows": [
+        "Content Posting",
+        "Scan Lemmy for Content"
+      ],
+      "severity": "minor"
+    },
+    {
+      "time_window": "20:00",
+      "colliding_workflows": [
+        "Content Posting",
+        "Scan Imgur for Content"
+      ],
+      "severity": "minor"
+    },
+    {
+      "time_window": "14:00",
+      "colliding_workflows": [
+        "Scan Niche Platforms",
+        "Scan Tumblr for Content"
+      ],
+      "severity": "minor"
+    },
+    {
+      "time_window": "06:30",
+      "colliding_workflows": [
+        "Content Scanners",
+        "Schedule Reconciliation"
+      ],
+      "severity": "minor"
+    }
+  ],
+  "summary": {
+    "total_scheduled_workflows": 36,
+    "total_cron_expressions": 49,
+    "collision_windows": 17,
+    "staggering_recommendations": [
+      "Stagger workflows at 06:00 UTC: Auto-Approve Content, Auto Queue Manager, Database Cleanup, Housekeeping, Monitor Queue Health & Scan if Needed, Scan Niche Platforms, Scan Tumblr for Content, OpenAPI Spec Drift Detection (±2-5 min offset recommended)",
+      "Stagger workflows at 00:00 UTC: Auto-Approve Content, Auto Queue Manager, Daily Summary Report, Monitor Queue Health & Scan if Needed, Content Scanners, Content Scheduler (±2-5 min offset recommended)",
+      "Stagger workflows at 12:00 UTC: Auto-Approve Content, Auto Queue Manager, Post Lunch Content, Scan Imgur for Content, Content Scanners, Content Scheduler (±2-5 min offset recommended)",
+      "Stagger workflows at 09:00 UTC: Daily Ingestion Balance Report, 🔍 Production Audit, Monitor Queue Health & Scan if Needed, Scan Bluesky for Content, Scan Social Platforms, Secret Validation (±2-5 min offset recommended)",
+      "Stagger workflows at 18:00 UTC: Auto-Approve Content, Auto Queue Manager, Post Dinner Content, Scan Giphy for Content, Scan Reddit for Content (±2-5 min offset recommended)",
+      "Stagger workflows at 03:00 UTC: Housekeeping, Monitor Queue Health & Scan if Needed, Scan Pixabay for Content (±2-5 min offset recommended)",
+      "Stagger workflows at 08:00 UTC: Meta CI Audit, Content Scanners, 🔥 Weekly Smoke Test (±2-5 min offset recommended)",
+      "Stagger workflows at 22:00 UTC: Post Evening Content, Scan Niche Platforms, Scan Tumblr for Content (±2-5 min offset recommended)",
+      "Stagger workflows at 17:00 UTC: Content Posting, Scan Bluesky for Content, Scan Social Platforms (±2-5 min offset recommended)",
+      "Stagger workflows at 02:00 UTC: Content Posting, Scan Giphy for Content, Scan Reddit for Content (±2-5 min offset recommended)",
+      "Stagger workflows at 10:00 UTC: Queue Readiness, Scan Giphy for Content, Scan Reddit for Content (±2-5 min offset recommended)",
+      "Stagger workflows at 01:00 UTC: Scan Bluesky for Content, Scan Social Platforms, Content Scheduler (±2-5 min offset recommended)",
+      "Stagger workflows at 04:00 UTC: Scan Imgur for Content, Scan YouTube for Content, Content Scanners (±2-5 min offset recommended)"
+    ]
+  }
+}

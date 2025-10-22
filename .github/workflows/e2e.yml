@@ -128,10 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: ${{ fromJSON(
-          needs.should-run.outputs.browser == 'all' && '["chromium", "firefox", "webkit"]' ||
-          format('["{0}"]', needs.should-run.outputs.browser)
-        ) }}
+        browser: ${{ fromJSON(needs.should-run.outputs.browser == 'all' && '["chromium", "firefox", "webkit"]' || format('["{0}"]', needs.should-run.outputs.browser)) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

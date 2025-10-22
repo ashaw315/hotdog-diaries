@@ -1,0 +1,154 @@
+name: Post Time Slot (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      slot_name:
+        description: 'Name of the time slot (e.g., breakfast, lunch, dinner)'
+        required: true
+        type: string
+      slot_time:
+        description: 'Time description for logging (e.g., "8:00 AM ET")'
+        required: true
+        type: string
+      target_url:
+        description: 'Target URL for posting'
+        required: false
+        type: string
+        default: 'https://hotdog-diaries.vercel.app'
+      enable_diversity_guard:
+        description: 'Enable platform diversity constraints'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  post-content:
+    runs-on: ubuntu-latest
+    name: Post ${{ inputs.slot_name }} Content
+    timeout-minutes: 15
+    
+    concurrency:
+      group: posting-${{ inputs.slot_name }}-${{ github.ref }}
+      cancel-in-progress: false
+    
+    outputs:
+      post-status: ${{ steps.post.outputs.status }}
+      content-id: ${{ steps.post.outputs.content_id }}
+      platform: ${{ steps.post.outputs.platform }}
+      diversity-score: ${{ steps.post.outputs.diversity_score }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js with pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Setup Supabase environment
+        uses: ./.github/actions/setup-supabase-rest
+        with:
+          supabase-url: ${{ secrets.SUPABASE_URL }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          database-url: ${{ secrets.DATABASE_URL }}
+          node-env: production
+          verify-connection: true
+      
+      - name: Post content for time slot
+        id: post
+        run: |
+          echo "🍽️ Posting content for ${{ inputs.slot_name }} time slot (${{ inputs.slot_time }})"
+          
+          # Set diversity flags
+          DIVERSITY_FLAG=""
+          if [ "${{ inputs.enable_diversity_guard }}" = "true" ]; then
+            DIVERSITY_FLAG="--enforce-diversity"
+          fi
+          
+          # Execute posting with proper error handling
+          set +e
+          RESPONSE=$(pnpm tsx scripts/post-content.ts \
+            --slot="${{ inputs.slot_name }}" \
+            --target-url="${{ inputs.target_url }}" \
+            $DIVERSITY_FLAG \
+            --format=json 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          echo "Raw response: $RESPONSE"
+          echo "Exit code: $EXIT_CODE"
+          
+          # Parse response for outputs
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ Content posted successfully"
+            echo "status=success" >> $GITHUB_OUTPUT
+            
+            # Extract details from JSON response
+            CONTENT_ID=$(echo "$RESPONSE" | jq -r '.content_id // "unknown"')
+            PLATFORM=$(echo "$RESPONSE" | jq -r '.platform // "unknown"')
+            DIVERSITY_SCORE=$(echo "$RESPONSE" | jq -r '.diversity_score // 0')
+            
+            echo "content_id=$CONTENT_ID" >> $GITHUB_OUTPUT
+            echo "platform=$PLATFORM" >> $GITHUB_OUTPUT
+            echo "diversity_score=$DIVERSITY_SCORE" >> $GITHUB_OUTPUT
+            
+            echo "📊 Posted Details:"
+            echo "  - Content ID: $CONTENT_ID"
+            echo "  - Platform: $PLATFORM"
+            echo "  - Diversity Score: $DIVERSITY_SCORE"
+            
+          elif [ $EXIT_CODE -eq 78 ]; then
+            echo "⚠️ No content available for posting (neutralized)"
+            echo "status=neutralized" >> $GITHUB_OUTPUT
+            echo "content_id=none" >> $GITHUB_OUTPUT
+            echo "platform=none" >> $GITHUB_OUTPUT
+            echo "diversity_score=0" >> $GITHUB_OUTPUT
+            exit 0  # Don't fail the workflow
+            
+          else
+            echo "❌ Posting failed with exit code $EXIT_CODE"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "content_id=error" >> $GITHUB_OUTPUT
+            echo "platform=error" >> $GITHUB_OUTPUT
+            echo "diversity_score=0" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        env:
+          NODE_ENV: production
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      
+      - name: Update job summary
+        if: always()
+        run: |
+          echo "## 🍽️ ${{ inputs.slot_name }} Posting Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Time Slot:** ${{ inputs.slot_time }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.post.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.post.outputs.status }}" = "success" ]; then
+            echo "**Content ID:** ${{ steps.post.outputs.content_id }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Platform:** ${{ steps.post.outputs.platform }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Diversity Score:** ${{ steps.post.outputs.diversity_score }}" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.post.outputs.status }}" = "neutralized" ]; then
+            echo "**Reason:** No content available for posting" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_Posted at $(date -Iseconds)_" >> $GITHUB_STEP_SUMMARY

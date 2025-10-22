@@ -51,15 +51,62 @@ runs:
         echo "POSTGRES_URL=${{ inputs.database-url }}" >> $GITHUB_ENV
         echo "VERCEL_ENV=production" >> $GITHUB_ENV
         
-    - name: Supabase reachability (status only)
+    - name: Supabase reachability with retry
       shell: bash
       run: |
-        code=$(curl -sS -o /dev/null -w "%{http_code}" \
-          -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-          -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-          "${SUPABASE_URL}/rest/v1/")
-        echo "SUPABASE_REST_CODE=${code}"
-        test "${code}" = "200"
+        echo "🔗 Testing Supabase reachability with retry logic..."
+        
+        # Retry function with exponential backoff: 5s, 10s, 20s
+        attempt=1
+        max_attempts=3
+        delays=(5 10 20)
+        
+        while [ $attempt -le $max_attempts ]; do
+          echo "Attempt $attempt/$max_attempts..."
+          
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            --max-time 10 \
+            "${SUPABASE_URL}/rest/v1/")
+          
+          echo "HTTP status: ${code}"
+          
+          if [ "${code}" = "200" ]; then
+            echo "✅ Supabase reachability confirmed on attempt $attempt"
+            echo "SUPABASE_REST_CODE=${code}" >> $GITHUB_ENV
+            exit 0
+          fi
+          
+          # Check for 4xx/5xx errors
+          if [[ "${code}" =~ ^[45][0-9][0-9]$ ]]; then
+            echo "❌ HTTP ${code} error detected on attempt $attempt"
+            if [ $attempt -eq $max_attempts ]; then
+              echo "::error::Supabase reachability failed after $max_attempts attempts with HTTP ${code}"
+              echo "## 🚨 Supabase Connection Failure" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Status:** HTTP ${code} after ${max_attempts} retry attempts" >> $GITHUB_STEP_SUMMARY
+              echo "**URL:** ${SUPABASE_URL}/rest/v1/" >> $GITHUB_STEP_SUMMARY
+              echo "**Retries:** 5s, 10s, 20s delays" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "This indicates a persistent connectivity or authentication issue with Supabase." >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          else
+            echo "⚠️ Unexpected response: ${code}"
+          fi
+          
+          if [ $attempt -lt $max_attempts ]; then
+            delay=${delays[$((attempt-1))]}
+            echo "Waiting ${delay}s before retry..."
+            sleep $delay
+          fi
+          
+          attempt=$((attempt + 1))
+        done
+        
+        echo "❌ All $max_attempts attempts failed"
+        exit 1
         
     - name: Verify Supabase connection
       id: verify

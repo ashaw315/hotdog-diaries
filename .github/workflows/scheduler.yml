@@ -1,5 +1,8 @@
 name: Content Scheduler
 
+permissions:
+  contents: read
+
 on:
   schedule:
     - cron: '0 1 * * *'     # Daily at 1 AM UTC - refill next day

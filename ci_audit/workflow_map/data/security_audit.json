@@ -1,0 +1,1030 @@
+{
+  "generated_at": "2025-10-21T23:49:35.216Z",
+  "secret_usage": [
+    {
+      "secret_name": "AUTH_TOKEN",
+      "workflows": [
+        "Auto-Approve Content",
+        "Auto Queue Manager",
+        "Database Cleanup",
+        "Daily Summary Report",
+        "Deploy Gate",
+        "🚪 Deployment Gate",
+        "Housekeeping",
+        "Manual Operations",
+        "Post Breakfast Content",
+        "Post Dinner Content",
+        "Post Evening Content",
+        "Post Late Night Content",
+        "Post Lunch Content",
+        "Post Afternoon Snack",
+        "Content Posting",
+        "Production Autonomy Watchdog",
+        "🔍 Production Audit",
+        "Queue Monitor Hook",
+        "Monitor Queue Health & Scan if Needed",
+        "Scan Bluesky for Content",
+        "Scan Giphy for Content",
+        "Scan Imgur for Content",
+        "Scan Lemmy for Content",
+        "Scan Niche Platforms",
+        "Scan Pixabay for Content",
+        "Scan Reddit for Content",
+        "Scan Social Platforms",
+        "Scan Tumblr for Content",
+        "Scan YouTube for Content",
+        "Schedule Reconciliation",
+        "Content Scheduler",
+        "Secret Validation",
+        "Token Refresh (Reusable)"
+      ],
+      "workflow_count": 33,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "auth"
+    },
+    {
+      "secret_name": "SITE_URL",
+      "workflows": [
+        "Auto-Approve Content",
+        "Auto Queue Manager",
+        "Database Cleanup",
+        "Daily Summary Report",
+        "Housekeeping",
+        "Manual Operations",
+        "Post Breakfast Content",
+        "Post Dinner Content",
+        "Post Evening Content",
+        "Post Late Night Content",
+        "Post Lunch Content",
+        "Post Afternoon Snack",
+        "Content Posting",
+        "Queue Monitor Hook",
+        "Monitor Queue Health & Scan if Needed",
+        "Scan Bluesky for Content",
+        "Scan Giphy for Content",
+        "Scan Imgur for Content",
+        "Scan Lemmy for Content",
+        "Scan Niche Platforms",
+        "Scan Pixabay for Content",
+        "Scan Reddit for Content",
+        "Scan Social Platforms",
+        "Scan Tumblr for Content",
+        "Scan YouTube for Content",
+        "Content Scheduler",
+        "Token Refresh (Reusable)"
+      ],
+      "workflow_count": 27,
+      "is_critical": false,
+      "risk_level": "low",
+      "classification": "unknown"
+    },
+    {
+      "secret_name": "GITHUB_TOKEN",
+      "workflows": [
+        "Auto PR CI Shepherd",
+        "CI Failure Drilldown (Read-Only)",
+        "CI",
+        "Daily Summary Report",
+        "Meta CI Audit",
+        "Phase 3 CI Auto-Healing: Security & Build Diagnostics",
+        "Post-Remediation Validation",
+        "Production Autonomy Watchdog",
+        "🔍 Production Audit",
+        "Queue Readiness",
+        "OpenAPI Spec Drift Detection"
+      ],
+      "workflow_count": 11,
+      "is_critical": true,
+      "risk_level": "high",
+      "classification": "deployment"
+    },
+    {
+      "secret_name": "SUPABASE_URL",
+      "workflows": [
+        "Daily Ingestion Balance Report",
+        "Housekeeping",
+        "Content Posting",
+        "Production Autonomy Watchdog",
+        "🔍 Production Audit",
+        "Content Scanners",
+        "Schedule Reconciliation",
+        "Content Scheduler"
+      ],
+      "workflow_count": 8,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "database"
+    },
+    {
+      "secret_name": "SUPABASE_SERVICE_ROLE_KEY_V2",
+      "workflows": [
+        "Daily Ingestion Balance Report",
+        "Housekeeping",
+        "Content Posting",
+        "Production Autonomy Watchdog",
+        "🔍 Production Audit",
+        "Content Scanners",
+        "Schedule Reconciliation",
+        "Content Scheduler"
+      ],
+      "workflow_count": 8,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "database"
+    },
+    {
+      "secret_name": "DATABASE_URL",
+      "workflows": [
+        "Housekeeping",
+        "Content Posting",
+        "Content Scanners",
+        "Schedule Reconciliation",
+        "Content Scheduler"
+      ],
+      "workflow_count": 5,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "database"
+    },
+    {
+      "secret_name": "SERVICE_ACCOUNT_SECRET",
+      "workflows": [
+        "Auto Queue Manager",
+        "Post Breakfast Content",
+        "Token Refresh (Reusable)"
+      ],
+      "workflow_count": 3,
+      "is_critical": false,
+      "risk_level": "low",
+      "classification": "unknown"
+    },
+    {
+      "secret_name": "REFRESH_TOKEN",
+      "workflows": [
+        "Auto Queue Manager",
+        "Post Breakfast Content",
+        "Token Refresh (Reusable)"
+      ],
+      "workflow_count": 3,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "auth"
+    },
+    {
+      "secret_name": "JWT_SECRET",
+      "workflows": [
+        "Deploy Gate",
+        "Production Autonomy Watchdog",
+        "Secret Validation"
+      ],
+      "workflow_count": 3,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "auth"
+    },
+    {
+      "secret_name": "REDDIT_CLIENT_ID",
+      "workflows": [
+        "Housekeeping",
+        "Content Scanners"
+      ],
+      "workflow_count": 2,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "api_key"
+    },
+    {
+      "secret_name": "YOUTUBE_API_KEY",
+      "workflows": [
+        "Housekeeping",
+        "Content Scanners"
+      ],
+      "workflow_count": 2,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "api_key"
+    },
+    {
+      "secret_name": "GIPHY_API_KEY",
+      "workflows": [
+        "Housekeeping",
+        "Content Scanners"
+      ],
+      "workflow_count": 2,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "api_key"
+    },
+    {
+      "secret_name": "ALERT_WEBHOOK_URL",
+      "workflows": [
+        "Production Autonomy Watchdog",
+        "Scheduler SLA Guard"
+      ],
+      "workflow_count": 2,
+      "is_critical": false,
+      "risk_level": "low",
+      "classification": "unknown"
+    },
+    {
+      "secret_name": "VERCEL_TOKEN",
+      "workflows": [
+        "Deploy Gate"
+      ],
+      "workflow_count": 1,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "auth"
+    },
+    {
+      "secret_name": "VERCEL_PROJECT_ID",
+      "workflows": [
+        "Deploy Gate"
+      ],
+      "workflow_count": 1,
+      "is_critical": true,
+      "risk_level": "high",
+      "classification": "deployment"
+    },
+    {
+      "secret_name": "VERCEL_TEAM_ID",
+      "workflows": [
+        "Deploy Gate"
+      ],
+      "workflow_count": 1,
+      "is_critical": true,
+      "risk_level": "high",
+      "classification": "deployment"
+    },
+    {
+      "secret_name": "SLACK_WEBHOOK_URL",
+      "workflows": [
+        "Meta CI Audit"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "low",
+      "classification": "unknown"
+    },
+    {
+      "secret_name": "CI_REDISPATCH_TOKEN",
+      "workflows": [
+        "Phase 3 CI Auto-Healing: Security & Build Diagnostics"
+      ],
+      "workflow_count": 1,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "auth"
+    },
+    {
+      "secret_name": "REDDIT_CLIENT_SECRET",
+      "workflows": [
+        "Content Scanners"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "api_key"
+    },
+    {
+      "secret_name": "IMGUR_CLIENT_ID",
+      "workflows": [
+        "Content Scanners"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "api_key"
+    },
+    {
+      "secret_name": "BLUESKY_IDENTIFIER",
+      "workflows": [
+        "Content Scanners"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "external_service"
+    },
+    {
+      "secret_name": "BLUESKY_APP_PASSWORD",
+      "workflows": [
+        "Content Scanners"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "external_service"
+    },
+    {
+      "secret_name": "PIXABAY_API_KEY",
+      "workflows": [
+        "Content Scanners"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "api_key"
+    },
+    {
+      "secret_name": "TUMBLR_API_KEY",
+      "workflows": [
+        "Content Scanners"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "api_key"
+    },
+    {
+      "secret_name": "LEMMY_INSTANCE_URL",
+      "workflows": [
+        "Content Scanners"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "medium",
+      "classification": "external_service"
+    },
+    {
+      "secret_name": "CRON_TOKEN",
+      "workflows": [
+        "Secret Validation"
+      ],
+      "workflow_count": 1,
+      "is_critical": true,
+      "risk_level": "critical",
+      "classification": "auth"
+    },
+    {
+      "secret_name": "ADMIN_PASSWORD",
+      "workflows": [
+        "Secret Validation"
+      ],
+      "workflow_count": 1,
+      "is_critical": false,
+      "risk_level": "low",
+      "classification": "unknown"
+    }
+  ],
+  "permission_usage": [
+    {
+      "permission": "contents",
+      "scope": "read",
+      "workflows": [
+        "CI Failure Drilldown (Read-Only)",
+        "Database Cleanup",
+        "Deploy Gate",
+        "🚪 Deployment Gate",
+        "Post Breakfast Content",
+        "Post Dinner Content",
+        "Post Evening Content",
+        "Post Late Night Content",
+        "Post Lunch Content",
+        "Post-Remediation Validation",
+        "Post Afternoon Snack"
+      ],
+      "workflow_count": 11,
+      "risk_level": "low",
+      "is_write_permission": false
+    },
+    {
+      "permission": "actions",
+      "scope": "read",
+      "workflows": [
+        "CI Failure Drilldown (Read-Only)",
+        "Deploy Gate"
+      ],
+      "workflow_count": 2,
+      "risk_level": "low",
+      "is_write_permission": false
+    },
+    {
+      "permission": "checks",
+      "scope": "read",
+      "workflows": [
+        "CI Failure Drilldown (Read-Only)"
+      ],
+      "workflow_count": 1,
+      "risk_level": "low",
+      "is_write_permission": false
+    },
+    {
+      "permission": "issues",
+      "scope": "write",
+      "workflows": [
+        "CI Failure Drilldown (Read-Only)"
+      ],
+      "workflow_count": 1,
+      "risk_level": "medium",
+      "is_write_permission": true
+    },
+    {
+      "permission": "checks",
+      "scope": "write",
+      "workflows": [
+        "Deploy Gate"
+      ],
+      "workflow_count": 1,
+      "risk_level": "medium",
+      "is_write_permission": true
+    }
+  ],
+  "security_issues": [
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Auto-Approve Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Auto Queue Manager",
+      "description": "Non-production workflow accesses critical secrets: REFRESH_TOKEN, AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "CI Failure Drilldown (Read-Only)",
+      "description": "Non-production workflow accesses critical secrets: GITHUB_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Database Cleanup",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Daily Ingestion Balance Report",
+      "description": "Non-production workflow accesses critical secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY_V2",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Daily Summary Report",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN, GITHUB_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Housekeeping",
+      "description": "Non-production workflow accesses critical secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY_V2, DATABASE_URL, AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Manual Operations",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Meta CI Audit",
+      "description": "Non-production workflow accesses critical secrets: GITHUB_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Phase 3 CI Auto-Healing: Security & Build Diagnostics",
+      "description": "Non-production workflow accesses critical secrets: GITHUB_TOKEN, CI_REDISPATCH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Post Breakfast Content",
+      "description": "Non-production workflow accesses critical secrets: REFRESH_TOKEN, AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Post Dinner Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Post Evening Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Post Late Night Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Post Lunch Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Post-Remediation Validation",
+      "description": "Non-production workflow accesses critical secrets: GITHUB_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Post Afternoon Snack",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Content Posting",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY_V2, DATABASE_URL",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Queue Monitor Hook",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Monitor Queue Health & Scan if Needed",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Queue Readiness",
+      "description": "Non-production workflow accesses critical secrets: GITHUB_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Bluesky for Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Giphy for Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Imgur for Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Lemmy for Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Niche Platforms",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Pixabay for Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Reddit for Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Social Platforms",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan Tumblr for Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Scan YouTube for Content",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Content Scanners",
+      "description": "Non-production workflow accesses critical secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY_V2, DATABASE_URL",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Schedule Reconciliation",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN, DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY_V2",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Content Scheduler",
+      "description": "Non-production workflow accesses critical secrets: AUTH_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY_V2, DATABASE_URL",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "secret_exposure",
+      "severity": "medium",
+      "workflow": "Token Refresh (Reusable)",
+      "description": "Non-production workflow accesses critical secrets: REFRESH_TOKEN, AUTH_TOKEN",
+      "recommendation": "Limit critical secret access to production workflows only. Use less privileged secrets for testing."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Posting Guard (Reusable)",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Auto-Approve Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Auto PR CI Shepherd",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Auto Queue Manager",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "CI Test",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "CI Test",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "CI",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Daily Ingestion Balance Report",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Daily Summary Report",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Housekeeping",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Manual Operations",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Meta CI Audit",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Phase 3 CI Auto-Healing: Security & Build Diagnostics",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "📋 Planner Contract",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Content Posting",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Production Autonomy Watchdog",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "🔍 Production Audit",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Queue Monitor Hook",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Monitor Queue Health & Scan if Needed",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Queue Readiness",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "📋 Generate Runbook Artifacts",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Bluesky for Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Giphy for Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Imgur for Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Lemmy for Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Niche Platforms",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Pixabay for Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Reddit for Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Social Platforms",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan Tumblr for Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scan YouTube for Content",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Content Scanners",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Schedule Reconciliation",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Scheduler SLA Guard",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Content Scheduler",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Secret Validation",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "OpenAPI Spec Drift Detection",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "Token Refresh (Reusable)",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "missing_permission",
+      "severity": "low",
+      "workflow": "🔥 Weekly Smoke Test",
+      "description": "Workflow does not specify explicit permissions (inherits repo defaults)",
+      "recommendation": "Add explicit permissions block to follow principle of least privilege."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Meta CI Audit",
+      "description": "Secret SLACK_WEBHOOK_URL is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Content Scanners",
+      "description": "Secret REDDIT_CLIENT_SECRET is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Content Scanners",
+      "description": "Secret IMGUR_CLIENT_ID is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Content Scanners",
+      "description": "Secret BLUESKY_IDENTIFIER is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Content Scanners",
+      "description": "Secret BLUESKY_APP_PASSWORD is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Content Scanners",
+      "description": "Secret PIXABAY_API_KEY is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Content Scanners",
+      "description": "Secret TUMBLR_API_KEY is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Content Scanners",
+      "description": "Secret LEMMY_INSTANCE_URL is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    },
+    {
+      "type": "unused_secret",
+      "severity": "low",
+      "workflow": "Secret Validation",
+      "description": "Secret ADMIN_PASSWORD is only used by one workflow",
+      "recommendation": "Consider if this secret is necessary or if it could be consolidated with others."
+    }
+  ],
+  "summary": {
+    "total_secrets_referenced": 27,
+    "total_unique_permissions": 5,
+    "high_risk_secrets": 12,
+    "overprivileged_workflows": 0,
+    "security_score": 0,
+    "recommendations": [
+      "🚨 Security score is below 70%. Immediate attention required.",
+      "🔐 Limit critical secret access in 35 workflows.",
+      "📋 Regularly audit secret usage and permissions.",
+      "🔄 Rotate secrets according to your security policy."
+    ]
+  }
+}

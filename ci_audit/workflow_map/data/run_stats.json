@@ -1,0 +1,1195 @@
+{
+  "generated_at": "2025-10-21T23:55:56.897Z",
+  "repo": "ashaw315/hotdog-diaries",
+  "stats": [
+    {
+      "workflow_name": "Posting Guard (Reusable)",
+      "workflow_id": 199033274,
+      "last_7_days": {
+        "total_runs": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [],
+      "staleness_days": 999
+    },
+    {
+      "workflow_name": "Auto-Approve Content",
+      "workflow_id": 184217767,
+      "last_7_days": {
+        "total_runs": 28,
+        "success": 11,
+        "failure": 17,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18693381712,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T18:10:51Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18693381712",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18683510502,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T12:16:52Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18683510502",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18674677311,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T06:13:41Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18674677311",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "last_success_date": "2025-10-17T18:09:39Z",
+      "staleness_days": 4
+    },
+    {
+      "workflow_name": "Auto PR CI Shepherd",
+      "workflow_id": 199039035,
+      "last_7_days": {
+        "total_runs": 54,
+        "success": 26,
+        "failure": 22,
+        "cancelled": 6,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18667305724,
+          "conclusion": "cancelled",
+          "status": "completed",
+          "created_at": "2025-10-20T23:03:21Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18667305724",
+          "head_branch": "auth-hardening-ci-gates",
+          "event": "pull_request"
+        },
+        {
+          "run_id": 18667123257,
+          "conclusion": "cancelled",
+          "status": "completed",
+          "created_at": "2025-10-20T22:52:46Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18667123257",
+          "head_branch": "auth-hardening-ci-gates",
+          "event": "pull_request"
+        },
+        {
+          "run_id": 18667085187,
+          "conclusion": "cancelled",
+          "status": "completed",
+          "created_at": "2025-10-20T22:50:26Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18667085187",
+          "head_branch": "auth-hardening-ci-gates",
+          "event": "pull_request"
+        }
+      ],
+      "last_success_date": "2025-10-21T23:18:00Z",
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "Auto Queue Manager",
+      "workflow_id": 196027701,
+      "last_7_days": {
+        "total_runs": 28,
+        "success": 0,
+        "failure": 28,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18693669861,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T18:22:04Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18693669861",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18683967130,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T12:34:07Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18683967130",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18674876147,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T06:23:44Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18674876147",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "CI Failure Drilldown (Read-Only)",
+      "workflow_id": 199158749,
+      "last_7_days": {
+        "total_runs": 1,
+        "success": 0,
+        "failure": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18634175803,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T18:08:51Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18634175803",
+          "head_branch": "main",
+          "event": "workflow_dispatch"
+        }
+      ],
+      "staleness_days": 2
+    },
+    {
+      "workflow_name": "CI Test",
+      "workflow_id": 195969324,
+      "last_7_days": {
+        "total_runs": 61,
+        "success": 61,
+        "failure": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [],
+      "last_success_date": "2025-10-21T23:18:00Z",
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "CI Test",
+      "workflow_id": 195966834,
+      "last_7_days": {
+        "total_runs": 61,
+        "success": 61,
+        "failure": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [],
+      "last_success_date": "2025-10-21T23:18:00Z",
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "CI",
+      "workflow_id": 190442636,
+      "last_7_days": {
+        "total_runs": 100,
+        "success": 49,
+        "failure": 30,
+        "cancelled": 21,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18691988535,
+          "conclusion": "cancelled",
+          "status": "completed",
+          "created_at": "2025-10-21T17:15:22Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18691988535",
+          "head_branch": "main",
+          "event": "push"
+        },
+        {
+          "run_id": 18689827594,
+          "conclusion": "cancelled",
+          "status": "completed",
+          "created_at": "2025-10-21T15:54:06Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18689827594",
+          "head_branch": "ci/streamline-lean",
+          "event": "pull_request"
+        },
+        {
+          "run_id": 18686976472,
+          "conclusion": "cancelled",
+          "status": "completed",
+          "created_at": "2025-10-21T14:19:02Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18686976472",
+          "head_branch": "ci/fix-pr-failing-gates-2025-10-21",
+          "event": "pull_request"
+        }
+      ],
+      "last_success_date": "2025-10-21T23:18:00Z",
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "Database Cleanup",
+      "workflow_id": 184190201,
+      "last_7_days": {
+        "total_runs": 8,
+        "success": 3,
+        "failure": 5,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18694417323,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T18:52:09Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18694417323",
+          "head_branch": "main",
+          "event": "workflow_dispatch"
+        },
+        {
+          "run_id": 18674734184,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T06:16:35Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18674734184",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18643914704,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T06:17:05Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18643914704",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "last_success_date": "2025-10-17T06:15:55Z",
+      "staleness_days": 4
+    },
+    {
+      "workflow_name": "Daily Ingestion Balance Report",
+      "workflow_id": 198472434,
+      "last_7_days": {
+        "total_runs": 5,
+        "success": 0,
+        "failure": 5,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18679114077,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T09:19:17Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18679114077",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18647725557,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T09:20:32Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18647725557",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18628356999,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T09:15:34Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18628356999",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "Daily Summary Report",
+      "workflow_id": 183070370,
+      "last_7_days": {
+        "total_runs": 7,
+        "success": 0,
+        "failure": 7,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18669777762,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T01:21:37Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18669777762",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18639270599,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T01:25:26Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18639270599",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18623563425,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T01:28:24Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18623563425",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "Deploy Gate",
+      "workflow_id": 198508715,
+      "last_7_days": {
+        "total_runs": 100,
+        "success": 20,
+        "failure": 80,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18688483222,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T15:08:38Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18688483222",
+          "head_branch": "ci/streamline-lean",
+          "event": "deployment_status"
+        },
+        {
+          "run_id": 18687762698,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T14:44:14Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18687762698",
+          "head_branch": "ci/fix-pr-failing-gates-2025-10-21",
+          "event": "deployment_status"
+        },
+        {
+          "run_id": 18687155549,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T14:24:42Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18687155549",
+          "head_branch": "ci/fix-pr-failing-gates-2025-10-21",
+          "event": "deployment_status"
+        }
+      ],
+      "last_success_date": "2025-10-21T23:20:46Z",
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "🚪 Deployment Gate",
+      "workflow_id": 198540779,
+      "last_7_days": {
+        "total_runs": 84,
+        "success": 7,
+        "failure": 77,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18690071899,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T16:02:53Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18690071899",
+          "head_branch": "ci/streamline-lean",
+          "event": "deployment_status"
+        },
+        {
+          "run_id": 18689969112,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T15:59:21Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18689969112",
+          "head_branch": "ci/streamline-lean",
+          "event": "deployment_status"
+        },
+        {
+          "run_id": 18689887305,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T15:56:18Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18689887305",
+          "head_branch": "ci/streamline-lean",
+          "event": "deployment_status"
+        }
+      ],
+      "last_success_date": "2025-10-21T23:20:46Z",
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": ".github/workflows/e2e.yml",
+      "workflow_id": 195916256,
+      "last_7_days": {
+        "total_runs": 100,
+        "success": 10,
+        "failure": 90,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18700353047,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T23:17:58Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18700353047",
+          "head_branch": "main",
+          "event": "push"
+        },
+        {
+          "run_id": 18697048218,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T20:41:17Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18697048218",
+          "head_branch": "ci/secret-path-bust",
+          "event": "push"
+        },
+        {
+          "run_id": 18694099643,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T18:39:00Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18694099643",
+          "head_branch": "main",
+          "event": "push"
+        }
+      ],
+      "last_success_date": "2025-10-16T16:40:37Z",
+      "staleness_days": 5
+    },
+    {
+      "workflow_name": "Housekeeping",
+      "workflow_id": 198517777,
+      "last_7_days": {
+        "total_runs": 6,
+        "success": 0,
+        "failure": 6,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18674949080,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T06:27:13Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18674949080",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18644127038,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T06:28:02Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18644127038",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18641465559,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T03:47:02Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18641465559",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "Manual Operations",
+      "workflow_id": 183070371,
+      "last_7_days": {
+        "total_runs": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [],
+      "staleness_days": 999
+    },
+    {
+      "workflow_name": "Meta CI Audit",
+      "workflow_id": 196260762,
+      "last_7_days": {
+        "total_runs": 1,
+        "success": 0,
+        "failure": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18646277352,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T08:12:50Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18646277352",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18459389324,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-13T08:13:23Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18459389324",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "staleness_days": 1
+    },
+    {
+      "workflow_name": "Phase 3 CI Auto-Healing: Security & Build Diagnostics",
+      "workflow_id": 196281258,
+      "last_7_days": {
+        "total_runs": 0,
+        "success": 0,
+        "failure": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [],
+      "staleness_days": 999
+    },
+    {
+      "workflow_name": "📋 Planner Contract",
+      "workflow_id": 198869602,
+      "last_7_days": {
+        "total_runs": 4,
+        "success": 0,
+        "failure": 4,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18672270779,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T03:50:29Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18672270779",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18641636195,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T03:59:17Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18641636195",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18625070203,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T03:57:14Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18625070203",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": ".github/workflows/post-breakfast.yml",
+      "workflow_id": 183070372,
+      "last_7_days": {
+        "total_runs": 63,
+        "success": 0,
+        "failure": 63,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18700353174,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T23:17:58Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18700353174",
+          "head_branch": "main",
+          "event": "push"
+        },
+        {
+          "run_id": 18697047900,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T20:41:16Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18697047900",
+          "head_branch": "ci/secret-path-bust",
+          "event": "push"
+        },
+        {
+          "run_id": 18694099325,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T18:38:59Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18694099325",
+          "head_branch": "main",
+          "event": "push"
+        }
+      ],
+      "last_success_date": "2025-10-06T07:12:52Z",
+      "staleness_days": 15
+    },
+    {
+      "workflow_name": ".github/workflows/post-deploy-check.yml",
+      "workflow_id": 198517778,
+      "last_7_days": {
+        "total_runs": 100,
+        "success": 19,
+        "failure": 81,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18700353301,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T23:17:59Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18700353301",
+          "head_branch": "main",
+          "event": "push"
+        },
+        {
+          "run_id": 18697047741,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T20:41:16Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18697047741",
+          "head_branch": "ci/secret-path-bust",
+          "event": "push"
+        },
+        {
+          "run_id": 18694099503,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T18:39:00Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18694099503",
+          "head_branch": "main",
+          "event": "push"
+        }
+      ],
+      "last_success_date": "2025-10-18T19:00:31Z",
+      "staleness_days": 3
+    },
+    {
+      "workflow_name": "Post Dinner Content",
+      "workflow_id": 183070373,
+      "last_7_days": {
+        "total_runs": 7,
+        "success": 3,
+        "failure": 4,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18693727418,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T18:24:18Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18693727418",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18661230913,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T18:26:24Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18661230913",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18634326582,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T18:21:27Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18634326582",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "last_success_date": "2025-10-17T18:22:08Z",
+      "staleness_days": 4
+    },
+    {
+      "workflow_name": "Post Evening Content",
+      "workflow_id": 183070374,
+      "last_7_days": {
+        "total_runs": 7,
+        "success": 3,
+        "failure": 4,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18699066523,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T22:09:15Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18699066523",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18666258155,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T22:08:49Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18666258155",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18636770130,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T22:08:39Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18636770130",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "last_success_date": "2025-10-17T20:12:53Z",
+      "staleness_days": 4
+    },
+    {
+      "workflow_name": "Post Late Night Content",
+      "workflow_id": 183070375,
+      "last_7_days": {
+        "total_runs": 7,
+        "success": 2,
+        "failure": 5,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18699615598,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T22:35:13Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18699615598",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18666846930,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T22:36:56Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18666846930",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18637087133,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T22:36:29Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18637087133",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "last_success_date": "2025-10-16T22:34:18Z",
+      "staleness_days": 5
+    },
+    {
+      "workflow_name": "Post Lunch Content",
+      "workflow_id": 183070376,
+      "last_7_days": {
+        "total_runs": 7,
+        "success": 3,
+        "failure": 4,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18684022917,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T12:36:18Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18684022917",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18652178744,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T12:36:16Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18652178744",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18630434244,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T12:30:59Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18630434244",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "last_success_date": "2025-10-17T12:34:43Z",
+      "staleness_days": 4
+    },
+    {
+      "workflow_name": "Post-Remediation Validation",
+      "workflow_id": 196284321,
+      "last_7_days": {
+        "total_runs": 16,
+        "success": 0,
+        "failure": 16,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18568469537,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-16T16:44:15Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18568469537",
+          "head_branch": "main",
+          "event": "repository_dispatch"
+        },
+        {
+          "run_id": 18568181181,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-16T16:32:14Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18568181181",
+          "head_branch": "main",
+          "event": "repository_dispatch"
+        },
+        {
+          "run_id": 18567960602,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-16T16:23:43Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18567960602",
+          "head_branch": "main",
+          "event": "repository_dispatch"
+        }
+      ],
+      "staleness_days": 5
+    },
+    {
+      "workflow_name": "Post Afternoon Snack",
+      "workflow_id": 183070377,
+      "last_7_days": {
+        "total_runs": 7,
+        "success": 3,
+        "failure": 4,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18688713008,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T15:15:56Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18688713008",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18656575348,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-20T15:15:26Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18656575348",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18632265173,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-19T15:12:55Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18632265173",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "last_success_date": "2025-10-17T15:15:05Z",
+      "staleness_days": 4
+    },
+    {
+      "workflow_name": "Content Posting",
+      "workflow_id": 198517779,
+      "last_7_days": {
+        "total_runs": 32,
+        "success": 0,
+        "failure": 31,
+        "cancelled": 1,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18700186523,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T23:08:57Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18700186523",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18696763439,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T20:29:17Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18696763439",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18692050155,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T17:17:45Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18692050155",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "Production Autonomy Watchdog",
+      "workflow_id": 199039036,
+      "last_7_days": {
+        "total_runs": 81,
+        "success": 0,
+        "failure": 81,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18700482498,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T23:24:44Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18700482498",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18699377520,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T22:22:49Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18699377520",
+          "head_branch": "main",
+          "event": "schedule"
+        },
+        {
+          "run_id": 18698069378,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-21T21:23:57Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18698069378",
+          "head_branch": "main",
+          "event": "schedule"
+        }
+      ],
+      "staleness_days": 0
+    },
+    {
+      "workflow_name": "🔍 Production Audit",
+      "workflow_id": 198533046,
+      "last_7_days": {
+        "total_runs": 2,
+        "success": 1,
+        "failure": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "neutral": 0,
+        "timed_out": 0,
+        "action_required": 0,
+        "stale": 0
+      },
+      "last_non_success_runs": [
+        {
+          "run_id": 18572943037,
+          "conclusion": "failure",
+          "status": "completed",
+          "created_at": "2025-10-16T19:47:15Z",
+          "html_url": "https://github.com/ashaw315/hotdog-diaries/actions/runs/18572943037",
+          "head_branch": "main",
+          "event": "workflow_dispatch"
+        }
+      ],
+      "last_success_date": "2025-10-21T09:26:01Z",
+      "staleness_days": 0
+    }
+  ],
+  "summary": {
+    "total_workflows_tracked": 30,
+    "workflows_with_recent_failures": 25,
+    "workflows_stale_30d": 3,
+    "workflows_stale_60d": 3,
+    "workflows_stale_90d": 3
+  }
+}

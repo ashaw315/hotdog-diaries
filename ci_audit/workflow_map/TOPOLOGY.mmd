@@ -1,0 +1,216 @@
+graph TB
+
+    %% Workflows
+    _posting_guard_yml["🔄 Posting Guard (Re..."]
+    _posting_guard_yml --> _posting_guard_yml_jobs["📋 Jobs"]
+    auto_approve_yml["🔄 Auto-Approve Content"]
+    auto_pr_ci_shepherd_yml["🔄 Auto PR CI Shepherd"]
+    auto_queue_manager_yml["🔄 Auto Queue Manager"]
+    ci_failure_drilldown_yml["🔄 CI Failure Drilld..."]
+    ci_new_yml["🔄 CI Test"]
+    ci_test_yml["🔄 CI Test"]
+    ci_yml["🔄 CI"]
+    cleanup_duplicates_yml["🔄 Database Cleanup"]
+    daily_ingestion_report_yml["🔄 Daily Ingestion B..."]
+    daily_report_yml["🔄 Daily Summary Report"]
+    deploy_gate_yml["🔄 Deploy Gate"]
+    deploy_gate_yml --> deploy_gate_yml_jobs["📋 Jobs"]
+    deployment_gate_yml["🔄 🚪 Deployment Gate"]
+    e2e_yml["🔄 ERROR"]
+    housekeeping_yml["🔄 Housekeeping"]
+    manual_operations_yml["🔄 Manual Operations"]
+    meta_ci_audit_yml["🔄 Meta CI Audit"]
+    phase3_auto_healing_yml["🔄 Phase 3 CI Auto-H..."]
+    planner_contract_yml["🔄 📋 Planner Contract"]
+    post_breakfast_yml["🔄 Post Breakfast Co..."]
+    post_deploy_check_yml["🔄 ERROR"]
+    post_deploy_check_yml --> post_deploy_check_yml_jobs["📋 Jobs"]
+    post_dinner_yml["🔄 Post Dinner Content"]
+    post_evening_yml["🔄 Post Evening Content"]
+    post_late_night_yml["🔄 Post Late Night C..."]
+    post_lunch_yml["🔄 Post Lunch Content"]
+    post_remediation_check_yml["🔄 Post-Remediation ..."]
+    post_snack_yml["🔄 Post Afternoon Snack"]
+    post_yml["🔄 Content Posting"]
+    post_yml --> post_yml_jobs["📋 Jobs"]
+    prod_watchdog_yml["🔄 Production Autono..."]
+    prod_watchdog_yml --> prod_watchdog_yml_jobs["📋 Jobs"]
+    production_audit_yml["🔄 🔍 Production Audit"]
+    queue_monitor_hook_yml["🔄 Queue Monitor Hook"]
+    queue_monitor_yml["🔄 Monitor Queue Hea..."]
+    queue_readiness_yml["🔄 Queue Readiness"]
+    runbook_artifact_yml["🔄 📋 Generate Runbo..."]
+    scan_bluesky_yml["🔄 Scan Bluesky for ..."]
+    scan_giphy_yml["🔄 Scan Giphy for Co..."]
+    scan_imgur_yml["🔄 Scan Imgur for Co..."]
+    scan_lemmy_yml["🔄 Scan Lemmy for Co..."]
+    scan_niche_platforms_yml["🔄 Scan Niche Platforms"]
+    scan_pixabay_yml["🔄 Scan Pixabay for ..."]
+    scan_reddit_yml["🔄 Scan Reddit for C..."]
+    scan_social_platforms_yml["🔄 Scan Social Platf..."]
+    scan_tumblr_yml["🔄 Scan Tumblr for C..."]
+    scan_youtube_yml["🔄 Scan YouTube for ..."]
+    scanners_yml["🔄 Content Scanners"]
+    schedule_reconcile_yml["🔄 Schedule Reconcil..."]
+    scheduler_sla_guard_yml["🔄 Scheduler SLA Guard"]
+    scheduler_sla_guard_yml --> scheduler_sla_guard_yml_jobs["📋 Jobs"]
+    scheduler_yml["🔄 Content Scheduler"]
+    scheduler_yml --> scheduler_yml_jobs["📋 Jobs"]
+    secret_validation_yml["🔄 Secret Validation"]
+    spec_drift_yml["🔄 OpenAPI Spec Drif..."]
+    token_refresh_yml["🔄 Token Refresh (Re..."]
+    weekly_smoke_test_yml["🔄 🔥 Weekly Smoke Test"]
+
+    %% Composite Actions
+    Cache_PNPM_Dependencies_action["⚙️ Cache PNPM D..."]
+    Neutralize_With_Summary_action["⚙️ Neutralize W..."]
+    Setup_Node_js_with_Cache_action["⚙️ Setup Node.j..."]
+    Setup_Supabase_REST_Environment_action["⚙️ Setup Supaba..."]
+
+    %% Reusable Workflows
+
+    %% Workflow to Composite Action Dependencies
+    auto_pr_ci_shepherd_yml --> neutralize_action
+    token_refresh_yml_reusable["🔄 token_refres... (reusable)"]
+    auto_queue_manager_yml --> token_refresh_yml_reusable
+    ci_yml --> setup_node_action
+    deploy_gate_yml --> neutralize_action
+    housekeeping_yml --> setup_node_action
+    housekeeping_yml --> setup_supabase_rest_action
+    post_breakfast_yml --> token_refresh_yml_reusable
+    _posting_guard_yml_reusable["🔄 _posting_gua... (reusable)"]
+    post_breakfast_yml --> _posting_guard_yml_reusable
+    post_dinner_yml --> _posting_guard_yml_reusable
+    post_evening_yml --> _posting_guard_yml_reusable
+    post_late_night_yml --> _posting_guard_yml_reusable
+    post_lunch_yml --> _posting_guard_yml_reusable
+    post_remediation_check_yml --> _posting_guard_yml_reusable
+    post_snack_yml --> _posting_guard_yml_reusable
+    post_yml --> setup_node_action
+    post_yml --> setup_supabase_rest_action
+    scanners_yml --> setup_node_action
+    scanners_yml --> setup_supabase_rest_action
+    scheduler_yml --> setup_node_action
+    scheduler_yml --> setup_supabase_rest_action
+
+    %% Job Dependencies for Key Workflows
+    _posting_guard_yml_guard["📝 guard"]
+    _posting_guard_yml_jobs --> _posting_guard_yml_guard
+    deploy_gate_yml_context["📝 context"]
+    deploy_gate_yml_jobs --> deploy_gate_yml_context
+    deploy_gate_yml_neutralize["📝 neutralize"]
+    deploy_gate_yml_jobs --> deploy_gate_yml_neutralize
+    deploy_gate_yml_auth_token_validation["📝 auth-toke..."]
+    deploy_gate_yml_jobs --> deploy_gate_yml_auth_token_validation
+    deploy_gate_yml_deployment_gate_result["📝 deploymen..."]
+    deploy_gate_yml_jobs --> deploy_gate_yml_deployment_gate_result
+    deploy_gate_yml_context --> deploy_gate_yml_neutralize
+    deploy_gate_yml_context --> deploy_gate_yml_auth_token_validation
+    deploy_gate_yml_context --> deploy_gate_yml_deployment_gate_result
+    deploy_gate_yml_neutralize --> deploy_gate_yml_deployment_gate_result
+    deploy_gate_yml_auth_token_validation --> deploy_gate_yml_deployment_gate_result
+    post_yml_determine_slot["📝 determine..."]
+    post_yml_jobs --> post_yml_determine_slot
+    post_yml_pre_post_check["📝 pre-post-..."]
+    post_yml_jobs --> post_yml_pre_post_check
+    post_yml_post_content["📝 post-content"]
+    post_yml_jobs --> post_yml_post_content
+    post_yml_post_validation["📝 post-vali..."]
+    post_yml_jobs --> post_yml_post_validation
+    post_yml_summary["📝 summary"]
+    post_yml_jobs --> post_yml_summary
+    post_yml_determine_slot --> post_yml_pre_post_check
+    post_yml_determine_slot --> post_yml_post_content
+    post_yml_pre_post_check --> post_yml_post_content
+    post_yml_determine_slot --> post_yml_post_validation
+    post_yml_post_content --> post_yml_post_validation
+    post_yml_determine_slot --> post_yml_summary
+    post_yml_pre_post_check --> post_yml_summary
+    post_yml_post_content --> post_yml_summary
+    post_yml_post_validation --> post_yml_summary
+    prod_watchdog_yml_watchdog["📝 watchdog"]
+    prod_watchdog_yml_jobs --> prod_watchdog_yml_watchdog
+    scheduler_sla_guard_yml_guard["📝 guard"]
+    scheduler_sla_guard_yml_jobs --> scheduler_sla_guard_yml_guard
+    scheduler_yml_determine_operation["📝 determine..."]
+    scheduler_yml_jobs --> scheduler_yml_determine_operation
+    scheduler_yml_refill["📝 refill"]
+    scheduler_yml_jobs --> scheduler_yml_refill
+    scheduler_yml_forecast["📝 forecast"]
+    scheduler_yml_jobs --> scheduler_yml_forecast
+    scheduler_yml_reconcile["📝 reconcile"]
+    scheduler_yml_jobs --> scheduler_yml_reconcile
+    scheduler_yml_queue_health["📝 queue-health"]
+    scheduler_yml_jobs --> scheduler_yml_queue_health
+    scheduler_yml_summary["📝 summary"]
+    scheduler_yml_jobs --> scheduler_yml_summary
+    scheduler_yml_determine_operation --> scheduler_yml_refill
+    scheduler_yml_determine_operation --> scheduler_yml_forecast
+    scheduler_yml_determine_operation --> scheduler_yml_reconcile
+    scheduler_yml_determine_operation --> scheduler_yml_queue_health
+    scheduler_yml_refill --> scheduler_yml_queue_health
+    scheduler_yml_forecast --> scheduler_yml_queue_health
+    scheduler_yml_reconcile --> scheduler_yml_queue_health
+    scheduler_yml_determine_operation --> scheduler_yml_summary
+    scheduler_yml_refill --> scheduler_yml_summary
+    scheduler_yml_forecast --> scheduler_yml_summary
+    scheduler_yml_reconcile --> scheduler_yml_summary
+    scheduler_yml_queue_health --> scheduler_yml_summary
+
+    %% Styling
+    classDef workflow fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef action fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef job fill:#e8f5e8,stroke:#1b5e20,stroke-width:1px
+    classDef reusable fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    class _posting_guard_yml workflow
+    class auto_approve_yml workflow
+    class auto_pr_ci_shepherd_yml workflow
+    class auto_queue_manager_yml workflow
+    class ci_failure_drilldown_yml workflow
+    class ci_new_yml workflow
+    class ci_test_yml workflow
+    class ci_yml workflow
+    class cleanup_duplicates_yml workflow
+    class daily_ingestion_report_yml workflow
+    class daily_report_yml workflow
+    class deploy_gate_yml workflow
+    class deployment_gate_yml workflow
+    class e2e_yml workflow
+    class housekeeping_yml workflow
+    class manual_operations_yml workflow
+    class meta_ci_audit_yml workflow
+    class phase3_auto_healing_yml workflow
+    class planner_contract_yml workflow
+    class post_breakfast_yml workflow
+    class post_deploy_check_yml workflow
+    class post_dinner_yml workflow
+    class post_evening_yml workflow
+    class post_late_night_yml workflow
+    class post_lunch_yml workflow
+    class post_remediation_check_yml workflow
+    class post_snack_yml workflow
+    class post_yml workflow
+    class prod_watchdog_yml workflow
+    class production_audit_yml workflow
+    class queue_monitor_hook_yml workflow
+    class queue_monitor_yml workflow
+    class queue_readiness_yml workflow
+    class runbook_artifact_yml workflow
+    class scan_bluesky_yml workflow
+    class scan_giphy_yml workflow
+    class scan_imgur_yml workflow
+    class scan_lemmy_yml workflow
+    class scan_niche_platforms_yml workflow
+    class scan_pixabay_yml workflow
+    class scan_reddit_yml workflow
+    class scan_social_platforms_yml workflow
+    class scan_tumblr_yml workflow
+    class scan_youtube_yml workflow
+    class scanners_yml workflow
+    class schedule_reconcile_yml workflow
+    class scheduler_sla_guard_yml workflow
+    class scheduler_yml workflow
+    class secret_validation_yml workflow
+    class spec_drift_yml workflow
+    class token_refresh_yml workflow
+    class weekly_smoke_test_yml workflow
