@@ -55,15 +55,18 @@ function validateTimezoneConversions(testDate: string): TimezoneHealthCheck {
   const currentTimeET = formatInTimeZone(now, TZ, 'yyyy-MM-dd HH:mm:ss zzz')
   const currentTimeUTC = now.toISOString()
   
-  // Calculate timezone offset (ET is UTC-5 in winter, UTC-4 in summer)
-  const etNow = formatInTimeZone(now, TZ, 'yyyy-MM-dd HH:mm:ss')
-  const utcNow = format(now, 'yyyy-MM-dd HH:mm:ss')
-  const etTime = new Date(`${etNow}Z`).getTime()
-  const utcTime = new Date(`${utcNow}Z`).getTime()
-  const offsetHours = (utcTime - etTime) / (1000 * 60 * 60)
+  // Calculate signed timezone offset: (ET - UTC) in hours
+  const utc = new Date();
+  const et = new Date(
+    utc.toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+  
+  // Compute signed offset: (ET - UTC) in hours
+  const offsetMs = et.getTime() - utc.getTime();
+  const offsetHours = Math.round(offsetMs / (1000 * 60 * 60)); // will be -4 in EDT, -5 in EST
   
   // Check if DST is active (offset should be -4 in summer, -5 in winter)
-  const isDstActive = Math.abs(offsetHours - (-4)) < Math.abs(offsetHours - (-5))
+  const isDstActive = offsetHours === -4
   
   // Validate slot conversions
   const slotConversions = SLOT_TIMES_ET.map((timeET, index) => {
@@ -92,11 +95,11 @@ function validateTimezoneConversions(testDate: string): TimezoneHealthCheck {
     }
   })
   
-  // Validate expected offset ranges
-  if (isDstActive && Math.abs(offsetHours - (-4)) > 0.1) {
-    issues.push(`Unexpected timezone offset during DST: ${offsetHours} hours (expected ~-4)`)
-  } else if (!isDstActive && Math.abs(offsetHours - (-5)) > 0.1) {
-    issues.push(`Unexpected timezone offset during standard time: ${offsetHours} hours (expected ~-5)`)
+  // Validate expected offset ranges - ensure timezone_offset_hours is signed relative to UTC
+  if (isDstActive && offsetHours !== -4) {
+    issues.push(`Unexpected timezone offset during EDT: ${offsetHours} hours (expected -4, UTC -> ET should be -4 during DST)`)
+  } else if (!isDstActive && offsetHours !== -5) {
+    issues.push(`Unexpected timezone offset during EST: ${offsetHours} hours (expected -5, UTC -> ET should be -5 during standard time)`)
   }
   
   // Check for reasonable conversion results

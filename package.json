@@ -61,7 +61,9 @@
     "runbook:pdf": "npx tsx scripts/md-to-pdf.ts",
     "test:planner": "node --test scripts/scan-plan.test.mjs",
     "test:planner-contract": "node --test --test-reporter=spec scripts/scan-plan.test.mjs",
-    "verify:no-500s": "npx tsx scripts/verify-no-500s.ts"
+    "verify:no-500s": "npx tsx scripts/verify-no-500s.ts",
+    "smoke:test": "npx tsx scripts/smoke-test-endpoints.ts",
+    "smoke:test:prod": "npx tsx scripts/smoke-test-endpoints.ts --base-url https://hotdog-diaries.vercel.app"
   },
   "dependencies": {
     "@radix-ui/react-separator": "^1.1.7",

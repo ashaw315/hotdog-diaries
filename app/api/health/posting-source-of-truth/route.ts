@@ -47,28 +47,62 @@ export async function GET() {
         out.scheduled_posts_count = schedCount ?? 0;
       }
 
-      // Recent posted_content (last 7 days), detect orphans
-      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: posts, error: postsErr } = await supabase
-        .from("posted_content")
-        .select("id, scheduled_post_id")
-        .gte("created_at", since);
-      if (postsErr) {
+      // Check if scheduled_post_id column exists in posted_content table (schema drift tolerance)
+      const { data: columnCheck, error: columnErr } = await supabase
+        .from("information_schema.columns")
+        .select("column_name")
+        .eq("table_name", "posted_content")
+        .eq("column_name", "scheduled_post_id")
+        .limit(1);
+      
+      const hasScheduledPostIdColumn = !columnErr && columnCheck && columnCheck.length > 0;
+      
+      if (!hasScheduledPostIdColumn) {
+        // Schema drift detected - scheduled_post_id column doesn't exist
         out.status = "error";
-        out.issues.push(`posted_content query failed: ${postsErr.message}`);
+        out.issues.push("Schema drift detected: posted_content.scheduled_post_id column missing");
+        out.recommendations.push("Run schema migration to add scheduled_post_id column");
+        out.metadata.schema_drift = true;
+        
+        // Still try to get basic count without the scheduled_post_id field
+        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: posts, error: postsErr } = await supabase
+          .from("posted_content")
+          .select("id")
+          .gte("created_at", since);
+        
+        if (!postsErr && posts) {
+          out.total_recent_posts = posts.length;
+          out.orphan_posts = posts.length; // All are orphans without the column
+          out.orphan_percentage = 100;
+          out.posting_compliance_score = 0;
+          out.linked_posts = 0;
+        }
       } else {
-        const total = posts?.length ?? 0;
-        const orphans = (posts ?? []).filter((p) => !p.scheduled_post_id).length;
-        out.total_recent_posts = total;
-        out.orphan_posts = orphans;
-        out.orphan_percentage = total > 0 ? Math.round((orphans / total) * 100) : 0;
-        out.posting_compliance_score = total > 0 ? Math.max(0, 100 - out.orphan_percentage) : 0;
-        out.linked_posts = total - orphans;
-
-        if (orphans > 0) {
+        // Normal operation - column exists
+        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: posts, error: postsErr } = await supabase
+          .from("posted_content")
+          .select("id, scheduled_post_id")
+          .gte("created_at", since);
+        
+        if (postsErr) {
           out.status = "error";
-          out.issues.push(`${orphans} orphan posts found (${out.orphan_percentage}% of recent posts)`);
-          out.recommendations.push("Run backfill: npx tsx scripts/ops/backfill-post-links.ts --date YYYY-MM-DD --write");
+          out.issues.push(`posted_content query failed: ${postsErr.message}`);
+        } else {
+          const total = posts?.length ?? 0;
+          const orphans = (posts ?? []).filter((p) => !p.scheduled_post_id).length;
+          out.total_recent_posts = total;
+          out.orphan_posts = orphans;
+          out.orphan_percentage = total > 0 ? Math.round((orphans / total) * 100) : 0;
+          out.posting_compliance_score = total > 0 ? Math.max(0, 100 - out.orphan_percentage) : 0;
+          out.linked_posts = total - orphans;
+
+          if (orphans > 0) {
+            out.status = "error";
+            out.issues.push(`${orphans} orphan posts found (${out.orphan_percentage}% of recent posts)`);
+            out.recommendations.push("Run backfill: npx tsx scripts/ops/backfill-post-links.ts --date YYYY-MM-DD --write");
+          }
         }
       }
     } catch (dbInitErr: any) {
