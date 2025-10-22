@@ -1,4 +1,5 @@
-"use server";
+// Server-only utilities for environment validation and feature flags
+// Note: No "use server" directive - these are server utilities, not Server Actions
 
 export function requireEnv(name: string): string {
   const v = process.env[name];

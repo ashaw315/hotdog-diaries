@@ -1,4 +1,5 @@
-"use server";
+// Server-only Supabase client factory with V2→V1 fallback
+// Note: No "use server" directive - this is a server utility, not a Server Action
 
 import { createClient } from "@supabase/supabase-js";
 import { getEnv } from "./env";
