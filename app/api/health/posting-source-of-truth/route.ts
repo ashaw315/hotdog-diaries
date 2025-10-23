@@ -47,21 +47,34 @@ export async function GET() {
         out.scheduled_posts_count = schedCount ?? 0;
       }
 
-      // Check if scheduled_post_id column exists in posted_content table (schema drift tolerance)
+      // Check if scheduled_post_id column exists and has correct type (schema drift tolerance)
       const { data: columnCheck, error: columnErr } = await supabase
         .from("information_schema.columns")
-        .select("column_name")
+        .select("column_name, data_type")
         .eq("table_name", "posted_content")
         .eq("column_name", "scheduled_post_id")
         .limit(1);
       
       const hasScheduledPostIdColumn = !columnErr && columnCheck && columnCheck.length > 0;
+      const columnDataType = columnCheck?.[0]?.data_type?.toLowerCase();
+      
+      // Check if scheduled_post_id has correct BIGINT type (FK to scheduled_posts.id)
+      if (hasScheduledPostIdColumn && columnDataType && columnDataType !== 'bigint') {
+        out.status = "error";
+        out.issues.push(`scheduled_post_id type mismatch; expected bigint FK to scheduled_posts.id, found ${columnDataType}`);
+        out.recommendations.push("Run backfill dry-run: npx tsx scripts/ops/backfill-post-links.ts");
+        out.recommendations.push("Apply backfill: npx tsx scripts/ops/backfill-post-links.ts --write");
+        out.recommendations.push("Set ENFORCE_SCHEDULE_SOURCE_OF_TRUTH=true in Vercel and redeploy");
+      }
       
       if (!hasScheduledPostIdColumn) {
         // Schema drift detected - scheduled_post_id column doesn't exist
         out.status = "error";
         out.issues.push("Schema drift detected: posted_content.scheduled_post_id column missing");
         out.recommendations.push("Run schema migration to add scheduled_post_id column");
+        out.recommendations.push("Run backfill dry-run: npx tsx scripts/ops/backfill-post-links.ts");
+        out.recommendations.push("Apply backfill: npx tsx scripts/ops/backfill-post-links.ts --write");
+        out.recommendations.push("Set ENFORCE_SCHEDULE_SOURCE_OF_TRUTH=true in Vercel and redeploy");
         out.metadata.schema_drift = true;
         
         // Still try to get basic count without the scheduled_post_id field
