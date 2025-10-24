@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { ffSourceOfTruth, coreEnvState } from "@/app/lib/server/env";
 import { supabaseService } from "@/app/lib/server/supabase";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const startedAt = new Date().toISOString();
   const out = {
@@ -16,7 +18,12 @@ export async function GET() {
     linked_posts: 0,
     issues: [] as string[],
     recommendations: [] as string[],
-    metadata: { check_timestamp: startedAt, database_type: "supabase" },
+    metadata: { 
+      check_timestamp: startedAt, 
+      database_type: "supabase",
+      connection_identity: null as any,
+      schema_probe_result: null as any
+    },
   };
 
   try {
@@ -36,6 +43,33 @@ export async function GET() {
     try {
       const supabase = supabaseService();
 
+      // Live connection identity probe
+      try {
+        const { data: connectionInfo, error: connErr } = await supabase.rpc('get_connection_info');
+        if (!connErr && connectionInfo) {
+          out.metadata.connection_identity = connectionInfo;
+        }
+      } catch (identityErr) {
+        // Fallback: try to get basic DB info
+        const { data: dbInfo } = await supabase.from('information_schema.schemata').select('schema_name').eq('schema_name', 'public').limit(1);
+        out.metadata.connection_identity = { schema_accessible: !!dbInfo };
+      }
+
+      // Live schema probe: Check scheduled_post_id column (no caching)
+      const { data: schemaProbe, error: schemaErr } = await supabase
+        .from('information_schema.columns')
+        .select('column_name, data_type, is_nullable, column_default')
+        .eq('table_schema', 'public')
+        .eq('table_name', 'posted_content')
+        .eq('column_name', 'scheduled_post_id');
+      
+      out.metadata.schema_probe_result = {
+        query_successful: !schemaErr,
+        column_found: !schemaErr && schemaProbe && schemaProbe.length > 0,
+        column_details: schemaProbe?.[0] || null,
+        error: schemaErr?.message || null
+      };
+
       // Count scheduled posts (example: all future; adjust window as needed)
       const { count: schedCount, error: schedErr } = await supabase
         .from("scheduled_posts")
@@ -47,16 +81,9 @@ export async function GET() {
         out.scheduled_posts_count = schedCount ?? 0;
       }
 
-      // Check if scheduled_post_id column exists and has correct type (schema drift tolerance)
-      const { data: columnCheck, error: columnErr } = await supabase
-        .from("information_schema.columns")
-        .select("column_name, data_type")
-        .eq("table_name", "posted_content")
-        .eq("column_name", "scheduled_post_id")
-        .limit(1);
-      
-      const hasScheduledPostIdColumn = !columnErr && columnCheck && columnCheck.length > 0;
-      const columnDataType = columnCheck?.[0]?.data_type?.toLowerCase();
+      // Use live schema probe result instead of separate query
+      const hasScheduledPostIdColumn = out.metadata.schema_probe_result.column_found;
+      const columnDataType = out.metadata.schema_probe_result.column_details?.data_type?.toLowerCase();
       
       // Check if scheduled_post_id has correct BIGINT type (FK to scheduled_posts.id)
       if (hasScheduledPostIdColumn && columnDataType && columnDataType !== 'bigint') {
@@ -68,9 +95,12 @@ export async function GET() {
       }
       
       if (!hasScheduledPostIdColumn) {
-        // Schema drift detected - scheduled_post_id column doesn't exist
+        // Schema drift detected - scheduled_post_id column doesn't exist (verified live)
         out.status = "error";
-        out.issues.push("Schema drift detected: posted_content.scheduled_post_id column missing");
+        out.issues.push(`Schema drift detected: posted_content.scheduled_post_id column missing (live probe: ${out.metadata.schema_probe_result.query_successful ? 'successful' : 'failed'})`);
+        if (out.metadata.schema_probe_result.error) {
+          out.issues.push(`Schema probe error: ${out.metadata.schema_probe_result.error}`);
+        }
         out.recommendations.push("Run schema migration to add scheduled_post_id column");
         out.recommendations.push("Run backfill dry-run: npx tsx scripts/ops/backfill-post-links.ts");
         out.recommendations.push("Apply backfill: npx tsx scripts/ops/backfill-post-links.ts --write");
@@ -126,7 +156,14 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(out, { status: 200 });
+    return NextResponse.json(out, { 
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (fatal: any) {
     console.error("[health/posting-source-of-truth] Fatal:", fatal);
     return NextResponse.json(
