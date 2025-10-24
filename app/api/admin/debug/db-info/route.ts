@@ -1,19 +1,17 @@
-// @ts-nocheck
-import { NextRequest } from "next/server";
-import { supabaseService } from "@/app/lib/server/supabase";
-
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Helper function to create JSON response with proper headers
-function createJsonResponse(data: any, status = 200) {
+import { NextRequest } from "next/server";
+import { probeScheduledPostId } from "@/lib/probeSchema";
+import { sql } from "@/lib/db";
+
+function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      'content-type': 'application/json',
-      'cache-control': 'no-store, max-age=0',
-      'pragma': 'no-cache',
-      'expires': '0'
-    }
+      "content-type": "application/json",
+      "cache-control": "no-store, max-age=0",
+    },
   });
 }
 
@@ -55,7 +53,7 @@ export async function GET(request: NextRequest) {
     // Admin auth check
     const authResult = await validateAdminAuth(request);
     if (!authResult.authorized) {
-      return createJsonResponse({
+      return json({
         status: 'unauthorized',
         error: authResult.error,
         message: authResult.message,
@@ -63,18 +61,82 @@ export async function GET(request: NextRequest) {
       }, 401);
     }
     
-    const supabase = supabaseService();
+    // Use shared probe
+    const probe = await probeScheduledPostId();
+    const schema_drift = !(probe.query_successful && probe.column_found);
+    
+    // Get counts using direct SQL
+    let posted_content_count = 0;
+    let scheduled_posts_count = 0;
+    let recent_posted_content: any[] = [];
+    let recent_scheduled_posts: any[] = [];
+    
+    try {
+      // Count posted content
+      const [{ count: pcCount }] = await sql`
+        SELECT COUNT(*)::int as count FROM posted_content
+      ` as { count: number }[];
+      posted_content_count = pcCount;
+      
+      // Count scheduled posts
+      const [{ count: spCount }] = await sql`
+        SELECT COUNT(*)::int as count FROM scheduled_posts
+      ` as { count: number }[];
+      scheduled_posts_count = spCount;
+      
+      // Recent posted content
+      if (probe.column_found) {
+        recent_posted_content = await sql`
+          SELECT id, content_queue_id, scheduled_post_id, posted_at, created_at
+          FROM posted_content
+          ORDER BY created_at DESC
+          LIMIT 3
+        `;
+      } else {
+        recent_posted_content = await sql`
+          SELECT id, content_queue_id, posted_at, created_at
+          FROM posted_content
+          ORDER BY created_at DESC
+          LIMIT 3
+        `;
+      }
+      
+      // Recent scheduled posts
+      recent_scheduled_posts = await sql`
+        SELECT id, content_id, platform, scheduled_post_time, scheduled_slot_index, created_at
+        FROM scheduled_posts
+        ORDER BY created_at DESC
+        LIMIT 3
+      `;
+      
+    } catch (queryErr: any) {
+      console.error('[admin/debug/db-info] Query error:', queryErr);
+    }
     
     const dbInfo = {
       timestamp: startedAt,
-      connection_test: null as any,
-      posted_content_schema: null as any,
-      scheduled_posts_schema: null as any,
+      connection_test: {
+        successful: probe.query_successful,
+        error: probe.error,
+        schema_accessible: probe.query_successful
+      },
+      posted_content_columns: probe.posted_content_columns ?? [],
+      posted_content_schema: {
+        query_successful: probe.query_successful,
+        columns: probe.posted_content_columns?.map(name => ({ column_name: name })) || [],
+        error: probe.error,
+        has_scheduled_post_id: probe.column_found
+      },
+      scheduled_posts_schema: {
+        query_successful: probe.query_successful,
+        columns: [], // We could add another probe for this if needed
+        error: probe.error
+      },
       sample_data: {
-        posted_content_count: 0,
-        scheduled_posts_count: 0,
-        recent_posted_content: [] as any[],
-        recent_scheduled_posts: [] as any[]
+        posted_content_count,
+        scheduled_posts_count,
+        recent_posted_content,
+        recent_scheduled_posts
       },
       environment: {
         node_env: process.env.NODE_ENV,
@@ -82,116 +144,23 @@ export async function GET(request: NextRequest) {
         has_postgres_url: !!process.env.POSTGRES_URL,
         has_database_url: !!process.env.DATABASE_URL,
         has_supabase_url: !!process.env.NEXT_PUBLIC_SUPABASE_URL || !!process.env.SUPABASE_URL
-      }
+      },
+      metadata: {
+        schema_drift,
+        connection_identity: probe.connection_identity,
+        schema_probe_result: {
+          query_successful: probe.query_successful,
+          column_found: probe.column_found,
+          error: probe.error,
+        },
+      },
     };
 
-    // Connection test
-    try {
-      const { data: connTest, error: connErr } = await supabase
-        .from('information_schema.schemata')
-        .select('schema_name')
-        .eq('schema_name', 'public')
-        .limit(1);
-      
-      dbInfo.connection_test = {
-        successful: !connErr,
-        error: connErr?.message || null,
-        schema_accessible: !!connTest
-      };
-    } catch (connTestErr: any) {
-      dbInfo.connection_test = {
-        successful: false,
-        error: connTestErr.message,
-        schema_accessible: false
-      };
-    }
-
-    // posted_content table schema
-    try {
-      const { data: pcSchema, error: pcErr } = await supabase
-        .from('information_schema.columns')
-        .select('column_name, data_type, is_nullable, column_default')
-        .eq('table_schema', 'public')
-        .eq('table_name', 'posted_content')
-        .order('ordinal_position');
-      
-      dbInfo.posted_content_schema = {
-        query_successful: !pcErr,
-        columns: pcSchema || [],
-        error: pcErr?.message || null,
-        has_scheduled_post_id: pcSchema?.some(col => col.column_name === 'scheduled_post_id') || false
-      };
-    } catch (pcSchemaErr: any) {
-      dbInfo.posted_content_schema = {
-        query_successful: false,
-        columns: [],
-        error: pcSchemaErr.message,
-        has_scheduled_post_id: false
-      };
-    }
-
-    // scheduled_posts table schema
-    try {
-      const { data: spSchema, error: spErr } = await supabase
-        .from('information_schema.columns')
-        .select('column_name, data_type, is_nullable, column_default')
-        .eq('table_schema', 'public')
-        .eq('table_name', 'scheduled_posts')
-        .order('ordinal_position');
-      
-      dbInfo.scheduled_posts_schema = {
-        query_successful: !spErr,
-        columns: spSchema || [],
-        error: spErr?.message || null
-      };
-    } catch (spSchemaErr: any) {
-      dbInfo.scheduled_posts_schema = {
-        query_successful: false,
-        columns: [],
-        error: spSchemaErr.message
-      };
-    }
-
-    // Sample data counts
-    try {
-      const { count: pcCount } = await supabase
-        .from('posted_content')
-        .select('*', { count: 'exact', head: true });
-      dbInfo.sample_data.posted_content_count = pcCount || 0;
-    } catch {}
-
-    try {
-      const { count: spCount } = await supabase
-        .from('scheduled_posts')
-        .select('*', { count: 'exact', head: true });
-      dbInfo.sample_data.scheduled_posts_count = spCount || 0;
-    } catch {}
-
-    // Recent posted_content sample
-    try {
-      const { data: recentPC } = await supabase
-        .from('posted_content')
-        .select('id, content_queue_id, scheduled_post_id, posted_at, created_at')
-        .order('created_at', { ascending: false })
-        .limit(3);
-      dbInfo.sample_data.recent_posted_content = recentPC || [];
-    } catch {}
-
-    // Recent scheduled_posts sample
-    try {
-      const { data: recentSP } = await supabase
-        .from('scheduled_posts')
-        .select('id, content_id, platform, scheduled_post_time, scheduled_slot_index, created_at')
-        .order('created_at', { ascending: false })
-        .limit(3);
-      dbInfo.sample_data.recent_scheduled_posts = recentSP || [];
-    } catch {}
-
-    return createJsonResponse(dbInfo);
+    return json(dbInfo, 200);
 
   } catch (fatal: any) {
     console.error('[admin/debug/db-info] Fatal error:', fatal);
-    return createJsonResponse({
+    return json({
       status: 'error',
       timestamp: startedAt,
       error: 'Fatal error during database info collection',
