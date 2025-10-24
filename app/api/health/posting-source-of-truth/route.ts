@@ -5,6 +5,19 @@ import { supabaseService } from "@/app/lib/server/supabase";
 
 export const dynamic = "force-dynamic";
 
+// Helper function to create JSON response with proper headers
+function createJsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'no-store, max-age=0',
+      'pragma': 'no-cache',
+      'expires': '0'
+    }
+  });
+}
+
 export async function GET() {
   const startedAt = new Date().toISOString();
   const out = {
@@ -150,25 +163,18 @@ export async function GET() {
       }
     } catch (dbInitErr: any) {
       console.error("[health/posting-source-of-truth] DB init error:", dbInitErr);
-      return NextResponse.json(
+      return createJsonResponse(
         { ...out, status: "error", issues: [...out.issues, "DB init failure"], error: String(dbInitErr?.message ?? dbInitErr) },
-        { status: 503 }
+        503
       );
     }
 
-    return NextResponse.json(out, { 
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
+    return createJsonResponse(out);
   } catch (fatal: any) {
     console.error("[health/posting-source-of-truth] Fatal:", fatal);
-    return NextResponse.json(
+    return createJsonResponse(
       { status: "error", issues: ["Unhandled exception"], error: String(fatal?.message ?? fatal), metadata: { check_timestamp: startedAt } },
-      { status: 503 }
+      500
     );
   }
 }
