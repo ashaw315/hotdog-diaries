@@ -1,13 +1,68 @@
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { supabaseService } from "@/app/lib/server/supabase";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+// Helper function to create JSON response with proper headers
+function createJsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'no-store, max-age=0',
+      'pragma': 'no-cache',
+      'expires': '0'
+    }
+  });
+}
+
+// Admin auth check helper
+async function validateAdminAuth(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    const xAdminToken = request.headers.get('x-admin-token');
+    
+    let providedToken: string | null = null;
+    
+    if (authHeader?.startsWith('Bearer ')) {
+      providedToken = authHeader.substring(7);
+    } else if (xAdminToken) {
+      providedToken = xAdminToken;
+    }
+    
+    if (!providedToken) {
+      return { authorized: false, error: 'AUTH_TOKEN_MISSING', message: 'No authentication token provided. Use Authorization: Bearer <token> or x-admin-token header' };
+    }
+    
+    const { AuthService } = await import('@/lib/services/auth');
+    const decoded = AuthService.verifyJWT(providedToken);
+    
+    if (!decoded || !decoded.username || decoded.username !== 'admin') {
+      return { authorized: false, error: 'AUTH_TOKEN_INVALID_USER', message: 'Token is not for admin user' };
+    }
+    
+    return { authorized: true, user: decoded.username };
+  } catch (jwtError) {
+    return { authorized: false, error: 'AUTH_TOKEN_INVALID', message: 'Invalid or expired JWT token' };
+  }
+}
+
+export async function GET(request: NextRequest) {
   const startedAt = new Date().toISOString();
   
   try {
+    // Admin auth check
+    const authResult = await validateAdminAuth(request);
+    if (!authResult.authorized) {
+      return createJsonResponse({
+        status: 'unauthorized',
+        error: authResult.error,
+        message: authResult.message,
+        timestamp: startedAt
+      }, 401);
+    }
+    
     const supabase = supabaseService();
     
     const dbInfo = {
@@ -132,28 +187,19 @@ export async function GET() {
       dbInfo.sample_data.recent_scheduled_posts = recentSP || [];
     } catch {}
 
-    return NextResponse.json(dbInfo, {
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
+    return createJsonResponse(dbInfo);
 
   } catch (fatal: any) {
     console.error('[admin/debug/db-info] Fatal error:', fatal);
-    return NextResponse.json(
-      {
-        timestamp: startedAt,
-        error: 'Fatal error during database info collection',
-        message: fatal.message,
-        environment: {
-          node_env: process.env.NODE_ENV,
-          vercel: !!process.env.VERCEL
-        }
-      },
-      { status: 500 }
-    );
+    return createJsonResponse({
+      status: 'error',
+      timestamp: startedAt,
+      error: 'Fatal error during database info collection',
+      message: fatal.message,
+      environment: {
+        node_env: process.env.NODE_ENV,
+        vercel: !!process.env.VERCEL
+      }
+    }, 500);
   }
 }
