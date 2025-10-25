@@ -13,17 +13,13 @@ const POSTGRES_URL =
   process.env.DATABASE_URL ||
   "";
 
-if (!POSTGRES_URL) {
-  throw new Error("Missing POSTGRES_URL/SUPABASE_DB_URL/DATABASE_URL");
-}
-
-// NEW: Small, low-latency pool for API routes (schema probe)
-export const sql = postgres(POSTGRES_URL, {
+// NEW: Small, low-latency pool for API routes (schema probe) - only for postgres environments
+export const sql = POSTGRES_URL ? postgres(POSTGRES_URL, {
   max: 1,
   idle_timeout: 5,
   connect_timeout: 5_000,
   prepare: true,
-});
+}) : null;
 
 // EXISTING: Original database class for backward compatibility (truncated for critical functionality)
 class DatabaseConnection {
@@ -85,8 +81,27 @@ class DatabaseConnection {
       }
     }
     
-    // Fallback for development - minimal implementation
-    throw new Error('Legacy query method not fully implemented for this environment')
+    // Development fallback: Use SQLite or postgres connection
+    if (sql) {
+      // Use direct SQL connection for postgres in development
+      try {
+        const result = await sql.unsafe(text, params || [])
+        // Convert postgres.js result to pg QueryResult format
+        return {
+          rows: result as T[],
+          rowCount: Array.isArray(result) ? result.length : (result ? 1 : 0),
+          command: text.split(' ')[0].toUpperCase(),
+          oid: 0,
+          fields: []
+        } as QueryResult<T>
+      } catch (error) {
+        console.error('Development postgres query error:', error)
+        throw error
+      }
+    } else {
+      // SQLite development environment - we need to implement basic SQLite support
+      throw new Error('SQLite not implemented in hybrid mode. Please initialize SQLite database first.')
+    }
   }
 
   async healthCheck(): Promise<DatabaseHealthCheck> {
