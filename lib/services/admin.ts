@@ -1,7 +1,7 @@
 import { AdminUser, LogLevel } from '@/types'
 import { query, insert, update } from '@/lib/db-query-builder'
 import { AuthService } from './auth'
-import { logToDatabase } from '@/lib/db'
+import { logToDatabase, sql } from '@/lib/db'
 
 export interface CreateAdminUserData {
   username: string
@@ -188,19 +188,34 @@ export class AdminService {
   }
 
   /**
-   * Authenticate admin user with username and password
+   * Authenticate admin user with username and password - FIXED: Use direct SQL connection
    */
   static async authenticateAdmin(data: AdminLoginData): Promise<{ user: AdminProfile; tokens: { accessToken: string; refreshToken: string } }> {
     try {
-      // Find user by username
-      const user = await query('admin_users')
-        .where('username', '=', data.username)
-        .where('is_active', '=', true)
-        .first<AdminUser>()
+      console.log(`[AdminService] Authenticating user: ${data.username}`)
+      
+      if (!sql) {
+        console.error('[AdminService] No SQL connection available for authentication')
+        throw new Error('Database connection unavailable')
+      }
 
+      // Find user by username using direct SQL connection
+      const userResult = await sql`
+        SELECT id, username, password_hash, email, full_name, is_active, created_at, last_login_at, login_count
+        FROM admin_users 
+        WHERE username = ${data.username} AND is_active = true
+        LIMIT 1
+      ` as AdminUser[]
+
+      console.log(`[AdminService] User lookup result: ${userResult.length} rows`)
+      
+      const user = userResult[0]
       if (!user) {
+        console.log(`[AdminService] No user found for username: ${data.username}`)
         throw new Error('Invalid username or password')
       }
+      
+      console.log(`[AdminService] Found user: ${user.username}, verifying password...`)
 
       // Verify password
       const isValidPassword = await AuthService.validatePassword(data.password, user.password_hash)
@@ -277,18 +292,36 @@ export class AdminService {
   }
 
   /**
-   * Get admin user by ID
+   * Get admin user by ID - FIXED: Use direct SQL connection that works in production
    */
   static async getAdminById(userId: number): Promise<AdminProfile | null> {
     try {
-      const user = await query('admin_users')
-        .select(['id', 'username', 'email', 'full_name', 'is_active', 'created_at', 'last_login_at', 'login_count'])
-        .where('id', '=', userId)
-        .where('is_active', '=', true)
-        .first<AdminProfile>()
+      console.log(`[AdminService] Getting admin user by ID: ${userId}`)
+      
+      if (!sql) {
+        console.error('[AdminService] No SQL connection available')
+        return null
+      }
 
-      return user || null
+      const result = await sql`
+        SELECT id, username, email, full_name, is_active, created_at, last_login_at, login_count
+        FROM admin_users 
+        WHERE id = ${userId} AND is_active = true
+        LIMIT 1
+      ` as AdminProfile[]
+
+      console.log(`[AdminService] SQL query result: ${result.length} rows`)
+      
+      const user = result[0] || null
+      if (user) {
+        console.log(`[AdminService] Found user: ${user.username}`)
+      } else {
+        console.log(`[AdminService] No user found for ID: ${userId}`)
+      }
+      
+      return user
     } catch (error) {
+      console.error(`[AdminService] Failed to fetch admin user by ID: ${userId}`, error)
       await logToDatabase(
         LogLevel.ERROR,
         'ADMIN_USER_FETCH_FAILED',
