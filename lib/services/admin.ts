@@ -333,18 +333,36 @@ export class AdminService {
   }
 
   /**
-   * Get admin user by username
+   * Get admin user by username - FIXED: Use direct SQL connection that works in production
    */
   static async getAdminByUsername(username: string): Promise<AdminProfile | null> {
     try {
-      const user = await query('admin_users')
-        .select(['id', 'username', 'email', 'full_name', 'is_active', 'created_at', 'last_login_at', 'login_count'])
-        .where('username', '=', username)
-        .where('is_active', '=', true)
-        .first<AdminProfile>()
+      console.log(`[AdminService] Getting admin user by username: ${username}`)
+      
+      if (!sql) {
+        console.error('[AdminService] No SQL connection available')
+        return null
+      }
 
-      return user || null
+      const result = await sql`
+        SELECT id, username, email, full_name, is_active, created_at, last_login_at, login_count
+        FROM admin_users 
+        WHERE username = ${username} AND is_active = true
+        LIMIT 1
+      ` as AdminProfile[]
+
+      console.log(`[AdminService] SQL query result: ${result.length} rows`)
+      
+      const user = result[0] || null
+      if (user) {
+        console.log(`[AdminService] Found user: ${user.username} (ID: ${user.id})`)
+      } else {
+        console.log(`[AdminService] No user found for username: ${username}`)
+      }
+      
+      return user
     } catch (error) {
+      console.error(`[AdminService] Failed to fetch admin user by username: ${username}`, error)
       await logToDatabase(
         LogLevel.ERROR,
         'ADMIN_USER_FETCH_FAILED',
