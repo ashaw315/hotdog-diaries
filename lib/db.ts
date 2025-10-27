@@ -241,13 +241,7 @@ class DatabaseConnection {
         if (normalizedQuery.includes('is_posted = true') || normalizedQuery.includes('is_posted = 1')) {
           query = query.eq('is_posted', true)
         }
-        if (normalizedQuery.includes('status =')) {
-          // Extract status value from params or query
-          const statusParam = params?.find(p => typeof p === 'string')
-          if (statusParam) {
-            query = query.eq('status', statusParam)
-          }
-        }
+        // Note: removed status column filtering as it doesn't exist in production Supabase
         
         const { count, error } = await query
         
@@ -272,9 +266,10 @@ class DatabaseConnection {
       
       // Handle SELECT queries with pagination
       if (normalizedQuery.includes('select') && normalizedQuery.includes('limit')) {
+        // Use only core columns that exist in production Supabase
         let query = supabase
           .from('content_queue')
-          .select('id, content_text, source_platform, content_type, is_approved, is_posted, status, created_at, confidence_score, content_image_url, content_video_url')
+          .select('id, content_text, source_platform, content_type, is_approved, is_posted, created_at, confidence_score, content_image_url, content_video_url, content_status')
         
         // Apply filters
         if (normalizedQuery.includes('is_approved = true') || normalizedQuery.includes('is_approved = 1')) {

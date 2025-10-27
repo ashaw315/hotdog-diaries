@@ -22,8 +22,7 @@ async function testAdminContentEndpoint() {
         created_at,
         confidence_score,
         content_image_url,
-        content_video_url,
-        status
+        content_video_url
       FROM content_queue
       ORDER BY created_at DESC
       LIMIT $1 OFFSET $2
@@ -49,17 +48,17 @@ async function testAdminContentEndpoint() {
     const approvedContent = parseInt(approvedResult.rows[0]?.total_approved || '0')
     console.log('✅ Approved content count:', approvedContent)
     
-    // Test status-based filtering
-    console.log('\n4. Testing status-based content filtering...')
-    const statusResult = await db.query(`
-      SELECT status, COUNT(*) as count 
+    // Test platform-based filtering (replacing status-based filtering)
+    console.log('\n4. Testing platform-based content filtering...')
+    const platformResult = await db.query(`
+      SELECT source_platform, COUNT(*) as count 
       FROM content_queue 
-      WHERE status IS NOT NULL
-      GROUP BY status
+      WHERE source_platform IS NOT NULL
+      GROUP BY source_platform
     `)
-    console.log('✅ Content by status:')
-    statusResult.rows?.forEach(row => {
-      console.log(`  - ${row.status}: ${row.count}`)
+    console.log('✅ Content by platform:')
+    platformResult.rows?.forEach(row => {
+      console.log(`  - ${row.source_platform}: ${row.count}`)
     })
     
     console.log('\n🎉 All admin content endpoint tests passed!')
