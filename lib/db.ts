@@ -2,6 +2,7 @@
 import postgres from "postgres";
 import { Pool, PoolClient, QueryResult } from 'pg'
 import { sql as vercelSql } from '@vercel/postgres'
+import { createClient } from '@supabase/supabase-js'
 import { LogLevel } from '@/types'
 import path from 'path'
 import { QueryResult as DbQueryResult, DatabaseHealthCheck } from '@/types/database'
@@ -21,6 +22,11 @@ export const sql = POSTGRES_URL ? postgres(POSTGRES_URL, {
   connect_timeout: 5_000,
   prepare: true,
 }) : null;
+
+// NEW: Supabase client for production authentication when connection strings fail
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ulaadphxfsrihoubjdrb.supabase.co"
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsYWFkcGh4ZnNyaWhvdWJqZHJiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTYxNjI1NiwiZXhwIjoyMDcxMTkyMjU2fQ.8u_cd_4_apKd_1baqPq82k3YuWUmmnM51lvZE7muLE4"
+export const supabase = createClient(supabaseUrl, supabaseKey)
 
 // EXISTING: Original database class for backward compatibility (truncated for critical functionality)
 class DatabaseConnection {
@@ -87,7 +93,7 @@ class DatabaseConnection {
   }
 
   async query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
-    // For production/Supabase, try Vercel SQL first, fallback to direct postgres
+    // For production/Supabase, try Vercel SQL first, fallback to direct postgres, final fallback to Supabase client
     if (this.isSupabase || process.env.NODE_ENV === 'production') {
       try {
         console.log('[DB] Using Vercel SQL for production/Supabase query:', text.substring(0, 50))
@@ -111,11 +117,29 @@ class DatabaseConnection {
               fields: []
             } as QueryResult<T>
           } catch (postgresError) {
-            console.error('[DB] Direct postgres also failed:', postgresError)
-            throw postgresError
+            console.error('[DB] Direct postgres also failed, trying Supabase client:', postgresError.message)
+            
+            // Final fallback: Use Supabase client for critical queries like admin authentication
+            try {
+              console.log('[DB] Using Supabase client as final fallback')
+              const result = await this.executeSupabaseQuery<T>(text, params)
+              console.log('[DB] Supabase client query successful, rows:', result.rows?.length || 0)
+              return result
+            } catch (supabaseError) {
+              console.error('[DB] All connection methods failed:', supabaseError.message)
+              throw new Error(`Database connection failed: Vercel SQL (${vercelError.message}), Direct Postgres (${postgresError.message}), Supabase (${supabaseError.message})`)
+            }
           }
         } else {
-          throw vercelError
+          console.log('[DB] No direct postgres connection available, trying Supabase client')
+          try {
+            const result = await this.executeSupabaseQuery<T>(text, params)
+            console.log('[DB] Supabase client query successful, rows:', result.rows?.length || 0)
+            return result
+          } catch (supabaseError) {
+            console.error('[DB] Supabase client also failed:', supabaseError.message)
+            throw new Error(`Database connection failed: Vercel SQL (${vercelError.message}), Supabase (${supabaseError.message})`)
+          }
         }
       }
     }
@@ -141,6 +165,54 @@ class DatabaseConnection {
       // SQLite development environment - we need to implement basic SQLite support
       throw new Error('SQLite not implemented in hybrid mode. Please initialize SQLite database first.')
     }
+  }
+
+  // Helper method to execute queries via Supabase client for critical authentication queries
+  private async executeSupabaseQuery<T>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
+    // Parse common authentication queries and convert to Supabase API calls
+    const normalizedQuery = text.trim().toLowerCase()
+    
+    if (normalizedQuery.includes('select') && normalizedQuery.includes('admin_users')) {
+      // Handle admin user queries specifically since they're critical for authentication
+      if (normalizedQuery.includes('where username =') || normalizedQuery.includes('where id =')) {
+        const isUsernameQuery = normalizedQuery.includes('where username =')
+        const searchValue = params?.[0]
+        
+        if (!searchValue) {
+          throw new Error('Missing search parameter for admin user query')
+        }
+        
+        console.log(`[DB] Executing admin user query via Supabase: ${isUsernameQuery ? 'by username' : 'by id'}`)
+        
+        let query = supabase
+          .from('admin_users')
+          .select('id, username, password_hash, email, full_name, is_active, created_at, last_login_at, login_count')
+          .limit(1)
+        
+        if (isUsernameQuery) {
+          query = query.eq('username', searchValue).eq('is_active', true)
+        } else {
+          query = query.eq('id', searchValue).eq('is_active', true)
+        }
+        
+        const { data, error } = await query
+        
+        if (error) {
+          throw new Error(`Supabase query failed: ${error.message}`)
+        }
+        
+        return {
+          rows: (data || []) as T[],
+          rowCount: data?.length || 0,
+          command: 'SELECT',
+          oid: 0,
+          fields: []
+        } as QueryResult<T>
+      }
+    }
+    
+    // For other queries, try to handle them generically or throw an error
+    throw new Error(`Supabase fallback not implemented for query: ${text.substring(0, 50)}...`)
   }
 
   async healthCheck(): Promise<DatabaseHealthCheck> {
