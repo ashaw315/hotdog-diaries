@@ -13,9 +13,9 @@ const POSTGRES_URL =
   process.env.DATABASE_URL ||
   "";
 
-// NEW: Small, low-latency pool for API routes (schema probe) - only for development postgres
-// Production uses Vercel SQL through the hybrid DatabaseConnection class
-export const sql = (POSTGRES_URL && process.env.NODE_ENV === 'development') ? postgres(POSTGRES_URL, {
+// NEW: Small, low-latency pool for API routes (schema probe) - development + production fallback
+// Production primarily uses Vercel SQL, but falls back to this if needed
+export const sql = POSTGRES_URL ? postgres(POSTGRES_URL, {
   max: 1,
   idle_timeout: 5,
   connect_timeout: 5_000,
@@ -37,19 +37,24 @@ class DatabaseConnection {
   private initializeDatabaseMode(): void {
     const nodeEnv = process.env.NODE_ENV
     const databaseUrl = process.env.DATABASE_URL
+    const postgresUrl = process.env.POSTGRES_URL
     const isProduction = nodeEnv === 'production'
     const hasSupabaseUrl = !!(databaseUrl?.includes('supabase.co'))
+    const hasVercelPostgres = !!(postgresUrl?.includes('vercel'))
     
     console.log('[DB] Initializing database mode:', {
       nodeEnv,
       isProduction,
       hasSupabaseUrl,
+      hasVercelPostgres,
       databaseUrlPresent: !!databaseUrl,
-      databaseUrlPrefix: databaseUrl?.substring(0, 20) + '...'
+      postgresUrlPresent: !!postgresUrl,
+      databaseUrlPrefix: databaseUrl?.substring(0, 20) + '...',
+      postgresUrlPrefix: postgresUrl?.substring(0, 20) + '...'
     })
     
-    // Simplified mode detection for backward compatibility
-    if (hasSupabaseUrl) {
+    // Improved mode detection for Vercel + Supabase
+    if (hasSupabaseUrl || (isProduction && hasVercelPostgres)) {
       this.isSupabase = true
       this.isSqlite = false
       this.connectionMode = 'supabase'
@@ -82,18 +87,36 @@ class DatabaseConnection {
   }
 
   async query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
-    // For production/Supabase, delegate to Vercel SQL
+    // For production/Supabase, try Vercel SQL first, fallback to direct postgres
     if (this.isSupabase || process.env.NODE_ENV === 'production') {
       try {
         console.log('[DB] Using Vercel SQL for production/Supabase query:', text.substring(0, 50))
         const result = await vercelSql.query(text, params)
         console.log('[DB] Vercel SQL query successful, rows:', result.rows?.length || 0)
         return result as QueryResult<T>
-      } catch (error) {
-        console.error('[DB] Vercel SQL query failed:', error)
-        console.error('[DB] Query was:', text)
-        console.error('[DB] Params were:', params)
-        throw error
+      } catch (vercelError) {
+        console.error('[DB] Vercel SQL query failed, trying direct postgres connection:', vercelError.message)
+        
+        // Fallback: try direct postgres connection with DATABASE_URL
+        if (sql) {
+          try {
+            console.log('[DB] Falling back to direct postgres connection')
+            const result = await sql.unsafe(text, params || [])
+            console.log('[DB] Direct postgres query successful, rows:', Array.isArray(result) ? result.length : 1)
+            return {
+              rows: result as T[],
+              rowCount: Array.isArray(result) ? result.length : (result ? 1 : 0),
+              command: text.split(' ')[0].toUpperCase(),
+              oid: 0,
+              fields: []
+            } as QueryResult<T>
+          } catch (postgresError) {
+            console.error('[DB] Direct postgres also failed:', postgresError)
+            throw postgresError
+          }
+        } else {
+          throw vercelError
+        }
       }
     }
     
