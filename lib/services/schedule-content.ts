@@ -47,7 +47,7 @@ async function getAvailableContent(): Promise<Record<string, ContentItem[]>> {
       SELECT * FROM content_queue 
       WHERE is_approved = TRUE 
         AND is_posted = FALSE
-        AND (scheduled_for IS NULL OR scheduled_for <= datetime('now'))
+        AND (scheduled_post_time IS NULL OR scheduled_post_time <= datetime('now'))
       ORDER BY confidence_score DESC, created_at ASC
     `)
 
@@ -205,14 +205,14 @@ async function scheduleDayContent(
 
       const scheduledItem: ScheduledContentItem = {
         ...content,
-        scheduled_for: scheduledTime.toISOString(),
+        scheduled_post_time: scheduledTime.toISOString(),
         priority: content.priority || 0
       }
 
       // Update database with schedule
       await db.query(`
         UPDATE content_queue 
-        SET scheduled_for = ?, updated_at = datetime('now')
+        SET scheduled_post_time = ?, updated_at = datetime('now')
         WHERE id = ?
       `, [
         scheduledTime.format('YYYY-MM-DD HH:mm:ss'),
@@ -290,7 +290,7 @@ export async function scheduleNextBatch(
       const existingScheduled = await db.query(`
         SELECT COUNT(*) as count
         FROM content_queue
-        WHERE DATE(scheduled_for) = ? AND scheduled_for IS NOT NULL
+        WHERE DATE(scheduled_post_time) = ? AND scheduled_post_time IS NOT NULL
       `, [targetDate.format('YYYY-MM-DD')])
 
       const alreadyScheduled = existingScheduled.rows[0]?.count || 0
@@ -366,15 +366,15 @@ export async function getUpcomingSchedule(days: number = 7): Promise<ScheduledCo
     
     const result = await db.query(`
       SELECT * FROM content_queue
-      WHERE scheduled_for IS NOT NULL 
-        AND scheduled_for >= datetime('now')
-        AND scheduled_for <= ?
-      ORDER BY scheduled_for ASC
+      WHERE scheduled_post_time IS NOT NULL 
+        AND scheduled_post_time >= datetime('now')
+        AND scheduled_post_time <= ?
+      ORDER BY scheduled_post_time ASC
     `, [endDate])
 
     return result.rows.map(row => ({
       ...row,
-      scheduled_for: row.scheduled_for
+      scheduled_post_time: row.scheduled_post_time
     })) as ScheduledContentItem[]
 
   } catch (error) {
@@ -390,8 +390,8 @@ export async function cancelScheduledContent(contentId: number): Promise<boolean
   try {
     const result = await db.query(`
       UPDATE content_queue 
-      SET scheduled_for = NULL, updated_at = datetime('now')
-      WHERE id = ? AND scheduled_for IS NOT NULL
+      SET scheduled_post_time = NULL, updated_at = datetime('now')
+      WHERE id = ? AND scheduled_post_time IS NOT NULL
     `, [contentId])
 
     return result.rowCount > 0
@@ -413,8 +413,8 @@ export async function rescheduleContent(
     
     const result = await db.query(`
       UPDATE content_queue 
-      SET scheduled_for = ?, updated_at = datetime('now')
-      WHERE id = ? AND scheduled_for IS NOT NULL
+      SET scheduled_post_time = ?, updated_at = datetime('now')
+      WHERE id = ? AND scheduled_post_time IS NOT NULL
     `, [scheduleTime, contentId])
 
     return result.rowCount > 0
