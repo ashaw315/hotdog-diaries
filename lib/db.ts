@@ -242,6 +242,7 @@ class DatabaseConnection {
           query = query.eq('is_posted', true)
         }
         // Note: removed status column filtering as it doesn't exist in production Supabase
+        // Use content_status column instead if available for status-based filtering
         
         const { count, error } = await query
         

@@ -6,10 +6,10 @@ export async function GET() {
     console.log('🧩 [DEBUG] Scheduled content diagnostic endpoint called')
     
     const result = await db.query(`
-      SELECT id, source_platform, status, scheduled_for, content_text, is_approved, is_posted
+      SELECT id, source_platform, content_status, scheduled_for, scheduled_post_time, content_text, is_approved, is_posted
       FROM content_queue 
-      WHERE status = 'scheduled'
-      ORDER BY scheduled_for ASC
+      WHERE (scheduled_for IS NOT NULL OR scheduled_post_time IS NOT NULL)
+      ORDER BY COALESCE(scheduled_post_time, scheduled_for) ASC
     `)
     
     const rows = result.rows

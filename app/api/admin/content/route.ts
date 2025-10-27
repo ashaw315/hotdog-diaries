@@ -209,23 +209,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           console.log('🧩 [ContentAPI] ORDER BY scheduled_post_time ASC applied for scheduled filter')
         } else if (process.env.NODE_ENV === 'development' && contentQueueColumns.length === 0) {
           console.log('[AdminContentAPI] Development mode: bypassing schema detection for scheduled status')
-          // Include both status='scheduled' AND items with scheduled_for set
-          whereClause = `(cq.status = 'scheduled' OR (cq.scheduled_for IS NOT NULL AND cq.status = 'approved'))`
+          // Include items with scheduled_for set (no status column in production)
+          whereClause = `cq.scheduled_for IS NOT NULL`
           orderBy = 'cq.scheduled_for ASC'
           console.log('🧩 [ContentAPI] ORDER BY scheduled_for ASC applied for scheduled filter (dev mode)')
-        } else if (hasStatus && hasScheduledFor) {
-          // Development schema: status + scheduled_for
-          whereClause = `(cq.status = 'scheduled' OR (cq.scheduled_for IS NOT NULL AND cq.status = 'approved'))`
-          orderBy = 'cq.scheduled_for ASC'
-          console.log('🧩 [ContentAPI] ORDER BY scheduled_for ASC applied for scheduled filter')
-        } else if (hasStatus) {
-          whereClause = 'cq.status = \'scheduled\''
         } else if (hasScheduledFor) {
           whereClause = 'cq.scheduled_for IS NOT NULL'
           orderBy = 'cq.scheduled_for ASC'
           console.log('🧩 [ContentAPI] ORDER BY scheduled_for ASC applied for scheduled filter')
         } else {
-          whereClause = '1=0' // No scheduled items if columns don't exist
+          // If no scheduling columns exist, no scheduled items
+          whereClause = '1=0'
         }
         
         console.log('🧩 [ContentAPI] Scheduled filter - hasContentStatus:', hasContentStatus, 'hasScheduledPostTime:', hasScheduledPostTime, 'hasStatus:', hasStatus, 'hasScheduledFor:', hasScheduledFor)

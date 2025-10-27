@@ -32,10 +32,10 @@ async function originalPUTHandler(
       const newStatus = action === 'approve' ? 'approved' : 'rejected'
       
       await query(`
-        UPDATE content 
-        SET status = $1, updated_at = NOW()
+        UPDATE content_queue 
+        SET is_approved = $1, updated_at = NOW()
         WHERE id = $2
-      `, [newStatus, contentId])
+      `, [action === 'approve', contentId])
 
       await query(`
         INSERT INTO content_reviews (content_id, action, reason, notes, reviewed_at)

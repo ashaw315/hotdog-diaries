@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'approve':
         query = `
-          UPDATE content 
-          SET status = 'approved', updated_at = NOW()
-          WHERE id IN (${placeholders}) AND status = 'pending'
+          UPDATE content_queue 
+          SET is_approved = TRUE, updated_at = NOW()
+          WHERE id IN (${placeholders}) AND is_approved = FALSE
         `
         successMessage = 'Content approved successfully'
         break
@@ -56,12 +56,11 @@ export async function POST(request: NextRequest) {
         }
 
         query = `
-          UPDATE content 
+          UPDATE content_queue 
           SET 
-            status = 'scheduled', 
             scheduled_for = $${contentIds.length + 1},
             updated_at = NOW()
-          WHERE id IN (${placeholders}) AND status IN ('pending', 'approved')
+          WHERE id IN (${placeholders}) AND is_approved = TRUE AND is_posted = FALSE
         `
         contentIds.push(scheduledFor.toISOString())
         successMessage = 'Content scheduled successfully'
@@ -69,8 +68,8 @@ export async function POST(request: NextRequest) {
 
       case 'delete':
         query = `
-          DELETE FROM content 
-          WHERE id IN (${placeholders}) AND status IN ('pending', 'scheduled')
+          DELETE FROM content_queue 
+          WHERE id IN (${placeholders}) AND is_posted = FALSE
         `
         successMessage = 'Content deleted successfully'
         break

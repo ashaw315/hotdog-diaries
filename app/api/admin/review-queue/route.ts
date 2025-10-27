@@ -27,22 +27,23 @@ export async function GET(request: NextRequest) {
         ca.flagged_reason,
         ca.processing_notes,
         ca.flagged_at
-      FROM content c
+      FROM content_queue c
       INNER JOIN content_analysis ca ON c.id = ca.content_id
-      WHERE c.status = 'flagged'
+      WHERE ca.is_spam = TRUE OR ca.is_inappropriate = TRUE OR ca.is_unrelated = TRUE
       ORDER BY ca.flagged_at DESC
       LIMIT 50
     `)
 
     const statsQuery = await query(`
       SELECT 
-        COUNT(*) FILTER (WHERE status = 'flagged') as total_flagged,
-        COUNT(*) FILTER (WHERE status = 'flagged') as pending_review,
-        COUNT(*) FILTER (WHERE status IN ('approved', 'rejected') AND updated_at::date = CURRENT_DATE) as reviewed_today,
-        AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) FILTER (WHERE status IN ('approved', 'rejected') AND updated_at > NOW() - INTERVAL '$1 days') as avg_review_time,
-        COUNT(*) FILTER (WHERE status = 'approved' AND updated_at > NOW() - INTERVAL '$1 days') / 
-        GREATEST(COUNT(*) FILTER (WHERE status IN ('approved', 'rejected') AND updated_at > NOW() - INTERVAL '$1 days'), 1)::float as approval_rate
-      FROM content
+        COUNT(*) FILTER (WHERE ca.is_spam = TRUE OR ca.is_inappropriate = TRUE OR ca.is_unrelated = TRUE) as total_flagged,
+        COUNT(*) FILTER (WHERE ca.is_spam = TRUE OR ca.is_inappropriate = TRUE OR ca.is_unrelated = TRUE) as pending_review,
+        COUNT(*) FILTER (WHERE c.is_approved = TRUE AND DATE(c.updated_at) = DATE(NOW())) as reviewed_today,
+        AVG(EXTRACT(EPOCH FROM (c.updated_at - c.created_at))) FILTER (WHERE c.is_approved IS NOT NULL AND c.updated_at > NOW() - INTERVAL '7 days') as avg_review_time,
+        COUNT(*) FILTER (WHERE c.is_approved = TRUE AND c.updated_at > NOW() - INTERVAL '7 days') / 
+        GREATEST(COUNT(*) FILTER (WHERE c.is_approved IS NOT NULL AND c.updated_at > NOW() - INTERVAL '7 days'), 1)::float as approval_rate
+      FROM content_queue c
+      LEFT JOIN content_analysis ca ON c.id = ca.content_id
     `)
 
     const stats = statsQuery.rows[0] || {

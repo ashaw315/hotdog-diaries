@@ -46,10 +46,9 @@ async function getAvailableContent(): Promise<Record<string, ContentItem[]>> {
     const result = await db.query(`
       SELECT * FROM content_queue 
       WHERE is_approved = TRUE 
-        AND is_posted = FALSE 
-        AND status = 'approved'
+        AND is_posted = FALSE
         AND (scheduled_for IS NULL OR scheduled_for <= datetime('now'))
-      ORDER BY priority DESC, confidence_score DESC, created_at ASC
+      ORDER BY confidence_score DESC, created_at ASC
     `)
 
     const content = result.rows as ContentItem[]
@@ -207,18 +206,16 @@ async function scheduleDayContent(
       const scheduledItem: ScheduledContentItem = {
         ...content,
         scheduled_for: scheduledTime.toISOString(),
-        status: ContentStatus.SCHEDULED,
         priority: content.priority || 0
       }
 
       // Update database with schedule
       await db.query(`
         UPDATE content_queue 
-        SET scheduled_for = ?, status = ?, updated_at = datetime('now')
+        SET scheduled_for = ?, updated_at = datetime('now')
         WHERE id = ?
       `, [
         scheduledTime.format('YYYY-MM-DD HH:mm:ss'),
-        ContentStatus.SCHEDULED,
         content.id
       ])
 
@@ -293,7 +290,7 @@ export async function scheduleNextBatch(
       const existingScheduled = await db.query(`
         SELECT COUNT(*) as count
         FROM content_queue
-        WHERE DATE(scheduled_for) = ? AND status = 'scheduled'
+        WHERE DATE(scheduled_for) = ? AND scheduled_for IS NOT NULL
       `, [targetDate.format('YYYY-MM-DD')])
 
       const alreadyScheduled = existingScheduled.rows[0]?.count || 0
@@ -369,7 +366,7 @@ export async function getUpcomingSchedule(days: number = 7): Promise<ScheduledCo
     
     const result = await db.query(`
       SELECT * FROM content_queue
-      WHERE status = 'scheduled' 
+      WHERE scheduled_for IS NOT NULL 
         AND scheduled_for >= datetime('now')
         AND scheduled_for <= ?
       ORDER BY scheduled_for ASC
@@ -377,7 +374,6 @@ export async function getUpcomingSchedule(days: number = 7): Promise<ScheduledCo
 
     return result.rows.map(row => ({
       ...row,
-      status: row.status as ContentStatus,
       scheduled_for: row.scheduled_for
     })) as ScheduledContentItem[]
 
@@ -394,8 +390,8 @@ export async function cancelScheduledContent(contentId: number): Promise<boolean
   try {
     const result = await db.query(`
       UPDATE content_queue 
-      SET scheduled_for = NULL, status = 'approved', updated_at = datetime('now')
-      WHERE id = ? AND status = 'scheduled'
+      SET scheduled_for = NULL, updated_at = datetime('now')
+      WHERE id = ? AND scheduled_for IS NOT NULL
     `, [contentId])
 
     return result.rowCount > 0
@@ -418,7 +414,7 @@ export async function rescheduleContent(
     const result = await db.query(`
       UPDATE content_queue 
       SET scheduled_for = ?, updated_at = datetime('now')
-      WHERE id = ? AND status = 'scheduled'
+      WHERE id = ? AND scheduled_for IS NOT NULL
     `, [scheduleTime, contentId])
 
     return result.rowCount > 0

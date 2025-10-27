@@ -47,9 +47,9 @@ async function originalPATCHHandler(
 
     // Check if content exists and is in a schedulable state
     const checkQuery = `
-      SELECT id, status 
-      FROM content 
-      WHERE id = $1 AND status IN ('pending', 'approved')
+      SELECT id, is_approved 
+      FROM content_queue 
+      WHERE id = $1 AND is_posted = FALSE
     `
     const checkResult = await db.query(checkQuery, [contentId])
 
@@ -62,13 +62,12 @@ async function originalPATCHHandler(
 
     // Update the content with schedule
     const updateQuery = `
-      UPDATE content 
+      UPDATE content_queue 
       SET 
-        status = 'scheduled',
         scheduled_for = $2,
         updated_at = NOW()
       WHERE id = $1
-      RETURNING id, title, scheduled_for
+      RETURNING id, content_text, scheduled_for
     `
 
     const result = await db.query(updateQuery, [contentId, scheduledDate.toISOString()])
@@ -87,7 +86,7 @@ async function originalPATCHHandler(
       message: 'Content scheduled successfully',
       content: {
         id: updatedContent.id,
-        title: updatedContent.title,
+        content_text: updatedContent.content_text,
         scheduled_for: new Date(updatedContent.scheduled_for)
       }
     })
