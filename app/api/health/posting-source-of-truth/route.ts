@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { probeScheduledPostId } from "@/lib/probeSchema";
 import { db } from "@/lib/db";
+import { supabase } from "@/lib/db";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -27,40 +28,74 @@ export async function GET(_req: NextRequest) {
   let linked_posts = 0;
 
   try {
-    // Count scheduled posts
-    const schedResult = await db.query<{ count: number }>(
-      'SELECT COUNT(*)::int as count FROM scheduled_posts'
-    );
-    scheduled_posts_count = schedResult.rows[0]?.count || 0;
+    // Count scheduled posts using Supabase client directly
+    try {
+      const { count: schedCount, error: schedError } = await supabase
+        .from('scheduled_posts')
+        .select('*', { count: 'exact', head: true });
+      
+      if (schedError) {
+        console.log("[health] scheduled_posts table not accessible:", schedError.message);
+        scheduled_posts_count = 0;
+      } else {
+        scheduled_posts_count = schedCount || 0;
+      }
+    } catch (schedErr) {
+      console.log("[health] scheduled_posts table not found, using 0");
+      scheduled_posts_count = 0;
+    }
 
-    // Count recent posted content (last 7 days)
+    // Count recent posted content (last 7 days) using Supabase client
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     
     if (probe.column_found) {
       // Normal operation - column exists, can check for orphans
-      const orphanResult = await db.query<{ total: number; orphans: number }>(
-        `SELECT 
-          COUNT(*)::int as total,
-          COUNT(CASE WHEN scheduled_post_id IS NULL THEN 1 END)::int as orphans
-        FROM posted_content 
-        WHERE created_at >= $1`,
-        [since]
-      );
-      
-      const row = orphanResult.rows[0];
-      total_recent_posts = row?.total || 0;
-      orphan_posts = row?.orphans || 0;
-      linked_posts = total_recent_posts - orphan_posts;
+      try {
+        const { data: recentPosts, error: recentError } = await supabase
+          .from('posted_content')
+          .select('scheduled_post_id')
+          .gte('created_at', since);
+        
+        if (recentError) {
+          console.error("[health] Posted content query failed:", recentError.message);
+          // Fallback to 0 counts
+          total_recent_posts = 0;
+          orphan_posts = 0;
+          linked_posts = 0;
+        } else {
+          total_recent_posts = recentPosts?.length || 0;
+          orphan_posts = recentPosts?.filter(post => !post.scheduled_post_id).length || 0;
+          linked_posts = total_recent_posts - orphan_posts;
+        }
+      } catch (recentErr) {
+        console.error("[health] Recent posts query failed:", recentErr);
+        total_recent_posts = 0;
+        orphan_posts = 0;
+        linked_posts = 0;
+      }
     } else {
       // Schema drift - all posts are considered orphans
-      const totalResult = await db.query<{ total: number }>(
-        'SELECT COUNT(*)::int as total FROM posted_content WHERE created_at >= $1',
-        [since]
-      );
-      
-      total_recent_posts = totalResult.rows[0]?.total || 0;
-      orphan_posts = total_recent_posts; // All are orphans without the column
-      linked_posts = 0;
+      try {
+        const { count: totalCount, error: totalError } = await supabase
+          .from('posted_content')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', since);
+        
+        if (totalError) {
+          console.error("[health] Total posts query failed:", totalError.message);
+          total_recent_posts = 0;
+        } else {
+          total_recent_posts = totalCount || 0;
+        }
+        
+        orphan_posts = total_recent_posts; // All are orphans without the column
+        linked_posts = 0;
+      } catch (totalErr) {
+        console.error("[health] Total posts query failed:", totalErr);
+        total_recent_posts = 0;
+        orphan_posts = 0;
+        linked_posts = 0;
+      }
     }
   } catch (countErr: any) {
     console.error("[health] Count queries failed:", countErr);
