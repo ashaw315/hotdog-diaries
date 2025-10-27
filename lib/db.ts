@@ -39,19 +39,30 @@ class DatabaseConnection {
     const isProduction = nodeEnv === 'production'
     const hasSupabaseUrl = !!(databaseUrl?.includes('supabase.co'))
     
+    console.log('[DB] Initializing database mode:', {
+      nodeEnv,
+      isProduction,
+      hasSupabaseUrl,
+      databaseUrlPresent: !!databaseUrl,
+      databaseUrlPrefix: databaseUrl?.substring(0, 20) + '...'
+    })
+    
     // Simplified mode detection for backward compatibility
     if (hasSupabaseUrl) {
       this.isSupabase = true
       this.isSqlite = false
       this.connectionMode = 'supabase'
+      console.log('[DB] Mode set to: SUPABASE (will use Vercel SQL)')
     } else if (nodeEnv === 'development') {
       this.isSupabase = false
       this.isSqlite = true
       this.connectionMode = 'sqlite'
+      console.log('[DB] Mode set to: SQLITE (development)')
     } else {
       this.isSupabase = false
       this.isSqlite = false
       this.connectionMode = 'postgres-pool'
+      console.log('[DB] Mode set to: POSTGRES-POOL (production non-Supabase)')
     }
   }
 
@@ -73,10 +84,14 @@ class DatabaseConnection {
     // For production/Supabase, delegate to Vercel SQL
     if (this.isSupabase || process.env.NODE_ENV === 'production') {
       try {
+        console.log('[DB] Using Vercel SQL for production/Supabase query:', text.substring(0, 50))
         const result = await vercelSql.query(text, params)
+        console.log('[DB] Vercel SQL query successful, rows:', result.rows?.length || 0)
         return result as QueryResult<T>
       } catch (error) {
-        console.error('Legacy DB query error:', error)
+        console.error('[DB] Vercel SQL query failed:', error)
+        console.error('[DB] Query was:', text)
+        console.error('[DB] Params were:', params)
         throw error
       }
     }
