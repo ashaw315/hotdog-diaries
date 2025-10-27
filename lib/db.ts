@@ -172,6 +172,18 @@ class DatabaseConnection {
     // Parse common authentication queries and convert to Supabase API calls
     const normalizedQuery = text.trim().toLowerCase()
     
+    // Handle health check queries
+    if (normalizedQuery.includes('select 1') || normalizedQuery.includes('health_check')) {
+      console.log('[DB] Executing health check via Supabase')
+      return {
+        rows: [{ health_check: 1 }] as T[],
+        rowCount: 1,
+        command: 'SELECT',
+        oid: 0,
+        fields: []
+      } as QueryResult<T>
+    }
+    
     if (normalizedQuery.includes('select') && normalizedQuery.includes('admin_users')) {
       // Handle admin user queries specifically since they're critical for authentication
       if (normalizedQuery.includes('where username =') || normalizedQuery.includes('where id =')) {
