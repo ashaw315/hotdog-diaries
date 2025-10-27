@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
 import { probeScheduledPostId } from "@/lib/probeSchema";
-import { sql } from "@/lib/db";
+import { db } from "@/lib/db";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -73,41 +73,35 @@ export async function GET(request: NextRequest) {
     
     try {
       // Count posted content
-      const [{ count: pcCount }] = await sql`
-        SELECT COUNT(*)::int as count FROM posted_content
-      ` as { count: number }[];
-      posted_content_count = pcCount;
+      const pcResult = await db.query<{ count: number }>(
+        'SELECT COUNT(*)::int as count FROM posted_content'
+      );
+      posted_content_count = pcResult.rows[0]?.count || 0;
       
       // Count scheduled posts
-      const [{ count: spCount }] = await sql`
-        SELECT COUNT(*)::int as count FROM scheduled_posts
-      ` as { count: number }[];
-      scheduled_posts_count = spCount;
+      const spResult = await db.query<{ count: number }>(
+        'SELECT COUNT(*)::int as count FROM scheduled_posts'
+      );
+      scheduled_posts_count = spResult.rows[0]?.count || 0;
       
       // Recent posted content
       if (probe.column_found) {
-        recent_posted_content = await sql`
-          SELECT id, content_queue_id, scheduled_post_id, posted_at, created_at
-          FROM posted_content
-          ORDER BY created_at DESC
-          LIMIT 3
-        `;
+        const recentPcResult = await db.query(
+          'SELECT id, content_queue_id, scheduled_post_id, posted_at, created_at FROM posted_content ORDER BY created_at DESC LIMIT 3'
+        );
+        recent_posted_content = recentPcResult.rows;
       } else {
-        recent_posted_content = await sql`
-          SELECT id, content_queue_id, posted_at, created_at
-          FROM posted_content
-          ORDER BY created_at DESC
-          LIMIT 3
-        `;
+        const recentPcResult = await db.query(
+          'SELECT id, content_queue_id, posted_at, created_at FROM posted_content ORDER BY created_at DESC LIMIT 3'
+        );
+        recent_posted_content = recentPcResult.rows;
       }
       
       // Recent scheduled posts
-      recent_scheduled_posts = await sql`
-        SELECT id, content_id, platform, scheduled_post_time, scheduled_slot_index, created_at
-        FROM scheduled_posts
-        ORDER BY created_at DESC
-        LIMIT 3
-      `;
+      const recentSpResult = await db.query(
+        'SELECT id, content_id, platform, scheduled_post_time, scheduled_slot_index, created_at FROM scheduled_posts ORDER BY created_at DESC LIMIT 3'
+      );
+      recent_scheduled_posts = recentSpResult.rows;
       
     } catch (queryErr: any) {
       console.error('[admin/debug/db-info] Query error:', queryErr);

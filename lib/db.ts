@@ -13,8 +13,9 @@ const POSTGRES_URL =
   process.env.DATABASE_URL ||
   "";
 
-// NEW: Small, low-latency pool for API routes (schema probe) - only for postgres environments
-export const sql = POSTGRES_URL ? postgres(POSTGRES_URL, {
+// NEW: Small, low-latency pool for API routes (schema probe) - only for development postgres
+// Production uses Vercel SQL through the hybrid DatabaseConnection class
+export const sql = (POSTGRES_URL && process.env.NODE_ENV === 'development') ? postgres(POSTGRES_URL, {
   max: 1,
   idle_timeout: 5,
   connect_timeout: 5_000,

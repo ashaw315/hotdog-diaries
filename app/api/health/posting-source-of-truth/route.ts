@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
 import { probeScheduledPostId } from "@/lib/probeSchema";
-import { sql } from "@/lib/db";
+import { db } from "@/lib/db";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -28,37 +28,38 @@ export async function GET(_req: NextRequest) {
 
   try {
     // Count scheduled posts
-    const [{ count: schedCount }] = await sql`
-      SELECT COUNT(*)::int as count FROM scheduled_posts
-    ` as { count: number }[];
-    scheduled_posts_count = schedCount;
+    const schedResult = await db.query<{ count: number }>(
+      'SELECT COUNT(*)::int as count FROM scheduled_posts'
+    );
+    scheduled_posts_count = schedResult.rows[0]?.count || 0;
 
     // Count recent posted content (last 7 days)
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     
     if (probe.column_found) {
       // Normal operation - column exists, can check for orphans
-      const [{ total, orphans }] = await sql`
-        SELECT 
+      const orphanResult = await db.query<{ total: number; orphans: number }>(
+        `SELECT 
           COUNT(*)::int as total,
           COUNT(CASE WHEN scheduled_post_id IS NULL THEN 1 END)::int as orphans
         FROM posted_content 
-        WHERE created_at >= ${since}
-      ` as { total: number; orphans: number }[];
+        WHERE created_at >= $1`,
+        [since]
+      );
       
-      total_recent_posts = total;
-      orphan_posts = orphans;
-      linked_posts = total - orphans;
+      const row = orphanResult.rows[0];
+      total_recent_posts = row?.total || 0;
+      orphan_posts = row?.orphans || 0;
+      linked_posts = total_recent_posts - orphan_posts;
     } else {
       // Schema drift - all posts are considered orphans
-      const [{ total }] = await sql`
-        SELECT COUNT(*)::int as total
-        FROM posted_content 
-        WHERE created_at >= ${since}
-      ` as { total: number }[];
+      const totalResult = await db.query<{ total: number }>(
+        'SELECT COUNT(*)::int as total FROM posted_content WHERE created_at >= $1',
+        [since]
+      );
       
-      total_recent_posts = total;
-      orphan_posts = total; // All are orphans without the column
+      total_recent_posts = totalResult.rows[0]?.total || 0;
+      orphan_posts = total_recent_posts; // All are orphans without the column
       linked_posts = 0;
     }
   } catch (countErr: any) {
