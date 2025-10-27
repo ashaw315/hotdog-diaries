@@ -1,7 +1,7 @@
 import { AdminUser, LogLevel } from '@/types'
 import { query, insert, update } from '@/lib/db-query-builder'
 import { AuthService } from './auth'
-import { logToDatabase, sql } from '@/lib/db'
+import { logToDatabase, db } from '@/lib/db'
 
 export interface CreateAdminUserData {
   username: string
@@ -188,28 +188,21 @@ export class AdminService {
   }
 
   /**
-   * Authenticate admin user with username and password - FIXED: Use direct SQL connection
+   * Authenticate admin user with username and password - FIXED: Use hybrid db.query connection
    */
   static async authenticateAdmin(data: AdminLoginData): Promise<{ user: AdminProfile; tokens: { accessToken: string; refreshToken: string } }> {
     try {
       console.log(`[AdminService] Authenticating user: ${data.username}`)
       
-      if (!sql) {
-        console.error('[AdminService] No SQL connection available for authentication')
-        throw new Error('Database connection unavailable')
-      }
+      // Find user by username using hybrid database connection
+      const userResult = await db.query<AdminUser>(
+        'SELECT id, username, password_hash, email, full_name, is_active, created_at, last_login_at, login_count FROM admin_users WHERE username = $1 AND is_active = true LIMIT 1',
+        [data.username]
+      )
 
-      // Find user by username using direct SQL connection
-      const userResult = await sql`
-        SELECT id, username, password_hash, email, full_name, is_active, created_at, last_login_at, login_count
-        FROM admin_users 
-        WHERE username = ${data.username} AND is_active = true
-        LIMIT 1
-      ` as AdminUser[]
-
-      console.log(`[AdminService] User lookup result: ${userResult.length} rows`)
+      console.log(`[AdminService] User lookup result: ${userResult.rows?.length || 0} rows`)
       
-      const user = userResult[0]
+      const user = userResult.rows?.[0]
       if (!user) {
         console.log(`[AdminService] No user found for username: ${data.username}`)
         throw new Error('Invalid username or password')
@@ -292,27 +285,20 @@ export class AdminService {
   }
 
   /**
-   * Get admin user by ID - FIXED: Use direct SQL connection that works in production
+   * Get admin user by ID - FIXED: Use hybrid db.query connection that works in production
    */
   static async getAdminById(userId: number): Promise<AdminProfile | null> {
     try {
       console.log(`[AdminService] Getting admin user by ID: ${userId}`)
       
-      if (!sql) {
-        console.error('[AdminService] No SQL connection available')
-        return null
-      }
+      const result = await db.query<AdminProfile>(
+        'SELECT id, username, email, full_name, is_active, created_at, last_login_at, login_count FROM admin_users WHERE id = $1 AND is_active = true LIMIT 1',
+        [userId]
+      )
 
-      const result = await sql`
-        SELECT id, username, email, full_name, is_active, created_at, last_login_at, login_count
-        FROM admin_users 
-        WHERE id = ${userId} AND is_active = true
-        LIMIT 1
-      ` as AdminProfile[]
-
-      console.log(`[AdminService] SQL query result: ${result.length} rows`)
+      console.log(`[AdminService] SQL query result: ${result.rows?.length || 0} rows`)
       
-      const user = result[0] || null
+      const user = result.rows?.[0] || null
       if (user) {
         console.log(`[AdminService] Found user: ${user.username}`)
       } else {
@@ -333,27 +319,20 @@ export class AdminService {
   }
 
   /**
-   * Get admin user by username - FIXED: Use direct SQL connection that works in production
+   * Get admin user by username - FIXED: Use hybrid db.query connection that works in production
    */
   static async getAdminByUsername(username: string): Promise<AdminProfile | null> {
     try {
       console.log(`[AdminService] Getting admin user by username: ${username}`)
       
-      if (!sql) {
-        console.error('[AdminService] No SQL connection available')
-        return null
-      }
+      const result = await db.query<AdminProfile>(
+        'SELECT id, username, email, full_name, is_active, created_at, last_login_at, login_count FROM admin_users WHERE username = $1 AND is_active = true LIMIT 1',
+        [username]
+      )
 
-      const result = await sql`
-        SELECT id, username, email, full_name, is_active, created_at, last_login_at, login_count
-        FROM admin_users 
-        WHERE username = ${username} AND is_active = true
-        LIMIT 1
-      ` as AdminProfile[]
-
-      console.log(`[AdminService] SQL query result: ${result.length} rows`)
+      console.log(`[AdminService] SQL query result: ${result.rows?.length || 0} rows`)
       
-      const user = result[0] || null
+      const user = result.rows?.[0] || null
       if (user) {
         console.log(`[AdminService] Found user: ${user.username} (ID: ${user.id})`)
       } else {
