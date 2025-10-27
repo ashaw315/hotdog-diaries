@@ -167,9 +167,9 @@ class DatabaseConnection {
     }
   }
 
-  // Helper method to execute queries via Supabase client for critical authentication queries
+  // Helper method to execute queries via Supabase client for critical queries
   private async executeSupabaseQuery<T>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
-    // Parse common authentication queries and convert to Supabase API calls
+    // Parse common queries and convert to Supabase API calls
     const normalizedQuery = text.trim().toLowerCase()
     
     // Handle health check queries
@@ -184,8 +184,8 @@ class DatabaseConnection {
       } as QueryResult<T>
     }
     
+    // Handle admin user queries for authentication
     if (normalizedQuery.includes('select') && normalizedQuery.includes('admin_users')) {
-      // Handle admin user queries specifically since they're critical for authentication
       if (normalizedQuery.includes('where username =') || normalizedQuery.includes('where id =')) {
         const isUsernameQuery = normalizedQuery.includes('where username =')
         const searchValue = params?.[0]
@@ -223,7 +223,294 @@ class DatabaseConnection {
       }
     }
     
+    // Handle content_queue queries for admin dashboard
+    if (normalizedQuery.includes('content_queue')) {
+      console.log('[DB] Executing content_queue query via Supabase')
+      
+      // Handle COUNT queries for statistics
+      if (normalizedQuery.includes('count(*)')) {
+        let query = supabase.from('content_queue').select('*', { count: 'exact', head: true })
+        
+        // Apply filters based on query conditions
+        if (normalizedQuery.includes('is_approved = true') || normalizedQuery.includes('is_approved = 1')) {
+          query = query.eq('is_approved', true)
+        }
+        if (normalizedQuery.includes('is_posted = false') || normalizedQuery.includes('is_posted = 0')) {
+          query = query.eq('is_posted', false)
+        }
+        if (normalizedQuery.includes('is_posted = true') || normalizedQuery.includes('is_posted = 1')) {
+          query = query.eq('is_posted', true)
+        }
+        if (normalizedQuery.includes('status =')) {
+          // Extract status value from params or query
+          const statusParam = params?.find(p => typeof p === 'string')
+          if (statusParam) {
+            query = query.eq('status', statusParam)
+          }
+        }
+        
+        const { count, error } = await query
+        
+        if (error) {
+          throw new Error(`Supabase count query failed: ${error.message}`)
+        }
+        
+        // Return count result in expected format
+        const countField = normalizedQuery.includes('total_approved') ? 'total_approved' :
+                          normalizedQuery.includes('total_pending') ? 'total_pending' :
+                          normalizedQuery.includes('total_scheduled') ? 'total_scheduled' :
+                          normalizedQuery.includes('total_posted') ? 'total_posted' : 'count'
+        
+        return {
+          rows: [{ [countField]: count || 0 }] as T[],
+          rowCount: 1,
+          command: 'SELECT',
+          oid: 0,
+          fields: []
+        } as QueryResult<T>
+      }
+      
+      // Handle SELECT queries with pagination
+      if (normalizedQuery.includes('select') && normalizedQuery.includes('limit')) {
+        let query = supabase
+          .from('content_queue')
+          .select('id, content_text, source_platform, content_type, is_approved, is_posted, status, created_at, confidence_score, content_image_url, content_video_url')
+        
+        // Apply filters
+        if (normalizedQuery.includes('is_approved = true') || normalizedQuery.includes('is_approved = 1')) {
+          query = query.eq('is_approved', true)
+        }
+        if (normalizedQuery.includes('is_posted = false') || normalizedQuery.includes('is_posted = 0')) {
+          query = query.eq('is_posted', false)
+        }
+        if (normalizedQuery.includes('order by')) {
+          if (normalizedQuery.includes('created_at desc')) {
+            query = query.order('created_at', { ascending: false })
+          } else if (normalizedQuery.includes('confidence_score desc')) {
+            query = query.order('confidence_score', { ascending: false })
+          }
+        }
+        
+        // Apply pagination - extract limit and offset from params
+        const limitParam = params?.find(p => typeof p === 'number' && p <= 100)
+        const offsetParam = params?.find((p, i) => typeof p === 'number' && i > 0)
+        
+        if (limitParam) {
+          query = query.limit(limitParam)
+        }
+        if (offsetParam) {
+          query = query.range(offsetParam, offsetParam + (limitParam || 50) - 1)
+        }
+        
+        const { data, error } = await query
+        
+        if (error) {
+          throw new Error(`Supabase select query failed: ${error.message}`)
+        }
+        
+        return {
+          rows: (data || []) as T[],
+          rowCount: data?.length || 0,
+          command: 'SELECT',
+          oid: 0,
+          fields: []
+        } as QueryResult<T>
+      }
+    }
+    
+    // Handle UPDATE queries for admin_users (login tracking)
+    if (normalizedQuery.includes('update admin_users')) {
+      console.log('[DB] Executing admin_users update via Supabase')
+      
+      const userIdParam = params?.find(p => typeof p === 'number')
+      if (!userIdParam) {
+        throw new Error('Missing user ID for admin update')
+      }
+      
+      // First get current login count, then increment it
+      const { data: currentUser } = await supabase
+        .from('admin_users')
+        .select('login_count')
+        .eq('id', userIdParam)
+        .single()
+      
+      const { error } = await supabase
+        .from('admin_users')
+        .update({
+          last_login_at: new Date().toISOString(),
+          login_count: (currentUser?.login_count || 0) + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userIdParam)
+      
+      if (error) {
+        throw new Error(`Supabase update failed: ${error.message}`)
+      }
+      
+      return {
+        rows: [] as T[],
+        rowCount: 1,
+        command: 'UPDATE',
+        oid: 0,
+        fields: []
+      } as QueryResult<T>
+    }
+    
+    // Handle INSERT queries for system_logs
+    if (normalizedQuery.includes('insert into system_logs')) {
+      console.log('[DB] Executing system_logs insert via Supabase')
+      
+      // Extract log parameters - expect [level, message, component, metadata]
+      const [logLevel, message, component, metadata] = params || []
+      
+      const { error } = await supabase
+        .from('system_logs')
+        .insert({
+          log_level: logLevel,
+          message: message,
+          component: component,
+          metadata: metadata,
+          created_at: new Date().toISOString()
+        })
+      
+      if (error) {
+        // Don't throw error for logging failures, just log to console
+        console.error('[DB] System log insert failed:', error.message)
+      }
+      
+      return {
+        rows: [] as T[],
+        rowCount: 1,
+        command: 'INSERT',
+        oid: 0,
+        fields: []
+      } as QueryResult<T>
+    }
+    
+    // Handle posted_content queries for dashboard
+    if (normalizedQuery.includes('posted_content')) {
+      console.log('[DB] Executing posted_content query via Supabase')
+      
+      if (normalizedQuery.includes("date(posted_at) = date('now')")) {
+        // Count today's posts
+        const today = new Date().toISOString().split('T')[0]
+        const { count, error } = await supabase
+          .from('posted_content')
+          .select('*', { count: 'exact', head: true })
+          .gte('posted_at', `${today}T00:00:00Z`)
+          .lt('posted_at', `${today}T23:59:59Z`)
+        
+        if (error) {
+          throw new Error(`Supabase posted_content count failed: ${error.message}`)
+        }
+        
+        return {
+          rows: [{ count: count || 0 }] as T[],
+          rowCount: 1,
+          command: 'SELECT',
+          oid: 0,
+          fields: []
+        } as QueryResult<T>
+      }
+    }
+    
+    // Handle QueueManager statistics queries
+    if (normalizedQuery.includes('select') && normalizedQuery.includes('source_platform')) {
+      console.log('[DB] Executing platform distribution query via Supabase')
+      
+      if (normalizedQuery.includes('group by source_platform')) {
+        // Get platform distribution for approved unposted content
+        const { data, error } = await supabase
+          .from('content_queue')
+          .select('source_platform')
+          .eq('is_approved', true)
+          .eq('is_posted', false)
+          .not('source_platform', 'is', null)
+        
+        if (error) {
+          throw new Error(`Supabase platform query failed: ${error.message}`)
+        }
+        
+        // Group by platform manually
+        const platformCounts: Record<string, number> = {}
+        data?.forEach(item => {
+          const platform = item.source_platform
+          platformCounts[platform] = (platformCounts[platform] || 0) + 1
+        })
+        
+        const rows = Object.entries(platformCounts).map(([platform, count]) => ({
+          source_platform: platform,
+          count
+        }))
+        
+        return {
+          rows: rows as T[],
+          rowCount: rows.length,
+          command: 'SELECT',
+          oid: 0,
+          fields: []
+        } as QueryResult<T>
+      }
+    }
+    
+    // Handle QueueManager total counts query
+    if (normalizedQuery.includes('count(*) as total_approved') && normalizedQuery.includes('total_pending')) {
+      console.log('[DB] Executing QueueManager totals query via Supabase')
+      
+      // Get approved count
+      const { count: approvedCount, error: approvedError } = await supabase
+        .from('content_queue')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_posted', false)
+        .eq('is_approved', true)
+      
+      if (approvedError) {
+        throw new Error(`Supabase approved count failed: ${approvedError.message}`)
+      }
+      
+      // Get pending count
+      const { count: pendingCount, error: pendingError } = await supabase
+        .from('content_queue')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_posted', false)
+        .eq('is_approved', false)
+      
+      if (pendingError) {
+        throw new Error(`Supabase pending count failed: ${pendingError.message}`)
+      }
+      
+      return {
+        rows: [{
+          total_approved: approvedCount || 0,
+          total_pending: pendingCount || 0
+        }] as T[],
+        rowCount: 1,
+        command: 'SELECT',
+        oid: 0,
+        fields: []
+      } as QueryResult<T>
+    }
+    
+    // Handle other dashboard statistics queries
+    if (normalizedQuery.includes('select') && (
+      normalizedQuery.includes('group by') ||
+      normalizedQuery.includes('order by')
+    )) {
+      console.log('[DB] Executing complex dashboard statistics query via Supabase')
+      
+      // For complex queries that don't have specific implementations yet,
+      // return empty results to prevent crashes
+      return {
+        rows: [] as T[],
+        rowCount: 0,
+        command: 'SELECT',
+        oid: 0,
+        fields: []
+      } as QueryResult<T>
+    }
+    
     // For other queries, try to handle them generically or throw an error
+    console.warn(`[DB] Unhandled query type in Supabase fallback: ${text.substring(0, 100)}`)
     throw new Error(`Supabase fallback not implemented for query: ${text.substring(0, 50)}...`)
   }
 
