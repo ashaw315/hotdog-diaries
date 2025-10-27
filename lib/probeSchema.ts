@@ -1,5 +1,5 @@
 // lib/probeSchema.ts
-import { sql } from "./db";
+import { db } from "./db";
 
 export type ProbeResult = {
   query_successful: boolean;
@@ -11,8 +11,10 @@ export type ProbeResult = {
 
 export async function probeScheduledPostId(): Promise<ProbeResult> {
   try {
+    // Use hybrid db.query() instead of direct sql connection to avoid auth issues
+    
     // Robust pg_catalog check (ignores dropped columns, etc.)
-    const [{ column_exists }] = await sql/* sql */`
+    const columnExistsResult = await db.query(`
       SELECT EXISTS (
         SELECT 1
         FROM pg_attribute a
@@ -23,27 +25,31 @@ export async function probeScheduledPostId(): Promise<ProbeResult> {
           AND a.attname = 'scheduled_post_id'
           AND a.attnum > 0
           AND NOT a.attisdropped
-      ) AS column_exists;
-    `;
+      ) AS column_exists
+    `);
+    
+    const column_exists = columnExistsResult.rows[0]?.column_exists;
 
-    const cols = await sql/* sql */`
+    // Get all columns in posted_content table
+    const colsResult = await db.query(`
       SELECT column_name
       FROM information_schema.columns
       WHERE table_schema='public' AND table_name='posted_content'
-      ORDER BY ordinal_position;
-    ` as { column_name: string }[];
+      ORDER BY ordinal_position
+    `);
 
-    const [ident] = await sql/* sql */`
+    // Get connection identity
+    const identResult = await db.query(`
       SELECT current_database() AS database,
              inet_server_addr()::text AS host
-    ` as { database: string; host: string }[];
+    `);
 
     return {
       query_successful: true,
       column_found: !!column_exists,
       error: null,
-      connection_identity: ident,
-      posted_content_columns: cols.map(c => c.column_name),
+      connection_identity: identResult.rows[0] || null,
+      posted_content_columns: colsResult.rows.map(r => r.column_name),
     };
   } catch (e: any) {
     return {

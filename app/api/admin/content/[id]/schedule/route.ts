@@ -60,14 +60,14 @@ async function originalPATCHHandler(
       )
     }
 
-    // Update the content with schedule
+    // Update the content with schedule - handle both scheduled_post_time and scheduled_for columns
     const updateQuery = `
       UPDATE content_queue 
       SET 
-        scheduled_for = $2,
+        scheduled_post_time = $2,
         updated_at = NOW()
       WHERE id = $1
-      RETURNING id, content_text, scheduled_for
+      RETURNING id, content_text, scheduled_post_time
     `
 
     const result = await db.query(updateQuery, [contentId, scheduledDate.toISOString()])
@@ -87,7 +87,7 @@ async function originalPATCHHandler(
       content: {
         id: updatedContent.id,
         content_text: updatedContent.content_text,
-        scheduled_for: new Date(updatedContent.scheduled_for)
+        scheduled_for: new Date(updatedContent.scheduled_post_time)
       }
     })
   } catch (error) {

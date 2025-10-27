@@ -36,13 +36,12 @@ export interface BatchPostingResult {
  */
 async function getNextContentToPost(): Promise<ContentItem | null> {
   try {
-    // First, check for scheduled content that's due
+    // First, check for scheduled content that's due - handle both column names
     const scheduledResult = await db.query(`
       SELECT * FROM content_queue
-      WHERE scheduled_for IS NOT NULL
-        AND scheduled_for <= datetime('now')
+      WHERE (scheduled_post_time IS NOT NULL AND scheduled_post_time <= NOW())
         AND is_posted = FALSE
-      ORDER BY scheduled_for ASC, confidence_score DESC
+      ORDER BY scheduled_post_time ASC, confidence_score DESC
       LIMIT 1
     `)
 
@@ -79,11 +78,11 @@ async function getScheduledContentDue(limit: number = 6): Promise<ScheduledConte
   try {
     const result = await db.query(`
       SELECT * FROM content_queue
-      WHERE scheduled_for IS NOT NULL
-        AND scheduled_for <= datetime('now')
+      WHERE scheduled_post_time IS NOT NULL
+        AND scheduled_post_time <= NOW()
         AND is_posted = FALSE
-      ORDER BY scheduled_for ASC, confidence_score DESC
-      LIMIT ?
+      ORDER BY scheduled_post_time ASC, confidence_score DESC
+      LIMIT $1
     `, [limit])
 
     return result.rows.map(row => ({
@@ -141,7 +140,7 @@ export async function postContent(
       content.id, 
       now.toISOString(), 
       postOrder,
-      isScheduled ? content.scheduled_for : null
+      isScheduled ? content.scheduled_post_time : null
     ])
 
     // Log the posting action
@@ -158,7 +157,7 @@ export async function postContent(
         isScheduled,
         timeSlot,
         postOrder,
-        scheduledFor: content.scheduled_for || null
+        scheduledFor: content.scheduled_post_time || null
       }),
       now.toISOString()
     ])
@@ -217,7 +216,7 @@ export async function postNextContent(): Promise<PostingResult> {
       }
     }
 
-    const isScheduled = !!content.scheduled_for
+    const isScheduled = !!content.scheduled_post_time
     return await postContent(content, isScheduled)
 
   } catch (error) {
@@ -306,7 +305,7 @@ export async function markScheduledContentFailed(
     await db.query(`
       UPDATE content_queue 
       SET admin_notes = ?, updated_at = datetime('now')
-      WHERE id = ? AND scheduled_for IS NOT NULL
+      WHERE id = $1 AND scheduled_post_time IS NOT NULL
     `, [`Auto-posting failed: ${error}`, contentId])
 
     console.log(`❌ Marked content ${contentId} as failed`)
