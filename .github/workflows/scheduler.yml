@@ -111,14 +111,18 @@ jobs:
           DAYS="${{ needs.determine-operation.outputs.days }}"
           AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
           
-          # Call the refill API endpoint
+          # Calculate target date for refill (tomorrow)
+          TARGET_DATE=$(date -d "+1 day" +%Y-%m-%d)
+          echo "📅 Target date for refill: $TARGET_DATE"
+          
+          # Call the refill API endpoint with required date parameter
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -X POST \
             -H "Authorization: Bearer $AUTH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"days\": $DAYS}" \
             -L \
-            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/forecast/refill" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/forecast/refill?date=$TARGET_DATE" \
             --max-time 300)
           
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
