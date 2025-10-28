@@ -50,7 +50,6 @@ jobs:
     outputs:
       operation: ${{ steps.strategy.outputs.operation }}
       days: ${{ steps.strategy.outputs.days }}
-      auth-token: ${{ steps.strategy.outputs.auth-token }}
     steps:
       - name: Determine operation strategy
         id: strategy
@@ -79,7 +78,6 @@ jobs:
           
           echo "operation=$OPERATION" >> $GITHUB_OUTPUT
           echo "days=$DAYS" >> $GITHUB_OUTPUT
-          echo "auth-token=${{ secrets.AUTH_TOKEN }}" >> $GITHUB_OUTPUT
           echo "Selected operation: $OPERATION for $DAYS days"
 
   refill:
@@ -111,7 +109,7 @@ jobs:
           echo "🔄 Refilling content schedule for ${{ needs.determine-operation.outputs.days }} days..."
           
           DAYS="${{ needs.determine-operation.outputs.days }}"
-          AUTH_TOKEN="${{ needs.determine-operation.outputs.auth-token }}"
+          AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
           
           # Call the refill API endpoint
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
@@ -179,7 +177,7 @@ jobs:
           echo "🔮 Generating schedule forecast for ${{ needs.determine-operation.outputs.days }} days..."
           
           DAYS="${{ needs.determine-operation.outputs.days }}"
-          AUTH_TOKEN="${{ needs.determine-operation.outputs.auth-token }}"
+          AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
           
           # Get forecast for multiple days
           for i in $(seq 0 $((DAYS-1))); do
@@ -246,7 +244,7 @@ jobs:
           echo "🔄 Reconciling content and schedule for past ${{ needs.determine-operation.outputs.days }} days..."
           
           DAYS="${{ needs.determine-operation.outputs.days }}"
-          AUTH_TOKEN="${{ needs.determine-operation.outputs.auth-token }}"
+          AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
           
           # Call the reconcile API endpoint
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
@@ -312,7 +310,7 @@ jobs:
         run: |
           echo "🏥 Checking content queue health..."
           
-          AUTH_TOKEN="${{ needs.determine-operation.outputs.auth-token }}"
+          AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
           
           # Get queue metrics
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
