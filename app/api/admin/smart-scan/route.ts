@@ -21,9 +21,26 @@ const PLATFORM_THRESHOLDS = {
 
 export async function POST(request: NextRequest) {
   try {
-    // Auth check for GitHub Actions
+    // Auth check - support both GitHub Actions TOKEN and JWT authentication
     const authHeader = request.headers.get('authorization')
-    const isAuthenticated = authHeader === `Bearer ${process.env.AUTH_TOKEN}`
+    
+    // Method 1: GitHub Actions AUTH_TOKEN (simple bearer token)
+    const hasValidToken = authHeader === `Bearer ${process.env.AUTH_TOKEN}`
+    
+    // Method 2: JWT authentication (for admin dashboard and manual testing)
+    let hasValidJWT = false
+    if (!hasValidToken && authHeader?.startsWith('Bearer ')) {
+      try {
+        const { AuthService } = await import('@/lib/services/auth')
+        const token = authHeader.substring(7)
+        const decoded = AuthService.verifyJWT(token)
+        hasValidJWT = decoded && decoded.username === 'admin'
+      } catch (jwtError) {
+        console.log('JWT verification failed:', jwtError.message)
+      }
+    }
+    
+    const isAuthenticated = hasValidToken || hasValidJWT
     
     if (!isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
