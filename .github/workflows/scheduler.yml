@@ -119,7 +119,7 @@ jobs:
             -H "Authorization: Bearer $AUTH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"days\": $DAYS}" \
-            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/refill" \
+            "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/forecast/refill" \
             --max-time 300)
           
           HTTP_STATUS=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
