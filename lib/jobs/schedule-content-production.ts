@@ -147,6 +147,34 @@ async function updateContentQueueSupabase(supabase: any, contentId: number, sche
 const POSTS_PER_DAY = 6
 const SLOT_TIMES_ET = ['08:00', '12:00', '15:00', '18:00', '21:00', '23:30'] // Eastern Time
 
+/**
+ * Normalize content types to match scheduled_posts table constraint
+ * Maps various content types to the allowed constraint values: 'image' | 'text'
+ */
+function normalizeContentTypeForScheduling(contentType: string | null | undefined): string {
+  if (!contentType) return 'text'
+  
+  const type = contentType.toLowerCase().trim()
+  
+  // Map video/gif types to image (since they are visual content)
+  if (type === 'gif' || type === 'video' || type === 'webm' || type === 'mp4' || type === 'mov') {
+    return 'image'
+  }
+  
+  // Map link/url types to text
+  if (type === 'link' || type === 'url') {
+    return 'text'
+  }
+  
+  // Keep image and text as-is
+  if (type === 'image' || type === 'text') {
+    return type
+  }
+  
+  // Default fallback for unknown types
+  return 'text'
+}
+
 // Enhanced Diversity Rules - "Make Diversity Real"
 const MAX_PER_PLATFORM_PER_DAY = 2
 const MIN_SAME_PLATFORM_SPACING = 2 // at least 2 slots apart
@@ -364,8 +392,11 @@ const SLOT_ET_TIMES = ["08:00", "12:00", "15:00", "18:00", "21:00", "23:30"] as 
 
 function toEasternISO(dateYYYYMMDD: string, hhmmET: string): string {
   const [hh, mm] = hhmmET.split(":").map(Number)
-  const d = new Date(`${dateYYYYMMDD}T${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}:00-04:00`) // EDT fallback
-  return new Date(d).toISOString()
+  // Use EXACT same conversion logic as forecast endpoint
+  const etDate = parseISO(dateYYYYMMDD + 'T00:00:00')
+  const etSlot = setSeconds(setMinutes(setHours(etDate, hh), mm), 0)
+  const utcSlot = addHours(etSlot, 4) // ET + 4 = UTC (same as forecast endpoint)
+  return utcSlot.toISOString()
 }
 
 /**
@@ -720,7 +751,7 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
             scheduled_post_time: slotUTC,
             content_id: candidate.id,
             platform: candidate.source_platform,
-            content_type: candidate.content_type || 'text',
+            content_type: normalizeContentTypeForScheduling(candidate.content_type),
             source: candidate.original_author || null,
             title: candidate.content_text?.substring(0, 100) || null,
             reasoning: finalReasoning
@@ -740,7 +771,7 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
             `, [
               candidate.id,
               candidate.source_platform,
-              candidate.content_type || 'text',
+              normalizeContentTypeForScheduling(candidate.content_type),
               candidate.original_author || null,
               candidate.content_text?.substring(0, 100) || null,
               slotUTC,
@@ -756,7 +787,7 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
             `, [
               candidate.id,
               candidate.source_platform,
-              candidate.content_type || 'text',
+              normalizeContentTypeForScheduling(candidate.content_type),
               candidate.original_author || null,
               candidate.content_text?.substring(0, 100) || null,
               slotUTC,

@@ -1,67 +1,49 @@
-name: Scan Social Platforms
+# DEPRECATED: This workflow has been replaced by individual smart scanning workflows
+# Individual workflows now use threshold-based scanning to optimize API usage
+# - scan-giphy.yml (smart threshold-based scanning)
+# - scan-bluesky.yml (smart threshold-based scanning)  
+# - scan-imgur.yml (smart threshold-based scanning)
+# - scan-pixabay.yml (smart threshold-based scanning)
+#
+# Disabled to prevent bypassing smart scanning thresholds
+
+name: Scan Social Platforms (DEPRECATED)
 
 on:
-  schedule:
-    - cron: '0 1,9,17 * * *'  # 3 times daily (1 AM, 9 AM, 5 PM UTC)
+  # schedule:
+  #   - cron: '0 1,9,17 * * *'  # DISABLED - replaced by individual smart workflows
   workflow_dispatch:
+    inputs:
+      confirm_override:
+        description: 'This workflow is deprecated. Use individual platform workflows instead.'
+        required: true
+        default: 'I understand this is deprecated'
+        type: string
 
 jobs:
-  scan-giphy:
+  deprecated-notice:
     runs-on: ubuntu-latest
     steps:
-      - name: Scan Giphy
+      - name: Deprecated Workflow Notice
         run: |
-          echo "🎭 Scanning Giphy for hotdog GIFs..."
+          echo "🚨 DEPRECATED: This workflow has been replaced by individual smart workflows"
+          echo ""
+          echo "This batch workflow bypassed smart scanning thresholds, causing unnecessary API usage."
+          echo ""
+          echo "✅ Use these individual workflows instead:"
+          echo "   • scan-giphy.yml (smart threshold-based)"
+          echo "   • scan-bluesky.yml (smart threshold-based)"  
+          echo "   • scan-imgur.yml (smart threshold-based)"
+          echo "   • scan-pixabay.yml (smart threshold-based)"
+          echo ""
+          echo "💡 Smart workflows automatically skip scanning when content surplus exists,"
+          echo "   preserving API quotas for underrepresented platforms."
+          echo ""
           
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/giphy/scan" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"maxPosts": 15}' \
-            --fail --show-error --retry 2
+          CONFIRM="${{ github.event.inputs.confirm_override }}"
+          if [ "$CONFIRM" != "I understand this is deprecated" ]; then
+            echo "❌ This workflow requires confirmation to prevent accidental usage"
+            exit 1
+          fi
           
-          echo "✅ Giphy scan completed"
-
-  scan-bluesky:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Scan Bluesky
-        run: |
-          echo "🦋 Scanning Bluesky for hotdog posts..."
-          
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/bluesky/scan" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"maxPosts": 15}' \
-            --fail --show-error --retry 2
-          
-          echo "✅ Bluesky scan completed"
-
-  scan-imgur:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Scan Imgur
-        run: |
-          echo "🖼️ Scanning Imgur for hotdog images..."
-          
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/imgur/scan" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"maxPosts": 15}' \
-            --fail --show-error --retry 2
-          
-          echo "✅ Imgur scan completed"
-
-  scan-pixabay:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Scan Pixabay
-        run: |
-          echo "📸 Scanning Pixabay for hotdog images..."
-          
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/pixabay/scan" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"maxPosts": 15}' \
-            --fail --show-error --retry 2
-          
-          echo "✅ Pixabay scan completed"
+          echo "⚠️ Manual override confirmed - workflow functionality disabled for safety"

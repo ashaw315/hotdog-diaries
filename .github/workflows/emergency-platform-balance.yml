@@ -1,0 +1,110 @@
+name: Emergency Platform Balance
+
+on:
+  workflow_dispatch:
+    inputs:
+      aggressive_mode:
+        description: 'Use aggressive balancing (higher quotas for underrepresented platforms)'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  emergency-balance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emergency Platform Balancing
+        run: |
+          echo "🚨 Running emergency platform balancing..."
+          echo "📊 Target: Balance content across all 8 platforms"
+          
+          AGGRESSIVE="${{ github.event.inputs.aggressive_mode || 'true' }}"
+          echo "🔧 Aggressive mode: $AGGRESSIVE"
+          
+          # Run production auto-approval with aggressive platform balancing
+          echo "🤖 Step 1: Aggressive auto-approval for underrepresented platforms"
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/auto-approve-production" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"forceApproval\": $AGGRESSIVE,
+              \"maxItems\": 500,
+              \"minConfidenceScore\": 0.3,
+              \"balancePlatforms\": true
+            }" \
+            --silent --show-error
+          
+          echo "✅ Step 1 complete"
+          
+          # Scan underrepresented platforms immediately
+          echo "🎯 Step 2: Emergency scanning of underrepresented platforms"
+          
+          echo "📺 Scanning YouTube..."
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/youtube/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 25}' \
+            --silent --show-error || echo "⚠️ YouTube scan failed"
+          
+          echo "🌐 Scanning Lemmy..."
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/lemmy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error || echo "⚠️ Lemmy scan failed"
+          
+          echo "🎨 Scanning Tumblr..."
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error || echo "⚠️ Tumblr scan failed"
+          
+          echo "💬 Scanning Reddit..."
+          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/reddit/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 25}' \
+            --silent --show-error || echo "⚠️ Reddit scan failed"
+          
+          echo "✅ Step 2 complete"
+          
+          # Wait 30 seconds for content to be processed
+          echo "⏳ Waiting 30 seconds for content processing..."
+          sleep 30
+          
+          # Run another round of auto-approval to catch the new content
+          echo "🤖 Step 3: Final auto-approval pass for new content"
+          FINAL_RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/auto-approve-production" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"forceApproval\": true,
+              \"maxItems\": 300,
+              \"minConfidenceScore\": 0.4,
+              \"balancePlatforms\": true
+            }" \
+            --silent --show-error)
+          
+          if [ $? -eq 0 ]; then
+            TOTAL_APPROVED=$(echo "$FINAL_RESULT" | jq -r '.approvalResults.total // 0')
+            BALANCED=$(echo "$FINAL_RESULT" | jq -r '.approvalResults.balanced // 0')
+            READY_TO_POST=$(echo "$FINAL_RESULT" | jq -r '.updatedStats.readyToPost // 0')
+            DAYS_OF_CONTENT=$(echo "$FINAL_RESULT" | jq -r '.updatedStats.daysOfContent // 0')
+            
+            echo "🎉 Emergency platform balancing complete!"
+            echo "📈 Final results:"
+            echo "  ✅ Total approved in final pass: $TOTAL_APPROVED items"
+            echo "  🎯 Platform balanced items: $BALANCED items"
+            echo "  📊 Queue status: $READY_TO_POST ready to post ($DAYS_OF_CONTENT days)"
+            
+            if [ "$DAYS_OF_CONTENT" -ge 14 ]; then
+              echo "✅ SUCCESS: Platform balancing effective - $DAYS_OF_CONTENT days of content available"
+            else
+              echo "⚠️ Partial success: $DAYS_OF_CONTENT days available (target: 14+)"
+              echo "💡 Recommend running additional targeted scans for underrepresented platforms"
+            fi
+          else
+            echo "❌ Final auto-approval pass failed"
+            exit 1
+          fi

@@ -1,0 +1,95 @@
+name: Production Auto-Approval for Platform Balance
+
+on:
+  schedule:
+    # Run every 4 hours to maintain platform balance
+    - cron: '0 6,10,14,18,22 * * *'  # 6 AM, 10 AM, 2 PM, 6 PM, 10 PM UTC
+  workflow_dispatch:
+    inputs:
+      force_approval:
+        description: 'Force approval mode (approves more aggressively)'
+        required: false
+        default: 'false'
+        type: boolean
+      max_items:
+        description: 'Maximum items to approve per run'
+        required: false
+        default: '200'
+        type: string
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Production Auto-Approval
+        run: |
+          echo "🤖 Running production auto-approval for platform balance..."
+          
+          # Set parameters based on inputs or defaults
+          FORCE_APPROVAL="${{ github.event.inputs.force_approval || 'false' }}"
+          MAX_ITEMS="${{ github.event.inputs.max_items || '200' }}"
+          
+          echo "📊 Parameters: force_approval=$FORCE_APPROVAL, max_items=$MAX_ITEMS"
+          
+          RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/auto-approve-production" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"forceApproval\": $FORCE_APPROVAL,
+              \"maxItems\": $MAX_ITEMS,
+              \"minConfidenceScore\": 0.4,
+              \"balancePlatforms\": true
+            }" \
+            --silent --show-error --retry 2)
+          
+          if [ $? -eq 0 ]; then
+            # Parse results using jq
+            TOTAL_APPROVED=$(echo "$RESULT" | jq -r '.approvalResults.total // 0')
+            IMMEDIATE=$(echo "$RESULT" | jq -r '.approvalResults.immediate // 0')
+            AGED_24H=$(echo "$RESULT" | jq -r '.approvalResults.aged24h // 0')
+            AGED_48H=$(echo "$RESULT" | jq -r '.approvalResults.aged48h // 0')
+            AGED_72H=$(echo "$RESULT" | jq -r '.approvalResults.aged72h // 0')
+            BALANCED=$(echo "$RESULT" | jq -r '.approvalResults.balanced // 0')
+            
+            READY_TO_POST=$(echo "$RESULT" | jq -r '.updatedStats.readyToPost // 0')
+            DAYS_OF_CONTENT=$(echo "$RESULT" | jq -r '.updatedStats.daysOfContent // 0')
+            
+            echo "✅ Auto-approval completed successfully:"
+            echo "  📈 Total approved: $TOTAL_APPROVED items"
+            echo "  🚀 Immediate (≥0.8): $IMMEDIATE items"
+            echo "  ⏰ Aged 24h (≥0.6): $AGED_24H items"
+            echo "  ⏰ Aged 48h (≥0.5): $AGED_48H items"  
+            echo "  ⏰ Aged 72h (≥0.4): $AGED_72H items"
+            echo "  🎯 Platform balanced: $BALANCED items"
+            echo "  📊 Queue status: $READY_TO_POST ready to post ($DAYS_OF_CONTENT days of content)"
+            
+            # Check if we need urgent action
+            if [ "$DAYS_OF_CONTENT" -lt 7 ]; then
+              echo "🚨 URGENT: Less than 7 days of content available!"
+              echo "  Recommend increasing scanning frequency on underrepresented platforms"
+            elif [ "$DAYS_OF_CONTENT" -lt 14 ]; then
+              echo "⚠️ Warning: Less than 14 days of content available"
+              echo "  Consider running additional scanning workflows"
+            else
+              echo "✅ Content pipeline healthy with $DAYS_OF_CONTENT days of content"
+            fi
+            
+            # Show recommendations if available
+            RECOMMENDATIONS=$(echo "$RESULT" | jq -r '.recommendations[]? // empty' 2>/dev/null)
+            if [ -n "$RECOMMENDATIONS" ]; then
+              echo "💡 Recommendations:"
+              echo "$RECOMMENDATIONS" | while read -r rec; do
+                echo "  - $rec"
+              done
+            fi
+            
+          else
+            echo "❌ Auto-approval failed"
+            exit 1
+          fi
+      
+      - name: Handle Approval Failure
+        if: failure()
+        run: |
+          echo "❌ Production auto-approval failed - will retry on next scheduled run"
+          echo "💡 Manual approval may be needed via admin dashboard"

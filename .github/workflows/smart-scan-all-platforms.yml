@@ -1,0 +1,93 @@
+name: Smart Scan All Platforms (Threshold-Based)
+
+on:
+  schedule:
+    - cron: '0 9 * * *'  # Once daily comprehensive check
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: 'Force scan all platforms regardless of thresholds'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  smart-scan-all:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [youtube, reddit, pixabay, bluesky, giphy, imgur, lemmy, tumblr]
+      fail-fast: false  # Continue with other platforms if one fails
+      max-parallel: 3   # Limit concurrent scans to avoid API rate limits
+    steps:
+      - name: Smart Scan ${{ matrix.platform }}
+        run: |
+          echo "🔍 Smart scanning ${{ matrix.platform }} with threshold checking..."
+          
+          FORCE_ALL="${{ github.event.inputs.force_all || 'false' }}"
+          
+          # Platform-specific max posts based on content volume patterns
+          case "${{ matrix.platform }}" in
+            "pixabay"|"bluesky")
+              MAX_POSTS=10  # High volume platforms - scan less
+              ;;
+            "youtube"|"lemmy"|"tumblr")
+              MAX_POSTS=25  # Underrepresented - scan more
+              ;;
+            *)
+              MAX_POSTS=15  # Medium volume platforms
+              ;;
+          esac
+          
+          echo "📊 Platform: ${{ matrix.platform }}, Max Posts: $MAX_POSTS, Force: $FORCE_ALL"
+          
+          RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/smart-scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"platform\": \"${{ matrix.platform }}\",
+              \"forceOverride\": $FORCE_ALL,
+              \"maxPosts\": $MAX_POSTS
+            }" \
+            --silent --show-error --retry 2 --max-time 180)
+          
+          if [ $? -eq 0 ]; then
+            SKIPPED=$(echo "$RESULT" | jq -r '.skipped // false')
+            SCANNED=$(echo "$RESULT" | jq -r '.scanned // false')
+            REASON=$(echo "$RESULT" | jq -r '.reason // "unknown"')
+            
+            if [ "$SKIPPED" = "true" ]; then
+              READY=$(echo "$RESULT" | jq -r '.currentStats.readyToPost // 0')
+              APPROVED=$(echo "$RESULT" | jq -r '.currentStats.approved // 0')
+              echo "⏭️ ${{ matrix.platform }} SKIPPED: $REASON"
+              echo "📊 Content sufficient: $READY ready, $APPROVED approved"
+            elif [ "$SCANNED" = "true" ]; then
+              # Extract results based on platform response format
+              FOUND=0
+              APPROVED_NEW=0
+              
+              # Try different result field names based on platform
+              FOUND=$(echo "$RESULT" | jq -r '.scanResult.data.imagesFound // .scanResult.data.videosFound // .scanResult.data.totalFound // 0')
+              APPROVED_NEW=$(echo "$RESULT" | jq -r '.scanResult.data.imagesApproved // .scanResult.data.videosApproved // .scanResult.data.approved // 0')
+              
+              echo "✅ ${{ matrix.platform }} SCANNED: $REASON"
+              echo "📈 Results: Found $FOUND, approved $APPROVED_NEW"
+            else
+              echo "❓ ${{ matrix.platform }}: Unexpected response"
+              echo "$RESULT" | jq -r '.message // "No message"'
+            fi
+          else
+            echo "❌ ${{ matrix.platform }} smart scan failed"
+            echo "💡 Will continue with other platforms..."
+          fi
+          
+          # Add delay between platforms to respect rate limits
+          sleep 10
+      
+      - name: Platform Scan Summary
+        if: always()
+        run: |
+          echo "📋 Smart scan summary for ${{ matrix.platform }}:"
+          echo "  🎯 Threshold-based scanning helps optimize API usage"
+          echo "  📊 Platforms with surplus content are automatically skipped"
+          echo "  🚀 Underrepresented platforms get scanning priority"

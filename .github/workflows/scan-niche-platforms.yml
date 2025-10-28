@@ -1,37 +1,46 @@
-name: Scan Niche Platforms
+# DEPRECATED: This workflow has been replaced by individual smart scanning workflows
+# Individual workflows now use threshold-based scanning to optimize API usage
+# - scan-lemmy.yml (smart threshold-based scanning)
+# - scan-tumblr.yml (smart threshold-based scanning)
+#
+# Disabled to prevent bypassing smart scanning thresholds for underrepresented platforms
+
+name: Scan Niche Platforms (DEPRECATED)
 
 on:
-  schedule:
-    - cron: '3 6,14,22 * * *'  # 3 times daily (6:03 AM, 2:03 PM, 10:03 PM UTC) - staggered +3min
+  # schedule:
+  #   - cron: '3 6,14,22 * * *'  # DISABLED - replaced by individual smart workflows
   workflow_dispatch:
+    inputs:
+      confirm_override:
+        description: 'This workflow is deprecated. Use individual platform workflows instead.'
+        required: true
+        default: 'I understand this is deprecated'
+        type: string
 
 jobs:
-  scan-lemmy:
+  deprecated-notice:
     runs-on: ubuntu-latest
     steps:
-      - name: Scan Lemmy
+      - name: Deprecated Workflow Notice
         run: |
-          echo "🌐 Scanning Lemmy for hotdog content..."
+          echo "🚨 DEPRECATED: This workflow has been replaced by individual smart workflows"
+          echo ""
+          echo "This batch workflow bypassed smart scanning thresholds for underrepresented platforms."
+          echo "Niche platforms (Lemmy, Tumblr) have critically low content and need prioritized scanning."
+          echo ""
+          echo "✅ Use these individual workflows instead:"
+          echo "   • scan-lemmy.yml (smart threshold-based with priority for underrepresented platforms)"
+          echo "   • scan-tumblr.yml (smart threshold-based with priority for underrepresented platforms)"
+          echo ""
+          echo "💡 Smart workflows prioritize scanning underrepresented platforms while"
+          echo "   skipping high-volume platforms when content surplus exists."
+          echo ""
           
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/lemmy/scan" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"maxPosts": 10}' \
-            --fail --show-error --retry 2 || echo "⚠️ Lemmy scan failed (continuing)"
+          CONFIRM="${{ github.event.inputs.confirm_override }}"
+          if [ "$CONFIRM" != "I understand this is deprecated" ]; then
+            echo "❌ This workflow requires confirmation to prevent accidental usage"
+            exit 1
+          fi
           
-          echo "✅ Lemmy scan attempt completed"
-
-  scan-tumblr:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Scan Tumblr  
-        run: |
-          echo "🎨 Scanning Tumblr for hotdog content..."
-          
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"maxPosts": 10}' \
-            --fail --show-error --retry 2 || echo "⚠️ Tumblr scan failed (continuing)"
-          
-          echo "✅ Tumblr scan attempt completed"
+          echo "⚠️ Manual override confirmed - workflow functionality disabled for safety"

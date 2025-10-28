@@ -1,27 +1,72 @@
-name: Scan Bluesky for Content
+name: Smart Scan Bluesky (Threshold-Based)
 
 on:
   schedule:
-    - cron: '0 1,9,17 * * *'  # 3 times daily (1 AM, 9 AM, 5 PM UTC)
+    - cron: '0 1,9,17 * * *'  # 3 times daily with smart throttling
   workflow_dispatch:
+    inputs:
+      force_override:
+        description: 'Force scan even if content surplus exists'
+        required: false
+        default: 'false'
+        type: boolean
+      max_posts:
+        description: 'Maximum posts to scan'
+        required: false
+        default: '15'
+        type: string
 
 jobs:
-  scan-bluesky:
+  smart-scan-bluesky:
     runs-on: ubuntu-latest
     steps:
-      - name: Scan Bluesky
+      - name: Smart Threshold Check and Scan
         run: |
-          echo "🦋 Scanning Bluesky for hotdog posts..."
+          echo "🦋 Smart scanning Bluesky (threshold-based)..."
           
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/bluesky/scan" \
+          FORCE_OVERRIDE="${{ github.event.inputs.force_override || 'false' }}"
+          MAX_POSTS="${{ github.event.inputs.max_posts || '15' }}"
+          
+          echo "🔧 Parameters: force_override=$FORCE_OVERRIDE, max_posts=$MAX_POSTS"
+          echo "⚠️ Note: Bluesky is high-volume - will skip scanning if content surplus exists"
+          
+          RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/smart-scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"maxPosts": 15}' \
-            --fail --show-error --retry 2 --retry-delay 5
+            -d "{
+              \"platform\": \"bluesky\",
+              \"forceOverride\": $FORCE_OVERRIDE,
+              \"maxPosts\": $MAX_POSTS
+            }" \
+            --silent --show-error --retry 2 --retry-delay 5)
           
-          echo "✅ Bluesky scan completed"
+          if [ $? -eq 0 ]; then
+            SKIPPED=$(echo "$RESULT" | jq -r '.skipped // false')
+            SCANNED=$(echo "$RESULT" | jq -r '.scanned // false')
+            REASON=$(echo "$RESULT" | jq -r '.reason // "unknown"')
+            
+            if [ "$SKIPPED" = "true" ]; then
+              READY_TO_POST=$(echo "$RESULT" | jq -r '.currentStats.readyToPost // 0')
+              APPROVED=$(echo "$RESULT" | jq -r '.currentStats.approved // 0')
+              echo "⏭️ Bluesky scan SKIPPED: $REASON"
+              echo "📊 Current content: $READY_TO_POST ready to post, $APPROVED approved"
+              echo "💡 Content levels sufficient - preserving API quotas for underrepresented platforms"
+            elif [ "$SCANNED" = "true" ]; then
+              FOUND=$(echo "$RESULT" | jq -r '.scanResult.data.totalFound // 0')
+              PROCESSED=$(echo "$RESULT" | jq -r '.scanResult.data.processed // 0')
+              echo "✅ Bluesky scan COMPLETED: $REASON"
+              echo "📈 Results: Found $FOUND, processed $PROCESSED new posts"
+            else
+              echo "❓ Unexpected response from smart scan"
+              echo "$RESULT" | jq -r '.message // "No message"'
+            fi
+          else
+            echo "❌ Smart scan check failed"
+            exit 1
+          fi
       
-      - name: Handle Scan Failure
+      - name: Handle Smart Scan Failure
         if: failure()
         run: |
-          echo "❌ Bluesky scanning failed - will retry on next scheduled run"
+          echo "❌ Smart Bluesky scan failed - will retry on next scheduled run"
+          echo "💡 Threshold-based scanning helps preserve API quotas when content is sufficient"

@@ -1,27 +1,74 @@
-name: Scan Tumblr for Content
+name: Smart Scan Tumblr (Threshold-Based)
 
 on:
   schedule:
-    - cron: '5 6,14,22 * * *'  # 3 times daily (6:05 AM, 2:05 PM, 10:05 PM UTC) - staggered +5min
+    - cron: '5 6,14,22 * * *'  # 3 times daily - prioritized for underrepresented platform (staggered +5min)
   workflow_dispatch:
+    inputs:
+      force_override:
+        description: 'Force scan even if thresholds met'
+        required: false
+        default: 'false'
+        type: boolean
+      max_posts:
+        description: 'Maximum posts to scan'
+        required: false
+        default: '25'
+        type: string
 
 jobs:
-  scan-tumblr:
+  smart-scan-tumblr:
     runs-on: ubuntu-latest
     steps:
-      - name: Scan Tumblr
+      - name: Smart Threshold Check and Scan
         run: |
-          echo "🎨 Scanning Tumblr for hotdog content..."
+          echo "🎨 Smart scanning Tumblr (underrepresented platform priority)..."
           
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
+          FORCE_OVERRIDE="${{ github.event.inputs.force_override || 'false' }}"
+          MAX_POSTS="${{ github.event.inputs.max_posts || '25' }}"
+          
+          echo "🔧 Parameters: force_override=$FORCE_OVERRIDE, max_posts=$MAX_POSTS"
+          echo "🎯 Note: Tumblr is an underrepresented platform - lower thresholds apply"
+          
+          RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/smart-scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"maxPosts": 10}' \
-            --fail --show-error --retry 2 --retry-delay 5 || echo "⚠️ Tumblr scan failed (continuing)"
+            -d "{
+              \"platform\": \"tumblr\",
+              \"forceOverride\": $FORCE_OVERRIDE,
+              \"maxPosts\": $MAX_POSTS
+            }" \
+            --silent --show-error --retry 2 --retry-delay 5)
           
-          echo "✅ Tumblr scan attempt completed"
+          if [ $? -eq 0 ]; then
+            SKIPPED=$(echo "$RESULT" | jq -r '.skipped // false')
+            SCANNED=$(echo "$RESULT" | jq -r '.scanned // false')
+            REASON=$(echo "$RESULT" | jq -r '.reason // "unknown"')
+            
+            if [ "$SKIPPED" = "true" ]; then
+              READY_TO_POST=$(echo "$RESULT" | jq -r '.currentStats.readyToPost // 0')
+              APPROVED=$(echo "$RESULT" | jq -r '.currentStats.approved // 0')
+              echo "⏭️ Tumblr scan SKIPPED: $REASON"
+              echo "📊 Current content: $READY_TO_POST ready to post, $APPROVED approved"
+              echo "✅ Rare for Tumblr - content levels unexpectedly high!"
+            elif [ "$SCANNED" = "true" ]; then
+              FOUND=$(echo "$RESULT" | jq -r '.scanResult.data.totalFound // 0')
+              PROCESSED=$(echo "$RESULT" | jq -r '.scanResult.data.processed // 0')
+              echo "✅ Tumblr scan COMPLETED: $REASON"
+              echo "📈 Results: Found $FOUND, processed $PROCESSED new posts"
+              echo "🎯 Tumblr scanning prioritized due to underrepresentation"
+            else
+              echo "❓ Unexpected response from smart scan"
+              echo "$RESULT" | jq -r '.message // "No message"'
+            fi
+          else
+            echo "⚠️ Smart scan check failed (continuing - Tumblr issues are common)"
+          fi
+          
+          echo "✅ Tumblr smart scan attempt completed"
       
-      - name: Handle Scan Failure
+      - name: Handle Scan Issues
         if: failure()
         run: |
-          echo "⚠️ Tumblr scanning failed - this is expected occasionally"
+          echo "⚠️ Smart Tumblr scan failed - this is expected occasionally"
+          echo "💡 Tumblr API can be unreliable - threshold-based scanning helps optimize attempts"

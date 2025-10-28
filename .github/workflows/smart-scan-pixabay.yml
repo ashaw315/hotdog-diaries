@@ -1,8 +1,8 @@
-name: Smart Scan Imgur (Threshold-Based)
+name: Smart Scan Pixabay (Threshold-Based)
 
 on:
   schedule:
-    - cron: '0 4,12,20 * * *'  # 3 times daily with smart throttling
+    - cron: '0 7,15,23 * * *'  # 3 times daily with smart throttling
   workflow_dispatch:
     inputs:
       force_override:
@@ -17,12 +17,12 @@ on:
         type: string
 
 jobs:
-  smart-scan-imgur:
+  smart-scan-pixabay:
     runs-on: ubuntu-latest
     steps:
       - name: Smart Threshold Check and Scan
         run: |
-          echo "🖼️ Smart scanning Imgur (threshold-based)..."
+          echo "📸 Smart scanning Pixabay (threshold-based)..."
           
           FORCE_OVERRIDE="${{ github.event.inputs.force_override || 'false' }}"
           MAX_POSTS="${{ github.event.inputs.max_posts || '15' }}"
@@ -33,11 +33,11 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "{
-              \"platform\": \"imgur\",
+              \"platform\": \"pixabay\",
               \"forceOverride\": $FORCE_OVERRIDE,
               \"maxPosts\": $MAX_POSTS
             }" \
-            --silent --show-error --retry 2 --retry-delay 5)
+            --silent --show-error --retry 2)
           
           if [ $? -eq 0 ]; then
             SKIPPED=$(echo "$RESULT" | jq -r '.skipped // false')
@@ -47,14 +47,14 @@ jobs:
             if [ "$SKIPPED" = "true" ]; then
               READY_TO_POST=$(echo "$RESULT" | jq -r '.currentStats.readyToPost // 0')
               APPROVED=$(echo "$RESULT" | jq -r '.currentStats.approved // 0')
-              echo "⏭️ Imgur scan SKIPPED: $REASON"
+              echo "⏭️ Pixabay scan SKIPPED: $REASON"
               echo "📊 Current content: $READY_TO_POST ready to post, $APPROVED approved"
               echo "💡 Content levels sufficient - preserving API quotas"
             elif [ "$SCANNED" = "true" ]; then
               FOUND=$(echo "$RESULT" | jq -r '.scanResult.data.imagesFound // 0')
-              PROCESSED=$(echo "$RESULT" | jq -r '.scanResult.data.imagesProcessed // 0')
-              echo "✅ Imgur scan COMPLETED: $REASON"
-              echo "📈 Results: Found $FOUND, processed $PROCESSED new images"
+              APPROVED_NEW=$(echo "$RESULT" | jq -r '.scanResult.data.imagesApproved // 0')
+              echo "✅ Pixabay scan COMPLETED: $REASON"
+              echo "📈 Results: Found $FOUND, approved $APPROVED_NEW new images"
             else
               echo "❓ Unexpected response from smart scan"
               echo "$RESULT" | jq -r '.message // "No message"'
@@ -67,5 +67,5 @@ jobs:
       - name: Handle Smart Scan Failure
         if: failure()
         run: |
-          echo "❌ Smart Imgur scan failed - will retry on next scheduled run"
+          echo "❌ Smart Pixabay scan failed - will retry on next scheduled run"
           echo "💡 Threshold-based scanning helps preserve API quotas when content is sufficient"

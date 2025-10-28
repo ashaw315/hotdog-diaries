@@ -1,27 +1,71 @@
-name: Scan Giphy for Content
+name: Smart Scan Giphy (Threshold-Based)
 
 on:
   schedule:
-    - cron: '0 2,10,18 * * *'  # 3 times daily (2 AM, 10 AM, 6 PM UTC)
+    - cron: '0 2,10,18 * * *'  # 3 times daily with smart throttling
   workflow_dispatch:
+    inputs:
+      force_override:
+        description: 'Force scan even if content surplus exists'
+        required: false
+        default: 'false'
+        type: boolean
+      max_posts:
+        description: 'Maximum posts to scan'
+        required: false
+        default: '15'
+        type: string
 
 jobs:
-  scan-giphy:
+  smart-scan-giphy:
     runs-on: ubuntu-latest
     steps:
-      - name: Scan Giphy
+      - name: Smart Threshold Check and Scan
         run: |
-          echo "🎭 Scanning Giphy for hotdog GIFs..."
+          echo "🎭 Smart scanning Giphy (threshold-based)..."
           
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/giphy/scan" \
+          FORCE_OVERRIDE="${{ github.event.inputs.force_override || 'false' }}"
+          MAX_POSTS="${{ github.event.inputs.max_posts || '15' }}"
+          
+          echo "🔧 Parameters: force_override=$FORCE_OVERRIDE, max_posts=$MAX_POSTS"
+          
+          RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/smart-scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"maxPosts": 15}' \
-            --fail --show-error --retry 2 --retry-delay 5
+            -d "{
+              \"platform\": \"giphy\",
+              \"forceOverride\": $FORCE_OVERRIDE,
+              \"maxPosts\": $MAX_POSTS
+            }" \
+            --silent --show-error --retry 2 --retry-delay 5)
           
-          echo "✅ Giphy scan completed"
+          if [ $? -eq 0 ]; then
+            SKIPPED=$(echo "$RESULT" | jq -r '.skipped // false')
+            SCANNED=$(echo "$RESULT" | jq -r '.scanned // false')
+            REASON=$(echo "$RESULT" | jq -r '.reason // "unknown"')
+            
+            if [ "$SKIPPED" = "true" ]; then
+              READY_TO_POST=$(echo "$RESULT" | jq -r '.currentStats.readyToPost // 0')
+              APPROVED=$(echo "$RESULT" | jq -r '.currentStats.approved // 0')
+              echo "⏭️ Giphy scan SKIPPED: $REASON"
+              echo "📊 Current content: $READY_TO_POST ready to post, $APPROVED approved"
+              echo "💡 Content levels sufficient - preserving API quotas"
+            elif [ "$SCANNED" = "true" ]; then
+              FOUND=$(echo "$RESULT" | jq -r '.scanResult.data.gifsFound // 0')
+              PROCESSED=$(echo "$RESULT" | jq -r '.scanResult.data.gifsProcessed // 0')
+              echo "✅ Giphy scan COMPLETED: $REASON"
+              echo "📈 Results: Found $FOUND, processed $PROCESSED new GIFs"
+            else
+              echo "❓ Unexpected response from smart scan"
+              echo "$RESULT" | jq -r '.message // "No message"'
+            fi
+          else
+            echo "❌ Smart scan check failed"
+            exit 1
+          fi
       
-      - name: Handle Scan Failure
+      - name: Handle Smart Scan Failure
         if: failure()
         run: |
-          echo "❌ Giphy scanning failed - will retry on next scheduled run"
+          echo "❌ Smart Giphy scan failed - will retry on next scheduled run"
+          echo "💡 Threshold-based scanning helps preserve API quotas when content is sufficient"

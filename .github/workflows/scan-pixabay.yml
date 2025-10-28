@@ -1,27 +1,63 @@
-name: Scan Pixabay for Content
+name: Smart Scan Pixabay (Threshold-Based)
 
 on:
   schedule:
-    - cron: '0 3,11,19 * * *'  # 3 times daily (3 AM, 11 AM, 7 PM UTC)
+    - cron: '0 7,19 * * *'  # 2 times daily with smart threshold checking
   workflow_dispatch:
+    inputs:
+      force_override:
+        description: 'Force scan even if content surplus exists'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
-  scan-pixabay:
+  smart-scan-pixabay:
     runs-on: ubuntu-latest
     steps:
-      - name: Scan Pixabay
+      - name: Smart Threshold Check and Scan
         run: |
-          echo "📸 Scanning Pixabay for hotdog images..."
+          echo "📸 Smart scanning Pixabay (threshold-based)..."
           
-          curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/pixabay/scan" \
+          FORCE_OVERRIDE="${{ github.event.inputs.force_override || 'false' }}"
+          
+          RESULT=$(curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/smart-scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"maxPosts": 15}' \
-            --fail --show-error --retry 2 --retry-delay 5
+            -d "{
+              \"platform\": \"pixabay\",
+              \"forceOverride\": $FORCE_OVERRIDE,
+              \"maxPosts\": 10
+            }" \
+            --silent --show-error --retry 2)
           
-          echo "✅ Pixabay scan completed"
+          if [ $? -eq 0 ]; then
+            SKIPPED=$(echo "$RESULT" | jq -r '.skipped // false')
+            SCANNED=$(echo "$RESULT" | jq -r '.scanned // false')
+            REASON=$(echo "$RESULT" | jq -r '.reason // "unknown"')
+            
+            if [ "$SKIPPED" = "true" ]; then
+              READY_TO_POST=$(echo "$RESULT" | jq -r '.currentStats.readyToPost // 0')
+              APPROVED=$(echo "$RESULT" | jq -r '.currentStats.approved // 0')
+              echo "⏭️ Pixabay scan SKIPPED: $REASON"
+              echo "📊 Current content: $READY_TO_POST ready to post, $APPROVED approved"
+              echo "💡 Content levels sufficient - preserving API quotas"
+            elif [ "$SCANNED" = "true" ]; then
+              FOUND=$(echo "$RESULT" | jq -r '.scanResult.data.imagesFound // 0')
+              APPROVED_NEW=$(echo "$RESULT" | jq -r '.scanResult.data.imagesApproved // 0')
+              echo "✅ Pixabay scan COMPLETED: $REASON"
+              echo "📈 Results: Found $FOUND, approved $APPROVED_NEW new images"
+            else
+              echo "❓ Unexpected response from smart scan"
+              echo "$RESULT" | jq -r '.message // "No message"'
+            fi
+          else
+            echo "❌ Smart scan check failed"
+            exit 1
+          fi
       
-      - name: Handle Scan Failure
+      - name: Handle Smart Scan Failure
         if: failure()
         run: |
-          echo "❌ Pixabay scanning failed - will retry on next scheduled run"
+          echo "❌ Smart Pixabay scan failed - will retry on next scheduled run"
+          echo "💡 Threshold-based scanning helps preserve API quotas when content is sufficient"
