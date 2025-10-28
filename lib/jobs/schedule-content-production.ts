@@ -185,16 +185,36 @@ const SPACING_PENALTY_ADJACENT = 0.2 // heavy penalty for adjacent same platform
 const SPACING_PENALTY_NEAR = 0.6     // moderate penalty for within spacing window
 const YESTERDAY_COOLDOWN_PENALTY = 0.5 // penalty for repeating yesterday's last platform
 
+// Helper function to determine DST status for a given date
+function isDaylightSavingTime(date: Date): boolean {
+  const month = date.getMonth() + 1 // getMonth() is 0-based
+  const day = date.getDate()
+  
+  // Quick DST check: DST is active from mid-March through early November
+  if (month > 3 && month < 11) {
+    return true
+  } else if (month === 3) {
+    // In March, DST starts on the second Sunday (roughly day 8-14)
+    return day >= 8
+  } else if (month === 11) {
+    // In November, DST ends on the first Sunday (roughly day 1-7)
+    return day <= 7
+  }
+  return false
+}
+
 // Timezone utility functions (Phase 5.12 compatibility)
 const toET = (dateInput: Date | string): Date => {
   const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput
-  // Temporary fallback: Eastern Time is UTC-4 (EDT)
-  return addHours(date, -4)
+  // Check if DST is active: EDT (UTC-4) or EST (UTC-5)
+  const offsetHours = isDaylightSavingTime(date) ? -4 : -5
+  return addHours(date, offsetHours)
 }
 
 const toUTC = (dateET: Date): Date => {
-  // Convert ET back to UTC
-  return addHours(dateET, 4)
+  // Convert ET back to UTC - need to determine if the ET date is in DST
+  const offsetHours = isDaylightSavingTime(dateET) ? 4 : 5
+  return addHours(dateET, offsetHours)
 }
 
 /**
@@ -392,11 +412,17 @@ const SLOT_ET_TIMES = ["08:00", "12:00", "15:00", "18:00", "21:00", "23:30"] as 
 
 function toEasternISO(dateYYYYMMDD: string, hhmmET: string): string {
   const [hh, mm] = hhmmET.split(":").map(Number)
-  // Use EXACT same conversion logic as forecast endpoint
-  const etDate = parseISO(dateYYYYMMDD + 'T00:00:00')
-  const etSlot = setSeconds(setMinutes(setHours(etDate, hh), mm), 0)
-  const utcSlot = addHours(etSlot, 4) // ET + 4 = UTC (same as forecast endpoint)
-  return utcSlot.toISOString()
+  
+  // Create the ET time as if it were UTC first (this prevents double timezone conversion)
+  const etAsUTC = parseISO(dateYYYYMMDD + `T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00.000Z`)
+  
+  // Apply the correct UTC offset to convert FROM ET TO UTC
+  // EDT (DST active): ET + 4 hours = UTC
+  // EST (standard time): ET + 5 hours = UTC
+  const offsetHours = isDaylightSavingTime(etAsUTC) ? 4 : 5
+  const utcTime = addHours(etAsUTC, offsetHours)
+  
+  return utcTime.toISOString()
 }
 
 /**

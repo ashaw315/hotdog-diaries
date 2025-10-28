@@ -1,9 +1,35 @@
 /**
  * Time Helper Functions for Eastern Time Slot Management
  * Supports 6 daily slots: 08:00, 12:00, 15:00, 18:00, 21:00, 23:30 ET
+ * Updated with DST-aware timezone conversion
  */
 
 import { parseISO, setHours, setMinutes, setSeconds, addHours, format } from 'date-fns'
+
+// Helper function to determine DST status for a given date
+function isDaylightSavingTime(date: Date): boolean {
+  const month = date.getMonth() + 1 // getMonth() is 0-based
+  const day = date.getDate()
+  
+  // Quick DST check: DST is active from mid-March through early November
+  if (month > 3 && month < 11) {
+    return true
+  } else if (month === 3) {
+    // In March, DST starts on the second Sunday (roughly day 8-14)
+    return day >= 8
+  } else if (month === 11) {
+    // In November, DST ends on the first Sunday (roughly day 1-7)
+    return day <= 7
+  }
+  return false
+}
+
+// Helper function to get ET offset in milliseconds for a given date
+function getETOffsetMs(date: Date): number {
+  // EDT = UTC-4 (4 hours), EST = UTC-5 (5 hours)
+  const offsetHours = isDaylightSavingTime(date) ? 4 : 5
+  return offsetHours * 60 * 60 * 1000
+}
 
 // Standard ET slot times
 export const SLOT_TIMES_ET = ['08:00', '12:00', '15:00', '18:00', '21:00', '23:30'] as const
@@ -13,7 +39,9 @@ export const SLOT_TIMES_ET = ['08:00', '12:00', '15:00', '18:00', '21:00', '23:3
  */
 export function isTodayEastern(): boolean {
   const now = new Date()
-  const etNow = new Date(now.getTime() - (5 * 60 * 60 * 1000)) // EST offset approximation
+  // Convert UTC to ET: subtract offset hours (EDT = UTC-4, EST = UTC-5)
+  const offsetHours = isDaylightSavingTime(now) ? 4 : 5
+  const etNow = new Date(now.getTime() - (offsetHours * 60 * 60 * 1000))
   const today = etNow.toISOString().split('T')[0]
   return today === format(etNow, 'yyyy-MM-dd')
 }
@@ -23,7 +51,9 @@ export function isTodayEastern(): boolean {
  */
 export function getEasternDateString(): string {
   const now = new Date()
-  const etNow = new Date(now.getTime() - (5 * 60 * 60 * 1000)) // EST offset approximation
+  // Convert UTC to ET: subtract offset hours (EDT = UTC-4, EST = UTC-5)
+  const offsetHours = isDaylightSavingTime(now) ? 4 : 5
+  const etNow = new Date(now.getTime() - (offsetHours * 60 * 60 * 1000))
   return etNow.toISOString().split('T')[0]
 }
 
@@ -33,7 +63,9 @@ export function getEasternDateString(): string {
  */
 export function getEasternSlotIndexForNow(): number {
   const now = new Date()
-  const etNow = new Date(now.getTime() - (5 * 60 * 60 * 1000)) // EST offset approximation
+  // Convert UTC to ET: subtract offset hours (EDT = UTC-4, EST = UTC-5)
+  const offsetHours = isDaylightSavingTime(now) ? 4 : 5
+  const etNow = new Date(now.getTime() - (offsetHours * 60 * 60 * 1000))
   const currentHour = etNow.getHours()
   const currentMinute = etNow.getMinutes()
   const currentTime = currentHour * 60 + currentMinute // minutes since midnight
@@ -87,11 +119,15 @@ export function getEasternWindowForSlot(slotIndex: number, dateStr?: string): {
     throw new Error(`Invalid slot index: ${slotIndex}. Must be 0-5.`)
   }
 
-  // Convert ET slot time to UTC
+  // Convert ET slot time to UTC using DST-aware offset
   const [hh, mm] = slotTimeET.split(':').map(Number)
-  const etDate = parseISO(dayStr + 'T00:00:00')
-  const etSlot = setSeconds(setMinutes(setHours(etDate, hh), mm), 0)
-  const utcSlot = addHours(etSlot, 5) // EST to UTC
+  
+  // Create the ET time as if it were UTC first (prevents double timezone conversion)
+  const etAsUTC = parseISO(dayStr + `T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00.000Z`)
+  
+  // Apply the correct UTC offset to convert FROM ET TO UTC
+  const offsetHours = isDaylightSavingTime(etAsUTC) ? 4 : 5
+  const utcSlot = addHours(etAsUTC, offsetHours)
   
   // Create 1-hour window around the slot time
   const startUtc = new Date(utcSlot.getTime() - 30 * 60 * 1000).toISOString()
@@ -110,10 +146,16 @@ export function getEasternWindowForSlot(slotIndex: number, dateStr?: string): {
  */
 export function etTimeToUTC(dateYYYYMMDD: string, etTimeHHMM: string): string {
   const [hh, mm] = etTimeHHMM.split(':').map(Number)
-  const etDate = parseISO(dateYYYYMMDD + 'T00:00:00')
-  const etSlot = setSeconds(setMinutes(setHours(etDate, hh), mm), 0)
-  const utcSlot = addHours(etSlot, 5) // EST to UTC
-  return utcSlot.toISOString()
+  
+  // Create the ET time as if it were UTC first (prevents double timezone conversion)
+  const etAsUTC = parseISO(dateYYYYMMDD + `T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00.000Z`)
+  
+  // Apply the correct UTC offset to convert FROM ET TO UTC
+  // EDT (DST active): ET + 4 hours = UTC
+  // EST (standard time): ET + 5 hours = UTC
+  const offsetHours = isDaylightSavingTime(etAsUTC) ? 4 : 5
+  const utcTime = addHours(etAsUTC, offsetHours)
+  return utcTime.toISOString()
 }
 
 /**
@@ -132,7 +174,9 @@ export function getUtcWindowForEtDate(dateStrET: string): [string, string] {
  */
 export function getYesterdayEastern(): string {
   const now = new Date()
-  const etNow = new Date(now.getTime() - (5 * 60 * 60 * 1000)) // EST offset approximation
+  // Convert UTC to ET: subtract offset hours (EDT = UTC-4, EST = UTC-5)
+  const offsetHours = isDaylightSavingTime(now) ? 4 : 5
+  const etNow = new Date(now.getTime() - (offsetHours * 60 * 60 * 1000))
   const yesterday = new Date(etNow)
   yesterday.setDate(yesterday.getDate() - 1)
   return yesterday.toISOString().split('T')[0]
