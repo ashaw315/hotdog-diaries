@@ -21,12 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: '20'
+          cache: 'pnpm'
       
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile || pnpm install
       
       - name: Generate Ingestion Balance Report
         env:
@@ -34,16 +35,16 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ "${{ github.event.inputs.format }}" = "json" ]; then
-            npx tsx scripts/ingestion-balance-report.ts --format=json
+            pnpm tsx scripts/ingestion-balance-report.ts --format=json
           else
-            npx tsx scripts/ingestion-balance-report.ts
+            pnpm tsx scripts/ingestion-balance-report.ts
           fi
       
       - name: Check Alert Thresholds
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: npx tsx scripts/ingestion-balance-report.ts --alert-thresholds
+        run: pnpm tsx scripts/ingestion-balance-report.ts --alert-thresholds
         continue-on-error: true
         id: alerts
       

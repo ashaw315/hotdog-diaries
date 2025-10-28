@@ -165,7 +165,7 @@ jobs:
           echo "🔗 Checking for dead links in content..."
           
           # Run dead link detection script
-          npm run check:dead-links || echo "Dead link check completed with warnings"
+          pnpm run check:dead-links || echo "Dead link check completed with warnings"
           
           # Count and report results
           if [ -f "reports/dead-links.json" ]; then
@@ -211,7 +211,7 @@ jobs:
           echo "📜 Auditing dependency licenses..."
           
           # Generate license report
-          npm run licenses:check || echo "License check completed"
+          pnpm run licenses:check || echo "License check completed"
           
           # Check for problematic licenses
           if [ -f "reports/licenses.json" ]; then
@@ -256,8 +256,8 @@ jobs:
         run: |
           echo "🔒 Running security audit..."
           
-          # Run npm audit
-          npm audit --audit-level=moderate > security-audit.txt 2>&1 || echo "Audit completed with findings"
+          # Run pnpm audit
+          pnpm audit --audit-level=moderate > security-audit.txt 2>&1 || echo "Audit completed with findings"
           
           # Count vulnerabilities
           HIGH_VULNS=$(grep -c "high" security-audit.txt || echo "0")
