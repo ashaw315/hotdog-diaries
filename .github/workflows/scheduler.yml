@@ -119,6 +119,7 @@ jobs:
             -H "Authorization: Bearer $AUTH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"days\": $DAYS}" \
+            -L \
             "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/forecast/refill" \
             --max-time 300)
           
@@ -187,6 +188,7 @@ jobs:
             
             RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
               -H "Authorization: Bearer $AUTH_TOKEN" \
+              -L \
               "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/forecast?date=$DATE" \
               --max-time 60)
             
@@ -252,6 +254,7 @@ jobs:
             -H "Authorization: Bearer $AUTH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"days\": $DAYS}" \
+            -L \
             "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/schedule/reconcile" \
             --max-time 600)
           
@@ -314,6 +317,7 @@ jobs:
           # Get queue metrics
           RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -H "Authorization: Bearer $AUTH_TOKEN" \
+            -L \
             "${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}/api/admin/metrics" \
             --max-time 30)
           
