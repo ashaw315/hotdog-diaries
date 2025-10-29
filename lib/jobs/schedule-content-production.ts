@@ -721,6 +721,15 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
       let reasoning = ''
       
       if (existingRow) {
+        // Debug: log what we found
+        console.log(`🔍 Slot ${slotIndex} existing row:`, {
+          id: existingRow.id,
+          content_id: existingRow.content_id,
+          status: existingRow.status,
+          scheduled_post_time: existingRow.scheduled_post_time,
+          platform: existingRow.platform
+        })
+
         // Check if row has content_id, scheduled_post_time, AND status='pending'
         if (existingRow.content_id && existingRow.scheduled_post_time && existingRow.status === 'pending') {
           console.log(`✅ Slot ${slotIndex} already filled with content_id ${existingRow.content_id} and status=pending`)
