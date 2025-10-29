@@ -1,0 +1,5 @@
+# Trigger Vercel Redeploy
+
+Vercel deployments need to be rebuilt after environment variables are added.
+
+This commit adds a comment to trigger a new deployment with AUTH_TOKEN env var.
