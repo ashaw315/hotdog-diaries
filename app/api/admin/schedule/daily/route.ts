@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
             cq.scheduled_post_time as scheduled_time,
             SUBSTR(cq.content_text, 1, 100) as title,
             cq.confidence_score,
-            cq.status,
+            cq.content_status,
             cq.is_posted,
             cq.is_approved,
             cq.created_at
@@ -154,12 +154,12 @@ export async function GET(request: NextRequest) {
           WHERE (
             (cq.scheduled_post_time >= ? AND cq.scheduled_post_time <= ?)
             OR (cq.is_approved = 1 AND cq.is_posted = 0)
-            OR (cq.status IN ('scheduled', 'pending', 'approved'))
+            OR (cq.content_status IN ('scheduled', 'pending', 'approved'))
           )
           AND (
-            cq.scheduled_post_time IS NOT NULL 
+            cq.scheduled_post_time IS NOT NULL
             OR cq.is_approved = 1
-            OR cq.status IN ('scheduled', 'pending', 'approved')
+            OR cq.content_status IN ('scheduled', 'pending', 'approved')
           )
           ORDER BY cq.scheduled_post_time ASC, cq.created_at ASC
         `, [startWindowStr, endWindowStr])
@@ -334,7 +334,7 @@ export async function GET(request: NextRequest) {
             is_posted,
             is_approved
           `)
-          .or(`scheduled_post_time.gte.${startWindow.toISOString()},scheduled_post_time.lte.${endWindow.toISOString()},and(is_approved.eq.true,is_posted.eq.false),status.in.(scheduled,pending,approved)`)
+          .or(`scheduled_post_time.gte.${startWindow.toISOString()},scheduled_post_time.lte.${endWindow.toISOString()},and(is_approved.eq.true,is_posted.eq.false),content_status.in.(scheduled,pending,approved)`)
           .order('scheduled_post_time', { ascending: true })
         
         // Query for posted content with cross-table join
