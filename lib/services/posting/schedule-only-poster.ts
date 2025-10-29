@@ -209,8 +209,7 @@ async function recordSuccessfulPost(slot: ScheduledSlot, contentId: number): Pro
         content_queue_id: contentId,
         scheduled_post_id: slot.id,
         platform: slot.platform,
-        posted_at: postedAt,
-        post_order: Date.now()
+        posted_at: postedAt
       })
 
     if (insertError) {
@@ -236,9 +235,9 @@ async function recordSuccessfulPost(slot: ScheduledSlot, contentId: number): Pro
     // SQLite transaction (basic)
     await db.query(`
       INSERT INTO posted_content
-      (content_queue_id, scheduled_post_id, platform, posted_at, post_order)
-      VALUES (?, ?, ?, ?, ?)
-    `, [contentId, slot.id, slot.platform, postedAt, Date.now()])
+      (content_queue_id, scheduled_post_id, platform, posted_at)
+      VALUES (?, ?, ?, ?)
+    `, [contentId, slot.id, slot.platform, postedAt])
 
     await db.query(`
       UPDATE scheduled_posts
