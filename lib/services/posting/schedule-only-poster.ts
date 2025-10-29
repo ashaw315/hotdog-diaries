@@ -285,14 +285,20 @@ async function revertSlotToPending(slotId: number, error: string): Promise<void>
 async function postToPlatform(content: any, platform: string): Promise<void> {
   // In a real implementation, this would call platform-specific APIs
   console.log(`🚀 Posting to ${platform}: ${content.content_text?.substring(0, 50)}...`)
-  
-  // Simulate posting delay and potential failure
+  console.log(`📝 Content details:`, {
+    id: content.id,
+    type: content.content_type,
+    platform: content.source_platform,
+    hasImage: !!content.content_image_url,
+    hasVideo: !!content.content_video_url
+  })
+
+  // Simulate posting delay
   await new Promise(resolve => setTimeout(resolve, 100))
-  
-  // Simulate 5% failure rate for testing
-  if (Math.random() < 0.05) {
-    throw new Error(`Simulated ${platform} API error`)
-  }
+
+  // TODO: Implement actual platform posting APIs
+  // For now, just log success - posting is simulated
+  console.log(`✅ Simulated post to ${platform} successful`)
 }
 
 /**
@@ -378,9 +384,12 @@ export async function postFromSchedule(config: Partial<PostingConfig> = {}): Pro
         // Revert slot status on failure
         const errorMessage = postingError instanceof Error ? postingError.message : 'Unknown error'
         await revertSlotToPending(slot.id, errorMessage)
-        
+
+        // Log full error details for debugging
         console.error(`❌ Failed to post slot ${slot.id}:`, errorMessage)
-        
+        console.error(`❌ Full error:`, postingError)
+        console.error(`❌ Error stack:`, postingError instanceof Error ? postingError.stack : 'No stack trace')
+
         return {
           success: false,
           type: 'ERROR',
