@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Clock, Calendar, TrendingUp, AlertCircle, CheckCircle2, Eye, RefreshCw, Zap } from 'lucide-react'
+import { getEasternDateString } from '@/lib/utils/time-helpers'
 
 interface DailyScheduleItem {
   id: string
@@ -206,7 +207,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
   const [tokenInput, setTokenInput] = useState('')
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  const targetDate = selectedDate || new Date().toISOString().split('T')[0]
+  const targetDate = selectedDate || getEasternDateString()
 
   useEffect(() => {
     fetchDailySchedule()

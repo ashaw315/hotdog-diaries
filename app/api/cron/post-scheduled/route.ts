@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { postScheduledContentDue } from '@/lib/services/posting-service'
+import { postFromSchedule } from '@/lib/services/posting/schedule-only-poster'
 import { scheduleNextBatch } from '@/lib/services/schedule-content'
-import { 
+import {
   validateRequestMethod,
   createSuccessResponse,
   handleApiError
@@ -36,24 +36,36 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('🤖 Cron job: Starting scheduled content posting...')
-    
-    // Step 1: Post any scheduled content that is due
-    const postingResult = await postScheduledContentDue()
-    
+
+    // Step 1: Post any scheduled content that is due (using new schedule-only-poster)
+    const postingResult = await postFromSchedule({ graceMinutes: 5 })
+
     // Step 2: If we posted content, ensure next batch is scheduled
     let schedulingResult = null
-    if (postingResult.summary.totalPosted > 0) {
+    if (postingResult.success && postingResult.type === 'POSTED') {
       console.log('📅 Replenishing schedule after posting...')
-      schedulingResult = await scheduleNextBatch(7, 6) // Schedule next 7 days
+      try {
+        schedulingResult = await scheduleNextBatch(7, 6) // Schedule next 7 days
+      } catch (error) {
+        console.error('Warning: Failed to replenish schedule:', error)
+        // Don't fail the whole operation if scheduling fails
+      }
     }
-    
+
     // Step 3: Compile results
     const response = {
       timestamp: new Date().toISOString(),
       posting: {
-        totalPosted: postingResult.summary.totalPosted,
-        platformDistribution: postingResult.summary.platformDistribution,
-        errors: postingResult.errors
+        success: postingResult.success,
+        type: postingResult.type,
+        totalPosted: postingResult.type === 'POSTED' ? 1 : 0,
+        scheduledSlotId: postingResult.scheduledSlotId,
+        contentId: postingResult.contentId,
+        platform: postingResult.platform,
+        postedAt: postingResult.postedAt,
+        error: postingResult.error,
+        platformDistribution: postingResult.platform ? { [postingResult.platform]: 1 } : {},
+        errors: postingResult.error ? [postingResult.error] : []
       },
       scheduling: schedulingResult ? {
         totalScheduled: schedulingResult.summary.totalScheduled,
@@ -61,19 +73,24 @@ export async function POST(request: NextRequest) {
         platformDistribution: schedulingResult.summary.platformDistribution,
         errors: schedulingResult.errors
       } : null,
-      status: postingResult.summary.totalPosted > 0 ? 'posted' : 'no_content_due'
+      status: postingResult.type
     }
-    
+
     // Log the cron execution
     console.log('🤖 Cron job completed:', {
-      posted: postingResult.summary.totalPosted,
+      type: postingResult.type,
+      posted: postingResult.type === 'POSTED' ? 1 : 0,
       scheduled: schedulingResult?.summary.totalScheduled || 0,
-      errors: postingResult.errors.length + (schedulingResult?.errors.length || 0)
+      errors: postingResult.error ? 1 : 0
     })
-    
-    const message = postingResult.summary.totalPosted > 0 
-      ? `Posted ${postingResult.summary.totalPosted} scheduled content items`
-      : 'No scheduled content due for posting'
+
+    const message = postingResult.type === 'POSTED'
+      ? `Posted scheduled content to ${postingResult.platform}`
+      : postingResult.type === 'NO_SCHEDULED_CONTENT'
+      ? 'No scheduled content due for posting'
+      : postingResult.type === 'EMPTY_SCHEDULE_SLOT'
+      ? 'Schedule slot has no content assigned'
+      : postingResult.error || 'Unknown status'
     
     return createSuccessResponse(response, message)
     

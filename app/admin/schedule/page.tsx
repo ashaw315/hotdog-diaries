@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import DailyScheduleOverview from '@/components/admin/schedule/DailyScheduleOverview'
+import { getEasternDateString } from '@/lib/utils/time-helpers'
 import './admin-schedule.css'
 
 interface ScheduleData {
@@ -45,7 +46,7 @@ export default function SchedulePage() {
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState<string>(getEasternDateString())
 
   const fetchScheduleData = async () => {
     try {

@@ -1,0 +1,105 @@
+name: Auto-Post Scheduled Content
+
+on:
+  schedule:
+    # Run hourly at :05 to catch all scheduled posts with a 5-minute buffer
+    - cron: '5 * * * *'  # Every hour at :05
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force execution even if no content is due'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-post-scheduled-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel in-progress posts
+
+jobs:
+  post-scheduled-content:
+    name: Post Due Content
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Call post-scheduled API endpoint
+        id: post
+        run: |
+          echo "🤖 Checking for scheduled content due for posting..."
+
+          AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
+          SITE_URL="${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}"
+
+          # Call the post-scheduled cron endpoint
+          RESPONSE=$(curl -s -w "\nHTTPSTATUS:%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -L \
+            "${SITE_URL}/api/cron/post-scheduled" \
+            --max-time 300)
+
+          HTTP_STATUS=$(echo "$RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          BODY=$(echo "$RESPONSE" | sed -e 's/HTTPSTATUS:.*//')
+
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response:"
+          echo "$BODY"
+
+          echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "response<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Parse response for details
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            POSTED_COUNT=$(echo "$BODY" | jq -r '.data.posting.totalPosted // 0' 2>/dev/null || echo "0")
+            STATUS_MSG=$(echo "$BODY" | jq -r '.data.status // "unknown"' 2>/dev/null || echo "unknown")
+
+            echo "posted_count=$POSTED_COUNT" >> $GITHUB_OUTPUT
+            echo "status_msg=$STATUS_MSG" >> $GITHUB_OUTPUT
+
+            if [ "$POSTED_COUNT" -gt 0 ]; then
+              echo "✅ Successfully posted $POSTED_COUNT content item(s)"
+            else
+              echo "ℹ️ No content due for posting at this time"
+            fi
+          else
+            echo "❌ Post-scheduled endpoint failed with status $HTTP_STATUS"
+            echo "Response: $BODY"
+            exit 1
+          fi
+
+      - name: Update job summary
+        if: always()
+        run: |
+          echo "## 🤖 Auto-Post Scheduled Content" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -Iseconds)" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.post.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.post.outputs.status }}" = "200" ]; then
+            echo "**Posted Count:** ${{ steps.post.outputs.posted_count }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Status Message:** ${{ steps.post.outputs.status_msg }}" >> $GITHUB_STEP_SUMMARY
+
+            if [ "${{ steps.post.outputs.posted_count }}" -gt "0" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "✅ **Result:** Successfully posted ${{ steps.post.outputs.posted_count }} content item(s)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ️ **Result:** No content was due for posting" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Result:** Failed to post scheduled content" >> $GITHUB_STEP_SUMMARY
+            echo "**Error:** Check job logs for details" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_Next scheduled run: Top of next hour_" >> $GITHUB_STEP_SUMMARY
