@@ -780,7 +780,8 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
             content_type: normalizeContentTypeForScheduling(candidate.content_type),
             source: candidate.original_author || null,
             title: candidate.content_text?.substring(0, 100) || null,
-            reasoning: finalReasoning
+            reasoning: finalReasoning,
+            status: 'pending'
           }
           
           await upsertScheduledPostSupabase(supabaseClient, upsertRow)
@@ -790,9 +791,9 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
           // SQLite path (unchanged)
           if (existingRow) {
             await db.query(`
-              UPDATE scheduled_posts 
+              UPDATE scheduled_posts
               SET content_id = ?, platform = ?, content_type = ?, source = ?, title = ?,
-                  scheduled_post_time = ?, reasoning = ?, updated_at = datetime('now')
+                  scheduled_post_time = ?, reasoning = ?, status = ?, updated_at = datetime('now')
               WHERE id = ?
             `, [
               candidate.id,
@@ -802,14 +803,15 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
               candidate.content_text?.substring(0, 100) || null,
               slotUTC,
               finalReasoning,
+              'pending',
               existingRow.id
             ])
           } else {
             await db.query(`
               INSERT INTO scheduled_posts (
                 content_id, platform, content_type, source, title,
-                scheduled_post_time, scheduled_slot_index, reasoning
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                scheduled_post_time, scheduled_slot_index, reasoning, status
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               candidate.id,
               candidate.source_platform,
@@ -818,7 +820,8 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
               candidate.content_text?.substring(0, 100) || null,
               slotUTC,
               slotIndex,
-              finalReasoning
+              finalReasoning,
+              'pending'
             ])
           }
           
