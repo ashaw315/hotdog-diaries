@@ -330,7 +330,7 @@ export async function GET(request: NextRequest) {
             scheduled_post_time,
             content_text,
             confidence_score,
-            status,
+            content_status,
             is_posted,
             is_approved
           `)
@@ -369,7 +369,7 @@ export async function GET(request: NextRequest) {
             scheduled_post_time,
             content_text,
             confidence_score,
-            status,
+            content_status,
             is_posted,
             is_approved,
             posted_content (
