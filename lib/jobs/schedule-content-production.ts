@@ -721,9 +721,9 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
       let reasoning = ''
       
       if (existingRow) {
-        // Check if row has both content_id and scheduled_post_time
-        if (existingRow.content_id && existingRow.scheduled_post_time) {
-          console.log(`✅ Slot ${slotIndex} already filled with content_id ${existingRow.content_id}`)
+        // Check if row has content_id, scheduled_post_time, AND status='pending'
+        if (existingRow.content_id && existingRow.scheduled_post_time && existingRow.status === 'pending') {
+          console.log(`✅ Slot ${slotIndex} already filled with content_id ${existingRow.content_id} and status=pending`)
           // Add to already chosen for diversity calculation
           const existingContent: ContentItem = {
             id: existingRow.content_id,
@@ -738,7 +738,7 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
           continue
         } else if (forceRefill) {
           shouldFill = true
-          reasoning = 'refilling incomplete row (missing content_id or scheduled_post_time)'
+          reasoning = 'refilling incomplete row (missing content_id, scheduled_post_time, or status=pending)'
         }
       } else {
         shouldFill = true
