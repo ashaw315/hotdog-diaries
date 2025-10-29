@@ -90,9 +90,22 @@ export async function POST(req: Request) {
       response.debug = debugInfo
     }
 
+    // Always log detailed info to help with debugging
     console.log(`✅ Refill completed for ${parsed.data.date}: ${result.filled} slots filled`)
+    console.log(`🔍 Refill details:`, {
+      filled: result.filled,
+      candidates_found: debugInfo.candidates_found,
+      existing_slots: debugInfo.existing_slots,
+      actions: {
+        created: result.slots?.filter(s => s.action === 'created').length || 0,
+        updated: result.slots?.filter(s => s.action === 'updated').length || 0,
+        kept: result.slots?.filter(s => s.action === 'kept').length || 0,
+        skipped: result.slots?.filter(s => s.action === 'skipped').length || 0
+      },
+      environment: debugInfo.environment
+    })
     if (debug) {
-      console.log(`🔍 Debug info:`, debugInfo)
+      console.log(`🔍 Full debug info:`, debugInfo)
     }
 
     return NextResponse.json(response, { 
