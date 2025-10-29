@@ -19,16 +19,32 @@ export async function POST(request: NextRequest) {
     // Validate authorization header for cron jobs
     const authHeader = request.headers.get('Authorization')
     const expectedToken = process.env.CRON_SECRET || process.env.AUTH_TOKEN
-    
-    if (!authHeader || !expectedToken) {
+
+    if (!expectedToken) {
+      console.error('❌ Server configuration error: No CRON_SECRET or AUTH_TOKEN env var set')
       return NextResponse.json({
         success: false,
-        error: 'Missing cron authorization'
+        error: 'Server misconfigured - missing auth token'
+      }, { status: 500 })
+    }
+
+    if (!authHeader) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing authorization header'
       }, { status: 401 })
     }
-    
-    const token = authHeader.replace('Bearer ', '')
-    if (token !== expectedToken) {
+
+    const token = authHeader.replace('Bearer ', '').trim()
+    const expected = expectedToken.trim()
+
+    if (token !== expected) {
+      console.error('❌ Auth mismatch:', {
+        receivedLength: token.length,
+        expectedLength: expected.length,
+        receivedPrefix: token.substring(0, 10) + '...',
+        expectedPrefix: expected.substring(0, 10) + '...'
+      })
       return NextResponse.json({
         success: false,
         error: 'Invalid cron authorization'
