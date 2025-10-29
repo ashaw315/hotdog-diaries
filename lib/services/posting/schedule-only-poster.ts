@@ -58,7 +58,7 @@ async function getSlotsInTimeWindow(config: PostingConfig): Promise<ScheduledSlo
 
   if (isSupabase) {
     // Supabase path - use createSimpleClient
-    const { createSimpleClient } = await import('../../utils/supabase/server')
+    const { createSimpleClient } = await import('@/utils/supabase/server')
     const supabase = createSimpleClient()
 
     const { data, error } = await supabase
@@ -108,7 +108,7 @@ async function claimSlotForPosting(slotId: number): Promise<boolean> {
   if (isSupabase) {
     // Supabase: Use optimistic locking with status check
     try {
-      const { createSimpleClient } = await import('../../utils/supabase/server')
+      const { createSimpleClient } = await import('@/utils/supabase/server')
       const supabase = createSimpleClient()
 
       // Try to update the slot from pending to posting
@@ -158,7 +158,7 @@ async function getContentForSlot(contentId: number): Promise<any> {
   const isSupabase = !!process.env.SUPABASE_URL && process.env.NODE_ENV === 'production'
 
   if (isSupabase) {
-    const { createSimpleClient } = await import('../../utils/supabase/server')
+    const { createSimpleClient } = await import('@/utils/supabase/server')
     const supabase = createSimpleClient()
 
     const { data, error } = await supabase
@@ -199,7 +199,7 @@ async function recordSuccessfulPost(slot: ScheduledSlot, contentId: number): Pro
 
   if (isSupabase) {
     // Supabase path
-    const { createSimpleClient } = await import('../../utils/supabase/server')
+    const { createSimpleClient } = await import('@/utils/supabase/server')
     const supabase = createSimpleClient()
 
     // Insert into posted_content
@@ -255,7 +255,7 @@ async function revertSlotToPending(slotId: number, error: string): Promise<void>
   const isSupabase = !!process.env.SUPABASE_URL && process.env.NODE_ENV === 'production'
 
   if (isSupabase) {
-    const { createSimpleClient } = await import('../../utils/supabase/server')
+    const { createSimpleClient } = await import('@/utils/supabase/server')
     const supabase = createSimpleClient()
 
     const { error: updateError } = await supabase
