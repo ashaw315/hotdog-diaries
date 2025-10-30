@@ -41,7 +41,7 @@ export interface PostingConfig {
 }
 
 const DEFAULT_CONFIG: PostingConfig = {
-  graceMinutes: 5,
+  graceMinutes: 60, // Increased from 5 to account for GitHub Actions cron delays (can be 20-50 min late)
   enforceScheduleSourceOfTruth: process.env.ENFORCE_SCHEDULE_SOURCE_OF_TRUTH !== 'false'
 }
 
