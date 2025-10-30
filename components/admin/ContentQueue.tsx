@@ -38,6 +38,8 @@ interface QueuedContent {
 export default function ContentQueue() {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   const [filterBy, setFilterBy] = useState<'all' | 'discovered' | 'pending_review' | 'approved' | 'scheduled' | 'rejected'>('all')
+  const [platformFilter, setPlatformFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
   const [editingContent, setEditingContent] = useState<number | null>(null)
   const [editText, setEditText] = useState<string>('')
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
@@ -65,16 +67,18 @@ export default function ContentQueue() {
   }
 
   // Use the hook for content data management
-  const { 
-    data: queuedContent, 
-    loading: isLoading, 
-    error: contentError, 
-    refresh, 
-    updateContentStatus 
+  const {
+    data: queuedContent,
+    loading: isLoading,
+    error: contentError,
+    refresh,
+    updateContentStatus
   } = useContentData({
     page: 1,
     limit: 50,
     status: getHookStatus(filterBy),
+    platform: platformFilter !== 'all' ? platformFilter : undefined,
+    type: typeFilter !== 'all' ? typeFilter : undefined,
     autoRefresh: true
   })
 
@@ -93,7 +97,7 @@ export default function ContentQueue() {
   // Refresh when sort or filter changes
   useEffect(() => {
     refresh()
-  }, [sortBy, direction, filterBy, refresh])
+  }, [sortBy, direction, filterBy, platformFilter, typeFilter, refresh])
 
   // Replace the manual fetchQueuedContent with the hook's refresh function
   const fetchQueuedContent = refresh
@@ -1044,6 +1048,42 @@ export default function ContentQueue() {
                     <option value="approved">Approved</option>
                     <option value="scheduled">Scheduled</option>
                     <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <label htmlFor="platform" className="filter-label">Platform:</label>
+                  <select
+                    id="platform"
+                    value={platformFilter}
+                    onChange={(e) => setPlatformFilter(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Platforms</option>
+                    {Object.keys(distributionStats.platforms)
+                      .sort()
+                      .map(platform => (
+                        <option key={platform} value={platform}>
+                          {platform} ({distributionStats.platforms[platform]})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <label htmlFor="type" className="filter-label">Type:</label>
+                  <select
+                    id="type"
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Types</option>
+                    {Object.keys(distributionStats.contentTypes)
+                      .sort()
+                      .map(type => (
+                        <option key={type} value={type}>
+                          {getContentTypeIcon(type)} {type} ({distributionStats.contentTypes[type]})
+                        </option>
+                      ))}
                   </select>
                 </div>
                 <div className="filter-group">

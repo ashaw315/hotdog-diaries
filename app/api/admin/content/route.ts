@@ -59,10 +59,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const limit = parseInt(searchParams.get('limit') || '50')
   const offset = parseInt(searchParams.get('offset') || '0')
   const status = searchParams.get('status') || 'all'
-  
+  const platform = searchParams.get('platform') || null
+  const contentType = searchParams.get('type') || null
+
   const actualOffset = offset || (page - 1) * limit
-  
-  console.log(`[AdminContentAPI] Query params - status: ${status}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
+
+  console.log(`[AdminContentAPI] Query params - status: ${status}, platform: ${platform}, type: ${contentType}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
 
   try {
     // Check database connection and log current state
@@ -127,33 +129,51 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     let contentQuery: string
     let countQuery: string
-    const queryParams = [limit, actualOffset]
+    const queryParams: any[] = []
+    let paramIndex = 1
     
     if (status === 'posted') {
       // Query content_queue joined with posted_content for posted content
       console.log('[AdminContentAPI] Filtering for posted content (JOIN with posted_content)')
-      
+
       // Add posted_at only if it exists in posted_content
-      const postedAtClause = postedContentColumns.includes('posted_at') 
-        ? 'pc.posted_at' 
+      const postedAtClause = postedContentColumns.includes('posted_at')
+        ? 'pc.posted_at'
         : 'NULL AS posted_at'
-      
+
+      let postedWhereClause = 'pc.posted_at IS NOT NULL'
+
+      // Add platform and content type filters if specified
+      if (platform) {
+        postedWhereClause += ` AND cq.source_platform = $${paramIndex}`
+        queryParams.push(platform)
+        paramIndex++
+      }
+      if (contentType) {
+        postedWhereClause += ` AND cq.content_type = $${paramIndex}`
+        queryParams.push(contentType)
+        paramIndex++
+      }
+
+      // Add LIMIT and OFFSET parameters
+      queryParams.push(limit, actualOffset)
+
       contentQuery = `
-        SELECT 
+        SELECT
           ${safeSelectClause},
           ${postedAtClause}
         FROM content_queue cq
         JOIN posted_content pc ON pc.content_queue_id = cq.id
-        WHERE pc.posted_at IS NOT NULL
+        WHERE ${postedWhereClause}
         ORDER BY pc.posted_at DESC
-        LIMIT $1 OFFSET $2
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `
-      
+
       countQuery = `
         SELECT COUNT(*) as total
         FROM content_queue cq
         JOIN posted_content pc ON pc.content_queue_id = cq.id
-        WHERE pc.posted_at IS NOT NULL
+        WHERE ${postedWhereClause}
       `
       
     } else {
@@ -237,19 +257,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         console.log('🧩 [ContentAPI] Scheduled filter - hasContentStatus:', hasContentStatus, 'hasScheduledPostTime:', hasScheduledPostTime, 'hasStatus:', hasStatus, 'hasScheduledFor:', hasScheduledFor)
       }
       // For 'all' or any other value, keep whereClause as '1=1'
-      
+
+      // Add platform and content type filters if specified (using parameterized queries)
+      if (platform) {
+        whereClause += ` AND cq.source_platform = $${paramIndex}`
+        queryParams.push(platform)
+        paramIndex++
+      }
+      if (contentType) {
+        whereClause += ` AND cq.content_type = $${paramIndex}`
+        queryParams.push(contentType)
+        paramIndex++
+      }
+
+      // Add LIMIT and OFFSET parameters
+      queryParams.push(limit, actualOffset)
+
       console.log(`[AdminContentAPI] Filtering for ${status} content with WHERE: ${whereClause}`)
-      
+
       contentQuery = `
-        SELECT 
+        SELECT
           ${safeSelectClause},
           NULL as posted_at
         FROM content_queue cq
         WHERE ${whereClause}
         ORDER BY ${orderBy}
-        LIMIT $1 OFFSET $2
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `
-      
+
       countQuery = `
         SELECT COUNT(*) as total
         FROM content_queue cq
@@ -264,14 +299,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     console.log(`[AdminContentAPI] Executing content query for status: ${status}`)
-    
+
     // Execute content query
     const contentResult = await db.query(contentQuery, queryParams)
     console.log(`[AdminContentAPI] Query success: ${contentResult.rows.length} rows`)
     console.log('🧩 [ContentAPI] Row Count Returned:', contentResult.rows.length)
-    
-    // Execute count query
-    const countResult = await db.query(countQuery)
+
+    // Execute count query (use params without LIMIT/OFFSET)
+    const countParams = queryParams.slice(0, -2) // Remove last 2 params (limit, offset)
+    const countResult = await db.query(countQuery, countParams)
     const total = parseInt(countResult.rows[0].total)
     
     console.log(`[AdminContentAPI] Total count: ${total}`)
