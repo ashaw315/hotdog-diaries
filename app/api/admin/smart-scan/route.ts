@@ -2,21 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSimpleClient } from '@/utils/supabase/server'
 
 // Smart scanning thresholds for platform content management
+// ADJUSTED FOR BETTER DIVERSITY - reduce high-volume platform thresholds
 const PLATFORM_THRESHOLDS = {
-  // High-volume platforms - need fewer items ready-to-post
-  pixabay: { readyToPost: 30, approved: 80 },
-  bluesky: { readyToPost: 25, approved: 70 },
-  
-  // Medium-volume platforms  
-  reddit: { readyToPost: 20, approved: 50 },
-  giphy: { readyToPost: 20, approved: 50 },
-  imgur: { readyToPost: 20, approved: 50 },
-  
-  // Low-volume platforms - always scan if below minimum
-  youtube: { readyToPost: 10, approved: 25 },
-  tumblr: { readyToPost: 10, approved: 25 },
-  lemmy: { readyToPost: 8, approved: 20 },
-  mastodon: { readyToPost: 8, approved: 20 }
+  // High-volume platforms - REDUCED thresholds to prevent domination
+  pixabay: { readyToPost: 15, approved: 40 },  // Was 30/80, now 15/40
+  bluesky: { readyToPost: 15, approved: 40 },  // Was 25/70, now 15/40
+
+  // Medium-volume platforms - INCREASED to encourage more diversity
+  reddit: { readyToPost: 25, approved: 60 },   // Was 20/50, now 25/60
+  giphy: { readyToPost: 25, approved: 60 },    // Was 20/50, now 25/60
+  imgur: { readyToPost: 25, approved: 60 },    // Was 20/50, now 25/60
+
+  // Low-volume platforms - INCREASED to prioritize underrepresented content
+  youtube: { readyToPost: 20, approved: 50 },  // Was 10/25, now 20/50
+  tumblr: { readyToPost: 20, approved: 50 },   // Was 10/25, now 20/50
+  lemmy: { readyToPost: 15, approved: 40 },    // Was 8/20, now 15/40
+  mastodon: { readyToPost: 15, approved: 40 }  // Was 8/20, now 15/40
 }
 
 export async function POST(request: NextRequest) {

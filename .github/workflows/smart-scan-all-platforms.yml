@@ -26,16 +26,19 @@ jobs:
           
           FORCE_ALL="${{ github.event.inputs.force_all || 'false' }}"
           
-          # Platform-specific max posts based on content volume patterns
+          # Platform-specific max posts - ADJUSTED FOR DIVERSITY
           case "${{ matrix.platform }}" in
             "pixabay"|"bluesky")
-              MAX_POSTS=10  # High volume platforms - scan less
+              MAX_POSTS=5   # High volume platforms - scan MUCH less (was 10, now 5)
               ;;
-            "youtube"|"lemmy"|"tumblr")
-              MAX_POSTS=25  # Underrepresented - scan more
+            "youtube"|"lemmy"|"tumblr"|"giphy")
+              MAX_POSTS=50  # Underrepresented - scan MUCH more (was 25, now 50)
+              ;;
+            "reddit"|"imgur")
+              MAX_POSTS=30  # Medium underrepresented - scan more (was 15, now 30)
               ;;
             *)
-              MAX_POSTS=15  # Medium volume platforms
+              MAX_POSTS=20  # Default for other platforms
               ;;
           esac
           

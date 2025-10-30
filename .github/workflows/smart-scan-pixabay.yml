@@ -13,7 +13,7 @@ on:
       max_posts:
         description: 'Maximum posts to scan'
         required: false
-        default: '15'
+        default: '5'
         type: string
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
           echo "📸 Smart scanning Pixabay (threshold-based)..."
           
           FORCE_OVERRIDE="${{ github.event.inputs.force_override || 'false' }}"
-          MAX_POSTS="${{ github.event.inputs.max_posts || '15' }}"
+          MAX_POSTS="${{ github.event.inputs.max_posts || '5' }}"
           
           echo "🔧 Parameters: force_override=$FORCE_OVERRIDE, max_posts=$MAX_POSTS"
           
