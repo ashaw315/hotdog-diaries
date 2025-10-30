@@ -75,7 +75,7 @@ export default function ContentQueue() {
     updateContentStatus
   } = useContentData({
     page: 1,
-    limit: 50,
+    limit: 200, // Increased from 50 to show more content
     status: getHookStatus(filterBy),
     platform: platformFilter !== 'all' ? platformFilter : undefined,
     type: typeFilter !== 'all' ? typeFilter : undefined,
@@ -122,33 +122,55 @@ export default function ContentQueue() {
   // Replace the manual fetchQueuedContent with the hook's refresh function
   const fetchQueuedContent = refresh
 
-  // Calculate distribution stats from current filtered content
-  const distributionStats = useMemo(() => {
-    if (!queuedContent || queuedContent.length === 0) {
-      return {
-        platforms: {},
-        contentTypes: {},
-        total: 0
+  // Fetch distribution stats from ALL content (not just paginated results)
+  const [allDistributionStats, setAllDistributionStats] = useState<{
+    platforms: Record<string, number>
+    contentTypes: Record<string, number>
+    total: number
+  }>({ platforms: {}, contentTypes: {}, total: 0 })
+
+  // Fetch full distribution stats when filters change
+  useEffect(() => {
+    const fetchDistributionStats = async () => {
+      try {
+        const params = new URLSearchParams()
+        if (getHookStatus(filterBy)) params.set('status', getHookStatus(filterBy)!)
+        if (platformFilter !== 'all') params.set('platform', platformFilter)
+        if (typeFilter !== 'all') params.set('type', typeFilter)
+
+        // Fetch with high limit to get all items for stats
+        params.set('limit', '10000')
+        params.set('page', '1')
+
+        const response = await authFetch(`/api/admin/content?${params}`)
+        if (response.ok) {
+          const data = await response.json()
+          const content = data.data?.content || []
+
+          const platforms: Record<string, number> = {}
+          const contentTypes: Record<string, number> = {}
+
+          content.forEach((item: QueuedContent) => {
+            platforms[item.source_platform] = (platforms[item.source_platform] || 0) + 1
+            contentTypes[item.content_type] = (contentTypes[item.content_type] || 0) + 1
+          })
+
+          setAllDistributionStats({
+            platforms,
+            contentTypes,
+            total: content.length
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch distribution stats:', error)
       }
     }
 
-    const platforms: Record<string, number> = {}
-    const contentTypes: Record<string, number> = {}
+    fetchDistributionStats()
+  }, [filterBy, platformFilter, typeFilter])
 
-    queuedContent.forEach(item => {
-      // Count by platform
-      platforms[item.source_platform] = (platforms[item.source_platform] || 0) + 1
-
-      // Count by content type
-      contentTypes[item.content_type] = (contentTypes[item.content_type] || 0) + 1
-    })
-
-    return {
-      platforms,
-      contentTypes,
-      total: queuedContent.length
-    }
-  }, [queuedContent])
+  // Use the full distribution stats instead of just paginated results
+  const distributionStats = allDistributionStats
 
   const handleSelectItem = (id: number) => {
     const newSelected = new Set(selectedItems)
@@ -1277,7 +1299,7 @@ export default function ContentQueue() {
                   fontWeight: '500',
                   color: '#6b7280'
                 }}>
-                  ({distributionStats.total} items{filterBy !== 'all' ? ` - ${filterBy}` : ''})
+                  ({distributionStats.total} total items{queuedContent.length < distributionStats.total ? `, showing ${queuedContent.length}` : ''}{filterBy !== 'all' ? ` - ${filterBy}` : ''})
                 </span>
               </h3>
             </div>
