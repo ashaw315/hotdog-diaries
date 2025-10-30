@@ -13,6 +13,9 @@ jobs:
     concurrency:
       group: scheduler-sla-${{ github.ref }}
       cancel-in-progress: true
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

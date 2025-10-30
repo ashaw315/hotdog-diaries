@@ -11,12 +11,16 @@ import { parseArgs } from 'node:util'
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz'
 import { startOfDay, endOfDay, parseISO, addDays } from 'date-fns'
 import { db } from '../../lib/db'
+import { createClient } from '@supabase/supabase-js'
 
 interface Args {
   tz: string
   today: number
   tomorrow: number
 }
+
+// Check if Supabase is available
+const useSupabase = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
 
 async function main() {
   const { values } = parseArgs({
@@ -38,13 +42,15 @@ async function main() {
   console.log(`🎯 Required: Today=${args.today}, Tomorrow=${args.tomorrow}`)
 
   try {
-    await db.connect()
+    if (!useSupabase) {
+      await db.connect()
+    }
 
     // Get local dates
     const now = new Date()
     const todayLocal = formatInTimeZone(now, args.tz, 'yyyy-MM-dd')
     const tomorrowLocal = formatInTimeZone(addDays(now, 1), args.tz, 'yyyy-MM-dd')
-    
+
     const todayDate = parseISO(todayLocal)
     const tomorrowDate = parseISO(tomorrowLocal)
 
@@ -68,23 +74,23 @@ async function main() {
       console.log(`✅ SLA PASS: Both days have sufficient content`)
       console.log(`   Today: ${todayCount}/${args.today}`)
       console.log(`   Tomorrow: ${tomorrowCount}/${args.tomorrow}`)
-      await db.disconnect()
+      if (!useSupabase) await db.disconnect()
       process.exit(0)
     } else {
       console.error(`❌ SLA FAIL: ${failures.join(', ')}`)
       console.error(``)
       console.error(`🚨 URGENT ACTIONS:`)
-      console.error(`   1. Trigger scheduler: gh workflow run content-scheduler.yml --ref main`)
+      console.error(`   1. Trigger scheduler: gh workflow run scheduler.yml --ref main`)
       console.error(`   2. Manual schedule: pnpm tsx scripts/ops/materialize-schedule.ts --dates ${todayLocal},${tomorrowLocal}`)
       console.error(`   3. Check queue levels: pnpm tsx scripts/ops/check-queue-readiness.ts`)
       console.error(`   4. If queue low, trigger scanners: gh workflow run scan-*.yml --ref main`)
       console.error(``)
-      await db.disconnect()
+      if (!useSupabase) await db.disconnect()
       process.exit(1)
     }
   } catch (error) {
     console.error(`❌ SLA check failed:`, error)
-    await db.disconnect()
+    if (!useSupabase) await db.disconnect()
     process.exit(1)
   }
 }
@@ -95,16 +101,41 @@ async function checkDateSchedule(date: Date, tz: string, label: string): Promise
   const utcStart = toZonedTime(localStart, tz)
   const utcEnd = toZonedTime(localEnd, tz)
 
-  const query = `
-    SELECT COUNT(*) as count 
-    FROM scheduled_posts 
-    WHERE scheduled_post_time >= ? 
-      AND scheduled_post_time <= ?
-      AND content_id IS NOT NULL
-  `
-  
-  const result = await db.query(query, [utcStart.toISOString(), utcEnd.toISOString()])
-  const count = result.rows[0]?.count || 0
+  let count = 0
+
+  if (useSupabase) {
+    // Use Supabase client for CI/production
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data, error, count: resultCount } = await supabase
+      .from('scheduled_posts')
+      .select('id', { count: 'exact', head: true })
+      .gte('scheduled_post_time', utcStart.toISOString())
+      .lte('scheduled_post_time', utcEnd.toISOString())
+      .not('content_id', 'is', null)
+
+    if (error) {
+      console.error(`❌ Supabase query error for ${label}:`, error)
+      throw error
+    }
+
+    count = resultCount || 0
+  } else {
+    // Use db.query for local development
+    const query = `
+      SELECT COUNT(*) as count
+      FROM scheduled_posts
+      WHERE scheduled_post_time >= ?
+        AND scheduled_post_time <= ?
+        AND content_id IS NOT NULL
+    `
+
+    const result = await db.query(query, [utcStart.toISOString(), utcEnd.toISOString()])
+    count = result.rows[0]?.count || 0
+  }
 
   console.log(`📊 ${label}: ${count} scheduled posts`)
   return count

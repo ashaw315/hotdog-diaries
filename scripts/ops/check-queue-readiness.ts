@@ -11,12 +11,16 @@ import { parseArgs } from 'node:util'
 import { writeFile, mkdir } from 'node:fs/promises'
 import { formatInTimeZone } from 'date-fns-tz'
 import { db } from '../../lib/db'
+import { createClient } from '@supabase/supabase-js'
 import path from 'node:path'
 
 interface Args {
   tz: string
   min: number
 }
+
+// Check if Supabase is available
+const useSupabase = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
 
 async function main() {
   const { values } = parseArgs({
@@ -35,35 +39,82 @@ async function main() {
   console.log(`🎯 Minimum required: ${args.min} approved items`)
 
   try {
-    await db.connect()
+    let approvedCount = 0
+    let platformBreakdown: any[] = []
 
-    // Count approved, unposted content
-    const query = `
-      SELECT COUNT(*) as count 
-      FROM content_queue 
-      WHERE is_approved = true 
-        AND COALESCE(is_posted, false) = false
-        AND COALESCE(ingest_priority, 0) >= 0
-    `
-    
-    const result = await db.query(query)
-    const approvedCount = result.rows[0]?.count || 0
+    if (useSupabase) {
+      // Use Supabase client for CI/production
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
 
-    // Get platform breakdown
-    const breakdownQuery = `
-      SELECT 
-        source_platform,
-        COUNT(*) as count
-      FROM content_queue 
-      WHERE is_approved = true 
-        AND COALESCE(is_posted, false) = false
-        AND COALESCE(ingest_priority, 0) >= 0
-      GROUP BY source_platform
-      ORDER BY count DESC
-    `
-    
-    const breakdownResult = await db.query(breakdownQuery)
-    const platformBreakdown = breakdownResult.rows
+      // Count approved, unposted content
+      const { count, error: countError } = await supabase
+        .from('content_queue')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_approved', true)
+        .eq('is_posted', false)
+
+      if (countError) {
+        console.error('❌ Error counting approved content:', countError)
+        throw countError
+      }
+
+      approvedCount = count || 0
+
+      // Get platform breakdown
+      const { data: breakdownData, error: breakdownError } = await supabase
+        .from('content_queue')
+        .select('source_platform')
+        .eq('is_approved', true)
+        .eq('is_posted', false)
+
+      if (breakdownError) {
+        console.error('❌ Error getting platform breakdown:', breakdownError)
+        throw breakdownError
+      }
+
+      // Group by platform manually
+      const platformCounts: Record<string, number> = {}
+      breakdownData?.forEach((item: any) => {
+        const platform = item.source_platform || 'unknown'
+        platformCounts[platform] = (platformCounts[platform] || 0) + 1
+      })
+
+      platformBreakdown = Object.entries(platformCounts)
+        .map(([source_platform, count]) => ({ source_platform, count }))
+        .sort((a, b) => b.count - a.count)
+    } else {
+      // Use db.query for local development
+      await db.connect()
+
+      const query = `
+        SELECT COUNT(*) as count
+        FROM content_queue
+        WHERE is_approved = true
+          AND COALESCE(is_posted, false) = false
+          AND COALESCE(ingest_priority, 0) >= 0
+      `
+
+      const result = await db.query(query)
+      approvedCount = result.rows[0]?.count || 0
+
+      const breakdownQuery = `
+        SELECT
+          source_platform,
+          COUNT(*) as count
+        FROM content_queue
+        WHERE is_approved = true
+          AND COALESCE(is_posted, false) = false
+          AND COALESCE(ingest_priority, 0) >= 0
+        GROUP BY source_platform
+        ORDER BY count DESC
+      `
+
+      const breakdownResult = await db.query(breakdownQuery)
+      platformBreakdown = breakdownResult.rows
+    }
 
     console.log(`📊 Approved queue status: ${approvedCount} items`)
     console.log(`📋 Platform breakdown:`)
@@ -76,20 +127,20 @@ async function main() {
 
     if (approvedCount >= args.min) {
       console.log(`✅ PASS: Queue has sufficient content (${approvedCount} >= ${args.min})`)
-      await db.disconnect()
+      if (!useSupabase) await db.disconnect()
       process.exit(0)
     } else {
       console.error(`❌ FAIL: Queue shortage detected (${approvedCount} < ${args.min})`)
-      
+
       // Generate shortage report
       await generateShortageReport(args, approvedCount, platformBreakdown, estimatedDays)
-      
-      await db.disconnect()
+
+      if (!useSupabase) await db.disconnect()
       process.exit(1)
     }
   } catch (error) {
     console.error(`❌ Queue readiness check failed:`, error)
-    await db.disconnect()
+    if (!useSupabase) await db.disconnect()
     process.exit(1)
   }
 }
