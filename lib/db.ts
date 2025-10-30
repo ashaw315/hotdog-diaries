@@ -8,15 +8,17 @@ import path from 'path'
 import { QueryResult as DbQueryResult, DatabaseHealthCheck } from '@/types/database'
 
 // NEW: Direct SQL probe connection for schema introspection
+// DISABLED in production to avoid authentication timeouts - use Supabase client instead
 const POSTGRES_URL =
   process.env.POSTGRES_URL ||
   process.env.SUPABASE_DB_URL ||
   process.env.DATABASE_URL ||
   "";
 
-// NEW: Small, low-latency pool for API routes (schema probe) - development + production fallback
-// Production primarily uses Vercel SQL, but falls back to this if needed
-export const sql = POSTGRES_URL ? postgres(POSTGRES_URL, {
+// Only create direct postgres connection in development
+// Production uses Vercel SQL → Supabase client fallback chain
+const isProductionEnv = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production'
+export const sql = (!isProductionEnv && POSTGRES_URL) ? postgres(POSTGRES_URL, {
   max: 1,
   idle_timeout: 5,
   connect_timeout: 5_000,
@@ -93,7 +95,8 @@ class DatabaseConnection {
   }
 
   async query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
-    // For production/Supabase, try Vercel SQL first, fallback to direct postgres, final fallback to Supabase client
+    // For production/Supabase, try Vercel SQL first, then fallback directly to Supabase client
+    // Skip direct postgres connection in production to avoid authentication timeouts
     if (this.isSupabase || process.env.NODE_ENV === 'production') {
       try {
         console.log('[DB] Using Vercel SQL for production/Supabase query:', text.substring(0, 50))
@@ -101,45 +104,18 @@ class DatabaseConnection {
         console.log('[DB] Vercel SQL query successful, rows:', result.rows?.length || 0)
         return result as QueryResult<T>
       } catch (vercelError) {
-        console.error('[DB] Vercel SQL query failed, trying direct postgres connection:', vercelError.message)
-        
-        // Fallback: try direct postgres connection with DATABASE_URL
-        if (sql) {
-          try {
-            console.log('[DB] Falling back to direct postgres connection')
-            const result = await sql.unsafe(text, params || [])
-            console.log('[DB] Direct postgres query successful, rows:', Array.isArray(result) ? result.length : 1)
-            return {
-              rows: result as T[],
-              rowCount: Array.isArray(result) ? result.length : (result ? 1 : 0),
-              command: text.split(' ')[0].toUpperCase(),
-              oid: 0,
-              fields: []
-            } as QueryResult<T>
-          } catch (postgresError) {
-            console.error('[DB] Direct postgres also failed, trying Supabase client:', postgresError.message)
-            
-            // Final fallback: Use Supabase client for critical queries like admin authentication
-            try {
-              console.log('[DB] Using Supabase client as final fallback')
-              const result = await this.executeSupabaseQuery<T>(text, params)
-              console.log('[DB] Supabase client query successful, rows:', result.rows?.length || 0)
-              return result
-            } catch (supabaseError) {
-              console.error('[DB] All connection methods failed:', supabaseError.message)
-              throw new Error(`Database connection failed: Vercel SQL (${vercelError.message}), Direct Postgres (${postgresError.message}), Supabase (${supabaseError.message})`)
-            }
-          }
-        } else {
-          console.log('[DB] No direct postgres connection available, trying Supabase client')
-          try {
-            const result = await this.executeSupabaseQuery<T>(text, params)
-            console.log('[DB] Supabase client query successful, rows:', result.rows?.length || 0)
-            return result
-          } catch (supabaseError) {
-            console.error('[DB] Supabase client also failed:', supabaseError.message)
-            throw new Error(`Database connection failed: Vercel SQL (${vercelError.message}), Supabase (${supabaseError.message})`)
-          }
+        console.log('[DB] Vercel SQL query failed, using Supabase client fallback:', vercelError.message)
+
+        // Production: Skip direct postgres connection, go straight to Supabase client
+        // This avoids 30-second authentication timeouts from bad postgres credentials
+        try {
+          console.log('[DB] Using Supabase client as fallback')
+          const result = await this.executeSupabaseQuery<T>(text, params)
+          console.log('[DB] Supabase client query successful, rows:', result.rows?.length || 0)
+          return result
+        } catch (supabaseError) {
+          console.error('[DB] Supabase client also failed:', supabaseError.message)
+          throw new Error(`Database connection failed: Vercel SQL (${vercelError.message}), Supabase (${supabaseError.message})`)
         }
       }
     }
