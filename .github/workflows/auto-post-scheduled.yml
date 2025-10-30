@@ -2,8 +2,13 @@ name: Auto-Post Scheduled Content
 
 on:
   schedule:
-    # Run hourly at :05 to catch all scheduled posts with a 5-minute buffer
-    - cron: '5 * * * *'  # Every hour at :05
+    # Run at each posting time (ET → UTC conversion assumes EDT/UTC-4)
+    # 08:00, 12:00, 15:00, 18:00 ET → 12:00, 16:00, 19:00, 22:00 UTC
+    - cron: '5 12,16,19,22 * * *'
+    # 21:00 ET → 01:00 UTC next day
+    - cron: '5 1 * * *'
+    # 23:30 ET → 03:30 UTC next day (run at :35 to give 5-minute buffer)
+    - cron: '35 3 * * *'
   workflow_dispatch:
     inputs:
       force:
