@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { BulkEditModal } from './BulkEditModal'
 import { authFetch } from '@/lib/auth-fetch'
 import { useContentData } from '@/hooks/useAdminData'
@@ -96,6 +96,34 @@ export default function ContentQueue() {
 
   // Replace the manual fetchQueuedContent with the hook's refresh function
   const fetchQueuedContent = refresh
+
+  // Calculate distribution stats from current filtered content
+  const distributionStats = useMemo(() => {
+    if (!queuedContent || queuedContent.length === 0) {
+      return {
+        platforms: {},
+        contentTypes: {},
+        total: 0
+      }
+    }
+
+    const platforms: Record<string, number> = {}
+    const contentTypes: Record<string, number> = {}
+
+    queuedContent.forEach(item => {
+      // Count by platform
+      platforms[item.source_platform] = (platforms[item.source_platform] || 0) + 1
+
+      // Count by content type
+      contentTypes[item.content_type] = (contentTypes[item.content_type] || 0) + 1
+    })
+
+    return {
+      platforms,
+      contentTypes,
+      total: queuedContent.length
+    }
+  }, [queuedContent])
 
   const handleSelectItem = (id: number) => {
     const newSelected = new Set(selectedItems)
@@ -1063,6 +1091,201 @@ export default function ContentQueue() {
             </div>
           </div>
         </div>
+
+        {/* Distribution Stats */}
+        {distributionStats.total > 0 && (
+          <div className="queue-section">
+            <div className="section-header">
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1f2937',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                📊 Content Distribution
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#6b7280'
+                }}>
+                  ({distributionStats.total} items{filterBy !== 'all' ? ` - ${filterBy}` : ''})
+                </span>
+              </h3>
+            </div>
+            <div className="section-body">
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '24px'
+              }}>
+                {/* Platform Distribution */}
+                <div>
+                  <h4 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '16px'
+                  }}>
+                    By Platform
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {Object.entries(distributionStats.platforms)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
+                      .map(([platform, count]) => {
+                        const percentage = ((count as number) / distributionStats.total * 100).toFixed(1)
+                        return (
+                          <div
+                            key={platform}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 12px',
+                              background: '#f9fafb',
+                              borderRadius: '6px',
+                              border: '1px solid #e5e7eb'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1f2937',
+                                textTransform: 'capitalize'
+                              }}>
+                                {platform}
+                              </span>
+                              <div style={{
+                                flex: 1,
+                                height: '6px',
+                                background: '#e5e7eb',
+                                borderRadius: '3px',
+                                overflow: 'hidden',
+                                maxWidth: '120px'
+                              }}>
+                                <div style={{
+                                  height: '100%',
+                                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                  width: `${percentage}%`,
+                                  transition: 'width 0.3s ease'
+                                }} />
+                              </div>
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              minWidth: '100px',
+                              justifyContent: 'flex-end'
+                            }}>
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#3b82f6'
+                              }}>
+                                {count}
+                              </span>
+                              <span style={{
+                                fontSize: '12px',
+                                color: '#6b7280'
+                              }}>
+                                ({percentage}%)
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </div>
+
+                {/* Content Type Distribution */}
+                <div>
+                  <h4 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '16px'
+                  }}>
+                    By Content Type
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {Object.entries(distributionStats.contentTypes)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
+                      .map(([type, count]) => {
+                        const percentage = ((count as number) / distributionStats.total * 100).toFixed(1)
+                        const icon = getContentTypeIcon(type)
+                        return (
+                          <div
+                            key={type}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 12px',
+                              background: '#f9fafb',
+                              borderRadius: '6px',
+                              border: '1px solid #e5e7eb'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                              <span style={{ fontSize: '18px' }}>{icon}</span>
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1f2937',
+                                textTransform: 'capitalize'
+                              }}>
+                                {type}
+                              </span>
+                              <div style={{
+                                flex: 1,
+                                height: '6px',
+                                background: '#e5e7eb',
+                                borderRadius: '3px',
+                                overflow: 'hidden',
+                                maxWidth: '120px'
+                              }}>
+                                <div style={{
+                                  height: '100%',
+                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                  width: `${percentage}%`,
+                                  transition: 'width 0.3s ease'
+                                }} />
+                              </div>
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              minWidth: '100px',
+                              justifyContent: 'flex-end'
+                            }}>
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#10b981'
+                              }}>
+                                {count}
+                              </span>
+                              <span style={{
+                                fontSize: '12px',
+                                color: '#6b7280'
+                              }}>
+                                ({percentage}%)
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content List */}
         <div className="queue-section">
