@@ -167,26 +167,39 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const hasAdminNotes = contentQueueColumns.includes('admin_notes')
       const hasIsApproved = contentQueueColumns.includes('is_approved')
       const hasIsPosted = contentQueueColumns.includes('is_posted')
-      
+      const hasContentStatus = contentQueueColumns.includes('content_status')
+
+      // Prefer content_status field over legacy is_approved field
       if (status === 'pending') {
-        if (hasIsApproved) {
+        if (hasContentStatus) {
+          // Use content_status for more accurate filtering
+          whereClause = `(cq.content_status = 'discovered' OR cq.content_status = 'pending_review')`
+          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
+        } else if (hasIsApproved) {
           whereClause = 'cq.is_approved = FALSE'
           if (hasAdminNotes) {
             whereClause += ' AND (cq.admin_notes IS NULL OR cq.admin_notes NOT LIKE \'%Rejected%\')'
           }
+          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
         } else if (hasIsPosted) {
           whereClause = 'cq.is_posted = FALSE'
+          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
         }
-        whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
       } else if (status === 'approved') {
-        if (hasIsApproved) {
+        if (hasContentStatus) {
+          whereClause = `cq.content_status = 'approved'`
+          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
+        } else if (hasIsApproved) {
           whereClause = 'cq.is_approved = TRUE'
+          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
         } else {
           whereClause = '1=1' // Fallback if column doesn't exist
+          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
         }
-        whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
       } else if (status === 'rejected') {
-        if (hasIsApproved && hasAdminNotes) {
+        if (hasContentStatus) {
+          whereClause = `cq.content_status = 'rejected'`
+        } else if (hasIsApproved && hasAdminNotes) {
           whereClause = 'cq.is_approved = FALSE AND cq.admin_notes LIKE \'%Rejected%\''
         } else if (hasIsApproved) {
           whereClause = 'cq.is_approved = FALSE'
@@ -197,7 +210,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // Check for scheduled content based on available columns
         const hasStatus = contentQueueColumns.includes('status')
         const hasScheduledFor = contentQueueColumns.includes('scheduled_for')
-        const hasContentStatus = contentQueueColumns.includes('content_status')
         const hasScheduledPostTime = contentQueueColumns.includes('scheduled_post_time')
         
         // Production schema detection (Supabase uses different field names)

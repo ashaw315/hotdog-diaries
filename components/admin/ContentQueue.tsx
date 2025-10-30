@@ -54,6 +54,7 @@ export default function ContentQueue() {
   // Map the filterBy values to the hook's expected status values
   const getHookStatus = (filter: string) => {
     switch (filter) {
+      case 'discovered': return 'pending' // Map discovered to pending (not approved)
       case 'pending_review': return 'pending'
       case 'approved': return 'approved'
       case 'scheduled': return 'scheduled'
