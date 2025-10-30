@@ -94,6 +94,26 @@ export default function ContentQueue() {
     console.groupEnd()
   }, [filterBy, queuedContent, isLoading, contentError])
 
+  // Smart sorting: auto-adjust sort based on filter
+  useEffect(() => {
+    if (filterBy === 'discovered' || filterBy === 'pending_review') {
+      // Discovered content: show newest first
+      if (sortBy !== 'scraped_at') {
+        setSortWithToggle('scraped_at')
+      }
+    } else if (filterBy === 'approved') {
+      // Approved content: FIFO (oldest first)
+      if (sortBy !== 'created_at') {
+        setSortWithToggle('created_at')
+      }
+    } else if (filterBy === 'scheduled') {
+      // Scheduled content: soonest first
+      if (sortBy !== 'scheduled_post_time') {
+        setSortWithToggle('scheduled_post_time')
+      }
+    }
+  }, [filterBy, sortBy, setSortWithToggle])
+
   // Refresh when sort or filter changes
   useEffect(() => {
     refresh()
