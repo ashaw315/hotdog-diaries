@@ -151,16 +151,9 @@ export async function GET(request: NextRequest) {
             cq.is_approved,
             cq.created_at
           FROM content_queue cq
-          WHERE (
-            (cq.scheduled_post_time >= ? AND cq.scheduled_post_time <= ?)
-            OR (cq.is_approved = 1 AND cq.is_posted = 0)
-            OR (cq.content_status IN ('scheduled', 'pending', 'approved'))
-          )
-          AND (
-            cq.scheduled_post_time IS NOT NULL
-            OR cq.is_approved = 1
-            OR cq.content_status IN ('scheduled', 'pending', 'approved')
-          )
+          WHERE cq.scheduled_post_time >= ?
+            AND cq.scheduled_post_time <= ?
+            AND cq.scheduled_post_time IS NOT NULL
           ORDER BY cq.scheduled_post_time ASC, cq.created_at ASC
         `, [startWindowStr, endWindowStr])
         
@@ -185,9 +178,9 @@ export async function GET(request: NextRequest) {
           ORDER BY pc.posted_at ASC
         `, [startWindowStr, endWindowStr])
         
-        // Additional cross-table fallback for missed items
+        // Additional cross-table query for content that may be in both tables
         const crossTableResult = await db.query(`
-          SELECT 
+          SELECT
             cq.id,
             cq.source_platform as platform,
             cq.content_type,
@@ -195,7 +188,7 @@ export async function GET(request: NextRequest) {
             COALESCE(pc.posted_at, cq.scheduled_post_time) as scheduled_time,
             SUBSTR(cq.content_text, 1, 100) as title,
             cq.confidence_score,
-            CASE 
+            CASE
               WHEN pc.id IS NOT NULL THEN 'posted'
               WHEN cq.scheduled_post_time > datetime('now') THEN 'upcoming'
               ELSE 'scheduled'
@@ -205,12 +198,10 @@ export async function GET(request: NextRequest) {
             pc.posted_at as actual_posted_at
           FROM content_queue cq
           LEFT JOIN posted_content pc ON cq.id = pc.content_queue_id
-          WHERE (
-            DATE(COALESCE(pc.posted_at, cq.scheduled_post_time)) = DATE(?)
-            OR (cq.is_approved = 1 AND cq.is_posted = 0)
-          )
+          WHERE COALESCE(pc.posted_at, cq.scheduled_post_time) >= ?
+            AND COALESCE(pc.posted_at, cq.scheduled_post_time) <= ?
           ORDER BY COALESCE(pc.posted_at, cq.scheduled_post_time) ASC
-        `, [targetDateStr])
+        `, [startWindowStr, endWindowStr])
         
         // Helper function for status normalization with Eastern Time
         const determineStatus = (item: any): 'scheduled' | 'posted' | 'upcoming' => {
@@ -319,7 +310,7 @@ export async function GET(request: NextRequest) {
       const supabase = createSimpleClient()
       
       try {
-        // Expanded query for scheduled content with broader conditions
+        // Query for scheduled content within the target date window ONLY
         const { data: scheduledData, error: scheduledError } = await supabase
           .from('content_queue')
           .select(`
@@ -334,7 +325,8 @@ export async function GET(request: NextRequest) {
             is_posted,
             is_approved
           `)
-          .or(`scheduled_post_time.gte.${startWindow.toISOString()},scheduled_post_time.lte.${endWindow.toISOString()},and(is_approved.eq.true,is_posted.eq.false),content_status.in.(scheduled,pending,approved)`)
+          .gte('scheduled_post_time', startWindow.toISOString())
+          .lte('scheduled_post_time', endWindow.toISOString())
           .order('scheduled_post_time', { ascending: true })
         
         // Query for posted content with cross-table join
@@ -358,7 +350,7 @@ export async function GET(request: NextRequest) {
           .lte('posted_at', endWindow.toISOString())
           .order('posted_at', { ascending: true })
         
-        // Additional cross-table query for comprehensive coverage
+        // Additional cross-table query for content that may be in both tables
         const { data: crossTableData, error: crossTableError } = await supabase
           .from('content_queue')
           .select(`
@@ -377,7 +369,8 @@ export async function GET(request: NextRequest) {
               scheduled_time
             )
           `)
-          .or(`scheduled_post_time.like.${targetDateStr}%,posted_content.posted_at.like.${targetDateStr}%,and(is_approved.eq.true,is_posted.eq.false)`)
+          .gte('scheduled_post_time', startWindow.toISOString())
+          .lte('scheduled_post_time', endWindow.toISOString())
         
         // Helper function for status normalization (Supabase version) with Eastern Time
         const determineSupabaseStatus = (item: any): 'scheduled' | 'posted' | 'upcoming' => {
@@ -579,9 +572,9 @@ export async function GET(request: NextRequest) {
       if (isSqlite) {
         await db.connect()
         try {
-          // Fallback with expanded date range
+          // Fallback with expanded date range (±1 day)
           const fallbackResult = await db.query(`
-            SELECT 
+            SELECT
               cq.id,
               cq.source_platform as platform,
               cq.content_type,
@@ -589,7 +582,7 @@ export async function GET(request: NextRequest) {
               COALESCE(pc.posted_at, cq.scheduled_post_time) as scheduled_time,
               SUBSTR(cq.content_text, 1, 100) as title,
               cq.confidence_score,
-              CASE 
+              CASE
                 WHEN pc.id IS NOT NULL THEN 'posted'
                 WHEN cq.scheduled_post_time > datetime('now') THEN 'upcoming'
                 ELSE 'scheduled'
@@ -599,7 +592,6 @@ export async function GET(request: NextRequest) {
             WHERE (
               cq.scheduled_post_time BETWEEN datetime(?, '-1 day') AND datetime(?, '+1 day')
               OR pc.posted_at BETWEEN datetime(?, '-1 day') AND datetime(?, '+1 day')
-              OR (cq.is_approved = 1 AND cq.is_posted = 0)
             )
             ORDER BY ABS(julianday(COALESCE(pc.posted_at, cq.scheduled_post_time)) - julianday(?)) ASC
             LIMIT 20
