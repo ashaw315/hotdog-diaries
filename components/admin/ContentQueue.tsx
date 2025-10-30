@@ -1028,6 +1028,111 @@ export default function ContentQueue() {
           </div>
         </div>
 
+        {/* Quick Filter Toggles */}
+        <div className="queue-section">
+          <div className="section-body">
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={() => {
+                  setFilterBy('discovered')
+                  setPlatformFilter('all')
+                  setTypeFilter('all')
+                }}
+                style={{
+                  padding: '12px 24px',
+                  border: filterBy === 'discovered' ? '2px solid #3b82f6' : '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: filterBy === 'discovered' ? '#eff6ff' : 'white',
+                  color: filterBy === 'discovered' ? '#1e40af' : '#374151',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                📥 Discovered
+              </button>
+              <button
+                onClick={() => {
+                  setFilterBy('approved')
+                  setPlatformFilter('all')
+                  setTypeFilter('all')
+                }}
+                style={{
+                  padding: '12px 24px',
+                  border: filterBy === 'approved' ? '2px solid #10b981' : '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: filterBy === 'approved' ? '#d1fae5' : 'white',
+                  color: filterBy === 'approved' ? '#065f46' : '#374151',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                ✅ Approved
+              </button>
+              <button
+                onClick={() => {
+                  setFilterBy('scheduled')
+                  setPlatformFilter('all')
+                  setTypeFilter('all')
+                }}
+                style={{
+                  padding: '12px 24px',
+                  border: filterBy === 'scheduled' ? '2px solid #8b5cf6' : '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: filterBy === 'scheduled' ? '#ede9fe' : 'white',
+                  color: filterBy === 'scheduled' ? '#6b21a8' : '#374151',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                📅 Scheduled
+              </button>
+              <button
+                onClick={() => {
+                  setFilterBy('all')
+                  setPlatformFilter('all')
+                  setTypeFilter('all')
+                }}
+                style={{
+                  padding: '12px 24px',
+                  border: filterBy === 'all' ? '2px solid #6b7280' : '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  background: filterBy === 'all' ? '#f3f4f6' : 'white',
+                  color: filterBy === 'all' ? '#1f2937' : '#374151',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                📋 All Content
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Filters and Bulk Actions */}
         <div className="queue-section">
           <div className="section-body">
