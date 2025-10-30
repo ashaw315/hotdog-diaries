@@ -61,12 +61,12 @@ async function getSlotsInTimeWindow(config: PostingConfig): Promise<ScheduledSlo
     const { createSimpleClient } = await import('@/utils/supabase/server')
     const supabase = createSimpleClient()
 
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from('scheduled_posts')
       .select('id, content_id, platform, content_type, source, title, scheduled_post_time, scheduled_slot_index, actual_posted_at, reasoning, status, created_at, updated_at')
       .eq('status', 'pending')
-      .gte('scheduled_post_time', formatISO(windowStart))
-      .lte('scheduled_post_time', formatISO(windowEnd))
+      .gte('scheduled_post_time', windowStart.toISOString())
+      .lte('scheduled_post_time', windowEnd.toISOString())
       .order('scheduled_post_time', { ascending: true })
 
     if (error) {
@@ -90,8 +90,8 @@ async function getSlotsInTimeWindow(config: PostingConfig): Promise<ScheduledSlo
     `
 
     const result = await db.query(query, [
-      formatISO(windowStart),
-      formatISO(windowEnd)
+      windowStart.toISOString(),
+      windowEnd.toISOString()
     ])
 
     return result.rows as ScheduledSlot[]
