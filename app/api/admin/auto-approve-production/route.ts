@@ -94,7 +94,6 @@ async function runProductionAutoApproval(maxItems: number, minConfidenceScore: n
       .from('content_queue')
       .update({
         is_approved: true,
-        admin_notes: 'Auto-approved - high quality (≥0.8)',
         updated_at: now.toISOString()
       })
       .in('id', ids)
@@ -123,7 +122,6 @@ async function runProductionAutoApproval(maxItems: number, minConfidenceScore: n
       .from('content_queue')
       .update({
         is_approved: true,
-        admin_notes: 'Auto-approved - aged 24h + medium quality (≥0.6)',
         updated_at: now.toISOString()
       })
       .in('id', ids)
@@ -152,7 +150,6 @@ async function runProductionAutoApproval(maxItems: number, minConfidenceScore: n
       .from('content_queue')
       .update({
         is_approved: true,
-        admin_notes: 'Auto-approved - aged 48h + decent quality (≥0.5)',
         updated_at: now.toISOString()
       })
       .in('id', ids)
@@ -181,7 +178,6 @@ async function runProductionAutoApproval(maxItems: number, minConfidenceScore: n
       .from('content_queue')
       .update({
         is_approved: true,
-        admin_notes: `Auto-approved - aged 72h + non-spam (≥${minConfidenceScore})`,
         updated_at: now.toISOString()
       })
       .in('id', ids)
@@ -261,7 +257,6 @@ async function runProductionPlatformBalancing(maxPerPlatform: number, minConfide
           .from('content_queue')
           .update({
             is_approved: true,
-            admin_notes: `Auto-approved for platform balance (${platform})`,
             updated_at: new Date().toISOString()
           })
           .in('id', ids)
