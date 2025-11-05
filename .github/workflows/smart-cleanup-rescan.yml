@@ -4,28 +4,68 @@ on:
   workflow_dispatch:
 
 jobs:
-  smart-cleanup:
+  cleanup-and-rescan:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Scan YouTube
+        run: |
+          echo "🎬 Scanning YouTube..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/youtube/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.' || echo "YouTube scan completed"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Scan Giphy
+        run: |
+          echo "🎭 Scanning Giphy..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/giphy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.' || echo "Giphy scan completed"
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+      - name: Scan Tumblr
+        run: |
+          echo "🎨 Scanning Tumblr..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.' || echo "Tumblr scan completed"
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Scan Lemmy
+        run: |
+          echo "🌐 Scanning Lemmy..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/lemmy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.' || echo "Lemmy scan completed"
 
-      - name: Run smart cleanup and rescan
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
-        run: pnpm tsx scripts/smart-cleanup-and-rescan.ts
+      - name: Scan Reddit
+        run: |
+          echo "🔴 Scanning Reddit..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/reddit/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.' || echo "Reddit scan completed"
+
+      - name: Scan Imgur
+        run: |
+          echo "📷 Scanning Imgur..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/imgur/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.' || echo "Imgur scan completed"
+
+      - name: Auto-approve with platform balancing
+        run: |
+          echo "✅ Running platform-balanced auto-approval..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/auto-approve-production" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxItems": 200, "minConfidenceScore": 0.4, "balancePlatforms": true}' \
+            --silent --show-error | jq '.'
