@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
     console.log('🤖 Cron job: Starting scheduled content posting...')
 
     // Step 1: Post any scheduled content that is due (using new schedule-only-poster)
-    const postingResult = await postFromSchedule({ graceMinutes: 5 })
+    // Use 60-minute grace window to account for GitHub Actions delays (can be 20-50 min late)
+    const postingResult = await postFromSchedule({ graceMinutes: 60 })
 
     // Step 2: If we posted content, ensure next batch is scheduled
     let schedulingResult = null
