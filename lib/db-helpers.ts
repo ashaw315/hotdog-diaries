@@ -1,15 +1,16 @@
 import { db } from './db'
-import { 
-  ContentQueue, 
-  PostedContent, 
-  AdminUser, 
+import {
+  ContentQueue,
+  PostedContent,
+  AdminUser,
   SystemLog,
   ContentType,
   SourcePlatform,
-  LogLevel 
+  LogLevel
 } from '@/types'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { createClient } from '@supabase/supabase-js'
 
 export class ContentQueueHelper {
   static async create(data: {
@@ -31,28 +32,35 @@ export class ContentQueueHelper {
       data.original_url
     )
 
-    const result = await db.query<ContentQueue>(`
-      INSERT INTO content_queue (
-        content_text, content_image_url, content_video_url, content_type,
-        source_platform, original_url, original_author, scraped_at,
-        content_hash, is_approved, admin_notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *
-    `, [
-      data.content_text,
-      data.content_image_url,
-      data.content_video_url,
-      data.content_type,
-      data.source_platform,
-      data.original_url,
-      data.original_author,
-      data.scraped_at || new Date(),
-      contentHash,
-      data.is_approved || false,
-      data.admin_notes
-    ])
+    // Use Supabase client for INSERT to avoid raw SQL fallback issues
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    return result.rows[0]
+    const { data: inserted, error } = await supabase
+      .from('content_queue')
+      .insert({
+        content_text: data.content_text || null,
+        content_image_url: data.content_image_url || null,
+        content_video_url: data.content_video_url || null,
+        content_type: data.content_type,
+        source_platform: data.source_platform,
+        original_url: data.original_url,
+        original_author: data.original_author || null,
+        scraped_at: (data.scraped_at || new Date()).toISOString(),
+        content_hash: contentHash,
+        is_approved: data.is_approved || false,
+        admin_notes: data.admin_notes || null
+      })
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`Failed to insert content: ${error.message}`)
+    }
+
+    return inserted as ContentQueue
   }
 
   static async findById(id: number): Promise<ContentQueue | null> {
