@@ -1481,7 +1481,7 @@ export default function ContentQueue() {
                   className="select-checkbox"
                 />
                 <span className="select-all-text">
-                  Select All ({queuedContent.length} items)
+                  Select All
                 </span>
               </div>
 
