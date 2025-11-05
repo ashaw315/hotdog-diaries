@@ -73,11 +73,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Verify schema and build safe column list
     console.log('[AdminContentAPI] Verifying database schema...')
-    // Use content_with_analysis view which includes columns from both content_queue and content_analysis
-    const contentQueueColumns = await verifyTableColumns('content_with_analysis')
+    const contentQueueColumns = await verifyTableColumns('content_queue')
     const postedContentColumns = await verifyTableColumns('posted_content')
 
-    console.log('[AdminContentAPI] Available columns in content_with_analysis:', contentQueueColumns.length)
+    console.log('[AdminContentAPI] Available columns in content_queue:', contentQueueColumns.length)
     console.log('[AdminContentAPI] Available columns in posted_content:', postedContentColumns.length)
 
     // Build safe SELECT clause based on existing columns
@@ -125,7 +124,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         cq.is_spam, cq.is_inappropriate, cq.is_unrelated, cq.is_valid_hotdog
       `.trim()
     } else {
-      safeSelectClause = await buildSafeSelectClause('content_with_analysis', desiredColumns, 'cq')
+      safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns, 'cq')
       console.log('[AdminContentAPI] Safe SELECT clause built with fallbacks for missing columns')
     }
     
@@ -135,7 +134,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     let paramIndex = 1
     
     if (status === 'posted') {
-      // Query content_with_analysis view joined with posted_content for posted content
+      // Query content_queue joined with posted_content for posted content
       console.log('[AdminContentAPI] Filtering for posted content (JOIN with posted_content)')
 
       // Add posted_at only if it exists in posted_content
@@ -164,7 +163,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         SELECT
           ${safeSelectClause},
           ${postedAtClause}
-        FROM content_with_analysis cq
+        FROM content_queue cq
         JOIN posted_content pc ON pc.content_queue_id = cq.id
         WHERE ${postedWhereClause}
         ORDER BY pc.posted_at DESC
@@ -173,13 +172,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       countQuery = `
         SELECT COUNT(*) as total
-        FROM content_with_analysis cq
+        FROM content_queue cq
         JOIN posted_content pc ON pc.content_queue_id = cq.id
         WHERE ${postedWhereClause}
       `
       
     } else {
-      // Query content_with_analysis view for other statuses
+      // Query content_queue only for other statuses
       let whereClause = '1=1'
       let orderBy = contentQueueColumns.includes('scraped_at') 
         ? 'cq.scraped_at DESC' 
@@ -281,7 +280,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         SELECT
           ${safeSelectClause},
           NULL as posted_at
-        FROM content_with_analysis cq
+        FROM content_queue cq
         WHERE ${whereClause}
         ORDER BY ${orderBy}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -289,7 +288,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       countQuery = `
         SELECT COUNT(*) as total
-        FROM content_with_analysis cq
+        FROM content_queue cq
         WHERE ${whereClause}
       `
       
