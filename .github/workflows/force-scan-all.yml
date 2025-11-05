@@ -1,0 +1,54 @@
+name: Force Scan All Missing Platforms
+
+on:
+  workflow_dispatch:
+
+jobs:
+  force-scans:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Force YouTube Scan
+        run: |
+          echo "🎬 Forcing YouTube scan..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/youtube/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.'
+
+      - name: Force Giphy Scan
+        run: |
+          echo "🎭 Forcing Giphy scan..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/giphy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.'
+
+      - name: Force Tumblr Scan
+        run: |
+          echo "🎨 Forcing Tumblr scan..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.'
+
+      - name: Force Lemmy Scan
+        run: |
+          echo "🌐 Forcing Lemmy scan..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/lemmy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 30}' \
+            --silent --show-error | jq '.'
+
+      - name: Trigger Auto-Approval
+        run: |
+          echo "🤖 Triggering auto-approval..."
+          sleep 30
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/auto-approve-production" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"forceApproval": false, "maxItems": 200, "minConfidenceScore": 0.4, "balancePlatforms": true}' \
+            --silent --show-error | jq '.'
