@@ -1294,13 +1294,6 @@ export default function ContentQueue() {
                 gap: '8px'
               }}>
                 📊 Content Distribution
-                <span style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#6b7280'
-                }}>
-                  ({distributionStats.total} total items{queuedContent.length < distributionStats.total ? `, showing ${queuedContent.length}` : ''}{filterBy !== 'all' ? ` - ${filterBy}` : ''})
-                </span>
               </h3>
             </div>
             <div className="section-body">
