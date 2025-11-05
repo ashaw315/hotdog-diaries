@@ -164,12 +164,17 @@ function shouldScanPlatform(stats: any, thresholds: any, platform: string) {
 // Perform the actual scan by calling the platform-specific endpoint
 async function performScan(platform: string, maxPosts: number, reason: string) {
   const scanUrl = `/api/admin/${platform}/scan`
-  
+
   try {
     console.log(`🚀 Performing ${platform} scan (${maxPosts} max posts) - Reason: ${reason}`)
-    
+
+    // Construct base URL - use VERCEL_URL in production, localhost in dev
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000'
+
     // Create a new request to the platform scan endpoint
-    const scanResponse = await fetch(`${process.env.SITE_URL}${scanUrl}`, {
+    const scanResponse = await fetch(`${baseUrl}${scanUrl}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.AUTH_TOKEN}`,
