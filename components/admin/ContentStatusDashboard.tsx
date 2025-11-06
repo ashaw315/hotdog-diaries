@@ -5,25 +5,13 @@ import { useMetrics } from '@/hooks/useAdminData'
 
 interface ContentStatusMetrics {
   statusCounts: {
-    discovered: number
     pending_review: number
     approved: number
-    scheduled: number
     posted: number
-    rejected: number
-    archived: number
   }
   flowMetrics: {
     processedToday: number
-    processingRate: number // items per hour
     approvalRate: number // percentage
-    averageReviewTime: number // minutes
-  }
-  queueHealth: {
-    approvedAvailable: number
-    scheduledUpcoming: number
-    nextPostingGap: number // hours until next gap
-    recommendedActions: string[]
   }
   platformPerformance: Array<{
     platform: string
@@ -41,37 +29,25 @@ interface ContentStatusDashboardProps {
 export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProps) {
   const { data: metricsData, loading: isLoading, error, refresh } = useMetrics()
   
-  // Map the metrics data to the expected format
+  // Map the metrics data to the expected format - only include metrics with real data
   const metrics: ContentStatusMetrics | null = metricsData ? {
     statusCounts: {
-      discovered: 0, // Would need to be added to the API
       pending_review: metricsData.overview?.pendingContent || 0,
       approved: metricsData.overview?.approvedContent || 0,
-      scheduled: 0, // Would need to be added to the API
       posted: metricsData.overview?.postedContent || 0,
-      rejected: 0, // Would need to be added to the API
-      archived: 0, // Would need to be added to the API
     },
     flowMetrics: {
       processedToday: metricsData.overview?.contentToday || 0,
-      processingRate: 0, // Would need to be calculated
-      approvalRate: metricsData.overview?.approvedContent && metricsData.overview?.totalContent 
-        ? (metricsData.overview.approvedContent / metricsData.overview.totalContent) * 100 
+      approvalRate: metricsData.overview?.approvedContent && metricsData.overview?.totalContent
+        ? (metricsData.overview.approvedContent / metricsData.overview.totalContent) * 100
         : 0,
-      averageReviewTime: 0, // Would need to be added to the API
-    },
-    queueHealth: {
-      approvedAvailable: metricsData.overview?.approvedContent || 0,
-      scheduledUpcoming: 0, // Would need to be added to the API
-      nextPostingGap: 0, // Would need to be calculated
-      recommendedActions: [], // Would need to be generated based on queue state
     },
     platformPerformance: metricsData.platforms?.map(platform => ({
       platform: platform.platform,
       totalProcessed: platform.totalCount,
       approvalRate: platform.totalCount > 0 ? (platform.approvedCount / platform.totalCount) * 100 : 0,
-      averageConfidence: platform.avgConfidence * 100,
-      topPerformer: false, // Would need to be calculated
+      averageConfidence: platform.avgConfidence,
+      topPerformer: false,
     })) || []
   } : null
 
@@ -243,15 +219,9 @@ export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProp
           opacity: 0.8;
         }
         
-        .metrics-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 32px;
-        }
-        
         .flow-metrics {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 20px;
         }
         
@@ -274,62 +244,6 @@ export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProp
           color: #6b7280;
           text-transform: uppercase;
           font-weight: 500;
-        }
-        
-        .health-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-        
-        .health-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 0;
-          border-bottom: 1px solid #f3f4f6;
-        }
-        
-        .health-item:last-child {
-          border-bottom: none;
-        }
-        
-        .health-label {
-          font-size: 14px;
-          color: #374151;
-        }
-        
-        .health-value {
-          font-weight: 600;
-          font-size: 14px;
-        }
-        
-        .recommendations {
-          margin-top: 20px;
-          padding-top: 20px;
-          border-top: 1px solid #e5e7eb;
-        }
-        
-        .recommendations-title {
-          font-size: 14px;
-          font-weight: 600;
-          color: #374151;
-          margin-bottom: 12px;
-        }
-        
-        .recommendations-list {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-        
-        .recommendation-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 8px;
-          font-size: 13px;
-          color: #4b5563;
-          line-height: 1.4;
         }
         
         .platform-list {
@@ -399,39 +313,19 @@ export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProp
         }
         
         /* Color classes for status items */
-        .status-discovered {
-          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-          color: #1d4ed8;
-        }
-        
         .status-pending_review {
           background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
           color: #d97706;
         }
-        
+
         .status-approved {
           background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
           color: #059669;
         }
-        
-        .status-scheduled {
-          background: linear-gradient(135deg, #e9d5ff 0%, #ddd6fe 100%);
-          color: #7c3aed;
-        }
-        
+
         .status-posted {
           background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
           color: #4b5563;
-        }
-        
-        .status-rejected {
-          background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-          color: #dc2626;
-        }
-        
-        .status-archived {
-          background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-          color: #6b7280;
         }
         
         /* Health indicator colors */
@@ -449,26 +343,21 @@ export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProp
         
         /* Responsive design */
         @media (max-width: 768px) {
-          .metrics-grid {
-            grid-template-columns: 1fr;
-            gap: 24px;
-          }
-          
           .status-grid {
             grid-template-columns: repeat(2, 1fr);
           }
-          
+
           .flow-metrics {
             grid-template-columns: 1fr;
             gap: 16px;
           }
-          
+
           .platform-item {
             flex-direction: column;
             align-items: flex-start;
             gap: 12px;
           }
-          
+
           .platform-metrics {
             align-self: stretch;
             justify-content: space-between;
@@ -520,82 +409,24 @@ export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProp
           </div>
         </div>
 
-        {/* Flow Metrics & Queue Health */}
-        <div className="metrics-grid">
-          {/* Flow Metrics */}
-          <div className="dashboard-section">
-            <div className="section-header">
-              <h3 className="title-text">Content Flow Velocity</h3>
-            </div>
-            <div className="section-body">
-              <div className="flow-metrics">
-                <div className="metric-item">
-                  <div className="metric-value" style={{ color: '#3b82f6' }}>
-                    {metrics?.flowMetrics?.processedToday || 0}
-                  </div>
-                  <div className="metric-label">Processed Today</div>
-                </div>
-                <div className="metric-item">
-                  <div className="metric-value" style={{ color: '#10b981' }}>
-                    {metrics?.flowMetrics?.processingRate?.toFixed(1) || '0.0'}
-                  </div>
-                  <div className="metric-label">Items/Hour</div>
-                </div>
-                <div className="metric-item">
-                  <div className={`metric-value ${getHealthIndicator(metrics?.flowMetrics?.approvalRate || 0, { good: 70, warning: 50 }).replace('text-', 'health-').replace('-600', '')}`}>
-                    {metrics?.flowMetrics?.approvalRate?.toFixed(1) || '0.0'}%
-                  </div>
-                  <div className="metric-label">Approval Rate</div>
-                </div>
-                <div className="metric-item">
-                  <div className="metric-value" style={{ color: '#8b5cf6' }}>
-                    {metrics?.flowMetrics?.averageReviewTime?.toFixed(0) || '0'}m
-                  </div>
-                  <div className="metric-label">Avg Review Time</div>
-                </div>
-              </div>
-            </div>
+        {/* Flow Metrics */}
+        <div className="dashboard-section">
+          <div className="section-header">
+            <h3 className="title-text">Content Flow Metrics</h3>
           </div>
-
-          {/* Queue Health */}
-          <div className="dashboard-section">
-            <div className="section-header">
-              <h3 className="title-text">Queue Health</h3>
-            </div>
-            <div className="section-body">
-              <div className="health-list">
-                <div className="health-item">
-                  <span className="health-label">Approved & Ready</span>
-                  <span className={`health-value ${getHealthIndicator(metrics?.queueHealth?.approvedAvailable || 0, { good: 10, warning: 5 }).replace('text-', 'health-').replace('-600', '')}`}>
-                    {metrics?.queueHealth?.approvedAvailable || 0} items
-                  </span>
+          <div className="section-body">
+            <div className="flow-metrics">
+              <div className="metric-item">
+                <div className="metric-value" style={{ color: '#3b82f6' }}>
+                  {metrics?.flowMetrics?.processedToday || 0}
                 </div>
-                <div className="health-item">
-                  <span className="health-label">Scheduled Upcoming</span>
-                  <span className="health-value" style={{ color: '#8b5cf6' }}>
-                    {metrics?.queueHealth?.scheduledUpcoming || 0} items
-                  </span>
+                <div className="metric-label">Processed Today</div>
+              </div>
+              <div className="metric-item">
+                <div className={`metric-value ${getHealthIndicator(metrics?.flowMetrics?.approvalRate || 0, { good: 70, warning: 50 }).replace('text-', 'health-').replace('-600', '')}`}>
+                  {metrics?.flowMetrics?.approvalRate?.toFixed(1) || '0.0'}%
                 </div>
-                <div className="health-item">
-                  <span className="health-label">Next Posting Gap</span>
-                  <span className={`health-value ${getHealthIndicator(24 - (metrics?.queueHealth?.nextPostingGap || 0), { good: 18, warning: 12 }).replace('text-', 'health-').replace('-600', '')}`}>
-                    {metrics?.queueHealth?.nextPostingGap?.toFixed(1) || '0.0'}h
-                  </span>
-                </div>
-                
-                {metrics?.queueHealth?.recommendedActions && metrics.queueHealth.recommendedActions.length > 0 && (
-                  <div className="recommendations">
-                    <div className="recommendations-title">Recommended Actions:</div>
-                    <div className="recommendations-list">
-                      {metrics.queueHealth.recommendedActions.map((action, index) => (
-                        <div key={index} className="recommendation-item">
-                          <span>💡</span>
-                          <span>{action}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div className="metric-label">Approval Rate</div>
               </div>
             </div>
           </div>
@@ -635,7 +466,7 @@ export function ContentStatusDashboard({ onRefresh }: ContentStatusDashboardProp
                     <div className={`platform-metric ${getHealthIndicator(platform.approvalRate, { good: 70, warning: 50 }).replace('text-', 'health-').replace('-600', '')}`}>
                       {platform.approvalRate.toFixed(1)}% approved
                     </div>
-                    <div className={`platform-metric ${getHealthIndicator(platform.averageConfidence, { good: 0.8, warning: 0.6 }).replace('text-', 'health-').replace('-600', '')}`}>
+                    <div className={`platform-metric ${getHealthIndicator(platform.averageConfidence * 100, { good: 80, warning: 60 }).replace('text-', 'health-').replace('-600', '')}`}>
                       {(platform.averageConfidence * 100).toFixed(0)}% confidence
                     </div>
                   </div>
