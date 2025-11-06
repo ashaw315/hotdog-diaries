@@ -4,31 +4,122 @@ on:
   workflow_dispatch:
 
 jobs:
-  nuclear-reset:
+  delete-discovered:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Install dependencies
-        run: pnpm install --prod
-
-      - name: Execute Nuclear Reset
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+      - name: Delete all discovered content
         run: |
-          echo "💣 Starting Nuclear Reset..."
-          echo "⚠️  This will delete all discovered content and start fresh"
+          echo "💣 Step 1: Deleting all discovered (unapproved) content..."
+
+          curl -X POST \
+            "https://ulaadphxfsrihoubjdrb.supabase.co/rest/v1/content_queue?is_approved=eq.false&is_posted=eq.false" \
+            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=representation" \
+            -X DELETE
+
           echo ""
-          pnpm tsx scripts/nuclear-reset.ts
+          echo "✅ Discovered content deleted!"
+
+  scan-all-platforms:
+    needs: delete-discovered
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan YouTube
+        run: |
+          echo "🎬 Scanning YouTube..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/youtube/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 40}' --silent --show-error | jq -r '.data.processed // 0' || echo "0"
+
+      - name: Scan Giphy
+        run: |
+          echo "🎭 Scanning Giphy..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/giphy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 40}' --silent --show-error | jq -r '.data.processed // 0' || echo "0"
+
+      - name: Scan Tumblr
+        run: |
+          echo "🎨 Scanning Tumblr..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/tumblr/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 40}' --silent --show-error | jq -r '.data.processed // 0' || echo "0"
+
+      - name: Scan Lemmy
+        run: |
+          echo "🌐 Scanning Lemmy..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/lemmy/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 40}' --silent --show-error | jq -r '.data.processed // 0' || echo "0"
+
+      - name: Scan Reddit
+        run: |
+          echo "🔴 Scanning Reddit..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/reddit/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 40}' --silent --show-error | jq -r '.data.processed // 0' || echo "0"
+
+      - name: Scan Imgur
+        run: |
+          echo "📷 Scanning Imgur..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/imgur/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 40}' --silent --show-error | jq -r '.data.processed // 0' || echo "0"
+
+      - name: Scan Pixabay
+        run: |
+          echo "🖼️  Scanning Pixabay..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/pixabay/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 20}' --silent --show-error | jq -r '.data.processed // 0' || echo "0"
+
+      - name: Scan Bluesky
+        run: |
+          echo "☁️  Scanning Bluesky..."
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/bluesky/scan" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"maxPosts": 20}' --silent --show-error | jq -r '.data.processed // 0' || echo "0"
+
+  approve-quality-content:
+    needs: scan-all-platforms
+    runs-on: ubuntu-latest
+    steps:
+      - name: Approve underrepresented platforms (60%+ confidence)
+        run: |
+          echo "✅ Approving quality content from underrepresented platforms..."
+
+          for platform in youtube tumblr lemmy reddit imgur giphy; do
+            echo "Approving $platform..."
+            curl -X PATCH \
+              "https://ulaadphxfsrihoubjdrb.supabase.co/rest/v1/content_queue?is_approved=eq.false&is_posted=eq.false&source_platform=eq.$platform&confidence_score=gte.0.6" \
+              -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: return=representation" \
+              -d '{"is_approved": true}'
+          done
+
+      - name: Approve high-quality from all platforms (70%+ confidence)
+        run: |
+          echo "✅ Approving high-quality content from all platforms..."
+
+          curl -X PATCH \
+            "https://ulaadphxfsrihoubjdrb.supabase.co/rest/v1/content_queue?is_approved=eq.false&is_posted=eq.false&confidence_score=gte.0.7" \
+            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=representation" \
+            -d '{"is_approved": true}'
+
+          echo ""
+          echo "🎉 Nuclear reset complete!"
