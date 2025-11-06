@@ -381,12 +381,15 @@ export async function postFromSchedule(config: Partial<PostingConfig> = {}): Pro
         
       } catch (postingError) {
         // Revert slot status on failure
-        const errorMessage = postingError instanceof Error ? postingError.message : 'Unknown error'
+        const errorMessage = postingError instanceof Error
+          ? postingError.message
+          : String(postingError) || 'Unknown error - no error details available'
         await revertSlotToPending(slot.id, errorMessage)
 
         // Log full error details for debugging
         console.error(`❌ Failed to post slot ${slot.id}:`, errorMessage)
         console.error(`❌ Full error:`, postingError)
+        console.error(`❌ Error type:`, typeof postingError)
         console.error(`❌ Error stack:`, postingError instanceof Error ? postingError.stack : 'No stack trace')
 
         return {
@@ -415,6 +418,151 @@ export async function postFromSchedule(config: Partial<PostingConfig> = {}): Pro
       success: false,
       type: 'ERROR',
       error: errorMessage
+    }
+  } finally {
+    await db.disconnect()
+  }
+}
+
+/**
+ * Post ALL scheduled content that is due (batch posting)
+ * This ensures multiple posts due at the same time all get posted
+ */
+export async function postAllFromSchedule(config: Partial<PostingConfig> = {}): Promise<{
+  success: boolean
+  totalPosted: number
+  results: PostingResult[]
+  errors: string[]
+}> {
+  const finalConfig = { ...DEFAULT_CONFIG, ...config }
+  const results: PostingResult[] = []
+  const errors: string[] = []
+  let totalPosted = 0
+
+  // Feature flag check
+  if (!finalConfig.enforceScheduleSourceOfTruth) {
+    console.log('⚠️ ENFORCE_SCHEDULE_SOURCE_OF_TRUTH is disabled')
+    return {
+      success: false,
+      totalPosted: 0,
+      results: [],
+      errors: ['Schedule source of truth enforcement is disabled']
+    }
+  }
+
+  try {
+    await db.connect()
+
+    // 1. Get all slots in time window
+    const slots = await getSlotsInTimeWindow(finalConfig)
+
+    if (slots.length === 0) {
+      console.log('📭 NO_SCHEDULED_CONTENT: No slots in time window')
+      return {
+        success: true,
+        totalPosted: 0,
+        results: [{
+          success: true,
+          type: 'NO_SCHEDULED_CONTENT'
+        }],
+        errors: []
+      }
+    }
+
+    console.log(`📋 Found ${slots.length} slot(s) due for posting`)
+
+    // 2. Try to post each available slot
+    for (const slot of slots) {
+      // Check if slot has content assigned
+      if (!slot.content_id) {
+        console.log(`⚪ EMPTY_SCHEDULE_SLOT: Slot ${slot.id} has no content_id`)
+        results.push({
+          success: true,
+          type: 'EMPTY_SCHEDULE_SLOT',
+          scheduledSlotId: slot.id,
+          platform: slot.platform
+        })
+        continue
+      }
+
+      // Try to claim the slot atomically
+      const claimed = await claimSlotForPosting(slot.id)
+      if (!claimed) {
+        console.log(`🔒 Slot ${slot.id} already claimed, skipping...`)
+        continue
+      }
+
+      try {
+        // 3. Get content details
+        const content = await getContentForSlot(slot.content_id)
+        if (!content) {
+          throw new Error(`Content ${slot.content_id} not found in content_queue`)
+        }
+
+        // 4. Post to platform
+        await postToPlatform(content, slot.platform)
+
+        // 5. Record successful posting
+        await recordSuccessfulPost(slot, slot.content_id)
+
+        console.log(`✅ Successfully posted slot ${slot.id} (content ${slot.content_id}) to ${slot.platform}`)
+
+        totalPosted++
+        results.push({
+          success: true,
+          type: 'POSTED',
+          scheduledSlotId: slot.id,
+          contentId: slot.content_id,
+          platform: slot.platform,
+          postedAt: formatISO(new Date()),
+          metadata: {
+            scheduledFor: slot.scheduled_post_time,
+            slotIndex: slot.scheduled_slot_index,
+            contentPreview: content.content_text?.substring(0, 100)
+          }
+        })
+
+      } catch (postingError) {
+        // Revert slot status on failure
+        const errorMessage = postingError instanceof Error ? postingError.message : String(postingError) || 'Unknown error'
+        await revertSlotToPending(slot.id, errorMessage)
+
+        // Log full error details for debugging
+        console.error(`❌ Failed to post slot ${slot.id}:`, errorMessage)
+        console.error(`❌ Full error:`, postingError)
+        console.error(`❌ Error stack:`, postingError instanceof Error ? postingError.stack : 'No stack trace')
+
+        errors.push(`Slot ${slot.id}: ${errorMessage}`)
+        results.push({
+          success: false,
+          type: 'ERROR',
+          scheduledSlotId: slot.id,
+          contentId: slot.content_id,
+          platform: slot.platform,
+          error: errorMessage
+        })
+      }
+    }
+
+    console.log(`✅ Batch posting complete: ${totalPosted} posted, ${errors.length} errors`)
+
+    return {
+      success: errors.length === 0 || totalPosted > 0,
+      totalPosted,
+      results,
+      errors
+    }
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error) || 'Unknown error'
+    console.error('❌ Batch posting service error:', errorMessage)
+
+    errors.push(errorMessage)
+    return {
+      success: false,
+      totalPosted,
+      results,
+      errors
     }
   } finally {
     await db.disconnect()

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { postFromSchedule } from '@/lib/services/posting/schedule-only-poster'
+import { postAllFromSchedule } from '@/lib/services/posting/schedule-only-poster'
 import { scheduleNextBatch } from '@/lib/services/schedule-content'
 import {
   validateRequestMethod,
@@ -53,13 +53,13 @@ export async function POST(request: NextRequest) {
     
     console.log('🤖 Cron job: Starting scheduled content posting...')
 
-    // Step 1: Post any scheduled content that is due (using new schedule-only-poster)
+    // Step 1: Post ALL scheduled content that is due (using new batch poster)
     // Use 60-minute grace window to account for GitHub Actions delays (can be 20-50 min late)
-    const postingResult = await postFromSchedule({ graceMinutes: 60 })
+    const batchResult = await postAllFromSchedule({ graceMinutes: 60 })
 
     // Step 2: If we posted content, ensure next batch is scheduled
     let schedulingResult = null
-    if (postingResult.success && postingResult.type === 'POSTED') {
+    if (batchResult.success && batchResult.totalPosted > 0) {
       console.log('📅 Replenishing schedule after posting...')
       try {
         schedulingResult = await scheduleNextBatch(7, 6) // Schedule next 7 days
@@ -69,20 +69,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Calculate platform distribution from results
+    const platformDistribution: Record<string, number> = {}
+    for (const result of batchResult.results) {
+      if (result.success && result.type === 'POSTED' && result.platform) {
+        platformDistribution[result.platform] = (platformDistribution[result.platform] || 0) + 1
+      }
+    }
+
     // Step 3: Compile results
     const response = {
       timestamp: new Date().toISOString(),
       posting: {
-        success: postingResult.success,
-        type: postingResult.type,
-        totalPosted: postingResult.type === 'POSTED' ? 1 : 0,
-        scheduledSlotId: postingResult.scheduledSlotId,
-        contentId: postingResult.contentId,
-        platform: postingResult.platform,
-        postedAt: postingResult.postedAt,
-        error: postingResult.error,
-        platformDistribution: postingResult.platform ? { [postingResult.platform]: 1 } : {},
-        errors: postingResult.error ? [postingResult.error] : []
+        success: batchResult.success,
+        totalPosted: batchResult.totalPosted,
+        results: batchResult.results,
+        platformDistribution,
+        errors: batchResult.errors
       },
       scheduling: schedulingResult ? {
         totalScheduled: schedulingResult.summary.totalScheduled,
@@ -90,25 +93,22 @@ export async function POST(request: NextRequest) {
         platformDistribution: schedulingResult.summary.platformDistribution,
         errors: schedulingResult.errors
       } : null,
-      status: postingResult.type
+      status: batchResult.totalPosted > 0 ? 'POSTED' : 'NO_SCHEDULED_CONTENT'
     }
 
     // Log the cron execution
     console.log('🤖 Cron job completed:', {
-      type: postingResult.type,
-      posted: postingResult.type === 'POSTED' ? 1 : 0,
+      posted: batchResult.totalPosted,
       scheduled: schedulingResult?.summary.totalScheduled || 0,
-      errors: postingResult.error ? 1 : 0
+      errors: batchResult.errors.length
     })
 
-    const message = postingResult.type === 'POSTED'
-      ? `Posted scheduled content to ${postingResult.platform}`
-      : postingResult.type === 'NO_SCHEDULED_CONTENT'
-      ? 'No scheduled content due for posting'
-      : postingResult.type === 'EMPTY_SCHEDULE_SLOT'
-      ? 'Schedule slot has no content assigned'
-      : postingResult.error || 'Unknown status'
-    
+    const message = batchResult.totalPosted > 0
+      ? `Posted ${batchResult.totalPosted} scheduled content item(s)`
+      : batchResult.errors.length > 0
+      ? `Failed to post content: ${batchResult.errors[0]}`
+      : 'No scheduled content due for posting'
+
     return createSuccessResponse(response, message)
     
   } catch (error) {
