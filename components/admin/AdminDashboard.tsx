@@ -18,6 +18,46 @@ export default function AdminDashboard() {
   const activePlatforms = dashboardData?.platformStatus ?
     Object.values(dashboardData.platformStatus).filter((p: any) => p.operational).length : 8
 
+  // Handle platform scan
+  const handleScanPlatform = async (platform: string) => {
+    try {
+      const response = await fetch(`/api/admin/${platform}/scan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ maxPosts: 20 })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log(`Scan complete for ${platform}:`, result)
+        // Refresh dashboard data
+        refresh()
+      } else {
+        console.error(`Scan failed for ${platform}`)
+      }
+    } catch (error) {
+      console.error(`Error scanning ${platform}:`, error)
+    }
+  }
+
+  // Format date for display
+  const formatLastScan = (lastScan: string | null) => {
+    if (!lastScan) return 'Never'
+    const date = new Date(lastScan)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString()
+  }
+
   // Error state with retry option
   if (dashboardError) {
     return (
@@ -391,13 +431,14 @@ export default function AdminDashboard() {
                         {dashboardData?.platformStatus?.[platform.key]?.itemCount || 0}
                       </td>
                       <td className="table-cell" style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280' }} data-testid={`platform-last-scan-${platform.key}`}>
-                        {dashboardData?.platformStatus?.[platform.key]?.lastScan ? 
-                          new Date(dashboardData.platformStatus[platform.key].lastScan).toLocaleDateString() : 
-                          'Never'
-                        }
+                        {formatLastScan(dashboardData?.platformStatus?.[platform.key]?.lastScan)}
                       </td>
                       <td className="table-cell" style={{ textAlign: 'center' }}>
-                        <button className="scan-btn" data-testid={`platform-scan-btn-${platform.key}`}>
+                        <button
+                          className="scan-btn"
+                          data-testid={`platform-scan-btn-${platform.key}`}
+                          onClick={() => handleScanPlatform(platform.key)}
+                        >
                           Scan
                         </button>
                       </td>

@@ -76,16 +76,31 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Get platform status
+    // Get last scan times per platform from content_queue
+    const lastScanQuery = `
+      SELECT
+        source_platform,
+        MAX(scraped_at) as last_scan
+      FROM content_queue
+      WHERE source_platform IS NOT NULL AND scraped_at IS NOT NULL
+      GROUP BY source_platform
+    `
+    const lastScanResult = await db.query(lastScanQuery)
+    const lastScans: Record<string, string> = {}
+    lastScanResult.rows.forEach((row: any) => {
+      lastScans[row.source_platform] = row.last_scan
+    })
+
+    // Get platform status - operational if has content
     const platformStatus = {
-      reddit: { operational: true, itemCount: queueStats.platforms.reddit || 0, lastScan: null, status: 'Active' },
-      youtube: { operational: true, itemCount: queueStats.platforms.youtube || 0, lastScan: null, status: 'Active' },
-      pixabay: { operational: true, itemCount: queueStats.platforms.pixabay || 0, lastScan: null, status: 'Active' },
-      giphy: { operational: true, itemCount: queueStats.platforms.giphy || 0, lastScan: null, status: 'Active' },
-      bluesky: { operational: true, itemCount: queueStats.platforms.bluesky || 0, lastScan: null, status: 'Active (timing quirk)' },
-      tumblr: { operational: true, itemCount: queueStats.platforms.tumblr || 0, lastScan: null, status: 'Active' },
-      imgur: { operational: true, itemCount: queueStats.platforms.imgur || 0, lastScan: null, status: 'Active' },
-      lemmy: { operational: true, itemCount: queueStats.platforms.lemmy || 0, lastScan: null, status: 'Active' }
+      reddit: { operational: (queueStats.platforms.reddit || 0) > 0, itemCount: queueStats.platforms.reddit || 0, lastScan: lastScans.reddit || null, status: 'Active' },
+      youtube: { operational: (queueStats.platforms.youtube || 0) > 0, itemCount: queueStats.platforms.youtube || 0, lastScan: lastScans.youtube || null, status: 'Active' },
+      pixabay: { operational: (queueStats.platforms.pixabay || 0) > 0, itemCount: queueStats.platforms.pixabay || 0, lastScan: lastScans.pixabay || null, status: 'Active' },
+      giphy: { operational: (queueStats.platforms.giphy || 0) > 0, itemCount: queueStats.platforms.giphy || 0, lastScan: lastScans.giphy || null, status: 'Active' },
+      bluesky: { operational: (queueStats.platforms.bluesky || 0) > 0, itemCount: queueStats.platforms.bluesky || 0, lastScan: lastScans.bluesky || null, status: 'Active' },
+      tumblr: { operational: (queueStats.platforms.tumblr || 0) > 0, itemCount: queueStats.platforms.tumblr || 0, lastScan: lastScans.tumblr || null, status: 'Active' },
+      imgur: { operational: (queueStats.platforms.imgur || 0) > 0, itemCount: queueStats.platforms.imgur || 0, lastScan: lastScans.imgur || null, status: 'Active' },
+      lemmy: { operational: (queueStats.platforms.lemmy || 0) > 0, itemCount: queueStats.platforms.lemmy || 0, lastScan: lastScans.lemmy || null, status: 'Active' }
     }
 
     // Calculate API savings
