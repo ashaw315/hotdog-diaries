@@ -381,7 +381,10 @@ export async function postFromSchedule(config: Partial<PostingConfig> = {}): Pro
         
       } catch (postingError) {
         // Revert slot status on failure
-        const errorMessage = postingError instanceof Error
+        // Handle Supabase errors (which have .message property) and regular errors
+        const errorMessage = postingError && typeof postingError === 'object' && 'message' in postingError
+          ? (postingError as any).message
+          : postingError instanceof Error
           ? postingError.message
           : String(postingError) || 'Unknown error - no error details available'
         await revertSlotToPending(slot.id, errorMessage)
@@ -524,7 +527,12 @@ export async function postAllFromSchedule(config: Partial<PostingConfig> = {}): 
 
       } catch (postingError) {
         // Revert slot status on failure
-        const errorMessage = postingError instanceof Error ? postingError.message : String(postingError) || 'Unknown error'
+        // Handle Supabase errors (which have .message property) and regular errors
+        const errorMessage = postingError && typeof postingError === 'object' && 'message' in postingError
+          ? (postingError as any).message
+          : postingError instanceof Error
+          ? postingError.message
+          : String(postingError) || 'Unknown error'
         await revertSlotToPending(slot.id, errorMessage)
 
         // Log full error details for debugging
