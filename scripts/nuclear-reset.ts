@@ -14,9 +14,10 @@ const SITE_URL = 'https://hotdog-diaries.vercel.app'
 const AUTH_TOKEN = process.env.AUTH_TOKEN!
 
 async function nuclearReset() {
-  console.log('💣 NUCLEAR RESET: Starting clean slate process\n')
+  console.log('💣 NUCLEAR RESET v3: Starting clean slate process\n')
   console.log('⚠️  This will DELETE all discovered (unapproved) content')
-  console.log('✅ This will KEEP all approved and posted content')
+  console.log('⚠️  This will DELETE all low-quality approved content (< 50% confidence)')
+  console.log('✅ This will KEEP posted content and high-quality approved content')
   console.log()
 
   // Step 1: Check what we have
@@ -55,6 +56,24 @@ async function nuclearReset() {
   }
 
   console.log(`  ✅ Deleted ${deleted?.length || 0} discovered items`)
+  console.log()
+
+  // Step 2b: DELETE low-quality approved content
+  console.log('🗑️  Step 2b: Deleting low-quality approved content...')
+  const { data: deletedApproved, error: deleteApprovedError } = await supabase
+    .from('content_queue')
+    .delete()
+    .eq('is_approved', true)
+    .eq('is_posted', false)
+    .lt('confidence_score', 0.5)
+    .select()
+
+  if (deleteApprovedError) {
+    console.error('❌ Error deleting low-quality approved:', deleteApprovedError)
+    throw deleteApprovedError
+  }
+
+  console.log(`  ✅ Deleted ${deletedApproved?.length || 0} low-quality approved items`)
   console.log()
 
   // Step 3: Scan all platforms fresh
