@@ -14,8 +14,8 @@ jobs:
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-      - run: pnpm install --prod --no-frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile
       - name: Approve content
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: pnpm tsx scripts/simple-approve.ts
+        run: pnpm exec tsx scripts/simple-approve.ts
