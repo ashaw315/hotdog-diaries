@@ -7,151 +7,16 @@ import { ContentStatusDashboard } from './ContentStatusDashboard'
 import DiversityAlerts from './DiversityAlerts'
 import HealthStatusDashboard from './HealthStatusDashboard'
 
-interface DashboardStats {
-  totalContent: number
-  pendingContent: number
-  postedToday: number
-  totalViews: number
-  lastPostTime?: Date
-  nextPostTime?: Date
-  avgEngagement: number
-  systemStatus: 'online' | 'offline' | 'maintenance'
-  platformStats: {
-    reddit: { enabled: boolean; contentFound: number; lastScan?: string }
-    youtube: { enabled: boolean; contentFound: number; lastScan?: string }
-    flickr: { enabled: boolean; contentFound: number; lastScan?: string }
-    unsplash: { enabled: boolean; contentFound: number; lastScan?: string }
-  }
-  contentPipeline: {
-    queuedForReview: number
-    autoApproved: number
-    flaggedForManualReview: number
-    rejected: number
-  }
-}
-
-interface RecentActivity {
-  id: string
-  type: 'posted' | 'added' | 'error'
-  description: string
-  timestamp: Date
-}
-
 export default function AdminDashboard() {
   const { user } = useAuth()
   const { data: dashboardData, loading: isLoading, error: dashboardError, refresh } = useDashboardData(30000) // 30 second refresh
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
 
-  // Map dashboard data to local stats format for compatibility
-  const stats: DashboardStats = {
-    totalContent: dashboardData?.queueStats?.totalApproved || 0,
-    pendingContent: 0, // No pending data in current API response
-    postedToday: dashboardData?.postingSchedule?.todaysPosts || 0,
-    totalViews: 0, // This would come from analytics if available
-    avgEngagement: 0, // This would come from analytics if available
-    systemStatus: dashboardData ? 'online' : 'offline',
-    platformStats: {
-      reddit: { 
-        enabled: dashboardData?.platformStatus?.reddit?.operational || false, 
-        contentFound: dashboardData?.platformStatus?.reddit?.itemCount || 0,
-        lastScan: dashboardData?.platformStatus?.reddit?.lastScan || undefined
-      },
-      youtube: { 
-        enabled: dashboardData?.platformStatus?.youtube?.operational || false, 
-        contentFound: dashboardData?.platformStatus?.youtube?.itemCount || 0,
-        lastScan: dashboardData?.platformStatus?.youtube?.lastScan || undefined
-      },
-      flickr: { 
-        enabled: false, // Flickr not in current API response
-        contentFound: 0,
-        lastScan: undefined
-      },
-      unsplash: { 
-        enabled: false, // Unsplash not in current API response  
-        contentFound: 0,
-        lastScan: undefined
-      }
-    },
-    contentPipeline: {
-      queuedForReview: 0, // No pending data in current API response
-      autoApproved: dashboardData?.queueStats?.totalApproved || 0,
-      flaggedForManualReview: 0, // This would need to be added to the API
-      rejected: 0 // This would need to be calculated from content_queue
-    }
-  }
-
-  // Safe fetch with defensive null checks
-  const safeFetchJson = async (url: string, options: RequestInit = {}) => {
-    try {
-      const response = await fetch(url, {
-        credentials: 'include',
-        ...options
-      })
-      
-      if (!response) {
-        return { data: null, error: 'No response received', status: 0 }
-      }
-      
-      if (!response.ok) {
-        return { data: null, error: `HTTP ${response.status}`, status: response.status }
-      }
-      
-      const data = await response.json()
-      return { data: data || null, error: null, status: response.status }
-    } catch (error) {
-      return { data: null, error: error instanceof Error ? error.message : 'Unknown error', status: 0 }
-    }
-  }
-
-  // Fetch recent activity separately as it's not in the main dashboard hook
-  useEffect(() => {
-    const fetchRecentActivity = async () => {
-      const result = await safeFetchJson('/api/admin/dashboard?view=activity')
-      
-      if (result.error) {
-        if (result.status === 401) {
-          console.warn('Unauthorized access to dashboard activity')
-        } else {
-          console.error('Failed to fetch recent activity:', result.error)
-        }
-        return
-      }
-      
-      // Defensive null check - ensure we have valid array data
-      const activityData = result.data
-      if (Array.isArray(activityData)) {
-        setRecentActivity(activityData)
-      } else {
-        console.warn('Activity data is not an array:', activityData)
-        setRecentActivity([])
-      }
-    }
-
-    fetchRecentActivity()
-  }, [])
-
-  const formatTime = (date?: Date) => {
-    if (!date) return 'Never'
-    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online': return 'text-green-600 bg-green-100'
-      case 'offline': return 'text-red-600 bg-red-100'
-      case 'maintenance': return 'text-yellow-600 bg-yellow-100'
-      default: return 'text-gray-600 bg-gray-100'
-    }
-  }
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'posted': return '📤'
-      case 'added': return '➕'
-      case 'error': return '❌'
-      default: return '📝'
-    }
-  }
+  // Extract key metrics from dashboard data
+  const totalApproved = dashboardData?.queueStats?.totalApproved || 0
+  const totalDiscovered = dashboardData?.queueStats?.totalPending || 0
+  const postedToday = dashboardData?.postingSchedule?.todaysPosts || 0
+  const activePlatforms = dashboardData?.platformStatus ?
+    Object.values(dashboardData.platformStatus).filter((p: any) => p.operational).length : 8
 
   // Error state with retry option
   if (dashboardError) {
@@ -465,10 +330,10 @@ export default function AdminDashboard() {
           {/* Key Metrics */}
           <div className="stats-grid" data-testid="stats-grid">
             {[
-              { label: 'Total Content', value: stats.totalContent, color: '#3b82f6', icon: '📊', testId: 'metric-total-content' },
-              { label: 'Approved', value: stats.totalContent - stats.pendingContent, color: '#10b981', icon: '✅', testId: 'metric-approved' },
-              { label: 'Pending', value: stats.pendingContent, color: '#f59e0b', icon: '⏳', testId: 'metric-pending' },
-              { label: 'Posted Today', value: stats.postedToday, color: '#8b5cf6', icon: '📤', testId: 'metric-posted-today' }
+              { label: 'Approved', value: totalApproved, color: '#10b981', icon: '✅', testId: 'metric-approved' },
+              { label: 'Discovered', value: totalDiscovered, color: '#f59e0b', icon: '🔍', testId: 'metric-discovered' },
+              { label: 'Posted Today', value: postedToday, color: '#8b5cf6', icon: '📤', testId: 'metric-posted-today' },
+              { label: 'Active Platforms', value: activePlatforms, color: '#3b82f6', icon: '🌐', testId: 'metric-platforms' }
             ].map((stat, index) => (
               <div key={index} className="metric-card" style={{ borderLeft: `4px solid ${stat.color}` }} data-testid={stat.testId}>
                 <div className="metric-header">

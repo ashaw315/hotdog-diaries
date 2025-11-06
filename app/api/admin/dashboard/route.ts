@@ -131,6 +131,8 @@ export async function GET(request: NextRequest) {
     const data = {
       queueStats: {
         totalApproved: queueStats.totalApproved,
+        totalPending: queueStats.totalPending,
+        totalContent: queueStats.totalApproved + queueStats.totalPending,
         daysOfContent: queueStats.daysOfContent,
         needsScanning: queueStats.needsScanning,
         contentBalance
