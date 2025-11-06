@@ -1,0 +1,34 @@
+name: 💣 Nuclear Reset
+
+on:
+  workflow_dispatch:
+
+jobs:
+  nuclear-reset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --prod
+
+      - name: Execute Nuclear Reset
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+        run: |
+          echo "💣 Starting Nuclear Reset..."
+          echo "⚠️  This will delete all discovered content and start fresh"
+          echo ""
+          pnpm tsx scripts/nuclear-reset.ts
