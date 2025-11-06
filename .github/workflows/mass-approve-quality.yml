@@ -1,0 +1,37 @@
+name: Mass Approve Quality Content
+
+on:
+  workflow_dispatch:
+    inputs:
+      min_confidence:
+        description: 'Minimum confidence score (0-100)'
+        required: false
+        default: '60'
+        type: string
+      max_items:
+        description: 'Maximum items to approve'
+        required: false
+        default: '500'
+        type: string
+
+jobs:
+  mass-approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Approve High-Quality Content
+        run: |
+          echo "✅ Approving high-quality content (confidence >= ${{ github.event.inputs.min_confidence || 60 }}%)..."
+
+          curl -X POST "${{ secrets.SITE_URL }}/api/admin/auto-approve-production" \
+            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "forceApproval": true,
+              "maxItems": ${{ github.event.inputs.max_items || 500 }},
+              "minConfidenceScore": ${{ (github.event.inputs.min_confidence || 60) / 100 }},
+              "balancePlatforms": true
+            }' \
+            --silent --show-error | jq '.'
+
+          echo ""
+          echo "✅ Mass approval completed!"
