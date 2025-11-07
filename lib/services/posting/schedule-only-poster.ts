@@ -231,6 +231,20 @@ async function recordSuccessfulPost(slot: ScheduledSlot, contentId: number): Pro
       console.error('❌ Error updating scheduled_posts:', updateError)
       throw updateError
     }
+
+    // Update content_queue to mark as posted
+    const { error: contentUpdateError } = await supabase
+      .from('content_queue')
+      .update({
+        is_posted: true,
+        posted_at: postedAt
+      })
+      .eq('id', contentId)
+
+    if (contentUpdateError) {
+      console.error('❌ Error updating content_queue:', contentUpdateError)
+      throw contentUpdateError
+    }
   } else {
     // SQLite transaction (basic)
     await db.query(`
@@ -244,6 +258,12 @@ async function recordSuccessfulPost(slot: ScheduledSlot, contentId: number): Pro
       SET status = 'posted', actual_posted_at = ?, updated_at = ?
       WHERE id = ?
     `, [postedAt, postedAt, slot.id])
+
+    await db.query(`
+      UPDATE content_queue
+      SET is_posted = true, posted_at = ?
+      WHERE id = ?
+    `, [postedAt, contentId])
   }
 }
 
