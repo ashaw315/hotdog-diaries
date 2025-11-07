@@ -69,7 +69,7 @@ async function cleanupDuplicateSchedules() {
       // Also update content_queue to ensure is_posted flag is set
       const { data: content, error: contentError } = await supabase
         .from('content_queue')
-        .select('id, is_posted, posted_at')
+        .select('id, is_posted')
         .eq('id', contentId)
         .single()
 
@@ -78,32 +78,18 @@ async function cleanupDuplicateSchedules() {
       } else if (content && !content.is_posted) {
         console.log(`  ⚠️ Content ${contentId} is_posted flag is false, fixing...`)
 
-        // Get the posted_at time from posted_content
-        const { data: posted, error: postedAtError } = await supabase
-          .from('posted_content')
-          .select('posted_at')
-          .eq('content_queue_id', contentId)
-          .order('posted_at', { ascending: true })
-          .limit(1)
-          .single()
+        const { error: fixError } = await supabase
+          .from('content_queue')
+          .update({
+            is_posted: true
+          })
+          .eq('id', contentId)
 
-        if (postedAtError) {
-          console.error(`    ❌ Error fetching posted_at:`, postedAtError)
-        } else if (posted) {
-          const { error: fixError } = await supabase
-            .from('content_queue')
-            .update({
-              is_posted: true,
-              posted_at: posted.posted_at
-            })
-            .eq('id', contentId)
-
-          if (fixError) {
-            console.error(`    ❌ Error fixing content_queue:`, fixError)
-          } else {
-            console.log(`    ✅ Fixed is_posted flag and posted_at timestamp`)
-            totalFixed++
-          }
+        if (fixError) {
+          console.error(`    ❌ Error fixing content_queue:`, fixError)
+        } else {
+          console.log(`    ✅ Fixed is_posted flag`)
+          totalFixed++
         }
       }
 

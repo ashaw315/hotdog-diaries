@@ -236,8 +236,7 @@ async function recordSuccessfulPost(slot: ScheduledSlot, contentId: number): Pro
     const { error: contentUpdateError } = await supabase
       .from('content_queue')
       .update({
-        is_posted: true,
-        posted_at: postedAt
+        is_posted: true
       })
       .eq('id', contentId)
 
@@ -261,9 +260,9 @@ async function recordSuccessfulPost(slot: ScheduledSlot, contentId: number): Pro
 
     await db.query(`
       UPDATE content_queue
-      SET is_posted = true, posted_at = ?
+      SET is_posted = true
       WHERE id = ?
-    `, [postedAt, contentId])
+    `, [contentId])
   }
 }
 
