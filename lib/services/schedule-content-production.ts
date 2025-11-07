@@ -312,11 +312,12 @@ export async function scheduleNextBatch(
     for (let dayOffset = 0; dayOffset < daysAhead; dayOffset++) {
       const targetDate = dayjs().add(dayOffset, 'day').startOf('day')
       
-      // Check if this day already has scheduled content (production schema)
+      // Check if this day already has scheduled content using scheduled_posts table
       const existingScheduled = await db.query(`
         SELECT COUNT(*) as count
-        FROM content_queue
-        WHERE DATE(scheduled_post_time) = $1 AND content_status = 'scheduled'
+        FROM scheduled_posts
+        WHERE DATE(scheduled_post_time) = $1
+          AND status IN ('pending', 'posting', 'posted')
       `, [targetDate.format('YYYY-MM-DD')])
 
       const alreadyScheduled = existingScheduled.rows[0]?.count || 0
@@ -324,6 +325,8 @@ export async function scheduleNextBatch(
         console.log(`⏭️ Skipping ${targetDate.format('YYYY-MM-DD')} - already has ${alreadyScheduled} scheduled posts`)
         continue
       }
+
+      console.log(`📅 ${targetDate.format('YYYY-MM-DD')} has ${alreadyScheduled}/${postsPerDay} posts, scheduling ${postsPerDay - alreadyScheduled} more`)
 
       // Schedule content for this day
       const dayResult = await scheduleDayContent(
