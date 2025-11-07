@@ -111,8 +111,8 @@ jobs:
           DAYS="${{ needs.determine-operation.outputs.days }}"
           AUTH_TOKEN="${{ secrets.AUTH_TOKEN }}"
           
-          # Calculate target date for refill (tomorrow)
-          TARGET_DATE=$(date -d "+1 day" +%Y-%m-%d)
+          # Calculate target date for refill (today)
+          TARGET_DATE=$(date +%Y-%m-%d)
           echo "📅 Target date for refill: $TARGET_DATE"
           
           # Call the refill API endpoint with required date parameter
