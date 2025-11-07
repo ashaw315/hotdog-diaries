@@ -101,6 +101,31 @@ async function checkApprovedContent() {
   }
 
   console.log('\n✅ Diagnosis complete')
+
+  // Check for null/undefined platform or content_type
+  console.log('\n\n🔍 Checking for null/undefined values in approved content...')
+  const nullPlatformCount = allContent?.filter(c => c.is_approved && !c.is_posted && !c.source_platform).length || 0
+  const nullContentTypeCount = allContent?.filter(c => c.is_approved && !c.is_posted && !c.content_type).length || 0
+
+  if (nullPlatformCount > 0) {
+    console.log(`   ⚠️ ${nullPlatformCount} approved items have null/undefined source_platform`)
+    const samples = allContent?.filter(c => c.is_approved && !c.is_posted && !c.source_platform).slice(0, 3)
+    samples?.forEach(item => {
+      console.log(`      ID ${item.id}: "${item.content_text?.substring(0, 50)}..."`)
+    })
+  } else {
+    console.log(`   ✅ All approved items have valid source_platform`)
+  }
+
+  if (nullContentTypeCount > 0) {
+    console.log(`   ⚠️ ${nullContentTypeCount} approved items have null/undefined content_type`)
+    const samples = allContent?.filter(c => c.is_approved && !c.is_posted && !c.content_type).slice(0, 3)
+    samples?.forEach(item => {
+      console.log(`      ID ${item.id}: ${item.source_platform} - "${item.content_text?.substring(0, 50)}..."`)
+    })
+  } else {
+    console.log(`   ✅ All approved items have valid content_type`)
+  }
 }
 
 checkApprovedContent().catch(console.error)
