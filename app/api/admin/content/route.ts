@@ -209,13 +209,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       } else if (status === 'approved') {
         if (hasContentStatus) {
           whereClause = `cq.content_status = 'approved'`
-          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
+          if (hasIsPosted) {
+            whereClause += ' AND cq.is_posted = FALSE'
+          }
         } else if (hasIsApproved) {
           whereClause = 'cq.is_approved = TRUE'
-          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
+          if (hasIsPosted) {
+            whereClause += ' AND cq.is_posted = FALSE'
+          }
         } else {
           whereClause = '1=1' // Fallback if column doesn't exist
-          whereClause += ' AND NOT EXISTS (SELECT 1 FROM posted_content WHERE content_queue_id = cq.id)'
         }
       } else if (status === 'rejected') {
         if (hasContentStatus) {
