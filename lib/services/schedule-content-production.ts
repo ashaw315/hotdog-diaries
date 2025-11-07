@@ -43,17 +43,20 @@ function groupBy<T>(array: T[], keyFn: (item: T) => string): Record<string, T[]>
  */
 async function getAvailableContent(): Promise<Record<string, ContentItem[]>> {
   try {
-    // Use production-compatible field names
+    // Use production-compatible field names and validate content is ready to post
     const result = await db.query(`
-      SELECT * FROM content_queue 
-      WHERE is_approved = TRUE 
-        AND is_posted = FALSE 
+      SELECT * FROM content_queue
+      WHERE is_approved = TRUE
+        AND is_posted = FALSE
         AND (scheduled_post_time IS NULL OR scheduled_post_time <= NOW())
+        AND content_text IS NOT NULL
+        AND content_text != ''
+        AND (content_image_url IS NOT NULL OR content_video_url IS NOT NULL)
       ORDER BY confidence_score DESC, created_at ASC
     `)
 
-    console.log(`📊 Found ${result.rows.length} eligible items for scheduling`)
-    
+    console.log(`📊 Found ${result.rows.length} eligible items for scheduling (with validation)`)
+
     const content = result.rows.map(row => ({
       ...row,
       // Map production fields to expected interface
@@ -61,8 +64,20 @@ async function getAvailableContent(): Promise<Record<string, ContentItem[]>> {
       scheduled_for: row.scheduled_post_time,
       priority: row.confidence_score || 0.5
     })) as ContentItem[]
-    
-    return groupBy(content, (item) => item.source_platform)
+
+    // Additional validation: filter out items with invalid media
+    const validContent = content.filter(item => {
+      // Check for .mp4/.webm in image URL (should be in video URL)
+      if (item.content_image_url && /\.(mp4|webm|mov)$/i.test(item.content_image_url)) {
+        console.warn(`⚠️ Skipping content ${item.id}: video file in image_url field`)
+        return false
+      }
+      return true
+    })
+
+    console.log(`✅ ${validContent.length} items passed validation`)
+
+    return groupBy(validContent, (item) => item.source_platform)
   } catch (error) {
     console.error('Error fetching available content:', error)
     return {}
