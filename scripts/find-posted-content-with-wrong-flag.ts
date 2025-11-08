@@ -16,7 +16,7 @@ async function findPostedContentWithWrongFlag() {
   // Get all content that has been posted (from posted_content table)
   const { data: postedContent, error: postedError } = await supabase
     .from('posted_content')
-    .select('content_queue_id, created_at, platform_posted_id')
+    .select('content_queue_id, created_at')
     .order('created_at', { ascending: false })
 
   if (postedError) {
