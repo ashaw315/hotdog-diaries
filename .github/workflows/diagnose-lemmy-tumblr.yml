@@ -1,0 +1,44 @@
+name: Diagnose Lemmy & Tumblr Scanners
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run diagnostic script
+        env:
+          AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+          SITE_URL: ${{ secrets.SITE_URL || 'https://hotdog-diaries.vercel.app' }}
+        run: pnpm tsx scripts/diagnose-lemmy-tumblr-scanners.ts
+
+      - name: Upload diagnostic output
+        if: always()
+        run: |
+          echo "## Lemmy & Tumblr Scanner Diagnostic Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the job logs above for detailed diagnostic output." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The diagnostic tested:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Direct Lemmy scanner endpoint" >> $GITHUB_STEP_SUMMARY
+          echo "2. Direct Tumblr scanner endpoint" >> $GITHUB_STEP_SUMMARY
+          echo "3. Smart-scan wrapper for Lemmy" >> $GITHUB_STEP_SUMMARY
+          echo "4. Smart-scan wrapper for Tumblr" >> $GITHUB_STEP_SUMMARY
