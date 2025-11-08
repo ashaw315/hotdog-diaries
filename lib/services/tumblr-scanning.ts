@@ -1,7 +1,8 @@
 import { FilteringService } from './filtering'
 import { ContentProcessor } from './content-processor'
-import { db, logToDatabase } from '@/lib/db'
+import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { createSimpleClient } from '@/utils/supabase/server'
 
 export interface TumblrPhoto {
   caption: string
@@ -245,34 +246,34 @@ export class TumblrScanningService {
             source_platform: 'tumblr' as const,
             original_url: post.postUrl,
             original_author: `@${post.author} on Tumblr`,
-            scraped_at: new Date(),
-            content_hash: this.contentProcessor.generateContentHash(contentForHash)
+            scraped_at: new Date().toISOString(),
+            content_hash: this.contentProcessor.generateContentHash(contentForHash),
+            content_status: 'discovered',
+            is_approved: false,
+            is_rejected: false,
+            is_posted: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }
 
-          // Insert into database
-          const insertQuery = `
-            INSERT INTO content_queue (
-              content_text, content_image_url, content_video_url, content_type,
-              source_platform, original_url, original_author, 
-              scraped_at, content_hash
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-            ON CONFLICT (content_hash) DO UPDATE SET updated_at = NOW()
-            RETURNING id, content_text, source_platform
-          `
-          
-          const insertResult = await db.query(insertQuery, [
-            contentData.content_text,
-            contentData.content_image_url,
-            contentData.content_video_url,
-            contentData.content_type,
-            contentData.source_platform,
-            contentData.original_url,
-            contentData.original_author,
-            contentData.scraped_at,
-            contentData.content_hash
-          ])
-          
-          const contentId = insertResult.rows[0].id
+          // Use Supabase client (same pattern as Bluesky and other working scanners)
+          const supabase = createSimpleClient()
+
+          const { data, error } = await supabase
+            .from('content_queue')
+            .insert(contentData)
+            .select('id')
+            .single()
+
+          if (error) {
+            throw error
+          }
+
+          if (!data?.id) {
+            throw new Error('Insert returned no ID')
+          }
+
+          const contentId = data.id
 
           // Process the content
           const processingResult = await this.contentProcessor.processContent(contentId, {
@@ -480,36 +481,38 @@ export class TumblrScanningService {
           source_platform: 'tumblr' as const,
           original_url: post.postUrl,
           original_author: `@${post.author} on Tumblr`,
-          scraped_at: new Date(),
+          scraped_at: new Date().toISOString(),
           content_hash: this.contentProcessor.generateContentHash({
             content_text: `${post.title} ${post.description}`.trim(),
             content_image_url: post.imageUrl || null,
             content_video_url: null,
             original_url: post.postUrl
-          })
+          }),
+          content_status: 'discovered',
+          is_approved: false,
+          is_rejected: false,
+          is_posted: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
 
-        const insertResult = await db.query(
-          `INSERT INTO content_queue (
-            content_text, content_image_url, content_video_url, content_type,
-            source_platform, original_url, original_author, scraped_at, content_hash
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-          ON CONFLICT (content_hash) DO UPDATE SET updated_at = NOW()
-          RETURNING id`,
-          [
-            contentData.content_text,
-            contentData.content_image_url,
-            contentData.content_video_url,
-            contentData.content_type,
-            contentData.source_platform,
-            contentData.original_url,
-            contentData.original_author,
-            contentData.scraped_at,
-            contentData.content_hash
-          ]
-        )
+        const supabase = createSimpleClient()
 
-        const contentId = insertResult.rows[0].id
+        const { data, error } = await supabase
+          .from('content_queue')
+          .insert(contentData)
+          .select('id')
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        if (!data?.id) {
+          throw new Error('Insert returned no ID')
+        }
+
+        const contentId = data.id
 
         const processingResult = await this.contentProcessor.processContent(contentId, {
           autoApprovalThreshold: 0.7,

@@ -1,7 +1,8 @@
 import { ContentProcessor, contentProcessor } from './content-processor'
 import { FilteringService } from './filtering'
-import { logToDatabase, db } from '@/lib/db'
+import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
+import { createSimpleClient } from '@/utils/supabase/server'
 
 export interface LemmyPostData {
   id: number
@@ -194,40 +195,34 @@ export class LemmyScanningService {
             source_platform: 'lemmy',
             original_url: post.postUrl,
             original_author: `${post.author} on ${post.community}`,
-            scraped_at: new Date(),
-            content_hash: this.contentProcessor.generateContentHash(contentForHash)
+            scraped_at: new Date().toISOString(),
+            content_hash: this.contentProcessor.generateContentHash(contentForHash),
+            content_status: 'discovered',
+            is_approved: false,
+            is_rejected: false,
+            is_posted: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }
 
-          // Insert into database using the shared db abstraction
-          const insertQuery = `
-            INSERT INTO content_queue (
-              content_text, content_image_url, content_video_url, content_type,
-              source_platform, original_url, original_author, 
-              scraped_at, content_hash
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-            ON CONFLICT (content_hash) DO UPDATE SET updated_at = NOW()
-            RETURNING id, content_text, source_platform
-          `
-          
-          const insertValues = [
-            contentData.content_text,
-            contentData.content_image_url,
-            contentData.content_video_url,
-            contentData.content_type,
-            contentData.source_platform,
-            contentData.original_url,
-            contentData.original_author,
-            contentData.scraped_at,
-            contentData.content_hash
-          ]
-          
-          const insertResult = await db.query(insertQuery, insertValues)
-          
-          if (!insertResult.rows || insertResult.rows.length === 0) {
-            throw new Error('Insert returned no rows')
+          // Use Supabase client (same pattern as Bluesky and other working scanners)
+          const supabase = createSimpleClient()
+
+          const { data, error } = await supabase
+            .from('content_queue')
+            .insert(contentData)
+            .select('id')
+            .single()
+
+          if (error) {
+            throw error
           }
-          
-          const contentId = insertResult.rows[0].id
+
+          if (!data?.id) {
+            throw new Error('Insert returned no ID')
+          }
+
+          const contentId = data.id
 
           await logToDatabase(
             LogLevel.DEBUG,
