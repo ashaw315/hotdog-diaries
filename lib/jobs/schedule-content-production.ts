@@ -10,11 +10,25 @@ import { parseISO, format, setHours, setMinutes, setSeconds, addHours, startOfDa
 
 // Supabase helper functions for refill
 async function getSupabaseCandidates(supabase: any, excludeIds: number[] = [], limit = 200) {
+  // First, get all content_ids that are already scheduled (prevents race conditions)
+  const { data: scheduledIds, error: schedError } = await supabase
+    .from('scheduled_posts')
+    .select('content_id')
+    .in('status', ['pending', 'posting']);
+
+  if (schedError) throw schedError;
+
+  // Combine with excludeIds parameter
+  const allExcludeIds = [
+    ...excludeIds,
+    ...(scheduledIds?.map((row: any) => row.content_id).filter(Boolean) || [])
+  ];
+
   const sel = `
     id, source_platform, content_type, content_text, original_author, created_at, confidence_score,
     is_posted, is_approved, content_status, scheduled_post_time
   `;
-  
+
   let query = supabase
     .from('content_queue')
     .select(sel)
@@ -24,11 +38,11 @@ async function getSupabaseCandidates(supabase: any, excludeIds: number[] = [], l
     .order('confidence_score', { ascending: false })
     .order('created_at', { ascending: true })
     .limit(limit);
-  
-  if (excludeIds.length > 0) {
-    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+
+  if (allExcludeIds.length > 0) {
+    query = query.not('id', 'in', `(${allExcludeIds.join(',')})`);
   }
-  
+
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
@@ -236,17 +250,22 @@ function groupBy<T>(array: T[], keyFn: (item: T) => string): Record<string, T[]>
  */
 async function getAvailableContent(): Promise<Record<string, ContentItem[]>> {
   try {
-    // Use production-compatible field names
+    // Use production-compatible field names and exclude already-scheduled content (prevents race conditions)
     const result = await db.query(`
-      SELECT * FROM content_queue 
-      WHERE is_approved = TRUE 
-        AND is_posted = FALSE 
+      SELECT * FROM content_queue
+      WHERE is_approved = TRUE
+        AND is_posted = FALSE
         AND (scheduled_post_time IS NULL OR scheduled_post_time <= datetime('now'))
+        AND NOT EXISTS (
+          SELECT 1 FROM scheduled_posts
+          WHERE scheduled_posts.content_id = content_queue.id
+            AND scheduled_posts.status IN ('pending', 'posting')
+        )
       ORDER BY confidence_score DESC, created_at ASC
     `)
 
     console.log(`📊 Found ${result.rows.length} eligible items for scheduling`)
-    
+
     const content = result.rows.map(row => ({
       ...row,
       // Map production fields to expected interface
@@ -254,7 +273,7 @@ async function getAvailableContent(): Promise<Record<string, ContentItem[]>> {
       scheduled_for: row.scheduled_post_time,
       priority: row.confidence_score || 0.5
     })) as ContentItem[]
-    
+
     return groupBy(content, (item) => item.source_platform)
   } catch (error) {
     console.error('Error fetching available content:', error)
@@ -687,17 +706,30 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
         .filter(row => row.content_id)
         .map(row => row.content_id)
       
-      const excludeClause = alreadyScheduledIds.length > 0 
-        ? `AND id NOT IN (${alreadyScheduledIds.map(() => '?').join(',')})`
+      // Also get all content_ids that are already scheduled anywhere (prevents race conditions)
+      const allScheduledResult = await db.query(`
+        SELECT content_id FROM scheduled_posts
+        WHERE status IN ('pending', 'posting')
+      `)
+
+      const allScheduledIds = allScheduledResult.rows
+        .filter(row => row.content_id)
+        .map(row => row.content_id)
+
+      // Combine with date-specific exclusions
+      const combinedExcludeIds = [...new Set([...alreadyScheduledIds, ...allScheduledIds])]
+
+      const excludeClause = combinedExcludeIds.length > 0
+        ? `AND id NOT IN (${combinedExcludeIds.map(() => '?').join(',')})`
         : ''
-      
+
       const candidatesResult = await db.query(`
-        SELECT * FROM content_queue 
-        WHERE is_approved = TRUE 
-          AND is_posted = FALSE 
+        SELECT * FROM content_queue
+        WHERE is_approved = TRUE
+          AND is_posted = FALSE
           ${excludeClause}
         ORDER BY confidence_score DESC, created_at ASC
-      `, alreadyScheduledIds)
+      `, combinedExcludeIds)
       
       candidates = candidatesResult.rows.map(row => ({
         ...row,

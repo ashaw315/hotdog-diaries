@@ -44,6 +44,7 @@ function groupBy<T>(array: T[], keyFn: (item: T) => string): Record<string, T[]>
 async function getAvailableContent(): Promise<Record<string, ContentItem[]>> {
   try {
     // Use production-compatible field names and validate content is ready to post
+    // IMPORTANT: Also exclude content that's already scheduled but not posted yet
     const result = await db.query(`
       SELECT * FROM content_queue
       WHERE is_approved = TRUE
@@ -52,6 +53,11 @@ async function getAvailableContent(): Promise<Record<string, ContentItem[]>> {
         AND content_text IS NOT NULL
         AND content_text != ''
         AND (content_image_url IS NOT NULL OR content_video_url IS NOT NULL)
+        AND NOT EXISTS (
+          SELECT 1 FROM scheduled_posts
+          WHERE scheduled_posts.content_id = content_queue.id
+            AND scheduled_posts.status IN ('pending', 'posting')
+        )
       ORDER BY confidence_score DESC, created_at ASC
     `)
 
