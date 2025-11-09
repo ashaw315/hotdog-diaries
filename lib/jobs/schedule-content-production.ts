@@ -18,11 +18,21 @@ async function getSupabaseCandidates(supabase: any, excludeIds: number[] = [], l
 
   if (schedError) throw schedError;
 
+  // Second, get all content_ids that have been posted (prevents re-posting)
+  const { data: postedIds, error: postedError } = await supabase
+    .from('posted_content')
+    .select('content_queue_id');
+
+  if (postedError) throw postedError;
+
   // Combine with excludeIds parameter
   const allExcludeIds = [
     ...excludeIds,
-    ...(scheduledIds?.map((row: any) => row.content_id).filter(Boolean) || [])
+    ...(scheduledIds?.map((row: any) => row.content_id).filter(Boolean) || []),
+    ...(postedIds?.map((row: any) => row.content_queue_id).filter(Boolean) || [])
   ];
+
+  console.log(`🚫 Excluding ${allExcludeIds.length} content IDs (${scheduledIds?.length || 0} scheduled, ${postedIds?.length || 0} posted, ${excludeIds.length} manual)`);
 
   const sel = `
     id, source_platform, content_type, content_text, original_author, created_at, confidence_score,
