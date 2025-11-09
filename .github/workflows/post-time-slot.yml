@@ -63,7 +63,7 @@ jobs:
         uses: ./.github/actions/setup-supabase-rest
         with:
           supabase-url: ${{ secrets.SUPABASE_URL }}
-          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          supabase-service-key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           database-url: ${{ secrets.DATABASE_URL }}
           node-env: production
           verify-connection: true
@@ -131,7 +131,7 @@ jobs:
           NODE_ENV: production
           AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_V2 != '' && secrets.SUPABASE_SERVICE_ROLE_KEY_V2 || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       
       - name: Update job summary
