@@ -89,7 +89,7 @@ jobs:
             echo "Testing existing AUTH_TOKEN..."
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
               -H "Authorization: Bearer $AUTH_TOKEN" \
-              "$SITE_URL/api/admin/queue/status")
+              "$SITE_URL/api/admin/queue/health")
             
             if [ "$HTTP_CODE" = "200" ]; then
               echo "✅ Existing token is still valid"
@@ -120,7 +120,7 @@ jobs:
           echo "🔍 Verifying refreshed token..."
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer $AUTH_TOKEN" \
-            "$SITE_URL/api/admin/queue/status")
+            "$SITE_URL/api/admin/queue/health")
           
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Token verification successful"
