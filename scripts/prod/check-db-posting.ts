@@ -9,6 +9,9 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { createClient } from '@supabase/supabase-js'
 import { getTodayET, getTomorrowET, getUTCWindow } from './lib/time'
 
+// Expected slots per day (changed from 6 to 3)
+const EXPECTED_SLOTS_PER_DAY = 3
+
 interface Args {
   date?: string
 }
@@ -116,8 +119,8 @@ async function main() {
     scheduleTomorrowNonNull,
     postedTodayCount,
     flags: {
-      SCHEDULE_TODAY_OK: scheduleTodayCount >= 6,
-      SCHEDULE_TOMORROW_OK: scheduleTomorrowCount >= 6,
+      SCHEDULE_TODAY_OK: scheduleTodayCount >= EXPECTED_SLOTS_PER_DAY,
+      SCHEDULE_TOMORROW_OK: scheduleTomorrowCount >= EXPECTED_SLOTS_PER_DAY,
       NON_NULL_BIND_RATIO_TODAY: scheduleTodayCount > 0 ? scheduleTodayNonNull / scheduleTodayCount : 0,
       POSTED_COUNT_TODAY: postedTodayCount
     }
@@ -137,12 +140,12 @@ async function main() {
 
   // Check for issues
   if (!result.flags.SCHEDULE_TODAY_OK) {
-    console.error(`❌ Today's schedule incomplete: ${scheduleTodayCount}/6 slots`)
+    console.error(`❌ Today's schedule incomplete: ${scheduleTodayCount}/${EXPECTED_SLOTS_PER_DAY} slots`)
     process.exit(1)
   }
 
   if (!result.flags.SCHEDULE_TOMORROW_OK) {
-    console.error(`⚠️  Tomorrow's schedule incomplete: ${scheduleTomorrowCount}/6 slots`)
+    console.error(`⚠️  Tomorrow's schedule incomplete: ${scheduleTomorrowCount}/${EXPECTED_SLOTS_PER_DAY} slots`)
     // Don't exit with error for tomorrow, just warn
   }
 

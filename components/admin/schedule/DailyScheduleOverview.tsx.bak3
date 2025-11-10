@@ -238,9 +238,9 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
     return null
   }
 
-  // Check if forecast is healthy (all 3 slots have content and time)
+  // Check if forecast is healthy (all 6 slots have content and time)
   const isScheduleHealthy = (): boolean => {
-    if (!forecast || forecast.slots.length !== 3) return false
+    if (!forecast || forecast.slots.length !== 6) return false
     return !forecast.slots.some(s => !s.content || !s.iso)
   }
 
@@ -942,7 +942,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
             </div>
           </div>
         )}
-        {/* Today's Schedule - Source of Truth: scheduled_posts */}
+        {/* Forecast Section (What Will Post) - Source of Truth: scheduled_posts */}
         {forecast && (
           <div style={{ marginTop: 'var(--spacing-xl)' }}>
             <div className="schedule-admin-card">
@@ -953,7 +953,7 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                   color: 'var(--color-text-primary)',
                   margin: 0
                 }}>
-                  📅 Today's Schedule ({forecast.slots.length} slots)
+                  🔮 Forecast - What Will Post ({forecast.slots.length} slots)
                 </h4>
                 <p style={{
                   fontSize: 'var(--font-size-sm)',
@@ -1205,6 +1205,129 @@ export default function DailyScheduleOverview({ selectedDate, onRefresh }: Daily
                               lineHeight: '1.4'
                             }}>
                               {slot.reasoning}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Projected Schedule Section */}
+        {projected && projected.projected_schedule.length > 0 && (
+          <div style={{ marginTop: 'var(--spacing-xl)' }}>
+            <div className="schedule-admin-card">
+              <div className="schedule-admin-card-header">
+                <h4 style={{ 
+                  fontSize: 'var(--font-size-lg)', 
+                  fontWeight: 'var(--font-weight-semibold)',
+                  color: 'var(--color-text-primary)',
+                  margin: 0
+                }}>
+                  📅 Projected Posts ({projected.total_slots})
+                </h4>
+                <p style={{
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  margin: 'var(--spacing-xs) 0 0 0'
+                }}>
+                  Expected posting schedule for {projected.date}
+                </p>
+              </div>
+              <div className="schedule-admin-card-body">
+                {projectedLoading ? (
+                  <div className="schedule-loading">
+                    <div className="schedule-spinner"></div>
+                    <span style={{ marginLeft: 'var(--spacing-sm)' }}>Loading projected schedule...</span>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--border-radius-md)',
+                    overflow: 'hidden'
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ 
+                        backgroundColor: 'var(--color-card-header)',
+                        borderBottom: '1px solid var(--color-border)'
+                      }}>
+                        <tr>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Time
+                          </th>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Status
+                          </th>
+                          <th style={{ 
+                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            textAlign: 'left',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 'var(--font-weight-medium)',
+                            color: 'var(--color-text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}>
+                            Expected Cron Job
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody style={{ backgroundColor: 'white' }}>
+                        {projected.projected_schedule.map((slot, index) => (
+                          <tr 
+                            key={slot.iso} 
+                            style={{ 
+                              borderBottom: index < projected.projected_schedule.length - 1 ? '1px solid var(--color-border)' : 'none',
+                              transition: 'background-color 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-gray-50, #f9fafb)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                          >
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              whiteSpace: 'nowrap',
+                              fontSize: 'var(--font-size-sm)',
+                              fontWeight: 'var(--font-weight-medium)',
+                              color: 'var(--color-text-primary)'
+                            }}>
+                              {slot.time}
+                            </td>
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <span className="schedule-status-indicator warning" style={{ 
+                                padding: 'var(--spacing-xs) var(--spacing-sm)' 
+                              }}>
+                                <span className="schedule-status-dot"></span>
+                                🕒 Pending
+                              </span>
+                            </td>
+                            <td style={{ 
+                              padding: 'var(--spacing-sm) var(--spacing-md)',
+                              fontSize: 'var(--font-size-sm)',
+                              color: 'var(--color-text-secondary)'
+                            }}>
+                              Automatic posting at {slot.time}
                             </td>
                           </tr>
                         ))}

@@ -5,9 +5,9 @@ import { parseISO, format, setHours, setMinutes, setSeconds, addHours, startOfDa
 import { generateDailySchedule } from '@/lib/jobs/schedule-content-production'
 
 // Phase 5.12 - True Feed Forecast Integration
-// Constants matching the standardized slots
+// Constants matching the standardized slots (changed from 6 to 3 posts/day)
 const TZ = 'America/New_York'
-const SLOT_LABELS = ['08:00', '12:00', '15:00', '18:00', '21:00', '23:30'] // ET
+const SLOT_LABELS = ['08:00', '12:00', '18:00'] // ET - breakfast, lunch, dinner
 
 // Type definitions for Phase 5.12
 interface ForecastItem {
@@ -273,7 +273,7 @@ export async function GET(req: NextRequest) {
     const postedMap = await readPostedMap(startUtc, endUtc)
     console.log(`📋 Found ${postedMap.size} posted items for this date range`)
 
-    // 4) Build exact 6 slots result from real schedule (without enrichment first)
+    // 4) Build exact 3 slots result from real schedule (without enrichment first)
     const slots = SLOT_LABELS.map((label, idx) => {
       const targetUtc = slotUtcIsos[idx]
       

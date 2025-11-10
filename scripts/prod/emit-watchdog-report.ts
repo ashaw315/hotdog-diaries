@@ -10,6 +10,9 @@ import { existsSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { getTodayET, getCurrentET } from './lib/time'
 
+// Expected slots per day (changed from 6 to 3)
+const EXPECTED_SLOTS_PER_DAY = 3
+
 interface Args {
   date?: string
 }
@@ -342,17 +345,17 @@ function getNextSteps(data: ReportData, health: any): string {
   if (health.db === 'RED' && data.db) {
     if (!data.db.flags?.SCHEDULE_TODAY_OK) {
       steps.push(`### ⚠️ Today's Schedule Incomplete`)
-      steps.push(`Only ${data.db.scheduleTodayCount}/6 slots scheduled for today.`)
+      steps.push(`Only ${data.db.scheduleTodayCount}/${EXPECTED_SLOTS_PER_DAY} slots scheduled for today.`)
       steps.push(`\`\`\`bash`)
       steps.push(`gh workflow run content-scheduler.yml --ref main`)
       steps.push(`\`\`\``)
     }
   }
-  
+
   if (health.db === 'YELLOW' && data.db) {
     if (!data.db.flags?.SCHEDULE_TOMORROW_OK) {
       steps.push(`### ⚠️ Tomorrow's Schedule Incomplete`)
-      steps.push(`Only ${data.db.scheduleTomorrowCount}/6 slots scheduled for tomorrow.`)
+      steps.push(`Only ${data.db.scheduleTomorrowCount}/${EXPECTED_SLOTS_PER_DAY} slots scheduled for tomorrow.`)
       steps.push(`\`\`\`bash`)
       steps.push(`gh workflow run content-scheduler.yml --ref main`)
       steps.push(`\`\`\``)

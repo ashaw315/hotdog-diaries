@@ -1,15 +1,15 @@
 {
-  "date": "2025-10-21",
-  "tomorrow": "2025-10-22",
+  "date": "2025-11-10",
+  "tomorrow": "2025-11-11",
   "scheduleTodayCount": 6,
   "scheduleTodayNonNull": 6,
-  "scheduleTomorrowCount": 0,
-  "scheduleTomorrowNonNull": 0,
-  "postedTodayCount": 0,
+  "scheduleTomorrowCount": 6,
+  "scheduleTomorrowNonNull": 6,
+  "postedTodayCount": 2,
   "flags": {
     "SCHEDULE_TODAY_OK": true,
-    "SCHEDULE_TOMORROW_OK": false,
+    "SCHEDULE_TOMORROW_OK": true,
     "NON_NULL_BIND_RATIO_TODAY": 1,
-    "POSTED_COUNT_TODAY": 0
+    "POSTED_COUNT_TODAY": 2
   }
 }

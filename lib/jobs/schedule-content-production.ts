@@ -168,8 +168,8 @@ async function updateContentQueueSupabase(supabase: any, contentId: number, sche
 }
 
 // Scheduling configuration - Phase 5.12 standardized slots
-const POSTS_PER_DAY = 6
-const SLOT_TIMES_ET = ['08:00', '12:00', '15:00', '18:00', '21:00', '23:30'] // Eastern Time
+const POSTS_PER_DAY = 3  // Changed from 6 to 3 posts/day
+const SLOT_TIMES_ET = ['08:00', '12:00', '18:00'] // Eastern Time - breakfast, lunch, dinner
 
 /**
  * Normalize content types to match scheduled_posts table constraint
@@ -437,7 +437,7 @@ function selectDiverseContent(
 type GenMode = "refill-missing" | "create-or-reuse"
 type GenerateOptions = { mode?: GenMode; forceRefill?: boolean }
 
-const SLOT_ET_TIMES = ["08:00", "12:00", "15:00", "18:00", "21:00", "23:30"] as const
+const SLOT_ET_TIMES = ["08:00", "12:00", "18:00"] as const  // 3 posts/day: breakfast, lunch, dinner
 
 function toEasternISO(dateYYYYMMDD: string, hhmmET: string): string {
   const [hh, mm] = hhmmET.split(":").map(Number)
@@ -919,7 +919,7 @@ export async function generateDailySchedule(dateYYYYMMDD: string, opts: Generate
 
 /**
  * Enhanced Day Filling with Aggressive Fallback
- * Ensures a single day reaches 6/6 slots using progressive strategies
+ * Ensures a single day reaches 3/3 slots using progressive strategies
  */
 export async function ensureDayFilled(
   dateYYYYMMDD: string, 
@@ -952,9 +952,9 @@ export async function ensureDayFilled(
     beforeCount = result.rows[0]?.count || 0
   }
   
-  console.log(`📊 Current slots filled: ${beforeCount}/6`)
-  
-  if (beforeCount >= 6) {
+  console.log(`📊 Current slots filled: ${beforeCount}/${POSTS_PER_DAY}`)
+
+  if (beforeCount >= POSTS_PER_DAY) {
     console.log(`✅ Day already complete`)
     return {
       before: beforeCount,
@@ -963,19 +963,19 @@ export async function ensureDayFilled(
       platforms: {}
     }
   }
-  
+
   // Try normal strategy first
   console.log(`📝 Attempting normal strategy...`)
-  let fillResult = await generateDailySchedule(dateYYYYMMDD, { 
-    mode: "refill-missing", 
-    forceRefill: true 
+  let fillResult = await generateDailySchedule(dateYYYYMMDD, {
+    mode: "refill-missing",
+    forceRefill: true
   })
-  
+
   // Check if we need aggressive fallback
   let afterNormal = beforeCount + (fillResult.filled || 0)
-  console.log(`📊 After normal strategy: ${afterNormal}/6`)
-  
-  if (afterNormal < 6 && aggressiveFallback) {
+  console.log(`📊 After normal strategy: ${afterNormal}/${POSTS_PER_DAY}`)
+
+  if (afterNormal < POSTS_PER_DAY && aggressiveFallback) {
     console.log(`🚨 Activating aggressive fallback strategy...`)
     
     // Temporarily modify candidate selection to be more permissive
@@ -1081,7 +1081,7 @@ export async function ensureDayFilled(
 }
 
 /**
- * Two-Day Orchestrator - Ensures both D and D+1 reach 6/6 slots
+ * Two-Day Orchestrator - Ensures both D and D+1 reach 3/3 slots
  */
 export async function refillTwoDays(etDate: string): Promise<{
   date: string;
@@ -1122,7 +1122,7 @@ export async function refillTwoDays(etDate: string): Promise<{
     total_before: todayResult.before + tomorrowResult.before,
     total_after: todayResult.after + tomorrowResult.after,
     total_added: todayResult.count_added + tomorrowResult.count_added,
-    days_complete: (todayResult.after >= 6 ? 1 : 0) + (tomorrowResult.after >= 6 ? 1 : 0),
+    days_complete: (todayResult.after >= POSTS_PER_DAY ? 1 : 0) + (tomorrowResult.after >= POSTS_PER_DAY ? 1 : 0),
     combined_platforms: combinedPlatforms
   }
   
