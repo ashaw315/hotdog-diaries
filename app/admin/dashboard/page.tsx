@@ -178,7 +178,7 @@ export default function AdminDashboard() {
                       fallbackValue: value,
                       postingScheduleExists: !!data?.postingSchedule
                     })
-                    return `${value}/6`
+                    return `${value}/3`
                   })()}
                 </p>
                 <p className="text-xs text-gray-500">
@@ -277,7 +277,7 @@ export default function AdminDashboard() {
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Today&apos;s Schedule</h3>
             <div className="space-y-3">
-              {data?.postingSchedule.upcomingPosts?.slice(0, 6).map((post, index) => (
+              {data?.postingSchedule.upcomingPosts?.slice(0, 3).map((post, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center">
                     <span className="text-sm font-medium text-gray-900 w-16">{post.time}</span>

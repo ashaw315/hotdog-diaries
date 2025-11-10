@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     // Get next scheduled post time (simplified)
     const nextPost = new Date()
     const currentHour = nextPost.getHours()
-    const scheduleTimes = [8, 12, 15, 18, 21, 23]
+    const scheduleTimes = [8, 12, 18] // 3 posts/day: breakfast, lunch, dinner
     let nextScheduleHour = scheduleTimes.find(hour => hour > currentHour)
     
     if (!nextScheduleHour) {
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     // Get upcoming posts preview
     const upcomingPostsResult = await db.query(`
-      SELECT 
+      SELECT
         cq.id,
         cq.source_platform,
         cq.content_text,
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       FROM content_queue cq
       WHERE cq.is_approved = true AND cq.is_posted = false
       ORDER BY cq.confidence_score DESC
-      LIMIT 6
+      LIMIT 3
     `)
 
     const upcomingPosts = scheduleTimes.map((hour, index) => {
