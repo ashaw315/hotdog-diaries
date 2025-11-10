@@ -42,17 +42,20 @@ async function main() {
   }
 
   console.log(`🔍 Checking GitHub Actions for ${args.date}`)
+  console.log(`ℹ️  Note: Using auto-post-scheduled.yml (runs every 15min) instead of legacy slot workflows`)
 
   const slots = getTimeSlots(args.date!)
   const results: SlotStatus[] = []
 
+  // Check auto-post-scheduled workflow runs instead of individual slot workflows
+  const workflowFile = 'auto-post-scheduled.yml'
+
   for (const slot of slots) {
     console.log(`  Checking ${slot.slot} (${slot.timeET} ET)...`)
-    
-    const workflowFile = `post-${slot.slot}.yml`
-    const status = await checkSlot(workflowFile, slot)
+
+    const status = await checkSlotWithAutoScheduler(workflowFile, slot)
     results.push(status)
-    
+
     console.log(`    → ${status.status}`)
   }
 
@@ -77,6 +80,79 @@ async function main() {
     process.exit(1)
   } else {
     console.log('✅ All executed slots healthy')
+  }
+}
+
+async function checkSlotWithAutoScheduler(workflowFile: string, slot: any): Promise<SlotStatus> {
+  try {
+    // For auto-post-scheduled.yml, we check if there was a successful run
+    // within a reasonable window around the slot time (±30 min)
+    const runsJson = execSync(
+      `gh api /repos/$GITHUB_REPOSITORY/actions/workflows/${workflowFile}/runs --jq '.workflow_runs[:20]' 2>/dev/null || echo '[]'`,
+      { encoding: 'utf-8', env: { ...process.env, GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY || 'ashaw315/hotdog-diaries' } }
+    )
+
+    const runs: WorkflowRun[] = JSON.parse(runsJson)
+
+    // If slot is in the future, it's expected not to have run yet
+    if (!slot.isPast) {
+      return {
+        slot: slot.slot,
+        timeET: slot.timeET,
+        status: 'NOT_EXECUTED_YET',
+        message: 'Scheduled for future'
+      }
+    }
+
+    // Find runs around the slot time (slot time ± 60 minutes)
+    const slotTime = slot.timeUTC.getTime()
+    const windowStart = slotTime - (60 * 60 * 1000) // 1 hour before
+    const windowEnd = slotTime + (60 * 60 * 1000)   // 1 hour after
+
+    const runsNearSlot = runs.filter(run => {
+      const runTime = new Date(run.created_at).getTime()
+      return runTime >= windowStart && runTime <= windowEnd
+    })
+
+    if (runsNearSlot.length === 0) {
+      return {
+        slot: slot.slot,
+        timeET: slot.timeET,
+        status: 'MISSING_EXECUTION',
+        message: `No auto-post-scheduled run found within ±1h of ${slot.timeET}`
+      }
+    }
+
+    // Check if any run was successful
+    const successfulRun = runsNearSlot.find(run => run.conclusion === 'success')
+
+    if (successfulRun) {
+      return {
+        slot: slot.slot,
+        timeET: slot.timeET,
+        status: 'EXECUTED_SUCCESS',
+        lastRun: successfulRun,
+        message: 'Auto-scheduler ran successfully near slot time'
+      }
+    }
+
+    // If no successful run, report the most recent attempt
+    const lastRun = runsNearSlot[0]
+    return {
+      slot: slot.slot,
+      timeET: slot.timeET,
+      status: 'FAILED',
+      lastRun,
+      message: `Auto-scheduler run failed: ${lastRun.conclusion}`
+    }
+
+  } catch (error) {
+    return {
+      slot: slot.slot,
+      timeET: slot.timeET,
+      status: 'FAILED',
+      message: `Error checking workflow: ${error}`
+    }
   }
 }
 
