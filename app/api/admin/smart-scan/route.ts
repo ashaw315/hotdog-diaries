@@ -168,10 +168,8 @@ async function performScan(platform: string, maxPosts: number, reason: string) {
   try {
     console.log(`🚀 Performing ${platform} scan (${maxPosts} max posts) - Reason: ${reason}`)
 
-    // Construct base URL - use VERCEL_URL in production, localhost in dev
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000'
+    // Construct base URL - use SITE_URL in production, localhost in dev
+    const baseUrl = process.env.SITE_URL || 'http://localhost:3000'
 
     // Create a new request to the platform scan endpoint
     const scanResponse = await fetch(`${baseUrl}${scanUrl}`, {
