@@ -121,8 +121,8 @@ export class QueueManager {
     try {
       // Get total approved content
       const totalQuery = `
-        SELECT 
-          COUNT(*) as total_approved,
+        SELECT
+          COUNT(CASE WHEN is_approved = true THEN 1 END) as total_approved,
           COUNT(CASE WHEN is_approved = false THEN 1 END) as total_pending
         FROM content_queue
         WHERE is_posted = false
