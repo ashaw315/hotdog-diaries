@@ -119,53 +119,60 @@ export class QueueManager {
    */
   async getQueueStats(): Promise<QueueStats> {
     try {
-      // Get total approved content
-      const totalQuery = `
-        SELECT
-          COUNT(CASE WHEN is_approved = true THEN 1 END) as total_approved,
-          COUNT(CASE WHEN is_approved = false THEN 1 END) as total_pending
-        FROM content_queue
-        WHERE is_posted = false
-      `
-      const totalResult = await db.query(totalQuery)
-      const totals = totalResult.rows[0]
-      const totalApproved = parseInt(totals.total_approved) || 0
-      const totalPending = parseInt(totals.total_pending) || 0
+      // Use Supabase client for production compatibility
+      const { supabase } = await import('@/lib/db')
+
+      // Get total approved and pending content
+      const { data: allContent, error: contentError } = await supabase
+        .from('content_queue')
+        .select('is_approved, is_posted, source_platform, content_type, content_image_url, content_video_url')
+        .eq('is_posted', false)
+
+      if (contentError) throw contentError
+
+      const totalApproved = allContent?.filter(c => c.is_approved).length || 0
+      const totalPending = allContent?.filter(c => !c.is_approved).length || 0
 
       // Get platform distribution for approved content
-      const platformQuery = `
-        SELECT 
-          source_platform,
-          COUNT(*) as count
-        FROM content_queue
-        WHERE is_approved = true AND is_posted = false AND source_platform IS NOT NULL
-        GROUP BY source_platform
-      `
-      const platformResult = await db.query(platformQuery)
-      
+      const approvedContent = allContent?.filter(c => c.is_approved && c.source_platform) || []
+
       const platforms: Record<string, number> = {}
       const platformPercentages: Record<string, number> = {}
-      
-      platformResult.rows.forEach((row: any) => {
-        const count = parseInt(row.count)
-        platforms[row.source_platform] = count
-        platformPercentages[row.source_platform] = totalApproved > 0 ? count / totalApproved : 0
+
+      approvedContent.forEach(item => {
+        if (item.source_platform) {
+          platforms[item.source_platform] = (platforms[item.source_platform] || 0) + 1
+        }
       })
 
-      // Get content type distribution
+      Object.keys(platforms).forEach(platform => {
+        platformPercentages[platform] = totalApproved > 0 ? platforms[platform] / totalApproved : 0
+      })
+
+      // Get content type distribution from actual content
       const contentTypes: Record<string, number> = { video: 0, gif: 0, image: 0, text: 0 }
       const contentTypePercentages: Record<string, number> = { video: 0, gif: 0, image: 0, text: 0 }
 
-      // Calculate content types based on platform and actual content
-      for (const [platform, count] of Object.entries(platforms)) {
-        const primaryType = this.getPlatformPrimaryContentType(platform)
-        contentTypes[primaryType] = (contentTypes[primaryType] || 0) + count
-      }
+      approvedContent.forEach(item => {
+        // Determine content type from actual data
+        let type = 'text'
+        if (item.content_video_url) {
+          type = 'video'
+        } else if (item.content_image_url) {
+          // Check if it's a GIF
+          if (item.content_image_url.includes('.gif') || item.source_platform === 'giphy') {
+            type = 'gif'
+          } else {
+            type = 'image'
+          }
+        }
+        contentTypes[type] = (contentTypes[type] || 0) + 1
+      })
 
       // Calculate percentages
-      for (const type of Object.keys(contentTypes)) {
+      Object.keys(contentTypes).forEach(type => {
         contentTypePercentages[type] = totalApproved > 0 ? contentTypes[type] / totalApproved : 0
-      }
+      })
 
       const daysOfContent = totalApproved / this.POSTS_PER_DAY
       const needsScanning = totalApproved < this.MINIMUM_QUEUE_SIZE
