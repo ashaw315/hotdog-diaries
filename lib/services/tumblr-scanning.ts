@@ -590,7 +590,7 @@ export class TumblrScanningService {
       isEnabled: true,
       scanInterval: 360, // 6 hours (Tumblr has stricter rate limits)
       maxPostsPerScan: 20,
-      searchTags: ['hotdog', 'hot dog', 'food photography', 'food blog'],
+      searchTags: ['hotdog', 'hot dog', 'hotdogs', 'street food hotdog', 'chicago dog', 'corn dog'],
       minNotes: 5
     }
   }
