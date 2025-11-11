@@ -363,11 +363,15 @@ export class GiphyScanningService {
   // Search terms rotation for variety within rate limits
   private static readonly SEARCH_TERMS = [
     'hotdog',
-    'hot dog', 
+    'hot dog',
     'corn dog',
     'chicago style hotdog',
     'bratwurst',
-    'chili dog'
+    'chili dog',
+    'bbq hotdog',
+    'grilling',
+    'ballpark food',
+    'frankfurter'
   ]
 
   constructor() {
@@ -483,8 +487,8 @@ export class GiphyScanningService {
                 // Process with content processor using the correct method signature
                 console.log(`🔄 Processing content ID ${contentId} through content processor`)
                 const processingResult = await this.contentProcessor.processContent(contentId, {
-                  autoApprovalThreshold: 0.30, // Very generous for GIFs - they often have simple titles  
-                  autoRejectionThreshold: 0.10,
+                  autoApprovalThreshold: 0.5, // Reasonable threshold for GIFs (was 0.3, too low)
+                  autoRejectionThreshold: 0.2,
                   enableDuplicateDetection: true
                 })
 
@@ -575,7 +579,7 @@ export class GiphyScanningService {
   }
 
   /**
-   * Search Giphy API for GIFs
+   * Search Giphy API for GIFs with multiple endpoint support
    */
   private async searchGifs(query: string, limit: number = 25): Promise<GiphyGif[]> {
     const apiKey = process.env.GIPHY_API_KEY
@@ -583,15 +587,39 @@ export class GiphyScanningService {
       throw new Error('Giphy API key not configured')
     }
 
-    const url = 'https://api.giphy.com/v1/gifs/search'
-    const params = new URLSearchParams({
-      api_key: apiKey,
-      q: query,
-      limit: limit.toString(),
-      offset: '0'
-    })
+    // Randomly choose between search, trending, or random endpoint for variety
+    const endpointChoice = Math.random()
+    let url: string
+    let params: URLSearchParams
 
-    console.log(`🔍 Searching Giphy for: "${query}" (limit: ${limit})`)
+    if (endpointChoice < 0.5) {
+      // 50% chance: Use search with random offset for fresh content
+      const randomOffset = Math.floor(Math.random() * 20) * limit // Random page (0-500 results deep)
+      url = 'https://api.giphy.com/v1/gifs/search'
+      params = new URLSearchParams({
+        api_key: apiKey,
+        q: query,
+        limit: limit.toString(),
+        offset: randomOffset.toString()
+      })
+      console.log(`🔍 Searching Giphy for: "${query}" (limit: ${limit}, offset: ${randomOffset})`)
+    } else if (endpointChoice < 0.75) {
+      // 25% chance: Use trending endpoint (changes daily)
+      url = 'https://api.giphy.com/v1/gifs/trending'
+      params = new URLSearchParams({
+        api_key: apiKey,
+        limit: limit.toString()
+      })
+      console.log(`📈 Fetching trending Giphy GIFs (limit: ${limit})`)
+    } else {
+      // 25% chance: Use random endpoint with tag
+      url = 'https://api.giphy.com/v1/gifs/random'
+      params = new URLSearchParams({
+        api_key: apiKey,
+        tag: query
+      })
+      console.log(`🎲 Fetching random Giphy GIF with tag: "${query}"`)
+    }
 
     const response = await fetch(`${url}?${params}`, {
       method: 'GET',
@@ -605,17 +633,27 @@ export class GiphyScanningService {
       throw new Error(`Giphy API error: ${response.status} ${response.statusText}`)
     }
 
-    const data: GiphySearchResponse = await response.json()
-    
+    const responseData = await response.json()
+
+    // Handle different response formats
+    let gifs: GiphyGif[]
+    if (url.includes('/random')) {
+      // Random endpoint returns single GIF in 'data' field
+      gifs = responseData.data ? [responseData.data] : []
+    } else {
+      // Search and trending return array in 'data' field
+      gifs = responseData.data || []
+    }
+
     // Filter GIFs to ensure they have required formats
-    const validGifs = data.data.filter(gif => 
-      gif.images.downsized_medium?.url && 
-      gif.images.original?.url &&
+    const validGifs = gifs.filter(gif =>
+      gif.images?.downsized_medium?.url &&
+      gif.images?.original?.url &&
       gif.title &&
       !gif.is_sticker // Exclude stickers
     )
 
-    console.log(`📝 Found ${validGifs.length} valid GIFs out of ${data.data.length} total`)
+    console.log(`📝 Found ${validGifs.length} valid GIFs out of ${gifs.length} total`)
     return validGifs
   }
 
@@ -646,7 +684,7 @@ export class GiphyScanningService {
         content_hash: contentHash,
         content_status: 'discovered',
         confidence_score: this.calculateConfidenceScore(gif),
-        is_approved: true, // Auto-approve Giphy content as requested
+        is_approved: false, // Let content processor decide based on quality
         is_rejected: false,
         is_posted: false,
         scraped_at: new Date().toISOString(),
@@ -877,8 +915,8 @@ export class GiphyScanningService {
           // Process with content processor to create analysis
           console.log(`🔄 [MOCK] Processing mock content ID ${contentId} through content processor`)
           const processingResult = await this.contentProcessor.processContent(contentId, {
-            autoApprovalThreshold: 0.40, // Much lower for GIFs - they often have simple titles
-            autoRejectionThreshold: 0.15,
+            autoApprovalThreshold: 0.5, // Match real scan threshold
+            autoRejectionThreshold: 0.2,
             enableDuplicateDetection: true
           })
 
