@@ -216,6 +216,7 @@ export class TumblrScanningService {
           })
 
           if (!contentAnalysis.is_valid_hotdog) {
+            console.log(`Tumblr post ${post.id} rejected by filter: ${contentAnalysis.reason} (confidence: ${contentAnalysis.confidence})`)
             result.rejected++
             continue
           }
@@ -277,10 +278,12 @@ export class TumblrScanningService {
 
           // Process the content
           const processingResult = await this.contentProcessor.processContent(contentId, {
-            autoApprovalThreshold: 0.7, // Higher threshold for Tumblr due to artistic/creative content
+            autoApprovalThreshold: 0.6, // Lowered to match other platforms
             autoRejectionThreshold: 0.2,
             enableDuplicateDetection: true
           })
+
+          console.log(`Tumblr post ${post.id}: ${processingResult.action} (score: ${processingResult.confidenceScore})`)
 
           if (processingResult.success && processingResult.action === 'approved') {
             result.approved++
@@ -292,8 +295,13 @@ export class TumblrScanningService {
           result.processed++
 
         } catch (postError) {
-          const errorMessage = postError instanceof Error ? postError.message : 'Unknown post error'
+          const errorMessage = postError instanceof Error
+            ? postError.message
+            : typeof postError === 'string'
+              ? postError
+              : JSON.stringify(postError)
           result.errors.push(`Post processing error: ${errorMessage}`)
+          console.error('Tumblr post processing error:', postError)
         }
       }
 
