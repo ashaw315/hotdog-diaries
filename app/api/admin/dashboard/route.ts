@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { queueManager } from '@/lib/services/queue-manager'
 import { postingService } from '@/lib/services/posting'
-import { db } from '@/lib/db'
 import { mockAdminDataIfCI } from '@/app/api/admin/_testMock'
 import { USE_MOCK_DATA } from '@/lib/env'
 
@@ -26,13 +25,18 @@ export async function GET(request: NextRequest) {
       text: (queueStats.contentTypePercentages.text || 0) * 100
     }
 
-    // Get posting schedule for today
-    const todaysPostsResult = await db.query(`
-      SELECT COUNT(*) as count
-      FROM posted_content 
-      WHERE DATE(posted_at) = DATE('now')
-    `)
-    const todaysPosts = parseInt(todaysPostsResult.rows[0]?.count || '0')
+    // Get posting schedule for today using Supabase
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ulaadphxfsrihoubjdrb.supabase.co'
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+    const { count: todaysPosts } = await supabase
+      .from('posted_content')
+      .select('*', { count: 'exact', head: true })
+      .gte('posted_at', `${today}T00:00:00`)
+      .lte('posted_at', `${today}T23:59:59`)
 
     // Get next scheduled post time (simplified)
     const nextPost = new Date()
@@ -49,26 +53,21 @@ export async function GET(request: NextRequest) {
     nextPost.setHours(nextScheduleHour, 0, 0, 0)
 
     // Get upcoming posts preview
-    const upcomingPostsResult = await db.query(`
-      SELECT
-        cq.id,
-        cq.source_platform,
-        cq.content_text,
-        cq.content_image_url,
-        cq.content_video_url
-      FROM content_queue cq
-      WHERE cq.is_approved = true AND cq.is_posted = false
-      ORDER BY cq.confidence_score DESC
-      LIMIT 3
-    `)
+    const { data: upcomingPostsResult } = await supabase
+      .from('content_queue')
+      .select('id, source_platform, content_text, content_image_url, content_video_url')
+      .eq('is_approved', true)
+      .eq('is_posted', false)
+      .order('confidence_score', { ascending: false })
+      .limit(3)
 
     const upcomingPosts = scheduleTimes.map((hour, index) => {
-      const post = upcomingPostsResult.rows[index]
+      const post = upcomingPostsResult?.[index]
       return {
         time: `${hour.toString().padStart(2, '0')}:00`,
         content: post || null,
         type: post ? (
-          post.content_video_url ? 'video' : 
+          post.content_video_url ? 'video' :
           post.content_image_url && (post.content_image_url.includes('.gif') || post.source_platform === 'giphy') ? 'gif' :
           post.content_image_url ? 'image' : 'text'
         ) : 'unknown',
@@ -76,19 +75,18 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Get last scan times per platform from content_queue
-    const lastScanQuery = `
-      SELECT
-        source_platform,
-        MAX(scraped_at) as last_scan
-      FROM content_queue
-      WHERE source_platform IS NOT NULL AND scraped_at IS NOT NULL
-      GROUP BY source_platform
-    `
-    const lastScanResult = await db.query(lastScanQuery)
+    // Get last scan times per platform from content_queue using Supabase
+    const { data: allScans } = await supabase
+      .from('content_queue')
+      .select('source_platform, scraped_at')
+      .not('source_platform', 'is', null)
+      .not('scraped_at', 'is', null)
+
     const lastScans: Record<string, string> = {}
-    lastScanResult.rows.forEach((row: any) => {
-      lastScans[row.source_platform] = row.last_scan
+    allScans?.forEach((row: any) => {
+      if (!lastScans[row.source_platform] || row.scraped_at > lastScans[row.source_platform]) {
+        lastScans[row.source_platform] = row.scraped_at
+      }
     })
 
     // Get platform status - operational if has content
