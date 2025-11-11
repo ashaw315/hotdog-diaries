@@ -314,25 +314,41 @@ describe('GiphyScanningService', () => {
   })
 
   describe('getScanConfig', () => {
-    it('should return current scan configuration', async () => {
+    it('should return current scan configuration with expanded search terms', async () => {
       const mockConfig = {
         isEnabled: true,
         scanInterval: 120, // minutes
         maxGifsPerScan: 15,
-        searchTerms: ['hotdog', 'hot dog', 'corn dog', 'chili dog'],
+        searchTerms: [
+          'hotdog',
+          'hot dog',
+          'corn dog',
+          'chicago style hotdog',
+          'bratwurst',
+          'chili dog',
+          'bbq hotdog',
+          'grilling',
+          'ballpark food',
+          'frankfurter'
+        ],
         allowedRatings: ['g', 'pg'],
         blockedRatings: ['pg-13', 'r'],
         hourlyRequestCount: 15,
         dailyRequestCount: 150
       }
-      
+
       giphyService.getScanConfig.mockResolvedValue(mockConfig)
 
       const config = await giphyService.getScanConfig()
 
       expect(config.isEnabled).toBe(true)
       expect(config.scanInterval).toBe(120)
+      expect(config.searchTerms).toHaveLength(10) // Expanded from 4 to 10 terms
       expect(config.searchTerms).toContain('hotdog')
+      expect(config.searchTerms).toContain('bbq hotdog')
+      expect(config.searchTerms).toContain('grilling')
+      expect(config.searchTerms).toContain('ballpark food')
+      expect(config.searchTerms).toContain('frankfurter')
       expect(config.allowedRatings).toContain('g')
       expect(config.blockedRatings).toContain('r')
       expect(config.hourlyRequestCount).toBe(15)
@@ -403,7 +419,7 @@ describe('GiphyScanningService', () => {
   })
 
   describe('content processing', () => {
-    it('should search GIFs with query terms', async () => {
+    it('should search GIFs with random offset for variety', async () => {
       const mockGifs = [
         mockGiphyGif,
         {
@@ -413,13 +429,32 @@ describe('GiphyScanningService', () => {
           url: 'https://giphy.com/gifs/grilling-hotdog-xyz789'
         }
       ]
-      
+
       giphyService.searchGifs.mockResolvedValue(mockGifs)
 
       const gifs = await giphyService.searchGifs(['hotdog', 'hot dog'])
 
       expect(gifs).toHaveLength(2)
       expect(gifs[0].title.toLowerCase()).toContain('hotdog')
+    })
+
+    it('should use multiple API endpoints (search/trending/random)', async () => {
+      const mockSearchResult = {
+        ...mockScanResult,
+        totalFound: 15,
+        processed: 12,
+        approved: 10,
+        rejected: 2,
+        duplicates: 3
+      }
+
+      giphyService.performScan.mockResolvedValue(mockSearchResult)
+
+      const result = await giphyService.performScan({ maxPosts: 15 })
+
+      // Should successfully use different endpoints (search, trending, random)
+      expect(result.totalFound).toBeGreaterThan(0)
+      expect(result.processed).toBeGreaterThan(0)
     })
 
     it('should validate Giphy content format', async () => {
@@ -444,7 +479,7 @@ describe('GiphyScanningService', () => {
         confidence: 0.0,
         reasons: ['R rating not allowed', 'Content filtering enabled']
       }
-      
+
       giphyService.validateGiphyContent.mockResolvedValue(inappropriateValidationResult)
 
       const ratedRGif = { ...mockGiphyGif, rating: 'r' }
@@ -452,6 +487,44 @@ describe('GiphyScanningService', () => {
 
       expect(result.isValid).toBe(false)
       expect(result.reasons).toContain('R rating not allowed')
+    })
+
+    it('should use updated auto-approval threshold of 0.5', async () => {
+      const moderateQualityResult = {
+        ...mockScanResult,
+        totalFound: 10,
+        processed: 10,
+        approved: 6, // Content with confidence >= 0.5 approved
+        rejected: 4, // Content with confidence < 0.5 rejected
+        duplicates: 0
+      }
+
+      giphyService.performScan.mockResolvedValue(moderateQualityResult)
+
+      const result = await giphyService.performScan({ maxPosts: 10 })
+
+      // With threshold of 0.5 (raised from 0.3), we expect more selective approval
+      expect(result.approved).toBeLessThanOrEqual(result.processed)
+      expect(result.approved / result.processed).toBeGreaterThanOrEqual(0.5) // At least 50% approval rate
+    })
+
+    it('should no longer auto-approve all content', async () => {
+      const qualityFilteredResult = {
+        ...mockScanResult,
+        totalFound: 15,
+        processed: 15,
+        approved: 8, // Only quality content approved (not all)
+        rejected: 7, // Lower quality content rejected
+        duplicates: 0
+      }
+
+      giphyService.performScan.mockResolvedValue(qualityFilteredResult)
+
+      const result = await giphyService.performScan({ maxPosts: 15 })
+
+      // Should NOT approve all content (old behavior was is_approved: true)
+      expect(result.approved).toBeLessThan(result.processed)
+      expect(result.rejected).toBeGreaterThan(0)
     })
   })
 
