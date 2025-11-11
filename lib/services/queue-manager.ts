@@ -22,9 +22,9 @@ export interface ScanRecommendation {
 export class QueueManager {
   // Configuration
   private readonly OPTIMAL_QUEUE_DAYS = 7 // Keep 1 week buffer
-  private readonly MINIMUM_QUEUE_SIZE = 42 // 7 days * 6 posts
-  private readonly MAXIMUM_QUEUE_SIZE = 84 // 14 days * 6 posts
-  private readonly POSTS_PER_DAY = 6
+  private readonly MINIMUM_QUEUE_SIZE = 21 // 7 days * 3 posts
+  private readonly MAXIMUM_QUEUE_SIZE = 42 // 14 days * 3 posts
+  private readonly POSTS_PER_DAY = 3
 
   // Content mix targets (for engaging feed)
   private readonly CONTENT_MIX_TARGETS = {
