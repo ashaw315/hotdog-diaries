@@ -146,22 +146,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       let postedWhereClause = 'pc.posted_at IS NOT NULL'
       whereClause = postedWhereClause // For debug access
 
+      // 🔍 Debug: Log filters being applied (posted path)
+      console.log(`[AdminContentAPI] 🔍 POSTED PATH - Applying filters - platform: ${platform}, contentType: ${contentType}`)
+      console.log(`[AdminContentAPI] 🔍 POSTED - WHERE clause before filters: ${postedWhereClause}`)
+      console.log(`[AdminContentAPI] 🔍 POSTED - queryParams before filters: [${queryParams.join(', ')}]`)
+
       // Add platform and content type filters if specified
       if (platform) {
         postedWhereClause += ` AND cq.source_platform = $${paramIndex}`
         whereClause = postedWhereClause // Keep in sync
         queryParams.push(platform)
+        console.log(`[AdminContentAPI] ✅ POSTED - Added platform filter: ${platform} at $${paramIndex}`)
         paramIndex++
       }
       if (contentType) {
         postedWhereClause += ` AND cq.content_type = $${paramIndex}`
         whereClause = postedWhereClause // Keep in sync
         queryParams.push(contentType)
+        console.log(`[AdminContentAPI] ✅ POSTED - Added contentType filter: ${contentType} at $${paramIndex}`)
         paramIndex++
       }
 
+      console.log(`[AdminContentAPI] 🔍 POSTED - WHERE clause after filters: ${postedWhereClause}`)
+      console.log(`[AdminContentAPI] 🔍 POSTED - queryParams after filters: [${queryParams.join(', ')}]`)
+
       // Add LIMIT and OFFSET parameters
       queryParams.push(limit, actualOffset)
+      console.log(`[AdminContentAPI] 🔍 POSTED - queryParams after adding LIMIT/OFFSET: [${queryParams.join(', ')}]`)
 
       contentQuery = `
         SELECT
@@ -266,20 +277,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
       // For 'all' or any other value, keep whereClause as '1=1'
 
+      // 🔍 Debug: Log filters being applied
+      console.log(`[AdminContentAPI] 🔍 Applying filters - platform: ${platform}, contentType: ${contentType}`)
+      console.log(`[AdminContentAPI] 🔍 WHERE clause before filters: ${whereClause}`)
+      console.log(`[AdminContentAPI] 🔍 queryParams before filters: [${queryParams.join(', ')}]`)
+      console.log(`[AdminContentAPI] 🔍 paramIndex before filters: ${paramIndex}`)
+
       // Add platform and content type filters if specified (using parameterized queries)
       if (platform) {
         whereClause += ` AND cq.source_platform = $${paramIndex}`
         queryParams.push(platform)
+        console.log(`[AdminContentAPI] ✅ Added platform filter: ${platform} at $${paramIndex}`)
         paramIndex++
       }
       if (contentType) {
         whereClause += ` AND cq.content_type = $${paramIndex}`
         queryParams.push(contentType)
+        console.log(`[AdminContentAPI] ✅ Added contentType filter: ${contentType} at $${paramIndex}`)
         paramIndex++
       }
 
+      console.log(`[AdminContentAPI] 🔍 WHERE clause after filters: ${whereClause}`)
+      console.log(`[AdminContentAPI] 🔍 queryParams after filters: [${queryParams.join(', ')}]`)
+
       // Add LIMIT and OFFSET parameters
       queryParams.push(limit, actualOffset)
+      console.log(`[AdminContentAPI] 🔍 queryParams after adding LIMIT/OFFSET: [${queryParams.join(', ')}]`)
 
       console.log(`[AdminContentAPI] Filtering for ${status} content with WHERE: ${whereClause}`)
 
@@ -314,10 +337,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log('🧩 [ContentAPI] Row Count Returned:', contentResult.rows.length)
 
     // Execute count query (use params without LIMIT/OFFSET)
+    console.log(`[AdminContentAPI] 🔍 BEFORE slicing - queryParams.length: ${queryParams.length}, queryParams: [${queryParams.join(', ')}]`)
     const countParams = queryParams.slice(0, -2) // Remove last 2 params (limit, offset)
-    console.log(`[AdminContentAPI] Executing count query with ${countParams.length} params`)
-    console.log(`[AdminContentAPI] Count query: ${countQuery}`)
-    console.log(`[AdminContentAPI] Count params:`, countParams)
+    console.log(`[AdminContentAPI] 🔍 AFTER slicing - countParams.length: ${countParams.length}, countParams: [${countParams.join(', ')}]`)
+    console.log(`[AdminContentAPI] ⚡ Executing count query with ${countParams.length} params`)
+    console.log(`[AdminContentAPI] ⚡ Count query SQL:\n${countQuery}`)
+    console.log(`[AdminContentAPI] ⚡ Count params:`, countParams)
 
     const countResult = await db.query(countQuery, countParams)
     console.log(`[AdminContentAPI] Count result rows:`, countResult.rows.length)
