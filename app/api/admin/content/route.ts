@@ -323,7 +323,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log(`[AdminContentAPI] Count result rows:`, countResult.rows.length)
     console.log(`[AdminContentAPI] Count result first row:`, countResult.rows[0])
 
-    const total = countResult.rows[0]?.total ? parseInt(countResult.rows[0].total) : 0
+    // Vercel SQL returns 'count' instead of respecting the 'as total' alias
+    const rawTotal = countResult.rows[0]?.total ?? countResult.rows[0]?.count ?? 0
+    const total = typeof rawTotal === 'string' ? parseInt(rawTotal) : rawTotal
 
     console.log(`[AdminContentAPI] Total count: ${total}`)
     
@@ -386,7 +388,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         countQueryExecuted: true,
         countResultRows: countResult.rows.length,
         countResultFirstRow: countResult.rows[0],
-        rawTotal: countResult.rows[0]?.total,
+        rawTotalField: countResult.rows[0]?.total,
+        rawCountField: countResult.rows[0]?.count,
+        rawTotalUsed: rawTotal,
         parsedTotal: total,
         queryParamsLength: queryParams.length,
         countParamsLength: countParams.length,
