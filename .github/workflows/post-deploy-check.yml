@@ -157,17 +157,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+
       - name: Setup Node.js with pnpm
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Set deployment URL
         run: |
           echo "🌐 Using deployment URL from context analysis..."
@@ -345,17 +349,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+
       - name: Setup Node.js with pnpm
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Set deployment URL
         run: |
           echo "🌐 Using deployment URL from context analysis..."
