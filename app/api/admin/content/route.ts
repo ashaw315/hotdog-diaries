@@ -132,7 +132,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     let countQuery: string
     const queryParams: any[] = []
     let paramIndex = 1
-    
+    let whereClause: string // Declare at top level for debug access
+
     if (status === 'posted') {
       // Query content_queue joined with posted_content for posted content
       console.log('[AdminContentAPI] Filtering for posted content (JOIN with posted_content)')
@@ -143,15 +144,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         : 'NULL AS posted_at'
 
       let postedWhereClause = 'pc.posted_at IS NOT NULL'
+      whereClause = postedWhereClause // For debug access
 
       // Add platform and content type filters if specified
       if (platform) {
         postedWhereClause += ` AND cq.source_platform = $${paramIndex}`
+        whereClause = postedWhereClause // Keep in sync
         queryParams.push(platform)
         paramIndex++
       }
       if (contentType) {
         postedWhereClause += ` AND cq.content_type = $${paramIndex}`
+        whereClause = postedWhereClause // Keep in sync
         queryParams.push(contentType)
         paramIndex++
       }
@@ -386,8 +390,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         parsedTotal: total,
         queryParamsLength: queryParams.length,
         countParamsLength: countParams.length,
-        whereClause: whereClause || '(posted query)',
-        contentQueryReturned: contentResult.rows.length
+        whereClause: whereClause || '(not set)',
+        contentQueryReturned: contentResult.rows.length,
+        requestedStatus: status
       }
     }
 
