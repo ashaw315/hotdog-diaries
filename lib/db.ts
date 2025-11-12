@@ -222,13 +222,24 @@ class DatabaseConnection {
         if (normalizedQuery.includes("content_status = 'approved'")) {
           console.log('[DB] Applying content_status = approved filter to COUNT')
           query = query.eq('content_status', 'approved')
+          // Approved items should not be posted yet
+          if (normalizedQuery.includes('is_posted = false') || normalizedQuery.includes('is_posted = 0')) {
+            console.log('[DB] Also applying is_posted = false filter')
+            // Already handled above
+          }
         }
         if (normalizedQuery.includes("content_status = 'rejected'")) {
           console.log('[DB] Applying content_status = rejected filter to COUNT')
           query = query.eq('content_status', 'rejected')
         }
-        if (normalizedQuery.includes("content_status = 'scheduled'")) {
-          console.log('[DB] Applying content_status = scheduled filter to COUNT')
+        // Handle scheduled with complex OR condition
+        if (normalizedQuery.includes("content_status = 'scheduled'") &&
+            normalizedQuery.includes('scheduled_post_time is not null')) {
+          console.log('[DB] Applying scheduled OR scheduled_post_time filter to COUNT')
+          // Match: (content_status = 'scheduled' OR (scheduled_post_time IS NOT NULL AND is_approved = TRUE))
+          query = query.or('content_status.eq.scheduled,and(scheduled_post_time.not.is.null,is_approved.eq.true)')
+        } else if (normalizedQuery.includes("content_status = 'scheduled'")) {
+          console.log('[DB] Applying simple content_status = scheduled filter to COUNT')
           query = query.eq('content_status', 'scheduled')
         }
         // Handle pending (discovered OR pending_review)
@@ -300,13 +311,24 @@ class DatabaseConnection {
         if (normalizedQuery.includes("content_status = 'approved'")) {
           console.log('[DB] Applying content_status = approved filter to SELECT')
           query = query.eq('content_status', 'approved')
+          // Approved items should not be posted yet
+          if (normalizedQuery.includes('is_posted = false') || normalizedQuery.includes('is_posted = 0')) {
+            console.log('[DB] Also applying is_posted = false filter')
+            // Already handled above
+          }
         }
         if (normalizedQuery.includes("content_status = 'rejected'")) {
           console.log('[DB] Applying content_status = rejected filter to SELECT')
           query = query.eq('content_status', 'rejected')
         }
-        if (normalizedQuery.includes("content_status = 'scheduled'")) {
-          console.log('[DB] Applying content_status = scheduled filter to SELECT')
+        // Handle scheduled with complex OR condition
+        if (normalizedQuery.includes("content_status = 'scheduled'") &&
+            normalizedQuery.includes('scheduled_post_time is not null')) {
+          console.log('[DB] Applying scheduled OR scheduled_post_time filter to SELECT')
+          // Match: (content_status = 'scheduled' OR (scheduled_post_time IS NOT NULL AND is_approved = TRUE))
+          query = query.or('content_status.eq.scheduled,and(scheduled_post_time.not.is.null,is_approved.eq.true)')
+        } else if (normalizedQuery.includes("content_status = 'scheduled'")) {
+          console.log('[DB] Applying simple content_status = scheduled filter to SELECT')
           query = query.eq('content_status', 'scheduled')
         }
         // Handle pending (discovered OR pending_review)
