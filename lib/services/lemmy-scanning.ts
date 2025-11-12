@@ -91,6 +91,8 @@ export class LemmyScanningService {
   private filteringService: FilteringService
   private contentProcessor: ContentProcessor
   private isScanning = false
+  private currentPages: Map<string, number> = new Map() // Track current page per community
+  private sortOptions = ['Hot', 'Active', 'New', 'TopWeek'] // Available sort options
 
   constructor() {
     this.filteringService = new FilteringService()
@@ -233,7 +235,7 @@ export class LemmyScanningService {
 
           // Process the content
           const processingResult = await this.contentProcessor.processContent(contentId, {
-            autoApprovalThreshold: 0.65, // Slightly higher threshold for user-generated content
+            autoApprovalThreshold: 0.6, // Match other scanners (was 0.65)
             autoRejectionThreshold: 0.2,
             enableDuplicateDetection: true
           })
@@ -295,9 +297,17 @@ export class LemmyScanningService {
    * Fetch posts from a specific Lemmy community
    */
   private async fetchCommunityPosts(community: LemmyCommunity, limit: number): Promise<ProcessedLemmyPost[]> {
-    const url = `https://${community.instance}/api/v3/post/list?community_name=${encodeURIComponent(community.community)}&sort=Hot&limit=${limit}`
-    
-    console.log(`🌭 Lemmy: Fetching from ${community.instance}/c/${community.community}...`)
+    const communityKey = `${community.instance}/${community.community}`
+
+    // Get current page for this community (default to 1)
+    const currentPage = this.currentPages.get(communityKey) || 1
+
+    // Randomly select sort order for variety
+    const sort = this.sortOptions[Math.floor(Math.random() * this.sortOptions.length)]
+
+    const url = `https://${community.instance}/api/v3/post/list?community_name=${encodeURIComponent(community.community)}&sort=${sort}&page=${currentPage}&limit=${limit}`
+
+    console.log(`🌭 Lemmy: Fetching from ${community.instance}/c/${community.community} (sort: ${sort}, page: ${currentPage})...`)
     
     const response = await fetch(url, {
       headers: {
@@ -324,6 +334,10 @@ export class LemmyScanningService {
       console.log('Lemmy response has no posts array:', data)
       return []
     }
+
+    // Update page for next scan (reset to 1 after reaching page 5)
+    const nextPage = currentPage >= 5 ? 1 : currentPage + 1
+    this.currentPages.set(communityKey, nextPage)
 
     return data.posts
       .filter(item => item && item.post && item.counts && item.counts.score >= 0) // Filter out heavily downvoted posts
@@ -377,15 +391,15 @@ export class LemmyScanningService {
   private transformLemmyPost(item: LemmyPost, isCommunityTargeted: boolean = false): ProcessedLemmyPost | null {
     const title = item.post.name || 'Untitled'
     const body = item.post.body || ''
-    
-    // Apply text length filters (150 character limit for titles)
-    if (title.length > 150) {
+
+    // Apply text length filters (increased from 150 to 200 for titles)
+    if (title.length > 200) {
       console.log(`⏭️ Skipping Lemmy post - title too long: ${title.length} chars: "${title.substring(0, 50)}..."`)
       return null
     }
-    
-    // For community-targeted content, be more lenient with body length
-    const bodyLengthLimit = isCommunityTargeted ? 300 : 150
+
+    // For community-targeted content, be more lenient with body length (increased limits)
+    const bodyLengthLimit = isCommunityTargeted ? 400 : 250
     if (body.length > bodyLengthLimit) {
       console.log(`⏭️ Skipping Lemmy post - body too long: ${body.length} chars (limit: ${bodyLengthLimit}): "${title.substring(0, 30)}..."`)
       return null
@@ -605,17 +619,37 @@ export class LemmyScanningService {
     return {
       isEnabled: true,
       scanInterval: 240, // 4 hours
-      maxPostsPerScan: 20,
+      maxPostsPerScan: 30, // Increased from 20 for more variety
       targetCommunities: [
-        { 
-          instance: 'lemmy.world', 
+        {
+          instance: 'lemmy.world',
           community: 'hot_dog',
           description: 'Main hotdog community - 185 subscribers, active moderation'
         },
-        { 
-          instance: 'lemmy.world', 
+        {
+          instance: 'lemmy.world',
           community: 'food',
           description: 'General food community - may have hotdog content'
+        },
+        {
+          instance: 'lemmy.world',
+          community: 'cooking',
+          description: 'Cooking community - recipes and food content'
+        },
+        {
+          instance: 'lemmy.world',
+          community: 'foodporn',
+          description: 'High-quality food photography'
+        },
+        {
+          instance: 'sh.itjust.works',
+          community: 'food',
+          description: 'Food community on sh.itjust.works instance'
+        },
+        {
+          instance: 'lemmy.ml',
+          community: 'food',
+          description: 'Food community on lemmy.ml instance'
         }
       ],
       minScore: 1
