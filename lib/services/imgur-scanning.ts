@@ -112,8 +112,12 @@ export interface ImgurPerformScanResult {
 export class ImgurScanningService {
   private isScanning = false
   private readonly searchTerms = [
-    'hotdog', 'hot dog', 'chili dog', 'chicago dog', 'corn dog'
+    'hotdog', 'hot dog', 'chili dog', 'chicago dog', 'corn dog',
+    'frankfurter', 'ballpark hotdog', 'street hotdog'
   ]
+  private currentPages: Map<string, number> = new Map()
+  private sortOptions = ['time', 'viral', 'top']
+  private windowOptions = ['day', 'week', 'month']
 
   constructor() {
     // Using shared contentProcessor instance
@@ -123,9 +127,9 @@ export class ImgurScanningService {
    * Perform a single scan with options
    */
   async performScan(options: ImgurPerformScanOptions): Promise<ImgurPerformScanResult> {
-    const maxPosts = options.maxPosts || 20
+    const maxPosts = options.maxPosts || 30
     const startTime = Date.now()
-    
+
     try {
       await logToDatabase(
         LogLevel.INFO,
@@ -141,12 +145,30 @@ export class ImgurScanningService {
       let duplicates = 0
       let errors = 0
 
+      // Randomly select sort and window for this scan
+      const sort = this.sortOptions[Math.floor(Math.random() * this.sortOptions.length)]
+      const window = sort === 'top'
+        ? this.windowOptions[Math.floor(Math.random() * this.windowOptions.length)]
+        : 'all'
+
+      console.log(`🎲 Using sort: ${sort}, window: ${window} for this scan`)
+
       // Search for hotdog content using multiple terms
       for (const term of this.searchTerms) {
         try {
-          const items = await this.searchGallery(term, Math.ceil(maxPosts / this.searchTerms.length))
+          // Get or initialize page for this search term
+          const pageKey = `${term}_${sort}_${window}`
+          const currentPage = this.currentPages.get(pageKey) || 0
+
+          // Cycle through pages 0-4
+          const page = currentPage % 5
+          this.currentPages.set(pageKey, currentPage + 1)
+
+          console.log(`📄 Searching term "${term}" on page ${page}`)
+
+          const items = await this.searchGallery(term, Math.ceil(maxPosts / this.searchTerms.length), sort, window, page)
           console.log(`🔍 Found ${items.length} items for term "${term}"`)
-          
+
           totalFound += items.length
 
           for (const item of items) {
@@ -166,7 +188,7 @@ export class ImgurScanningService {
                   const contentId = await this.saveImageToQueue(image, item, true)
                   if (contentId) {
                     const result = await contentProcessor.processContent(contentId, {
-                      autoApprovalThreshold: 0.5,
+                      autoApprovalThreshold: 0.6,
                       autoRejectionThreshold: 0.2
                     })
 
@@ -214,7 +236,7 @@ export class ImgurScanningService {
                 const contentId = await this.saveImageToQueue(singleImage, item, false)
                 if (contentId) {
                   const result = await contentProcessor.processContent(contentId, {
-                    autoApprovalThreshold: 0.5,
+                    autoApprovalThreshold: 0.6,
                     autoRejectionThreshold: 0.2
                   })
 
@@ -289,19 +311,25 @@ export class ImgurScanningService {
   }
 
   /**
-   * Search Imgur gallery
+   * Search Imgur gallery with pagination, sort, and window support
    */
-  private async searchGallery(searchTerm: string, limit: number = 20): Promise<ImgurGalleryItem[]> {
+  private async searchGallery(
+    searchTerm: string,
+    limit: number = 30,
+    sort: string = 'time',
+    window: string = 'all',
+    page: number = 0
+  ): Promise<ImgurGalleryItem[]> {
     try {
       const clientId = process.env.IMGUR_CLIENT_ID
       if (!clientId) {
         throw new Error('Imgur Client ID not configured')
       }
 
-      const url = `https://api.imgur.com/3/gallery/search/time/all/0?q=${encodeURIComponent(searchTerm)}`
-      
-      console.log(`🔍 Searching Imgur gallery for: "${searchTerm}" (limit: ${limit})`)
-      
+      const url = `https://api.imgur.com/3/gallery/search/${sort}/${window}/${page}?q=${encodeURIComponent(searchTerm)}`
+
+      console.log(`🔍 Searching Imgur gallery for: "${searchTerm}" (sort: ${sort}, window: ${window}, page: ${page}, limit: ${limit})`)
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -316,7 +344,7 @@ export class ImgurScanningService {
       }
 
       const data: ImgurSearchResponse = await response.json()
-      
+
       if (!data.success) {
         throw new Error(`Imgur API returned error: ${data.status}`)
       }
@@ -326,10 +354,10 @@ export class ImgurScanningService {
         .filter(item => {
           // Filter out NSFW content
           if (item.nsfw) return false
-          
+
           // Filter out ads
           if (item.is_ad) return false
-          
+
           // Ensure it has hotdog-related content
           const text = `${item.title || ''} ${item.description || ''}`.toLowerCase()
           return this.searchTerms.some(term => text.includes(term.toLowerCase()))
