@@ -148,8 +148,10 @@ class DatabaseConnection {
     // Parse common queries and convert to Supabase API calls
     const normalizedQuery = text.trim().toLowerCase()
     
-    // Handle health check queries
-    if (normalizedQuery.includes('select 1') || normalizedQuery.includes('health_check')) {
+    // Handle health check queries - only match queries that START with SELECT 1
+    // to avoid matching subqueries like "NOT EXISTS (SELECT 1 FROM ...)"
+    if ((normalizedQuery.startsWith('select 1') || normalizedQuery.includes('health_check')) &&
+        !normalizedQuery.includes('count(*)')) {
       console.log('[DB] Executing health check via Supabase')
       return {
         rows: [{ health_check: 1 }] as T[],
@@ -243,9 +245,9 @@ class DatabaseConnection {
           console.log('[DB] Applying simple content_status = scheduled filter to COUNT')
           query = query.eq('content_status', 'scheduled')
         }
-        // Handle pending (discovered OR pending_review)
-        if (normalizedQuery.includes("content_status = 'discovered' OR") ||
-            normalizedQuery.includes("content_status = 'pending_review'")) {
+        // Handle pending (discovered OR pending_review) - support table aliases like cq.content_status
+        if ((normalizedQuery.includes("content_status = 'discovered'") && normalizedQuery.includes("content_status = 'pending_review'")) ||
+            normalizedQuery.includes("in ('discovered', 'pending_review')")) {
           console.log('[DB] Applying content_status IN (discovered, pending_review) filter to COUNT')
           query = query.in('content_status', ['discovered', 'pending_review'])
         }
@@ -333,9 +335,9 @@ class DatabaseConnection {
           console.log('[DB] Applying simple content_status = scheduled filter to SELECT')
           query = query.eq('content_status', 'scheduled')
         }
-        // Handle pending (discovered OR pending_review)
-        if (normalizedQuery.includes("content_status = 'discovered' OR") ||
-            normalizedQuery.includes("content_status = 'pending_review'")) {
+        // Handle pending (discovered OR pending_review) - support table aliases like cq.content_status
+        if ((normalizedQuery.includes("content_status = 'discovered'") && normalizedQuery.includes("content_status = 'pending_review'")) ||
+            normalizedQuery.includes("in ('discovered', 'pending_review')")) {
           console.log('[DB] Applying content_status IN (discovered, pending_review) filter to SELECT')
           query = query.in('content_status', ['discovered', 'pending_review'])
         }
