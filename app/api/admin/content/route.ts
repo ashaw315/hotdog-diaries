@@ -376,7 +376,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         totalPages: Math.ceil(total / limit),
         hasMore: actualOffset + content.length < total
       },
-      filter: status
+      filter: status,
+      // 🐛 DEBUG: Temporary debug info
+      _debug: {
+        countQueryExecuted: true,
+        countResultRows: countResult.rows.length,
+        countResultFirstRow: countResult.rows[0],
+        rawTotal: countResult.rows[0]?.total,
+        parsedTotal: total,
+        queryParamsLength: queryParams.length,
+        countParamsLength: countParams.length,
+        whereClause: whereClause || '(posted query)',
+        contentQueryReturned: contentResult.rows.length
+      }
     }
 
     // 🧩 Additional diagnostic logging for response
