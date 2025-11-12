@@ -1536,7 +1536,11 @@ export default function ContentQueue() {
                       <input
                         type="checkbox"
                         checked={selectedItems.has(item.id)}
-                        onChange={() => handleSelectItem(item.id)}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          handleSelectItem(item.id)
+                        }}
+                        onClick={(e) => e.stopPropagation()}
                         className="select-checkbox"
                       />
                       
@@ -1613,7 +1617,10 @@ export default function ContentQueue() {
                                 <div className="reconcile-warning" data-testid="reconcile-warning">
                                   <span className="warning-icon" title="Missing content enrichment">⚠︎</span>
                                   <button
-                                    onClick={() => handleReconcileContent(item.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleReconcileContent(item.id)
+                                    }}
                                     className="reconcile-btn"
                                     data-testid="reconcile-btn"
                                     title="One-click reconcile"
@@ -1635,13 +1642,19 @@ export default function ContentQueue() {
                                 />
                                 <div className="edit-actions">
                                   <button
-                                    onClick={handleSaveEdit}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleSaveEdit()
+                                    }}
                                     className="action-btn action-btn-success"
                                   >
                                     Save
                                   </button>
                                   <button
-                                    onClick={handleCancelEdit}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleCancelEdit()
+                                    }}
                                     className="action-btn"
                                   >
                                     Cancel
@@ -1657,11 +1670,12 @@ export default function ContentQueue() {
                                 )}
                                 <div className="content-meta">
                                   <div>Author: {item.original_author}</div>
-                                  <a 
-                                    href={item.original_url} 
-                                    target="_blank" 
+                                  <a
+                                    href={item.original_url}
+                                    target="_blank"
                                     rel="noopener noreferrer"
                                     className="meta-link"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
                                     View Original
                                   </a>
@@ -1689,7 +1703,10 @@ export default function ContentQueue() {
                         <div className="action-buttons">
                           {editingContent !== item.id && (
                             <button
-                              onClick={() => handleStartEdit(item)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleStartEdit(item)
+                              }}
                               className="action-btn"
                               disabled={item.content_status === 'posted'}
                             >
@@ -1700,13 +1717,19 @@ export default function ContentQueue() {
                           {item.content_status === 'pending_review' && (
                             <>
                               <button
-                                onClick={() => handleUpdateContent(item.id, { content_status: 'approved' })}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleUpdateContent(item.id, { content_status: 'approved' })
+                                }}
                                 className="action-btn action-btn-success"
                               >
                                 ✅ Approve
                               </button>
                               <button
-                                onClick={() => handleUpdateContent(item.id, { content_status: 'rejected', rejection_reason: 'Manual review rejection' })}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleUpdateContent(item.id, { content_status: 'rejected', rejection_reason: 'Manual review rejection' })
+                                }}
                                 className="action-btn action-btn-danger"
                               >
                                 ❌ Reject
@@ -1716,10 +1739,13 @@ export default function ContentQueue() {
                           
                           {item.content_status === 'approved' && (
                             <button
-                              onClick={() => handleUpdateContent(item.id, { 
-                                content_status: 'scheduled',
-                                scheduled_for: new Date(Date.now() + 60 * 60 * 1000).toISOString()
-                              })}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleUpdateContent(item.id, {
+                                  content_status: 'scheduled',
+                                  scheduled_for: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+                                })
+                              }}
                               className="action-btn action-btn-primary"
                             >
                               📅 Schedule
@@ -1728,7 +1754,10 @@ export default function ContentQueue() {
                           
                           {item.content_status !== 'posted' && (
                             <button
-                              onClick={() => handleUpdateContent(item.id, { content_status: 'archived' })}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleUpdateContent(item.id, { content_status: 'archived' })
+                              }}
                               className="action-btn"
                             >
                               🗄️ Archive
