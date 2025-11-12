@@ -73,8 +73,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Verify schema and build safe column list
     console.log('[AdminContentAPI] Verifying database schema...')
-    const contentQueueColumns = await verifyTableColumns('content_queue')
-    const postedContentColumns = await verifyTableColumns('posted_content')
+    let contentQueueColumns = await verifyTableColumns('content_queue')
+    let postedContentColumns = await verifyTableColumns('posted_content')
+
+    // Fallback to known columns if schema detection fails
+    if (contentQueueColumns.length === 0) {
+      console.warn('[AdminContentAPI] Schema detection failed for content_queue, using fallback column list')
+      contentQueueColumns = [
+        'id', 'content_text', 'content_type', 'source_platform', 'original_url',
+        'original_author', 'content_image_url', 'content_video_url', 'scraped_at',
+        'is_posted', 'is_approved', 'admin_notes', 'created_at', 'updated_at',
+        'confidence_score', 'content_hash', 'is_rejected', 'status', 'scheduled_for',
+        'scheduled_post_time', 'content_status', 'reviewed_at', 'reviewed_by',
+        'rejection_reason', 'is_spam', 'is_inappropriate', 'is_unrelated', 'is_valid_hotdog'
+      ]
+    }
+
+    if (postedContentColumns.length === 0) {
+      console.warn('[AdminContentAPI] Schema detection failed for posted_content, using fallback column list')
+      postedContentColumns = ['content_queue_id', 'posted_at', 'platform', 'post_id', 'post_url']
+    }
 
     console.log('[AdminContentAPI] Available columns in content_queue:', contentQueueColumns.length)
     console.log('[AdminContentAPI] Available columns in posted_content:', postedContentColumns.length)
@@ -441,7 +459,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           hasContentStatus,
           hasIsApproved,
           hasIsPosted,
-          hasScheduledPostTime
+          hasScheduledPostTime,
+          columnsDetected: contentQueueColumns.length,
+          columnsList: contentQueueColumns
         },
         // SQL queries and parameters
         queries: {
