@@ -43,6 +43,7 @@ export default function ContentQueue() {
   const [editingContent, setEditingContent] = useState<number | null>(null)
   const [editText, setEditText] = useState<string>('')
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
+  const [currentPage, setCurrentPage] = useState<number>(1)
 
   // URL-persisted sort state - default to scheduled_post_time ascending for schedule view
   const {
@@ -72,10 +73,11 @@ export default function ContentQueue() {
     loading: isLoading,
     error: contentError,
     refresh,
-    updateContentStatus
+    updateContentStatus,
+    pagination
   } = useContentData({
-    page: 1,
-    limit: 200, // Increased from 50 to show more content
+    page: currentPage,
+    limit: 10, // 10 posts per page as requested
     status: getHookStatus(filterBy),
     platform: platformFilter !== 'all' ? platformFilter : undefined,
     type: typeFilter !== 'all' ? typeFilter : undefined,
@@ -114,10 +116,15 @@ export default function ContentQueue() {
     }
   }, [filterBy, sortBy, setSortWithToggle])
 
-  // Refresh when sort or filter changes
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterBy, platformFilter, typeFilter, sortBy, direction])
+
+  // Refresh when sort, filter, or page changes
   useEffect(() => {
     refresh()
-  }, [sortBy, direction, filterBy, platformFilter, typeFilter, refresh])
+  }, [sortBy, direction, filterBy, platformFilter, typeFilter, currentPage, refresh])
 
   // Replace the manual fetchQueuedContent with the hook's refresh function
   const fetchQueuedContent = refresh
@@ -1708,6 +1715,160 @@ export default function ContentQueue() {
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="queue-section">
+            <div className="section-body">
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}>
+                {/* Pagination info */}
+                <div style={{
+                  fontSize: '14px',
+                  color: '#6b7280'
+                }}>
+                  Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, pagination.total)} of {pagination.total} items
+                </div>
+
+                {/* Pagination buttons */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  {/* Previous button */}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    style={{
+                      padding: '8px 16px',
+                      background: currentPage === 1 ? '#f3f4f6' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                      color: currentPage === 1 ? '#9ca3af' : 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    ← Previous
+                  </button>
+
+                  {/* Page numbers */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '4px',
+                    alignItems: 'center'
+                  }}>
+                    {/* First page */}
+                    {currentPage > 3 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          style={{
+                            padding: '8px 12px',
+                            background: 'white',
+                            color: '#374151',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            minWidth: '40px'
+                          }}
+                        >
+                          1
+                        </button>
+                        <span style={{ color: '#9ca3af' }}>...</span>
+                      </>
+                    )}
+
+                    {/* Pages around current */}
+                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        return page === currentPage ||
+                               page === currentPage - 1 ||
+                               page === currentPage + 1 ||
+                               page === currentPage - 2 ||
+                               page === currentPage + 2
+                      })
+                      .filter(page => page > 0 && page <= pagination.totalPages)
+                      .map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          style={{
+                            padding: '8px 12px',
+                            background: page === currentPage
+                              ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
+                              : 'white',
+                            color: page === currentPage ? 'white' : '#374151',
+                            border: page === currentPage ? 'none' : '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: page === currentPage ? '600' : '500',
+                            cursor: 'pointer',
+                            minWidth: '40px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          {page}
+                        </button>
+                      ))}
+
+                    {/* Last page */}
+                    {currentPage < pagination.totalPages - 2 && (
+                      <>
+                        <span style={{ color: '#9ca3af' }}>...</span>
+                        <button
+                          onClick={() => setCurrentPage(pagination.totalPages)}
+                          style={{
+                            padding: '8px 12px',
+                            background: 'white',
+                            color: '#374151',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            minWidth: '40px'
+                          }}
+                        >
+                          {pagination.totalPages}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Next button */}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
+                    disabled={currentPage === pagination.totalPages}
+                    style={{
+                      padding: '8px 16px',
+                      background: currentPage === pagination.totalPages ? '#f3f4f6' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                      color: currentPage === pagination.totalPages ? '#9ca3af' : 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: currentPage === pagination.totalPages ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bulk Edit Modal */}
         <BulkEditModal
