@@ -117,11 +117,18 @@ export default function PostedContentPage() {
     }
   }, [page, itemsPerPage, sortOrder, startDate, endDate])
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 and reload when filters change
   useEffect(() => {
-    setPage(1)
-  }, [sortOrder, startDate, endDate])
+    if (page === 1) {
+      // If already on page 1, just reload
+      loadPostedContent()
+    } else {
+      // Otherwise reset to page 1 (which will trigger reload via the other effect)
+      setPage(1)
+    }
+  }, [sortOrder, startDate, endDate, loadPostedContent, page])
 
+  // Load content when page changes
   useEffect(() => {
     loadPostedContent()
   }, [page, loadPostedContent])
