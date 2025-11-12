@@ -32,11 +32,29 @@ export async function GET(request: NextRequest) {
     // Calculate statistics
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    
+
+    // Calculate actual days since first post for accurate Posts/Day
+    let daysSinceFirstPost = 1 // Default to 1 to avoid division by zero
+    let postsPerDay = 0
+
+    if (postedContent && postedContent.length > 0) {
+      // Find the earliest post
+      const earliestPost = postedContent.reduce((earliest, post) => {
+        const postDate = new Date(post.posted_at)
+        return postDate < earliest ? postDate : earliest
+      }, new Date(postedContent[0].posted_at))
+
+      // Calculate days between earliest post and now
+      const daysDiff = Math.floor((now.getTime() - earliestPost.getTime()) / (1000 * 60 * 60 * 24))
+      daysSinceFirstPost = Math.max(1, daysDiff) // At least 1 day
+      postsPerDay = Number((postedContent.length / daysSinceFirstPost).toFixed(1))
+    }
+
     const stats = {
       totalPosted: postedContent?.length || 0,
       postedToday: postedContent?.filter(p => new Date(p.posted_at) >= todayStart).length || 0,
-      averageEngagement: 75, // Placeholder - would need engagement tracking
+      postsPerDay, // Actual calculated average
+      daysSinceFirstPost, // Useful metadata
       platformBreakdown: {},
       contentTypeBreakdown: {},
       recentPosts: postedContent?.slice(0, 5) || []

@@ -189,10 +189,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       queryParams.push(limit, actualOffset)
       console.log(`[AdminContentAPI] 🔍 POSTED - queryParams after adding LIMIT/OFFSET: [${queryParams.join(', ')}]`)
 
+      // Add post_order if it exists in posted_content
+      const postOrderClause = postedContentColumns.includes('post_order')
+        ? 'pc.post_order'
+        : 'NULL AS post_order'
+
       contentQuery = `
         SELECT
           ${safeSelectClause},
-          ${postedAtClause}
+          ${postedAtClause},
+          ${postOrderClause}
         FROM content_queue cq
         JOIN posted_content pc ON pc.content_queue_id = cq.id
         WHERE ${postedWhereClause}

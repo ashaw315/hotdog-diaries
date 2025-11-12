@@ -14,17 +14,13 @@ interface PostedContent {
   content_video_url?: string
   posted_at: Date
   post_order: number
-  engagement_stats?: {
-    views: number
-    likes: number
-    shares: number
-  }
 }
 
 interface PostingStats {
   totalPosted: number
   postedToday: number
-  averageEngagement: number
+  postsPerDay: number
+  daysSinceFirstPost: number
   topPerformingPost?: PostedContent
 }
 
@@ -276,12 +272,12 @@ export default function PostedContentPage() {
                 <p className="stat-label">Posted Today</p>
               </div>
               <div className="stat-item">
-                <div className="stat-number primary">{Math.round(stats.averageEngagement)}%</div>
-                <p className="stat-label">Avg Engagement</p>
+                <div className="stat-number primary">{stats.postsPerDay}</div>
+                <p className="stat-label">Posts/Day Avg</p>
               </div>
               <div className="stat-item">
-                <div className="stat-number primary">{postedContent.length > 0 ? Math.round(stats.totalPosted / 30) : 0}</div>
-                <p className="stat-label">Posts/Day (30d avg)</p>
+                <div className="stat-number primary">{stats.daysSinceFirstPost}</div>
+                <p className="stat-label">Days Active</p>
               </div>
             </div>
           </div>
@@ -384,23 +380,6 @@ export default function PostedContentPage() {
                       <span className="detail-value">{formatDate(item.posted_at)}</span>
                     </div>
                   </div>
-
-                  {item.engagement_stats && (
-                    <div className="engagement-stats">
-                      <div className="engagement-card">
-                        <div className="engagement-number">{item.engagement_stats.views}</div>
-                        <p className="engagement-label">Views</p>
-                      </div>
-                      <div className="engagement-card">
-                        <div className="engagement-number">{item.engagement_stats.likes}</div>
-                        <p className="engagement-label">Likes</p>
-                      </div>
-                      <div className="engagement-card">
-                        <div className="engagement-number">{item.engagement_stats.shares}</div>
-                        <p className="engagement-label">Shares</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="item-footer">
