@@ -61,10 +61,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const status = searchParams.get('status') || 'all'
   const platform = searchParams.get('platform') || null
   const contentType = searchParams.get('type') || null
+  const sortOrder = searchParams.get('sortOrder') || searchParams.get('dir') || 'desc'
+  const startDate = searchParams.get('startDate') || null
+  const endDate = searchParams.get('endDate') || null
 
   const actualOffset = offset || (page - 1) * limit
 
-  console.log(`[AdminContentAPI] Query params - status: ${status}, platform: ${platform}, type: ${contentType}, page: ${page}, limit: ${limit}, offset: ${actualOffset}`)
+  console.log(`[AdminContentAPI] Query params - status: ${status}, platform: ${platform}, type: ${contentType}, page: ${page}, limit: ${limit}, offset: ${actualOffset}, sortOrder: ${sortOrder}, startDate: ${startDate}, endDate: ${endDate}`)
 
   try {
     // Check database connection and log current state
@@ -185,6 +188,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       console.log(`[AdminContentAPI] 🔍 POSTED - WHERE clause after filters: ${postedWhereClause}`)
       console.log(`[AdminContentAPI] 🔍 POSTED - queryParams after filters: [${queryParams.join(', ')}]`)
 
+      // Add date range filtering if provided
+      if (startDate) {
+        postedWhereClause += ` AND pc.posted_at >= $${paramIndex}`
+        queryParams.push(new Date(startDate).toISOString())
+        console.log(`[AdminContentAPI] ✅ POSTED - Added startDate filter: ${startDate} at $${paramIndex}`)
+        paramIndex++
+      }
+
+      if (endDate) {
+        // Add 1 day to endDate to include the entire end day
+        const endDateTime = new Date(endDate)
+        endDateTime.setDate(endDateTime.getDate() + 1)
+        postedWhereClause += ` AND pc.posted_at < $${paramIndex}`
+        queryParams.push(endDateTime.toISOString())
+        console.log(`[AdminContentAPI] ✅ POSTED - Added endDate filter: ${endDate} (exclusive: ${endDateTime.toISOString()}) at $${paramIndex}`)
+        paramIndex++
+      }
+
       // Add LIMIT and OFFSET parameters
       queryParams.push(limit, actualOffset)
       console.log(`[AdminContentAPI] 🔍 POSTED - queryParams after adding LIMIT/OFFSET: [${queryParams.join(', ')}]`)
@@ -194,6 +215,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         ? 'pc.post_order'
         : 'NULL AS post_order'
 
+      // Determine sort order (default: DESC for newest first)
+      const orderDirection = (sortOrder && sortOrder.toLowerCase() === 'asc') ? 'ASC' : 'DESC'
+
       contentQuery = `
         SELECT
           ${safeSelectClause},
@@ -202,7 +226,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         FROM content_queue cq
         JOIN posted_content pc ON pc.content_queue_id = cq.id
         WHERE ${postedWhereClause}
-        ORDER BY pc.posted_at DESC
+        ORDER BY pc.posted_at ${orderDirection}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `
 

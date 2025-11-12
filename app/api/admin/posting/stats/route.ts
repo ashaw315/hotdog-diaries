@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
       throw new Error(`Failed to fetch posted content: ${postedError.message}`)
     }
 
-    // Calculate statistics
+    // Calculate statistics using UTC to match database timestamps
     const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
 
     // Calculate actual days since first post for accurate Posts/Day
     let daysSinceFirstPost = 1 // Default to 1 to avoid division by zero

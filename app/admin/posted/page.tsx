@@ -32,6 +32,9 @@ export default function PostedContentPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [hidingPost, setHidingPost] = useState<number | null>(null)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
 
   const itemsPerPage = 20
 
@@ -51,8 +54,19 @@ export default function PostedContentPage() {
         headers['Authorization'] = `Bearer ${token}`
       }
 
+      // Build query params for filtering and sorting
+      const params = new URLSearchParams({
+        status: 'posted',
+        limit: itemsPerPage.toString(),
+        offset: ((page - 1) * itemsPerPage).toString(),
+        sortOrder
+      })
+
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
+
       const [contentResponse, statsResponse] = await Promise.allSettled([
-        fetch(`/api/admin/content?status=posted&limit=${itemsPerPage}&offset=${(page - 1) * itemsPerPage}`, {
+        fetch(`/api/admin/content?${params.toString()}`, {
           method: 'GET',
           headers,
           credentials: 'include' // ✅ ensures cookies are sent
@@ -101,7 +115,12 @@ export default function PostedContentPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, itemsPerPage])
+  }, [page, itemsPerPage, sortOrder, startDate, endDate])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [sortOrder, startDate, endDate])
 
   useEffect(() => {
     loadPostedContent()
@@ -223,12 +242,58 @@ export default function PostedContentPage() {
                 View all content that has been posted to the public site
               </p>
             </div>
-            <button 
-              onClick={() => { setPage(1); loadPostedContent(); }} 
-              className="refresh-btn"
-            >
-              🔄 Refresh
-            </button>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                className="refresh-btn"
+                title={sortOrder === 'desc' ? 'Showing newest first' : 'Showing oldest first'}
+              >
+                {sortOrder === 'desc' ? '🔽 Newest First' : '🔼 Oldest First'}
+              </button>
+
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                placeholder="Start Date"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  fontSize: '14px'
+                }}
+              />
+
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                placeholder="End Date"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  fontSize: '14px'
+                }}
+              />
+
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  className="refresh-btn"
+                  style={{ opacity: 0.8 }}
+                >
+                  ✕ Clear Dates
+                </button>
+              )}
+
+              <button
+                onClick={() => { setPage(1); loadPostedContent(); }}
+                className="refresh-btn"
+              >
+                🔄 Refresh
+              </button>
+            </div>
           </div>
 
           {error && (
