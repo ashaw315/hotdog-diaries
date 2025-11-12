@@ -205,6 +205,7 @@ class DatabaseConnection {
       
       // Handle COUNT queries for statistics
       if (normalizedQuery.includes('count(*)')) {
+        console.log('[DB] Processing COUNT query, normalized query:', normalizedQuery.substring(0, 500))
         let query = supabase.from('content_queue').select('*', { count: 'exact', head: true })
 
         // Apply filters based on query conditions
@@ -294,11 +295,12 @@ class DatabaseConnection {
       
       // Handle SELECT queries with pagination
       if (normalizedQuery.includes('select') && normalizedQuery.includes('limit')) {
+        console.log('[DB] Processing SELECT query, normalized query:', normalizedQuery.substring(0, 500))
         // Use only core columns that exist in production Supabase
         let query = supabase
           .from('content_queue')
           .select('id, content_text, source_platform, content_type, is_approved, is_posted, created_at, confidence_score, content_image_url, content_video_url, content_status')
-        
+
         // Apply filters
         if (normalizedQuery.includes('is_approved = true') || normalizedQuery.includes('is_approved = 1')) {
           query = query.eq('is_approved', true)
