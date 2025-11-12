@@ -206,7 +206,7 @@ class DatabaseConnection {
       // Handle COUNT queries for statistics
       if (normalizedQuery.includes('count(*)')) {
         let query = supabase.from('content_queue').select('*', { count: 'exact', head: true })
-        
+
         // Apply filters based on query conditions
         if (normalizedQuery.includes('is_approved = true') || normalizedQuery.includes('is_approved = 1')) {
           query = query.eq('is_approved', true)
@@ -216,6 +216,20 @@ class DatabaseConnection {
         }
         if (normalizedQuery.includes('is_posted = true') || normalizedQuery.includes('is_posted = 1')) {
           query = query.eq('is_posted', true)
+        }
+
+        // Handle parameterized filters (e.g., source_platform = $1, content_type = $2)
+        if (normalizedQuery.includes('source_platform = $1') && params && params[0]) {
+          console.log(`[DB] Applying source_platform filter: ${params[0]}`)
+          query = query.eq('source_platform', params[0])
+        }
+        if (normalizedQuery.includes('content_type = $1') && params && params[0]) {
+          console.log(`[DB] Applying content_type filter: ${params[0]}`)
+          query = query.eq('content_type', params[0])
+        }
+        if (normalizedQuery.includes('content_type = $2') && params && params[1]) {
+          console.log(`[DB] Applying content_type filter: ${params[1]}`)
+          query = query.eq('content_type', params[1])
         }
         // Note: removed status column filtering as it doesn't exist in production Supabase
         // Use content_status column instead if available for status-based filtering
