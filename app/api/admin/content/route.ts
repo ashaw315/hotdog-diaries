@@ -134,6 +134,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     let paramIndex = 1
     let whereClause: string // Declare at top level for debug access
 
+    // Column detection - declare at top level for debug access
+    const hasAdminNotes = contentQueueColumns.includes('admin_notes')
+    const hasIsApproved = contentQueueColumns.includes('is_approved')
+    const hasIsPosted = contentQueueColumns.includes('is_posted')
+    const hasContentStatus = contentQueueColumns.includes('content_status')
+    const hasScheduledPostTime = contentQueueColumns.includes('scheduled_post_time')
+
     if (status === 'posted') {
       // Query content_queue joined with posted_content for posted content
       console.log('[AdminContentAPI] Filtering for posted content (JOIN with posted_content)')
@@ -195,16 +202,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     } else {
       // Query content_queue only for other statuses
       whereClause = '1=1' // Don't redeclare - use outer variable
-      let orderBy = contentQueueColumns.includes('scraped_at') 
-        ? 'cq.scraped_at DESC' 
+      let orderBy = contentQueueColumns.includes('scraped_at')
+        ? 'cq.scraped_at DESC'
         : 'cq.created_at DESC'
-      
-      // Build WHERE clauses based on available columns
-      const hasAdminNotes = contentQueueColumns.includes('admin_notes')
-      const hasIsApproved = contentQueueColumns.includes('is_approved')
-      const hasIsPosted = contentQueueColumns.includes('is_posted')
-      const hasContentStatus = contentQueueColumns.includes('content_status')
-      const hasScheduledPostTime = contentQueueColumns.includes('scheduled_post_time')
 
       console.log(`[AdminContentAPI] 🔍 Column detection: hasContentStatus=${hasContentStatus}, hasIsApproved=${hasIsApproved}, hasIsPosted=${hasIsPosted}`)
       console.log(`[AdminContentAPI] 🔍 Status filter: ${status}`)
