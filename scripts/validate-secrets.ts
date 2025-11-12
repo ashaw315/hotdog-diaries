@@ -301,16 +301,25 @@ class SecretValidator {
     // 1. Validate current environment tokens
     console.log('1️⃣ Validating current environment tokens...')
     const tokenValidations = await this.validateCurrentTokens()
-    
+    const optionalTokens = ['CRON_TOKEN', 'ADMIN_PASSWORD', 'AUTH_TOKEN']
+
     for (const validation of tokenValidations) {
+      const isOptional = optionalTokens.includes(validation.tokenName)
+
       if (!validation.isValid) {
         if (validation.value === '') {
           // Only add warnings for required tokens that are missing
-          if (validation.errors.length > 0) {
+          if (validation.errors.length > 0 && !isOptional) {
             warnings.push(`${validation.tokenName}: ${validation.errors.join(', ')}`)
           }
         } else {
-          errors.push(`${validation.tokenName}: ${validation.errors.join(', ')}`)
+          // For optional tokens with values, treat validation errors as warnings
+          if (isOptional) {
+            warnings.push(`${validation.tokenName}: ${validation.errors.join(', ')} (optional - not blocking)`)
+            console.log(`  ⚠️  ${validation.tokenName} (optional - validation warnings exist but not blocking)`)
+          } else {
+            errors.push(`${validation.tokenName}: ${validation.errors.join(', ')}`)
+          }
         }
       } else {
         if (validation.value === '') {

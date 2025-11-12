@@ -619,7 +619,7 @@ jobs:
       - health-check
       - refill-check
       - upload-artifacts
-    if: |\
+    if: |
       always() && needs.context.outputs.proceed == 'true' && (
         github.event_name != 'deployment_status' ||
         (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
