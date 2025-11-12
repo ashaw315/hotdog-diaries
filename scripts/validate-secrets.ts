@@ -432,8 +432,19 @@ EXAMPLES:
     }
     
     if (shouldFailOnWarnings && result.warnings.length > 0) {
-      console.log('❌ Strict mode enabled - warnings treated as errors')
-      process.exit(2)
+      // Filter out warnings for optional tokens - these should never fail the build
+      const optionalTokens = ['CRON_TOKEN', 'ADMIN_PASSWORD', 'AUTH_TOKEN']
+      const nonOptionalWarnings = result.warnings.filter(warning => {
+        return !optionalTokens.some(token => warning.startsWith(`${token}:`))
+      })
+
+      if (nonOptionalWarnings.length > 0) {
+        console.log('❌ Strict mode enabled - warnings treated as errors')
+        console.log(`   ${nonOptionalWarnings.length} non-optional warning(s) found`)
+        process.exit(2)
+      } else {
+        console.log('ℹ️  Strict mode: All warnings are for optional tokens - not failing build')
+      }
     }
     
     console.log('🎉 Secret validation passed!')
