@@ -204,6 +204,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const hasIsApproved = contentQueueColumns.includes('is_approved')
       const hasIsPosted = contentQueueColumns.includes('is_posted')
       const hasContentStatus = contentQueueColumns.includes('content_status')
+      const hasScheduledPostTime = contentQueueColumns.includes('scheduled_post_time')
 
       console.log(`[AdminContentAPI] 🔍 Column detection: hasContentStatus=${hasContentStatus}, hasIsApproved=${hasIsApproved}, hasIsPosted=${hasIsPosted}`)
       console.log(`[AdminContentAPI] 🔍 Status filter: ${status}`)
@@ -252,8 +253,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // Check for scheduled content based on available columns
         const hasStatus = contentQueueColumns.includes('status')
         const hasScheduledFor = contentQueueColumns.includes('scheduled_for')
-        const hasScheduledPostTime = contentQueueColumns.includes('scheduled_post_time')
-        
+
         // Production schema detection (Supabase uses different field names)
         if (hasContentStatus && hasScheduledPostTime) {
           // Production schema: content_status + scheduled_post_time
