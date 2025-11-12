@@ -1669,16 +1669,20 @@ export default function ContentQueue() {
                                   </div>
                                 )}
                                 <div className="content-meta">
-                                  <div>Author: {item.original_author}</div>
-                                  <a
-                                    href={item.original_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="meta-link"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    View Original
-                                  </a>
+                                  {item.original_author && <div>Author: {item.original_author}</div>}
+                                  {item.original_url ? (
+                                    <a
+                                      href={item.original_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="meta-link"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      View Original
+                                    </a>
+                                  ) : (
+                                    <div style={{ color: '#9ca3af' }}>No source URL available</div>
+                                  )}
                                 </div>
                               </div>
                             )}
