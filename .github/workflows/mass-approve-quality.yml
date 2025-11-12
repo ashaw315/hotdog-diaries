@@ -20,17 +20,23 @@ jobs:
     steps:
       - name: Approve High-Quality Content
         run: |
-          echo "✅ Approving high-quality content (confidence >= ${{ github.event.inputs.min_confidence || 60 }}%)..."
+          MIN_CONFIDENCE="${{ github.event.inputs.min_confidence || 60 }}"
+          MAX_ITEMS="${{ github.event.inputs.max_items || 500 }}"
+
+          # Convert confidence percentage to decimal (e.g., 60 -> 0.6)
+          MIN_CONFIDENCE_DECIMAL=$(echo "scale=2; $MIN_CONFIDENCE / 100" | bc)
+
+          echo "✅ Approving high-quality content (confidence >= ${MIN_CONFIDENCE}%)..."
 
           curl -X POST "${{ secrets.SITE_URL }}/api/admin/auto-approve-production" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "forceApproval": true,
-              "maxItems": ${{ github.event.inputs.max_items || 500 }},
-              "minConfidenceScore": ${{ (github.event.inputs.min_confidence || 60) / 100 }},
-              "balancePlatforms": true
-            }' \
+            -d "{
+              \"forceApproval\": true,
+              \"maxItems\": $MAX_ITEMS,
+              \"minConfidenceScore\": $MIN_CONFIDENCE_DECIMAL,
+              \"balancePlatforms\": true
+            }" \
             --silent --show-error | jq '.'
 
           echo ""

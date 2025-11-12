@@ -158,6 +158,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.platforms != '' && inputs.platforms != 'demand-driven') }}
     outputs:
       platforms: ${{ steps.strategy.outputs.platforms }}
+      platforms-json: ${{ steps.strategy.outputs.platforms-json }}
       schedule-type: ${{ steps.strategy.outputs.schedule-type }}
     steps:
       - name: Determine scan strategy
@@ -192,8 +193,12 @@ jobs:
           if [[ "$PLATFORMS" == "all" ]]; then
             PLATFORMS="reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay,niche"
           fi
-          
+
+          # Convert comma-separated to JSON array format for matrix
+          PLATFORMS_JSON=$(echo "$PLATFORMS" | jq -R 'split(",")')
+
           echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
+          echo "platforms-json=$PLATFORMS_JSON" >> $GITHUB_OUTPUT
           echo "schedule-type=$SCHEDULE_TYPE" >> $GITHUB_OUTPUT
           echo "Selected platforms: $PLATFORMS"
 
@@ -317,7 +322,7 @@ jobs:
       fail-fast: false
       max-parallel: 3  # Limit parallel jobs to avoid rate limits
       matrix:
-        platform: ${{ fromJSON(format('[{0}]', replace(replace(needs.determine-platforms.outputs.platforms, ' ', ''), ',', '","'))) }}
+        platform: ${{ fromJSON(needs.determine-platforms.outputs.platforms-json) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

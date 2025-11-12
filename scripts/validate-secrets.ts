@@ -262,7 +262,8 @@ class SecretValidator {
     const results: TokenValidation[] = []
     
     // Optional tokens that may not be configured in all environments
-    const optionalTokens = ['CRON_TOKEN', 'ADMIN_PASSWORD']
+    // AUTH_TOKEN is optional as it's a legacy fallback to JWT_SECRET
+    const optionalTokens = ['CRON_TOKEN', 'ADMIN_PASSWORD', 'AUTH_TOKEN']
     
     for (const [tokenName, config] of Object.entries(TOKEN_CONFIGS)) {
       const tokenValue = process.env[tokenName]
