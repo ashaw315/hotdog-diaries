@@ -73,6 +73,7 @@ jobs:
           curl -L -X POST "${{ secrets.SITE_URL }}/api/admin/emergency-scan" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
+            --max-time 300 \
             --fail --show-error --retry 2
       
       - name: High Priority Scan
@@ -84,6 +85,7 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"mode": "emergency", "platforms": ["reddit", "youtube", "giphy", "pixabay", "bluesky", "imgur"], "force": true}' \
+            --max-time 300 \
             --fail --show-error --retry 2
       
       - name: Normal Scan
@@ -95,6 +97,7 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"mode": "auto", "platforms": ["reddit", "giphy", "bluesky"], "force": false}' \
+            --max-time 180 \
             --fail --show-error --retry 2
       
       - name: Report Scan Results
