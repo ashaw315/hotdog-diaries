@@ -4,7 +4,7 @@ import { EdgeAuthUtils } from '@/lib/auth-edge'
 import { db } from '@/lib/db'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
-import { buildSafeSelectClause, verifyTableColumns } from '@/lib/db-schema-utils'
+import { verifyTableColumns } from '@/lib/db-schema-utils'
 
 interface ContentQueueItem {
   id: number
@@ -254,9 +254,11 @@ export async function GET(request: NextRequest) {
         'reviewed_by',
         'rejection_reason'
       ]
-      
-      const safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns)
-      console.log('[AdminQueueAPI] Safe SELECT clause built')
+
+      // Use direct column list instead of schema detection to avoid NULL values
+      // when schema detection fails in production
+      const safeSelectClause = desiredColumns.join(', ')
+      console.log('[AdminQueueAPI] SELECT clause built with direct column list')
       
       const queryParams = [limit, actualOffset]
       
