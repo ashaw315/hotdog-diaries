@@ -269,6 +269,21 @@ class DatabaseConnection {
         if (normalizedQuery.includes('is_posted = false') || normalizedQuery.includes('is_posted = 0')) {
           query = query.eq('is_posted', false)
         }
+
+        // Handle parameterized filters (e.g., source_platform = $1, content_type = $1/$2)
+        if (normalizedQuery.includes('source_platform = $1') && params && params[0]) {
+          console.log(`[DB] Applying source_platform filter to SELECT: ${params[0]}`)
+          query = query.eq('source_platform', params[0])
+        }
+        if (normalizedQuery.includes('content_type = $1') && params && params[0]) {
+          console.log(`[DB] Applying content_type filter to SELECT: ${params[0]}`)
+          query = query.eq('content_type', params[0])
+        }
+        if (normalizedQuery.includes('content_type = $2') && params && params[1]) {
+          console.log(`[DB] Applying content_type filter to SELECT: ${params[1]}`)
+          query = query.eq('content_type', params[1])
+        }
+
         if (normalizedQuery.includes('order by')) {
           if (normalizedQuery.includes('created_at desc')) {
             query = query.order('created_at', { ascending: false })

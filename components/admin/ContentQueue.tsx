@@ -170,8 +170,9 @@ export default function ContentQueue() {
       try {
         const params = new URLSearchParams()
         if (getHookStatus(filterBy)) params.set('status', getHookStatus(filterBy)!)
-        if (platformFilter !== 'all') params.set('platform', platformFilter)
-        if (typeFilter !== 'all') params.set('type', typeFilter)
+        // Don't apply platform/type filters to stats - we want to show all available options in dropdowns
+        // if (platformFilter !== 'all') params.set('platform', platformFilter)
+        // if (typeFilter !== 'all') params.set('type', typeFilter)
 
         // Fetch with high limit to get all items for stats
         params.set('limit', '10000')
@@ -202,7 +203,7 @@ export default function ContentQueue() {
     }
 
     fetchDistributionStats()
-  }, [filterBy, platformFilter, typeFilter])
+  }, [filterBy]) // Only refetch when status filter changes, not platform/type
 
   // Use the full distribution stats instead of just paginated results
   const distributionStats = allDistributionStats
