@@ -218,6 +218,32 @@ class DatabaseConnection {
           query = query.eq('is_posted', true)
         }
 
+        // Handle content_status conditions
+        if (normalizedQuery.includes("content_status = 'approved'")) {
+          console.log('[DB] Applying content_status = approved filter to COUNT')
+          query = query.eq('content_status', 'approved')
+        }
+        if (normalizedQuery.includes("content_status = 'rejected'")) {
+          console.log('[DB] Applying content_status = rejected filter to COUNT')
+          query = query.eq('content_status', 'rejected')
+        }
+        if (normalizedQuery.includes("content_status = 'scheduled'")) {
+          console.log('[DB] Applying content_status = scheduled filter to COUNT')
+          query = query.eq('content_status', 'scheduled')
+        }
+        // Handle pending (discovered OR pending_review)
+        if (normalizedQuery.includes("content_status = 'discovered' OR") ||
+            normalizedQuery.includes("content_status = 'pending_review'")) {
+          console.log('[DB] Applying content_status IN (discovered, pending_review) filter to COUNT')
+          query = query.in('content_status', ['discovered', 'pending_review'])
+        }
+
+        // Handle NOT EXISTS subquery for excluding posted content
+        if (normalizedQuery.includes('NOT EXISTS') && normalizedQuery.includes('posted_content')) {
+          console.log('[DB] Applying is_posted = false filter (NOT EXISTS workaround) to COUNT')
+          query = query.eq('is_posted', false)
+        }
+
         // Handle parameterized filters (e.g., source_platform = $1, content_type = $2)
         if (normalizedQuery.includes('source_platform = $1') && params && params[0]) {
           console.log(`[DB] Applying source_platform filter: ${params[0]}`)
@@ -267,6 +293,32 @@ class DatabaseConnection {
           query = query.eq('is_approved', true)
         }
         if (normalizedQuery.includes('is_posted = false') || normalizedQuery.includes('is_posted = 0')) {
+          query = query.eq('is_posted', false)
+        }
+
+        // Handle content_status conditions
+        if (normalizedQuery.includes("content_status = 'approved'")) {
+          console.log('[DB] Applying content_status = approved filter to SELECT')
+          query = query.eq('content_status', 'approved')
+        }
+        if (normalizedQuery.includes("content_status = 'rejected'")) {
+          console.log('[DB] Applying content_status = rejected filter to SELECT')
+          query = query.eq('content_status', 'rejected')
+        }
+        if (normalizedQuery.includes("content_status = 'scheduled'")) {
+          console.log('[DB] Applying content_status = scheduled filter to SELECT')
+          query = query.eq('content_status', 'scheduled')
+        }
+        // Handle pending (discovered OR pending_review)
+        if (normalizedQuery.includes("content_status = 'discovered' OR") ||
+            normalizedQuery.includes("content_status = 'pending_review'")) {
+          console.log('[DB] Applying content_status IN (discovered, pending_review) filter to SELECT')
+          query = query.in('content_status', ['discovered', 'pending_review'])
+        }
+
+        // Handle NOT EXISTS subquery for excluding posted content
+        if (normalizedQuery.includes('NOT EXISTS') && normalizedQuery.includes('posted_content')) {
+          console.log('[DB] Applying is_posted = false filter (NOT EXISTS workaround) to SELECT')
           query = query.eq('is_posted', false)
         }
 
