@@ -133,6 +133,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Schema detection was causing all columns to be selected as NULL when it failed
     const safeSelectClause = desiredColumns.map(col => `cq.${col}`).join(', ')
     console.log('[AdminContentAPI] Using direct column selection to bypass schema detection issues')
+    console.log('🔍 [DEBUG] SELECT clause includes original_url:', safeSelectClause.includes('original_url'))
+    console.log('🔍 [DEBUG] Full SELECT clause:', safeSelectClause.substring(0, 200))
     
     let contentQuery: string
     let countQuery: string
@@ -348,6 +350,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const contentResult = await db.query(contentQuery, queryParams)
     console.log(`[AdminContentAPI] Query success: ${contentResult.rows.length} rows`)
     console.log('🧩 [ContentAPI] Row Count Returned:', contentResult.rows.length)
+
+    // 🔍 DEBUG: Log first row to verify original_url is present in database results
+    if (contentResult.rows.length > 0) {
+      const firstRow = contentResult.rows[0]
+      console.log('🔍 [DEBUG] First row from database:')
+      console.log('  - id:', firstRow.id)
+      console.log('  - content_text:', firstRow.content_text?.substring(0, 50))
+      console.log('  - source_platform:', firstRow.source_platform)
+      console.log('  - original_url:', firstRow.original_url)
+      console.log('  - original_url type:', typeof firstRow.original_url)
+      console.log('  - original_url is null:', firstRow.original_url === null)
+      console.log('  - original_url is undefined:', firstRow.original_url === undefined)
+      console.log('  - All keys in row:', Object.keys(firstRow).sort().join(', '))
+    }
 
     // Execute count query (use params without LIMIT/OFFSET)
     console.log(`[AdminContentAPI] 🔍 BEFORE slicing - queryParams.length: ${queryParams.length}, queryParams: [${queryParams.join(', ')}]`)
