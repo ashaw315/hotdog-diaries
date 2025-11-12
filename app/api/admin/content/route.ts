@@ -344,9 +344,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log(`[AdminContentAPI] ⚡ Count query SQL:\n${countQuery}`)
     console.log(`[AdminContentAPI] ⚡ Count params:`, countParams)
 
+    console.log(`[AdminContentAPI] 🚨 ABOUT TO EXECUTE COUNT QUERY:`)
+    console.log(`[AdminContentAPI] 🚨 Count Query SQL:\n${countQuery}`)
+    console.log(`[AdminContentAPI] 🚨 Count Params Array:`, JSON.stringify(countParams))
+    console.log(`[AdminContentAPI] 🚨 Expected: SELECT COUNT(*) WHERE 1=1 AND cq.source_platform = $1 with params ["${platform}"]`)
+
     const countResult = await db.query(countQuery, countParams)
+
+    console.log(`[AdminContentAPI] 🚨 COUNT QUERY RESULT:`)
     console.log(`[AdminContentAPI] Count result rows:`, countResult.rows.length)
-    console.log(`[AdminContentAPI] Count result first row:`, countResult.rows[0])
+    console.log(`[AdminContentAPI] Count result first row:`, JSON.stringify(countResult.rows[0]))
+    console.log(`[AdminContentAPI] 🚨 Expected ~61 for reddit, got: ${countResult.rows[0]?.count || countResult.rows[0]?.total}`)
 
     // Vercel SQL returns 'count' instead of respecting the 'as total' alias
     const rawTotal = countResult.rows[0]?.total ?? countResult.rows[0]?.count ?? 0
