@@ -4,7 +4,7 @@ import { EdgeAuthUtils } from '@/lib/auth-edge'
 import { db } from '@/lib/db'
 import { mockAdminDataIfCI } from '@/app/api/admin/_testMock'
 import { USE_MOCK_DATA } from '@/lib/env'
-import { buildSafeSelectClause, verifyTableColumns } from '@/lib/db-schema-utils'
+import { verifyTableColumns } from '@/lib/db-schema-utils'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   console.log('[AdminContentAPI] GET /api/admin/content request received')
@@ -129,22 +129,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       'is_valid_hotdog'
     ]
 
-    // Development mode bypass for schema detection issues
-    let safeSelectClause: string
-    if (process.env.NODE_ENV === 'development' && contentQueueColumns.length === 0) {
-      console.log('[AdminContentAPI] Development mode: using direct column selection due to schema detection failure')
-      safeSelectClause = `
-        cq.id, cq.content_text, cq.content_type, cq.source_platform, cq.original_url,
-        cq.original_author, cq.content_image_url, cq.content_video_url, cq.scraped_at,
-        cq.is_posted, cq.is_approved, cq.admin_notes, cq.created_at, cq.updated_at,
-        cq.confidence_score, cq.content_hash, cq.is_rejected, cq.status, cq.scheduled_for,
-        cq.scheduled_post_time, cq.content_status, cq.reviewed_at, cq.reviewed_by, cq.rejection_reason,
-        cq.is_spam, cq.is_inappropriate, cq.is_unrelated, cq.is_valid_hotdog
-      `.trim()
-    } else {
-      safeSelectClause = await buildSafeSelectClause('content_queue', desiredColumns, 'cq')
-      console.log('[AdminContentAPI] Safe SELECT clause built with fallbacks for missing columns')
-    }
+    // Use direct column list to avoid NULL values from schema detection failures
+    // Schema detection was causing all columns to be selected as NULL when it failed
+    const safeSelectClause = desiredColumns.map(col => `cq.${col}`).join(', ')
+    console.log('[AdminContentAPI] Using direct column selection to bypass schema detection issues')
     
     let contentQuery: string
     let countQuery: string

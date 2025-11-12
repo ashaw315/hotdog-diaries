@@ -11,7 +11,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function checkPlatformUrls() {
-  const platforms = ['tumblr', 'bluesky', 'lemmy']
+  const platforms = ['imgur']
 
   for (const platform of platforms) {
     console.log(`\n=== ${platform.toUpperCase()} ===`)
@@ -20,7 +20,8 @@ async function checkPlatformUrls() {
       .from('content_queue')
       .select('id, content_text, original_url, source_platform, content_status')
       .eq('source_platform', platform)
-      .limit(5)
+      .order('created_at', { ascending: false })
+      .limit(10)
 
     if (error) {
       console.error('Error:', error)
