@@ -72,14 +72,23 @@ jobs:
         id: ctx
         run: |
           echo "🔍 Analyzing deployment context for post-deploy checks..."
-          
+
+          # Check if Vercel credentials are configured
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ] || [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
+            echo "⚠️ Vercel credentials not configured - skipping deployment context analysis"
+            echo "💡 This is expected for local development or non-Vercel deployments"
+            echo "proceed=false" >> $GITHUB_OUTPUT
+            echo "neutralized=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           # For push events, wait longer for deployment to materialize
           MAX_WAIT=5
           if [ "${{ github.event_name }}" = "push" ]; then
             MAX_WAIT=8
             echo "📌 Push event: will wait up to ${MAX_WAIT} minutes for Vercel deployment"
           fi
-          
+
           # Run deployment context analysis
           if ! pnpm tsx scripts/ci/lib/deploy-context.ts analyze --max-wait=$MAX_WAIT; then
             EXIT_CODE=$?
@@ -93,7 +102,7 @@ jobs:
               exit 1
             fi
           fi
-          
+
           echo "✅ Deployment ready for post-deploy validation"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
