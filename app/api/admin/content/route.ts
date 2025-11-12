@@ -311,9 +311,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // Execute count query (use params without LIMIT/OFFSET)
     const countParams = queryParams.slice(0, -2) // Remove last 2 params (limit, offset)
+    console.log(`[AdminContentAPI] Executing count query with ${countParams.length} params`)
+    console.log(`[AdminContentAPI] Count query: ${countQuery}`)
+    console.log(`[AdminContentAPI] Count params:`, countParams)
+
     const countResult = await db.query(countQuery, countParams)
-    const total = parseInt(countResult.rows[0].total)
-    
+    console.log(`[AdminContentAPI] Count result rows:`, countResult.rows.length)
+    console.log(`[AdminContentAPI] Count result first row:`, countResult.rows[0])
+
+    const total = countResult.rows[0]?.total ? parseInt(countResult.rows[0].total) : 0
+
     console.log(`[AdminContentAPI] Total count: ${total}`)
     
     // 🧩 Diagnostic logging for scheduled content
