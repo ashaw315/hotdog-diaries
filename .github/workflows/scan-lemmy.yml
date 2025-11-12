@@ -13,7 +13,7 @@ on:
       max_posts:
         description: 'Maximum posts to scan'
         required: false
-        default: '25'
+        default: '30'
         type: string
 
 jobs:
@@ -23,9 +23,9 @@ jobs:
       - name: Smart Threshold Check and Scan
         run: |
           echo "🌐 Smart scanning Lemmy (underrepresented platform priority)..."
-          
+
           FORCE_OVERRIDE="${{ github.event.inputs.force_override || 'false' }}"
-          MAX_POSTS="${{ github.event.inputs.max_posts || '25' }}"
+          MAX_POSTS="${{ github.event.inputs.max_posts || '30' }}"
           
           echo "🔧 Parameters: force_override=$FORCE_OVERRIDE, max_posts=$MAX_POSTS"
           echo "🎯 Note: Lemmy is an underrepresented platform - lower thresholds apply"
