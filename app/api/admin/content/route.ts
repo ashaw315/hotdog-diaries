@@ -205,6 +205,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const hasIsPosted = contentQueueColumns.includes('is_posted')
       const hasContentStatus = contentQueueColumns.includes('content_status')
 
+      console.log(`[AdminContentAPI] 🔍 Column detection: hasContentStatus=${hasContentStatus}, hasIsApproved=${hasIsApproved}, hasIsPosted=${hasIsPosted}`)
+      console.log(`[AdminContentAPI] 🔍 Status filter: ${status}`)
+
       // Prefer content_status field over legacy is_approved field
       if (status === 'pending') {
         if (hasContentStatus) {
@@ -277,6 +280,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
       // For 'all' or any other value, keep whereClause as '1=1'
 
+      console.log(`[AdminContentAPI] 🎯 Final WHERE clause for status '${status}': ${whereClause}`)
+
       // 🔍 Debug: Log filters being applied
       console.log(`[AdminContentAPI] 🔍 Applying filters - platform: ${platform}, contentType: ${contentType}`)
       console.log(`[AdminContentAPI] 🔍 WHERE clause before filters: ${whereClause}`)
@@ -330,6 +335,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     console.log(`[AdminContentAPI] Executing content query for status: ${status}`)
+    console.log(`[AdminContentAPI] 📝 Content Query SQL: ${contentQuery.substring(0, 300)}...`)
+    console.log(`[AdminContentAPI] 📝 Content Query Params: [${queryParams.join(', ')}]`)
 
     // Execute content query
     const contentResult = await db.query(contentQuery, queryParams)
@@ -345,9 +352,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log(`[AdminContentAPI] ⚡ Count params:`, countParams)
 
     console.log(`[AdminContentAPI] 🚨 ABOUT TO EXECUTE COUNT QUERY:`)
-    console.log(`[AdminContentAPI] 🚨 Count Query SQL:\n${countQuery}`)
-    console.log(`[AdminContentAPI] 🚨 Count Params Array:`, JSON.stringify(countParams))
-    console.log(`[AdminContentAPI] 🚨 Expected: SELECT COUNT(*) WHERE 1=1 AND cq.source_platform = $1 with params ["${platform}"]`)
+    console.log(`[AdminContentAPI] 📝 Count Query SQL: ${countQuery.substring(0, 300)}...`)
+    console.log(`[AdminContentAPI] 📝 Count Params: [${countParams.join(', ')}]`)
 
     const countResult = await db.query(countQuery, countParams)
 
