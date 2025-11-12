@@ -301,7 +301,7 @@ class DatabaseConnection {
         // Use only core columns that exist in production Supabase
         let query = supabase
           .from('content_queue')
-          .select('id, content_text, source_platform, content_type, is_approved, is_posted, created_at, confidence_score, content_image_url, content_video_url, content_status')
+          .select('id, content_text, source_platform, content_type, is_approved, is_posted, created_at, confidence_score, content_image_url, content_video_url, content_status, original_url')
 
         // Apply filters
         if (normalizedQuery.includes('is_approved = true') || normalizedQuery.includes('is_approved = 1')) {
