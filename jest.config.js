@@ -14,7 +14,7 @@ const customJestConfig = {
     '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(jose|@testing-library|@radix-ui|@supabase|next)/)',
+    'node_modules/(?!(jose|@testing-library|@radix-ui|@supabase|next|got)/)',
   ],
   testMatch: [
     '**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)',

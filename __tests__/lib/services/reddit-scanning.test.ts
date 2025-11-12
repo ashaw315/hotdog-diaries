@@ -5,8 +5,14 @@ import { ContentProcessor } from '@/lib/services/content-processor'
 import { DuplicateDetectionService } from '@/lib/services/duplicate-detection'
 import { redditMonitoringService } from '@/lib/services/reddit-monitoring'
 
+// Mock 'got' module to avoid ESM issues
+jest.mock('got', () => ({
+  got: jest.fn()
+}))
+
 // Mock all dependencies
 jest.mock('@/lib/services/reddit')
+jest.mock('@/lib/services/redditClient')
 jest.mock('@/lib/services/filtering')
 jest.mock('@/lib/services/content-processor')
 jest.mock('@/lib/services/duplicate-detection')
@@ -125,8 +131,8 @@ describe('RedditScanningService', () => {
     mockRedditService.mockImplementation(() => mockRedditInstance)
     mockContentProcessor.mockImplementation(() => mockContentProcessorInstance)
 
-    // Setup default successful HTTP service mock
-    mockRedditHttpService.searchSubreddit.mockResolvedValue([])
+    // Setup default successful HTTP service mock (updated for new return format)
+    mockRedditHttpService.searchSubreddit.mockResolvedValue({ posts: [], after: undefined })
     mockRedditHttpService.testConnection.mockResolvedValue({ success: true })
 
     scanningService = new RedditScanningService()
@@ -167,7 +173,7 @@ describe('RedditScanningService', () => {
         is_self: true
       }
       
-      mockRedditHttpService.searchSubreddit.mockResolvedValue([rawPost])
+      mockRedditHttpService.searchSubreddit.mockResolvedValue({ posts: [rawPost], after: undefined })
       mockRedditInstance.validateRedditContent.mockResolvedValue(true)
       mockContentProcessorInstance.processContent.mockResolvedValue({
         success: true,
@@ -187,7 +193,7 @@ describe('RedditScanningService', () => {
 
       const result = await scanningService.performScan()
 
-      expect(result.postsFound).toBe(6) // 2 search terms × 3 subreddits = 6 calls
+      expect(result.postsFound).toBe(24) // 8 search terms × 3 subreddits = 24 calls
       expect(result.postsProcessed).toBe(1)
       expect(result.postsApproved).toBe(1)
       expect(result.errors).toHaveLength(0)
@@ -249,7 +255,7 @@ describe('RedditScanningService', () => {
       const duplicatePost = { ...rawPost, id: 'test123' } // Same ID = duplicate
       
       // Mock to return duplicates across different search calls
-      mockRedditHttpService.searchSubreddit.mockResolvedValue([rawPost])
+      mockRedditHttpService.searchSubreddit.mockResolvedValue({ posts: [rawPost], after: undefined })
       mockRedditInstance.validateRedditContent.mockResolvedValue(true)
       mockContentProcessorInstance.processContent.mockResolvedValue({
         success: true,
@@ -269,10 +275,10 @@ describe('RedditScanningService', () => {
 
       const result = await scanningService.performScan()
 
-      // With 2 search terms and 3 subreddits, we get 6 calls, each returning 1 post = 6 total posts found
-      // But after deduplication, only 1 unique post remains, so 5 duplicates
-      expect(result.postsFound).toBe(6)
-      expect(result.duplicatesFound).toBe(5)
+      // With 8 search terms and 3 subreddits, we get 24 calls, each returning 1 post = 24 total posts found
+      // But after deduplication, only 1 unique post remains, so 23 duplicates
+      expect(result.postsFound).toBe(24)
+      expect(result.duplicatesFound).toBe(23)
       expect(result.postsProcessed).toBe(1) // Only one unique post processed
     })
 
@@ -310,7 +316,7 @@ describe('RedditScanningService', () => {
         is_self: true
       }
       
-      mockRedditHttpService.searchSubreddit.mockResolvedValue([lowScorePost, highScorePost])
+      mockRedditHttpService.searchSubreddit.mockResolvedValue({ posts: [lowScorePost, highScorePost], after: undefined })
       mockRedditInstance.validateRedditContent.mockResolvedValue(true)
       mockContentProcessorInstance.processContent.mockResolvedValue({
         success: true,
@@ -347,7 +353,7 @@ describe('RedditScanningService', () => {
         is_self: true
       }
       
-      mockRedditHttpService.searchSubreddit.mockResolvedValue([rawPost])
+      mockRedditHttpService.searchSubreddit.mockResolvedValue({ posts: [rawPost], after: undefined })
       mockRedditInstance.validateRedditContent.mockResolvedValue(true)
       mockContentProcessorInstance.processContent.mockRejectedValue(new Error('Processing failed'))
 
@@ -409,7 +415,7 @@ describe('RedditScanningService', () => {
         }
       ]
 
-      mockRedditHttpService.searchSubreddit.mockResolvedValue(posts)
+      mockRedditHttpService.searchSubreddit.mockResolvedValue({ posts, after: undefined })
       mockRedditInstance.validateRedditContent.mockResolvedValue(true)
       mockContentProcessorInstance.processContent
         .mockResolvedValueOnce({ 
@@ -467,14 +473,23 @@ describe('RedditScanningService', () => {
   })
 
   describe('getScanConfig', () => {
-    it('should return hardcoded optimized config', async () => {
+    it('should return hardcoded optimized config with expanded terms', async () => {
       const result = await scanningService.getScanConfig()
 
       expect(result.isEnabled).toBe(true)
       expect(result.scanInterval).toBe(30)
-      expect(result.maxPostsPerScan).toBe(15)
+      expect(result.maxPostsPerScan).toBe(25) // Increased from 15
       expect(result.targetSubreddits).toEqual(['hotdogs', 'food', 'FoodPorn'])
-      expect(result.searchTerms).toEqual(['hotdog', 'hot dog'])
+      expect(result.searchTerms).toEqual([
+        'hotdog',
+        'hot dog',
+        'hotdogs',
+        'corn dog',
+        'chicago dog',
+        'chili dog',
+        'hot dog stand',
+        'frankfurter'
+      ]) // Expanded from 2 to 8 terms
       expect(result.minScore).toBe(50)
       expect(result.sortBy).toBe('hot')
       expect(result.timeRange).toBe('week')

@@ -97,13 +97,30 @@ export class RedditHttpService {
     }
   }
 
-  async searchSubreddit(subreddit: string, query: string, limit: number = 10): Promise<RedditPost[]> {
+  async searchSubreddit(
+    subreddit: string,
+    query: string,
+    limit: number = 10,
+    sort: 'hot' | 'new' | 'top' | 'rising' = 'hot',
+    timeRange: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all' = 'week',
+    after?: string
+  ): Promise<{ posts: RedditPost[]; after?: string }> {
     try {
       // Get OAuth access token
       const accessToken = await this.authenticate()
-      
-      // Use OAuth API endpoint for better rate limits and access
-      const searchUrl = `${this.baseUrl}/r/${subreddit}/search?q=${encodeURIComponent(query)}&restrict_sr=1&limit=${limit}&sort=hot&raw_json=1`
+
+      // Build search URL with sort and time parameters
+      let searchUrl = `${this.baseUrl}/r/${subreddit}/search?q=${encodeURIComponent(query)}&restrict_sr=1&limit=${limit}&sort=${sort}&raw_json=1`
+
+      // Add time range for 'top' sort
+      if (sort === 'top') {
+        searchUrl += `&t=${timeRange}`
+      }
+
+      // Add pagination cursor
+      if (after) {
+        searchUrl += `&after=${after}`
+      }
       
       const response = await fetch(searchUrl, {
         headers: {
@@ -144,7 +161,7 @@ export class RedditHttpService {
           'Reddit response missing expected data structure',
           { url: searchUrl, response: data }
         )
-        return []
+        return { posts: [], after: undefined }
       }
 
       const posts = data.data.children
@@ -154,14 +171,17 @@ export class RedditHttpService {
           return post.title && post.title !== '[removed]' && post.title !== '[deleted]'
         })
 
+      // Extract pagination token
+      const afterToken = data.data.after || undefined
+
       await logToDatabase(
         LogLevel.INFO,
         'REDDIT_HTTP_SUCCESS',
         `Found ${posts.length} posts in r/${subreddit} for query "${query}"`,
-        { subreddit, query, postsFound: posts.length }
+        { subreddit, query, postsFound: posts.length, after: afterToken }
       )
 
-      return posts
+      return { posts, after: afterToken }
 
     } catch (error) {
       await logToDatabase(

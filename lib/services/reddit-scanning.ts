@@ -70,6 +70,13 @@ export class RedditScanningService {
   private isScanning = false
   private scanTimer?: NodeJS.Timeout
 
+  // Pagination tracking for Reddit "after" tokens
+  private currentAfterTokens: Map<string, string> = new Map()
+
+  // Sort and time range variation
+  private sortOptions: Array<'hot' | 'new' | 'top' | 'rising'> = ['hot', 'new', 'top', 'rising']
+  private timeRangeOptions: Array<'day' | 'week' | 'month'> = ['day', 'week', 'month']
+
   constructor() {
     this.redditService = new RedditService()
     this.filteringService = new FilteringService()
@@ -184,27 +191,52 @@ export class RedditScanningService {
         for (const subreddit of config.targetSubreddits) {
           try {
             const limit = Math.floor(config.maxPostsPerScan / (config.searchTerms.length * config.targetSubreddits.length))
-            
-            // Use HTTP service instead of Snoowrap to avoid blocking
-            const rawPosts = await redditHttpService.searchSubreddit(subreddit, searchTerm, limit)
-            
+
+            // Get pagination token for this search term + subreddit combination
+            const paginationKey = `${subreddit}:${searchTerm}`
+            const afterToken = this.currentAfterTokens.get(paginationKey)
+
+            // Use pagination 60% of the time if token exists, otherwise get fresh results
+            const useAfter = afterToken && Math.random() > 0.4
+
+            // Random sort variation
+            const sort = this.sortOptions[Math.floor(Math.random() * this.sortOptions.length)]
+
+            // Random time range (only used for 'top' sort)
+            const timeRange = this.timeRangeOptions[Math.floor(Math.random() * this.timeRangeOptions.length)]
+
+            // Use HTTP service with pagination and sort variation
+            const result = await redditHttpService.searchSubreddit(
+              subreddit,
+              searchTerm,
+              limit,
+              sort,
+              timeRange,
+              useAfter ? afterToken : undefined
+            )
+
+            // Store pagination token for next scan
+            if (result.after) {
+              this.currentAfterTokens.set(paginationKey, result.after)
+            }
+
             // Convert to ProcessedRedditPost format
-            const posts = rawPosts
+            const posts = result.posts
               .filter(post => post.score >= config.minScore)
               .map(post => this.convertToProcessedPost(post))
-            
+
             allPosts = allPosts.concat(posts)
 
             await logToDatabase(
               LogLevel.INFO,
               'REDDIT_SEARCH_SUCCESS',
-              `Found ${posts.length} posts for "${searchTerm}" in r/${subreddit}`,
-              { scanId, searchTerm, subreddit, postsFound: posts.length }
+              `Found ${posts.length} posts for "${searchTerm}" in r/${subreddit} (sort: ${sort}, after: ${useAfter ? 'yes' : 'no'})`,
+              { scanId, searchTerm, subreddit, postsFound: posts.length, sort, useAfter }
             )
 
           } catch (error) {
             result.errors.push(`Search "${searchTerm}" in r/${subreddit} failed: ${error.message}`)
-            
+
             if (error.message.includes('rate limit')) {
               result.rateLimitHit = true
             }
@@ -589,16 +621,25 @@ export class RedditScanningService {
    * Get current scan configuration
    */
   async getScanConfig(): Promise<RedditScanConfig> {
-    // Optimized configuration for faster scanning (production serverless limits)
+    // Optimized configuration with expanded search terms and pagination
     return {
       isEnabled: true,
       scanInterval: 30,
-      maxPostsPerScan: 15, // Reduced for faster processing
-      targetSubreddits: ['hotdogs', 'food', 'FoodPorn'], // Start with top 3 subreddits
-      searchTerms: ['hotdog', 'hot dog'], // Reduce search terms for speed
+      maxPostsPerScan: 25, // Increased from 15 for better variety
+      targetSubreddits: ['hotdogs', 'food', 'FoodPorn'], // Top 3 subreddits
+      searchTerms: [
+        'hotdog',
+        'hot dog',
+        'hotdogs',
+        'corn dog',
+        'chicago dog',
+        'chili dog',
+        'hot dog stand',
+        'frankfurter'
+      ],
       minScore: 50, // Lower threshold for more content
-      sortBy: 'hot',
-      timeRange: 'week',
+      sortBy: 'hot', // Will be varied in performScan
+      timeRange: 'week', // Will be varied in performScan
       includeNSFW: false
     }
   }
