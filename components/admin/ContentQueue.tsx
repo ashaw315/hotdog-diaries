@@ -121,13 +121,38 @@ export default function ContentQueue() {
 
   // Reset page to 1 when filters change
   useEffect(() => {
+    console.log('🔍 [ContentQueue] Filters changed, resetting to page 1', {
+      filterBy,
+      platformFilter,
+      typeFilter,
+      sortBy,
+      direction,
+      previousPage: currentPage
+    })
     setCurrentPage(1)
   }, [filterBy, platformFilter, typeFilter, sortBy, direction])
 
   // Refresh when sort, filter, or page changes
   useEffect(() => {
+    console.log('🔄 [ContentQueue] Triggering refresh with params:', {
+      page: currentPage,
+      filterBy,
+      platformFilter,
+      typeFilter,
+      sortBy,
+      direction
+    })
     refresh()
   }, [sortBy, direction, filterBy, platformFilter, typeFilter, currentPage, refresh])
+
+  // Log pagination state changes
+  useEffect(() => {
+    console.log('📊 [ContentQueue] Pagination state updated:', {
+      pagination,
+      currentPage,
+      contentCount: queuedContent.length
+    })
+  }, [pagination, currentPage, queuedContent.length])
 
   // Replace the manual fetchQueuedContent with the hook's refresh function
   const fetchQueuedContent = refresh
