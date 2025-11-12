@@ -93,8 +93,11 @@ export default function ContentQueue() {
     console.log('Queue first item:', queuedContent?.[0])
     console.log('Loading state:', isLoading)
     console.log('Error state:', contentError)
+    console.log('Pagination data:', pagination)
+    console.log('Pagination totalPages:', pagination?.totalPages)
+    console.log('Should show pagination:', pagination && pagination.totalPages > 1)
     console.groupEnd()
-  }, [filterBy, queuedContent, isLoading, contentError])
+  }, [filterBy, queuedContent, isLoading, contentError, pagination])
 
   // Smart sorting: auto-adjust sort based on filter
   useEffect(() => {
@@ -385,13 +388,20 @@ export default function ContentQueue() {
     }
   }
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'N/A'
+    try {
+      const d = new Date(date)
+      if (isNaN(d.getTime())) return 'Invalid'
+      return d.toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch {
+      return 'Invalid'
+    }
   }
 
   const formatScheduledDate = (dateString: string) => {
@@ -1636,15 +1646,15 @@ export default function ContentQueue() {
 
                           {/* Timestamps */}
                           <div className="timestamps">
-                            <div>Created: {formatDate(new Date(item.created_at))}</div>
-                            <div>Updated: {formatDate(new Date(item.updated_at))}</div>
+                            <div>Created: {formatDate(item.created_at)}</div>
+                            <div>Updated: {formatDate(item.updated_at)}</div>
                             {(item.scheduled_for || item.scheduled_post_time) && (
                               <div className="scheduled-time-detail">
                                 <strong>Scheduled (ET):</strong> {getETTimeString(item.scheduled_post_time || item.scheduled_for)}
                               </div>
                             )}
                             {item.reviewed_at && (
-                              <div>Reviewed: {formatDate(new Date(item.reviewed_at))}</div>
+                              <div>Reviewed: {formatDate(item.reviewed_at)}</div>
                             )}
                           </div>
                         </div>
