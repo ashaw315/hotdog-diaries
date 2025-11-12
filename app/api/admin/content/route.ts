@@ -194,7 +194,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       
     } else {
       // Query content_queue only for other statuses
-      let whereClause = '1=1'
+      whereClause = '1=1' // Don't redeclare - use outer variable
       let orderBy = contentQueueColumns.includes('scraped_at') 
         ? 'cq.scraped_at DESC' 
         : 'cq.created_at DESC'
