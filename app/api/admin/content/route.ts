@@ -435,7 +435,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         countParamsLength: countParams.length,
         whereClause: whereClause || '(not set)',
         contentQueryReturned: contentResult.rows.length,
-        requestedStatus: status
+        requestedStatus: status,
+        // Column detection flags
+        columnDetection: {
+          hasContentStatus,
+          hasIsApproved,
+          hasIsPosted,
+          hasScheduledPostTime
+        },
+        // SQL queries and parameters
+        queries: {
+          contentSQL: contentQuery.substring(0, 500),
+          countSQL: countQuery.substring(0, 500),
+          queryParams,
+          countParams
+        }
       }
     }
 
