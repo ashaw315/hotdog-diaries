@@ -71,6 +71,7 @@ export class PixabayScanningService {
   private contentProcessor: ContentProcessor
   private duplicateDetection: DuplicateDetectionService
   private isScanning = false
+  private currentPages: Map<string, number> = new Map() // Track current page per search term
 
   constructor() {
     this.filteringService = new FilteringService()
@@ -111,10 +112,17 @@ export class PixabayScanningService {
         errors: []
       }
 
-      // Search for hotdog content using different search terms
-      for (const searchTerm of (config?.searchTerms || ['hotdog']).slice(0, 3)) { // Limit to 3 terms to avoid API limits
+      // Randomly select 4-5 search terms for variety
+      const numTerms = 4 + Math.floor(Math.random() * 2) // 4 or 5 terms
+      const allTerms = config?.searchTerms || ['hotdog']
+      const selectedTerms = allTerms
+        .sort(() => Math.random() - 0.5) // Shuffle
+        .slice(0, numTerms) // Take 4-5 terms
+
+      // Search for hotdog content using selected search terms
+      for (const searchTerm of selectedTerms) {
         try {
-          const photos = await this.searchPhotos(searchTerm, Math.floor(maxPhotos / (config?.searchTerms?.length || 1)))
+          const photos = await this.searchPhotos(searchTerm, Math.floor(maxPhotos / selectedTerms.length))
           result.totalFound += photos.length
 
           await logToDatabase(
@@ -413,13 +421,21 @@ export class PixabayScanningService {
       throw new Error('Pixabay API key not configured')
     }
 
+    // Get current page for this term (default to 1)
+    const currentPage = this.currentPages.get(searchTerm) || 1
+
+    // Randomly vary the order parameter for diversity
+    const orderOptions = ['popular', 'latest']
+    const order = orderOptions[Math.floor(Math.random() * orderOptions.length)]
+
     const url = new URL('https://pixabay.com/api/')
     url.searchParams.set('key', apiKey)
     url.searchParams.set('q', searchTerm)
     url.searchParams.set('image_type', 'photo')
     url.searchParams.set('per_page', Math.min(maxResults, 200).toString()) // Pixabay max is 200
     url.searchParams.set('safesearch', 'true')
-    url.searchParams.set('order', 'popular')
+    url.searchParams.set('order', order)
+    url.searchParams.set('page', currentPage.toString())
 
     const response = await fetch(url.toString())
     
@@ -428,6 +444,10 @@ export class PixabayScanningService {
     }
 
     const data: PixabaySearchResponse = await response.json()
+
+    // Update page for next scan (reset to 1 after reaching page 10)
+    const nextPage = currentPage >= 10 ? 1 : currentPage + 1
+    this.currentPages.set(searchTerm, nextPage)
 
     return data.hits.map(hit => ({
       id: hit.id.toString(),
@@ -496,8 +516,19 @@ export class PixabayScanningService {
     const defaultConfig: PixabayScanConfig = {
       isEnabled: true,
       scanInterval: 240, // 4 hours
-      maxPhotosPerScan: 30,
-      searchTerms: ['hotdog', 'hot dog', 'bratwurst', 'frankfurter', 'sausage grill'],
+      maxPhotosPerScan: 40, // Increased from 30 for more variety
+      searchTerms: [
+        'hotdog',
+        'hot dog',
+        'hotdogs',
+        'corn dog',
+        'chicago dog',
+        'chili dog',
+        'hot dog stand',
+        'ballpark hotdog',
+        'frankfurter hot dog',
+        'bratwurst sausage'
+      ],
       minLikes: 5,
       minDownloads: 50
     }

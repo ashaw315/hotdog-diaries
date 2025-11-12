@@ -309,24 +309,38 @@ describe('PixabayScanningService', () => {
   })
 
   describe('getScanConfig', () => {
-    it('should return current Pixabay scan configuration', async () => {
+    it('should return current Pixabay scan configuration with expanded search terms', async () => {
       const mockConfig = {
         isEnabled: true,
         scanInterval: 240, // 4 hours
-        maxPhotosPerScan: 30,
-        searchTerms: ['hotdog', 'hot dog', 'frankfurter'],
+        maxPhotosPerScan: 40, // Increased from 30
+        searchTerms: [
+          'hotdog',
+          'hot dog',
+          'hotdogs',
+          'corn dog',
+          'chicago dog',
+          'chili dog',
+          'hot dog stand',
+          'ballpark hotdog',
+          'frankfurter hot dog',
+          'bratwurst sausage'
+        ],
         minLikes: 5,
         minDownloads: 50
       }
-      
+
       pixabayService.getScanConfig.mockResolvedValue(mockConfig)
 
       const config = await pixabayService.getScanConfig()
 
       expect(config.isEnabled).toBe(true)
       expect(config.scanInterval).toBe(240)
-      expect(config.maxPhotosPerScan).toBe(30)
+      expect(config.maxPhotosPerScan).toBe(40) // Updated from 30
+      expect(config.searchTerms).toHaveLength(10) // Expanded from 3-5 to 10
       expect(config.searchTerms).toContain('hotdog')
+      expect(config.searchTerms).toContain('corn dog')
+      expect(config.searchTerms).toContain('ballpark hotdog')
       expect(config.minLikes).toBe(5)
       expect(config.minDownloads).toBe(50)
     })
