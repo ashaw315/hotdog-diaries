@@ -79,8 +79,16 @@ interface BlueskyAuthSession {
 export class BlueskyService {
   private readonly baseUrl = 'https://bsky.social/xrpc'
   private session: BlueskyAuthSession | null = null
+  private storedCursors: Map<string, string> = new Map() // Store cursors per search term
   private readonly searchTerms = [
-    'hotdog', 'hot dog', 'chili dog'  // Reduced for faster serverless execution
+    'hotdog',
+    'hot dog',
+    'hotdogs',
+    'corn dog',
+    'chicago dog',
+    'chili dog',
+    'hot dog stand',
+    'ballpark food'
   ]
 
   /**
@@ -137,15 +145,21 @@ export class BlueskyService {
     duplicates: number
     errors: number
   }> {
-    const maxPosts = options?.maxPosts || 12  // Reduced for faster execution
+    const maxPosts = options?.maxPosts || 18  // Increased for better content discovery
     const startTime = Date.now()
-    
+
     try {
+      // Randomly select 4-5 search terms for variety (not all 8 each time)
+      const numTerms = 4 + Math.floor(Math.random() * 2) // 4 or 5 terms
+      const selectedTerms = this.searchTerms
+        .sort(() => Math.random() - 0.5) // Shuffle
+        .slice(0, numTerms)
+
       await logToDatabase(
         LogLevel.INFO,
         'BLUESKY_SCAN_STARTED',
         'Starting Bluesky content scan',
-        { maxPosts, searchTerms: this.searchTerms }
+        { maxPosts, selectedTerms, totalTerms: this.searchTerms.length }
       )
 
       let totalFound = 0
@@ -155,15 +169,31 @@ export class BlueskyService {
       let duplicates = 0
       let errors = 0
 
-      // Search for hotdog content using multiple terms
-      for (const term of this.searchTerms) {
+      // Search for hotdog content using randomly selected terms
+      for (const term of selectedTerms) {
         try {
-          const posts = await this.searchPosts(term, Math.ceil(maxPosts / this.searchTerms.length))
-          console.log(`🔍 Found ${posts.length} posts for term "${term}"`)
-          
-          totalFound += posts.length
+          // Get stored cursor for this term (or undefined for fresh search)
+          const cursor = this.storedCursors.get(term)
 
-          for (const post of posts) {
+          // 50% chance to use cursor, 50% chance to do fresh search
+          const useCursor = cursor && Math.random() > 0.5
+
+          const result = await this.searchPosts(
+            term,
+            Math.ceil(maxPosts / selectedTerms.length),
+            useCursor ? cursor : undefined
+          )
+
+          console.log(`🔍 Found ${result.posts.length} posts for term "${term}"${useCursor ? ' (using cursor)' : ' (fresh search)'}`)
+
+          // Store new cursor for next scan
+          if (result.cursor) {
+            this.storedCursors.set(term, result.cursor)
+          }
+
+          totalFound += result.posts.length
+
+          for (const post of result.posts) {
             try {
               // Check if we already have this content
               const existingContent = await this.checkForExistingContent(post.uri)
@@ -176,19 +206,19 @@ export class BlueskyService {
               const contentId = await this.savePostToQueue(post)
               if (contentId) {
                 // Process with content processor
-                const result = await contentProcessor.processContent(contentId, {
-                  autoApprovalThreshold: 0.6, // Lower threshold for Bluesky
+                const processorResult = await contentProcessor.processContent(contentId, {
+                  autoApprovalThreshold: 0.6, // Reasonable threshold for Bluesky
                   autoRejectionThreshold: 0.2
                 })
 
                 processed++
-                if (result.action === 'approved') {
+                if (processorResult.action === 'approved') {
                   approved++
-                } else if (result.action === 'rejected') {
+                } else if (processorResult.action === 'rejected') {
                   rejected++
                 }
 
-                console.log(`✅ Processed Bluesky post: ${result.action} (confidence: ${result.analysis.confidence_score})`)
+                console.log(`✅ Processed Bluesky post: ${processorResult.action} (confidence: ${processorResult.analysis.confidence_score})`)
               }
             } catch (error) {
               console.error('Error processing individual post:', error)
@@ -196,7 +226,7 @@ export class BlueskyService {
             }
           }
 
-          // Reduced delay for faster serverless execution
+          // Brief delay between searches
           await new Promise(resolve => setTimeout(resolve, 500))
         } catch (error) {
           console.error(`Error searching for term "${term}":`, error)
@@ -235,19 +265,32 @@ export class BlueskyService {
     }
   }
 
-  private async searchPosts(query: string, limit: number = 20): Promise<BlueskyPost[]> {
+  private async searchPosts(query: string, limit: number = 20, cursor?: string): Promise<{
+    posts: BlueskyPost[]
+    cursor?: string
+  }> {
     try {
       await this.ensureAuthenticated()
-      
+
       const url = `${this.baseUrl}/app.bsky.feed.searchPosts`
+
+      // Randomly vary the sort parameter for diversity
+      const sortOptions = ['latest', 'top']
+      const sort = sortOptions[Math.floor(Math.random() * sortOptions.length)]
+
       const params = new URLSearchParams({
         q: query,
         limit: limit.toString(),
-        sort: 'latest'
+        sort
       })
 
-      console.log(`🔍 Searching Bluesky for: "${query}" (limit: ${limit})`)
-      
+      // Add cursor for pagination if provided
+      if (cursor) {
+        params.append('cursor', cursor)
+      }
+
+      console.log(`🔍 Searching Bluesky for: "${query}" (limit: ${limit}, sort: ${sort}${cursor ? ', cursor: ' + cursor.substring(0, 20) + '...' : ''})`)
+
       const response = await fetch(`${url}?${params}`, {
         method: 'GET',
         headers: {
@@ -262,7 +305,7 @@ export class BlueskyService {
       }
 
       const data = await response.json()
-      
+
       // Filter posts to only include those with hotdog-related content
       const relevantPosts = (data.posts || []).filter((post: BlueskyPost) => {
         const text = post.record.text.toLowerCase()
@@ -270,11 +313,15 @@ export class BlueskyService {
       })
 
       console.log(`📝 Found ${relevantPosts.length} relevant posts out of ${data.posts?.length || 0} total`)
-      return relevantPosts
+
+      return {
+        posts: relevantPosts,
+        cursor: data.cursor // Return cursor for next page
+      }
 
     } catch (error) {
       console.error(`Error searching Bluesky posts for "${query}":`, error)
-      return []
+      return { posts: [], cursor: undefined }
     }
   }
 

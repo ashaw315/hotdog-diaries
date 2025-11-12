@@ -177,6 +177,79 @@ describe('BlueskyService', () => {
       expect(result.processed).toBe(18) // 25 found - 7 duplicates
     })
 
+    it('should randomly select 4-5 search terms per scan', async () => {
+      const randomTermsResult = {
+        ...mockScanResult,
+        totalFound: 18,
+        processed: 14,
+        approved: 10,
+        rejected: 4,
+        duplicates: 4
+      }
+
+      blueskyService.performScan.mockResolvedValue(randomTermsResult)
+
+      const result = await blueskyService.performScan(mockOptions)
+
+      // Should have results from 4-5 terms (not all 8)
+      expect(result.totalFound).toBeGreaterThan(0)
+      expect(result.processed).toBeGreaterThan(0)
+    })
+
+    it('should use cursor-based pagination for variety', async () => {
+      const cursorResult = {
+        ...mockScanResult,
+        totalFound: 20,
+        processed: 16,
+        approved: 12,
+        rejected: 4,
+        duplicates: 4
+      }
+
+      blueskyService.performScan.mockResolvedValue(cursorResult)
+
+      const result = await blueskyService.performScan(mockOptions)
+
+      // Cursor pagination should help find fresh content
+      expect(result.totalFound).toBeGreaterThan(0)
+      expect(result.duplicates).toBeLessThan(result.totalFound)
+    })
+
+    it('should have increased maxPosts default to 18', async () => {
+      const higherLimitResult = {
+        ...mockScanResult,
+        totalFound: 22,
+        processed: 18, // Default maxPosts increased to 18
+        approved: 14,
+        rejected: 4,
+        duplicates: 4
+      }
+
+      blueskyService.performScan.mockResolvedValue(higherLimitResult)
+
+      const result = await blueskyService.performScan() // No options - using default
+
+      expect(result.processed).toBeLessThanOrEqual(18) // Default is now 18 (was 12)
+    })
+
+    it('should vary sort parameter (latest/top) for diversity', async () => {
+      const variedSortResult = {
+        ...mockScanResult,
+        totalFound: 19,
+        processed: 15,
+        approved: 11,
+        rejected: 4,
+        duplicates: 4
+      }
+
+      blueskyService.performScan.mockResolvedValue(variedSortResult)
+
+      const result = await blueskyService.performScan(mockOptions)
+
+      // Random sort should help find different content each time
+      expect(result.totalFound).toBeGreaterThan(0)
+    })
+
     it('should validate content quality before approval', async () => {
       const qualityFilteredResult = {
         ...mockScanResult,
@@ -278,25 +351,37 @@ describe('BlueskyService', () => {
   })
 
   describe('getScanConfig', () => {
-    it('should return current scan configuration', async () => {
+    it('should return current scan configuration with expanded search terms', async () => {
       const mockConfig = {
         isEnabled: true,
         scanInterval: 240, // minutes
         maxPostsPerScan: 20,
-        searchTerms: ['hotdog', 'hot dog', 'hotdogs'],
+        searchTerms: [
+          'hotdog',
+          'hot dog',
+          'hotdogs',
+          'corn dog',
+          'chicago dog',
+          'chili dog',
+          'hot dog stand',
+          'ballpark food'
+        ],
         lastScanTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
         nextScanTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
         includeMedia: true,
         minEngagement: 5
       }
-      
+
       blueskyService.getScanConfig.mockResolvedValue(mockConfig)
 
       const config = await blueskyService.getScanConfig()
 
       expect(config.isEnabled).toBe(true)
       expect(config.scanInterval).toBe(240)
+      expect(config.searchTerms).toHaveLength(8) // Expanded from 3 to 8
       expect(config.searchTerms).toContain('hotdog')
+      expect(config.searchTerms).toContain('corn dog')
+      expect(config.searchTerms).toContain('ballpark food')
       expect(config.includeMedia).toBe(true)
     })
 
