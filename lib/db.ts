@@ -298,10 +298,26 @@ class DatabaseConnection {
       // Handle SELECT queries with pagination
       if (normalizedQuery.includes('select') && normalizedQuery.includes('limit')) {
         console.log('[DB] Processing SELECT query, normalized query:', normalizedQuery.substring(0, 500))
+
+        // Check if this is a JOIN with posted_content
+        const hasPostedContentJoin = normalizedQuery.includes('join posted_content')
+
         // Use only core columns that exist in production Supabase
-        let query = supabase
-          .from('content_queue')
-          .select('id, content_text, source_platform, content_type, is_approved, is_posted, created_at, confidence_score, content_image_url, content_video_url, content_status, original_url')
+        let query
+        if (hasPostedContentJoin) {
+          console.log('[DB] Detected JOIN with posted_content, using nested select')
+          // Use nested select to include posted_content fields
+          query = supabase
+            .from('content_queue')
+            .select(`
+              id, content_text, source_platform, content_type, is_approved, is_posted, created_at, confidence_score, content_image_url, content_video_url, content_status, original_url,
+              posted_content!inner(posted_at, post_order)
+            `)
+        } else {
+          query = supabase
+            .from('content_queue')
+            .select('id, content_text, source_platform, content_type, is_approved, is_posted, created_at, confidence_score, content_image_url, content_video_url, content_status, original_url')
+        }
 
         // Apply filters
         if (normalizedQuery.includes('is_approved = true') || normalizedQuery.includes('is_approved = 1')) {
@@ -382,14 +398,35 @@ class DatabaseConnection {
         }
         
         const { data, error } = await query
-        
+
         if (error) {
           throw new Error(`Supabase select query failed: ${error.message}`)
         }
-        
+
+        // Flatten nested posted_content object if it exists
+        let processedData = data || []
+        if (hasPostedContentJoin && processedData.length > 0) {
+          console.log('[DB] Flattening nested posted_content objects')
+          processedData = processedData.map(row => {
+            if (row.posted_content && Array.isArray(row.posted_content) && row.posted_content.length > 0) {
+              // posted_content is an array with one element
+              const { posted_at, post_order } = row.posted_content[0]
+              const { posted_content: _, ...rest } = row
+              return { ...rest, posted_at, post_order }
+            } else if (row.posted_content && !Array.isArray(row.posted_content)) {
+              // posted_content is a single object
+              const { posted_at, post_order } = row.posted_content
+              const { posted_content: _, ...rest } = row
+              return { ...rest, posted_at, post_order }
+            }
+            return row
+          })
+          console.log('[DB] First flattened row:', processedData[0])
+        }
+
         return {
-          rows: (data || []) as T[],
-          rowCount: data?.length || 0,
+          rows: processedData as T[],
+          rowCount: processedData?.length || 0,
           command: 'SELECT',
           oid: 0,
           fields: []
