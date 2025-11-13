@@ -136,7 +136,7 @@ export async function GET() {
         original_url: item.content_queue.original_url,
         original_author: item.content_queue.original_author,
         content_image_url: item.content_queue.content_image_url,
-        content_video_url: item.content_video_url,
+        content_video_url: item.content_queue.content_video_url,
         content_metadata: null,
         scraped_at: new Date(item.content_queue.scraped_at || item.created_at),
         is_posted: true,
