@@ -192,7 +192,7 @@ jobs:
           fi
 
           # Convert comma-separated to JSON array format for matrix
-          PLATFORMS_JSON=$(echo "$PLATFORMS" | jq -R 'split(",")')
+          PLATFORMS_JSON=$(echo "$PLATFORMS" | jq -Rc 'split(",")')
 
           echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
           echo "platforms-json=$PLATFORMS_JSON" >> $GITHUB_OUTPUT
