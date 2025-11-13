@@ -189,6 +189,7 @@ export default function AdminDashboard() {
           padding: 24px;
           margin-bottom: 32px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          color: black;
         }
         
         .section-title {
@@ -201,6 +202,7 @@ export default function AdminDashboard() {
         .platform-table {
           width: 100%;
           border-collapse: collapse;
+          color: black;
         }
         
         .table-header {
@@ -210,7 +212,7 @@ export default function AdminDashboard() {
         .table-header th {
           padding: 12px;
           text-align: left;
-          color: #6b7280;
+          color: #000000;
           font-size: 12px;
           font-weight: 600;
           text-transform: uppercase;
@@ -329,6 +331,7 @@ export default function AdminDashboard() {
           .table-header th {
             padding: 8px;
             font-size: 10px;
+            color: #000000;
           }
           
           .table-cell {
@@ -430,7 +433,7 @@ export default function AdminDashboard() {
                       <td className="table-cell" style={{ textAlign: 'center' }} data-testid={`platform-content-count-${platform.key}`}>
                         {dashboardData?.platformStatus?.[platform.key]?.itemCount || 0}
                       </td>
-                      <td className="table-cell" style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280' }} data-testid={`platform-last-scan-${platform.key}`}>
+                      <td className="table-cell" style={{ textAlign: 'center', fontSize: '12px', color: '#000000' }} data-testid={`platform-last-scan-${platform.key}`}>
                         {formatLastScan(dashboardData?.platformStatus?.[platform.key]?.lastScan)}
                       </td>
                       <td className="table-cell" style={{ textAlign: 'center' }}>
