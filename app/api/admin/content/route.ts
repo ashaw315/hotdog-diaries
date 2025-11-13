@@ -222,6 +222,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // Determine sort order (default: DESC for newest first)
       const orderDirection = (sortOrder && sortOrder.toLowerCase() === 'asc') ? 'ASC' : 'DESC'
 
+      console.log(`🔍 [FILTER DEBUG] Building query with:`)
+      console.log(`  - sortOrder param: "${sortOrder}"`)
+      console.log(`  - orderDirection: ${orderDirection}`)
+      console.log(`  - startDate: ${startDate || 'null'}`)
+      console.log(`  - endDate: ${endDate || 'null'}`)
+      console.log(`  - postedWhereClause: ${postedWhereClause}`)
+      console.log(`  - queryParams: [${queryParams.join(', ')}]`)
+
       contentQuery = `
         SELECT
           ${safeSelectClause},
@@ -240,6 +248,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         JOIN posted_content pc ON pc.content_queue_id = cq.id
         WHERE ${postedWhereClause}
       `
+
+      console.log(`🔍 [FILTER DEBUG] Final SQL query:`)
+      console.log(contentQuery.substring(0, 500))
       
     } else {
       // Query content_queue only for other statuses

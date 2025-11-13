@@ -65,6 +65,14 @@ export default function PostedContentPage() {
       if (startDate) params.append('startDate', startDate)
       if (endDate) params.append('endDate', endDate)
 
+      console.log('🔍 [FILTER DEBUG] Loading posted content with params:', {
+        page,
+        sortOrder,
+        startDate,
+        endDate,
+        fullUrl: `/api/admin/content?${params.toString()}`
+      })
+
       const [contentResponse, statsResponse] = await Promise.allSettled([
         fetch(`/api/admin/content?${params.toString()}`, {
           method: 'GET',
