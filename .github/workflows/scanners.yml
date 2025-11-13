@@ -70,7 +70,8 @@ jobs:
           echo "🛡️ Running runtime policy enforcement..."
 
           # Verify planner tests pass before allowing scans
-          if ! pnpm run test:planner --silent >/dev/null 2>&1; then
+          if ! pnpm run test:planner; then
+            echo ""
             echo "❌ POLICY VIOLATION: Planner contract tests failed"
             echo "🚨 Blocking scan execution for safety"
             echo "policy-violation=true" >> $GITHUB_OUTPUT
