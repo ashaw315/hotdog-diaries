@@ -65,15 +65,11 @@ const createMockPostedContent = async (page: Page) => {
       data: {
         totalPosted: 156,
         postedToday: 6,
-        averageEngagement: 85.2,
-        topPerformingPost: {
-          id: 1,
-          content_text: 'Top performing hot dog post',
-          engagement_stats: { views: 1250, likes: 89, shares: 23 }
-        }
+        postsPerDay: 5.2,
+        daysSinceFirstPost: 30
       }
     }
-    
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -365,19 +361,193 @@ test.describe('Admin Posted Content Page', () => {
     // Test mobile viewport
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/admin/posted')
-    
+
     // Check that mobile styles are applied
     const container = page.locator('.posted-container')
     await expect(container).toBeVisible()
-    
+
     // Check responsive header
     const headerContent = page.locator('.header-content')
     await expect(headerContent).toBeVisible()
-    
+
     // Verify content items stack properly on mobile
     const contentItems = page.locator('.content-item')
     if (await contentItems.count() > 0) {
       await expect(contentItems.first()).toBeVisible()
     }
+  })
+
+  test('should toggle sort order between newest and oldest first', async ({ page }) => {
+    await page.goto('/admin/posted')
+
+    // Wait for initial load
+    await expect(page.locator('.content-item')).toHaveCount(3)
+
+    // Check default is newest first
+    const sortBtn = page.locator('button:has-text("Newest First")')
+    await expect(sortBtn).toBeVisible()
+
+    // Track API calls
+    let lastApiUrl = ''
+    await page.route('/api/admin/content?status=posted*', async (route) => {
+      lastApiUrl = route.request().url()
+
+      // Return mock data for ascending order
+      const mockResponse = {
+        success: true,
+        data: {
+          content: [
+            {
+              id: 3,
+              content_text: 'Hot dog GIF animation',
+              content_type: 'gif',
+              source_platform: 'giphy',
+              original_url: 'https://giphy.com/gifs/hotdog',
+              original_author: 'giphy_user',
+              content_image_url: 'https://media.giphy.com/media/sample/giphy.gif',
+              posted_at: new Date(Date.now() - 7200000).toISOString(),
+              post_order: 3
+            }
+          ],
+          pagination: {
+            total: 3,
+            page: 1,
+            limit: 20,
+            hasMore: false
+          }
+        }
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockResponse)
+      })
+    })
+
+    // Click to change to oldest first
+    await sortBtn.click()
+
+    // Wait for button text to update
+    await expect(page.locator('button:has-text("Oldest First")')).toBeVisible()
+
+    // Verify API was called with sortOrder=asc
+    expect(lastApiUrl).toContain('sortOrder=asc')
+  })
+
+  test('should filter content by date range', async ({ page }) => {
+    await page.goto('/admin/posted')
+
+    // Wait for initial load
+    await expect(page.locator('.content-item')).toHaveCount(3)
+
+    // Track API calls
+    let lastApiUrl = ''
+    await page.route('/api/admin/content?status=posted*', async (route) => {
+      lastApiUrl = route.request().url()
+
+      const mockResponse = {
+        success: true,
+        data: {
+          content: [
+            {
+              id: 1,
+              content_text: 'Filtered hot dog content',
+              content_type: 'image',
+              source_platform: 'reddit',
+              original_url: 'https://reddit.com/test',
+              original_author: 'test_user',
+              content_image_url: 'https://example.com/hotdog.jpg',
+              posted_at: '2024-01-15T12:00:00Z',
+              post_order: 1
+            }
+          ],
+          pagination: {
+            total: 1,
+            page: 1,
+            limit: 20,
+            hasMore: false
+          }
+        }
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockResponse)
+      })
+    })
+
+    // Set start date
+    const startDateInput = page.locator('input[type="date"]').first()
+    await startDateInput.fill('2024-01-01')
+
+    // Wait a bit for state update
+    await page.waitForTimeout(500)
+
+    // Verify API was called with startDate parameter
+    expect(lastApiUrl).toContain('startDate=2024-01-01')
+
+    // Set end date
+    const endDateInput = page.locator('input[type="date"]').last()
+    await endDateInput.fill('2024-01-31')
+
+    // Wait for API call
+    await page.waitForTimeout(500)
+
+    // Verify API was called with both date parameters
+    expect(lastApiUrl).toContain('startDate=2024-01-01')
+    expect(lastApiUrl).toContain('endDate=2024-01-31')
+
+    // Verify Clear Dates button appears
+    await expect(page.locator('button:has-text("Clear Dates")')).toBeVisible()
+  })
+
+  test('should clear date filters when Clear Dates button is clicked', async ({ page }) => {
+    await page.goto('/admin/posted')
+
+    // Wait for initial load
+    await expect(page.locator('.content-item')).toHaveCount(3)
+
+    // Set date filters
+    await page.locator('input[type="date"]').first().fill('2024-01-01')
+    await page.locator('input[type="date"]').last().fill('2024-01-31')
+
+    // Wait for Clear Dates button to appear
+    const clearBtn = page.locator('button:has-text("Clear Dates")')
+    await expect(clearBtn).toBeVisible()
+
+    // Click Clear Dates button
+    await clearBtn.click()
+
+    // Verify date inputs are empty
+    await expect(page.locator('input[type="date"]').first()).toHaveValue('')
+    await expect(page.locator('input[type="date"]').last()).toHaveValue('')
+
+    // Verify Clear Dates button is hidden
+    await expect(clearBtn).not.toBeVisible()
+  })
+
+  test('should display stats with accurate data', async ({ page }) => {
+    await page.goto('/admin/posted')
+
+    // Verify Posts/Day stat is displayed
+    const postsPerDayStat = page.locator('.stat-label:has-text("Posts/Day Avg")')
+    await expect(postsPerDayStat).toBeVisible()
+
+    // Verify the value is the mocked value (5.2)
+    const statValue = page.locator('.stat-item').filter({ has: postsPerDayStat }).locator('.stat-number')
+    await expect(statValue).toContainText('5.2')
+
+    // Verify Days Active stat is displayed
+    const daysActiveStat = page.locator('.stat-label:has-text("Days Active")')
+    await expect(daysActiveStat).toBeVisible()
+
+    // Verify the value is the mocked value (30)
+    const daysActiveValue = page.locator('.stat-item').filter({ has: daysActiveStat }).locator('.stat-number')
+    await expect(daysActiveValue).toContainText('30')
+
+    // Verify Average Engagement is NOT displayed (it was removed)
+    await expect(page.locator('text=Average Engagement')).not.toBeVisible()
   })
 })
