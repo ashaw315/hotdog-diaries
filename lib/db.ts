@@ -378,17 +378,20 @@ class DatabaseConnection {
           query = query.eq('content_type', params[1])
         }
 
+        // Track sorting parameters for client-side sorting (needed for foreign table columns)
+        let clientSideSort: { field: string, ascending: boolean } | null = null
+
         if (normalizedQuery.includes('order by')) {
           if (normalizedQuery.includes('created_at desc')) {
             query = query.order('created_at', { ascending: false })
           } else if (normalizedQuery.includes('confidence_score desc')) {
             query = query.order('confidence_score', { ascending: false })
           } else if (normalizedQuery.includes('pc.posted_at')) {
-            // Handle ORDER BY pc.posted_at ASC/DESC for posted content
-            // With !inner nested selects, we need to use the full path to the foreign column
+            // ORDER BY on foreign table columns doesn't work reliably with !inner joins in Supabase
+            // We'll sort client-side after flattening the data
             const ascending = normalizedQuery.includes('pc.posted_at asc')
-            console.log(`[DB] Attempting ORDER BY posted_content.posted_at with ascending=${ascending}`)
-            query = query.order('posted_content.posted_at', { ascending })
+            console.log(`[DB] Will apply client-side ORDER BY posted_at with ascending=${ascending}`)
+            clientSideSort = { field: 'posted_at', ascending }
           }
         }
         
@@ -428,6 +431,24 @@ class DatabaseConnection {
             return row
           })
           console.log('[DB] First flattened row:', processedData[0])
+        }
+
+        // Apply client-side sorting if needed (for foreign table columns)
+        if (clientSideSort) {
+          const { field, ascending } = clientSideSort
+          processedData.sort((a, b) => {
+            const aVal = a[field]
+            const bVal = b[field]
+            if (!aVal && !bVal) return 0
+            if (!aVal) return 1
+            if (!bVal) return -1
+
+            const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+            return ascending ? comparison : -comparison
+          })
+          console.log(`[DB] Client-side sorted ${processedData.length} rows by ${field} (ascending=${ascending})`)
+          console.log('[DB] First sorted row:', processedData[0])
+          console.log('[DB] Last sorted row:', processedData[processedData.length - 1])
         }
 
         return {
