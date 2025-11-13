@@ -77,7 +77,8 @@ export default function PostedContentPage() {
         fetch(`/api/admin/content?${params.toString()}`, {
           method: 'GET',
           headers,
-          credentials: 'include' // ✅ ensures cookies are sent
+          credentials: 'include', // ✅ ensures cookies are sent
+          cache: 'no-store' // 🔧 Disable caching to ensure fresh data
         }),
         page === 1 ? fetch('/api/admin/posting/stats', {
           method: 'GET',
@@ -90,6 +91,14 @@ export default function PostedContentPage() {
         const contentData = await contentResponse.value.json()
         const newContent = contentData.data?.content || []
         const pagination = contentData.data?.pagination || {}
+
+        console.log('🔍 [FILTER DEBUG] API Response received:', {
+          itemCount: newContent.length,
+          firstItemDate: newContent[0]?.posted_at,
+          lastItemDate: newContent[newContent.length - 1]?.posted_at,
+          firstPostOrder: newContent[0]?.post_order,
+          lastPostOrder: newContent[newContent.length - 1]?.post_order
+        })
 
         if (page === 1) {
           setPostedContent(newContent)
