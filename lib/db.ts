@@ -398,12 +398,22 @@ class DatabaseConnection {
         // Apply pagination - extract limit and offset from params
         const limitParam = params?.find(p => typeof p === 'number' && p <= 100)
         const offsetParam = params?.find((p, i) => typeof p === 'number' && i > 0)
-        
-        if (limitParam) {
-          query = query.limit(limitParam)
-        }
-        if (offsetParam) {
-          query = query.range(offsetParam, offsetParam + (limitParam || 50) - 1)
+
+        // When doing JOIN with posted_content and client-side sorting,
+        // we need to fetch ALL rows first, sort them, then slice
+        // Otherwise LIMIT/OFFSET applies to content_queue before the JOIN
+        if (hasPostedContentJoin && clientSideSort) {
+          // Fetch more rows to ensure we get all posted content
+          // We'll apply limit/offset after sorting
+          console.log(`[DB] Skipping LIMIT/OFFSET for posted_content JOIN (will apply after sorting)`)
+          query = query.limit(1000) // Fetch up to 1000 posted items
+        } else {
+          if (limitParam) {
+            query = query.limit(limitParam)
+          }
+          if (offsetParam) {
+            query = query.range(offsetParam, offsetParam + (limitParam || 50) - 1)
+          }
         }
         
         const { data, error } = await query
@@ -449,6 +459,15 @@ class DatabaseConnection {
           console.log(`[DB] Client-side sorted ${processedData.length} rows by ${field} (ascending=${ascending})`)
           console.log('[DB] First sorted row:', processedData[0])
           console.log('[DB] Last sorted row:', processedData[processedData.length - 1])
+
+          // Apply LIMIT/OFFSET after sorting (for posted_content JOIN queries)
+          if (hasPostedContentJoin && (limitParam || offsetParam)) {
+            const offset = offsetParam || 0
+            const limit = limitParam || 50
+            const beforeSlice = processedData.length
+            processedData = processedData.slice(offset, offset + limit)
+            console.log(`[DB] Applied post-sort pagination: offset=${offset}, limit=${limit}, before=${beforeSlice}, after=${processedData.length}`)
+          }
         }
 
         return {
