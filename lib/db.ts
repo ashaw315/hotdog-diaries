@@ -385,10 +385,10 @@ class DatabaseConnection {
             query = query.order('confidence_score', { ascending: false })
           } else if (normalizedQuery.includes('pc.posted_at')) {
             // Handle ORDER BY pc.posted_at ASC/DESC for posted content
-            // When using nested select with !inner, order by the foreign table column
+            // With !inner nested selects, we need to use the full path to the foreign column
             const ascending = normalizedQuery.includes('pc.posted_at asc')
-            console.log(`[DB] Applying ORDER BY posted_at with ascending=${ascending}`)
-            query = query.order('posted_at', { ascending, foreignTable: 'posted_content' })
+            console.log(`[DB] Attempting ORDER BY posted_content.posted_at with ascending=${ascending}`)
+            query = query.order('posted_content.posted_at', { ascending })
           }
         }
         
