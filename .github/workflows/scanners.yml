@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: 'Platforms to scan (comma-separated: reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay,niche)'
+        description: 'Platforms to scan (comma-separated: reddit,giphy,imgur,bluesky,tumblr,lemmy,pixabay,niche)'
         type: string
         default: 'all'
       max-posts:
@@ -54,7 +54,7 @@ jobs:
       SCAN_COOLDOWN_MIN: ${{ vars.SCAN_COOLDOWN_MIN || '180' }}
       MIN_CONF: ${{ vars.MIN_CONF || '0.70' }}
       MIN_CANDIDATES: ${{ vars.MIN_CANDIDATES || '20' }}
-      PLATFORM_ALLOW: ${{ vars.PLATFORM_ALLOW || 'reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay' }}
+      PLATFORM_ALLOW: ${{ vars.PLATFORM_ALLOW || 'reddit,giphy,imgur,bluesky,tumblr,lemmy,pixabay' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -174,8 +174,8 @@ jobs:
             
             if [[ $MINUTE -eq 0 ]]; then
               # Every 4 hours (0, 4, 8, 12, 16, 20) - high volume
-              PLATFORMS="reddit,youtube,giphy"
-              echo "🔄 High-volume scan: reddit,youtube,giphy"
+              PLATFORMS="reddit,giphy"
+              echo "🔄 High-volume scan: reddit,giphy"
             elif [[ $MINUTE -eq 30 ]]; then
               # Every 6 hours (00:30, 06:30, 12:30, 18:30) - medium volume  
               PLATFORMS="imgur,bluesky,tumblr"
@@ -188,7 +188,7 @@ jobs:
           fi
           
           if [[ "$PLATFORMS" == "all" ]]; then
-            PLATFORMS="reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay,niche"
+            PLATFORMS="reddit,giphy,imgur,bluesky,tumblr,lemmy,pixabay,niche"
           fi
 
           # Convert comma-separated to JSON array format for matrix
