@@ -57,30 +57,26 @@ jobs:
       PLATFORM_ALLOW: ${{ vars.PLATFORM_ALLOW || 'reddit,youtube,giphy,imgur,bluesky,tumblr,lemmy,pixabay' }}
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node.js with pnpm
+        uses: ./.github/actions/setup-node
         with:
-          node-version: 20
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: |
-          echo "📦 Installing dependencies for planner tests..."
-          npm ci --prefer-offline --no-audit --no-fund
+          node-version: '20'
+          cache-key-suffix: 'planner'
           
       - name: Runtime policy guard
         id: policy-guard
         run: |
           echo "🛡️ Running runtime policy enforcement..."
-          
+
           # Verify planner tests pass before allowing scans
-          if ! npm run test:planner --silent >/dev/null 2>&1; then
+          if ! pnpm run test:planner --silent >/dev/null 2>&1; then
             echo "❌ POLICY VIOLATION: Planner contract tests failed"
             echo "🚨 Blocking scan execution for safety"
             echo "policy-violation=true" >> $GITHUB_OUTPUT
             exit 1
           fi
-          
+
           echo "✅ Policy guard passed - planner behavior validated"
           echo "policy-violation=false" >> $GITHUB_OUTPUT
           
@@ -271,28 +267,28 @@ jobs:
           
           case "${{ matrix.platform }}" in
             reddit)
-              npm run scan:reddit -- --max-posts=$MAX_POSTS || true
+              pnpm run scan:reddit -- --max-posts=$MAX_POSTS || true
               ;;
             youtube)
-              npm run scan:youtube -- --max-posts=$MAX_POSTS || true
+              pnpm run scan:youtube -- --max-posts=$MAX_POSTS || true
               ;;
             giphy)
-              npm run scan:giphy -- --max-posts=$MAX_POSTS || true
+              pnpm run scan:giphy -- --max-posts=$MAX_POSTS || true
               ;;
             imgur)
-              npm run scan:imgur -- --max-posts=$MAX_POSTS || true
+              pnpm run scan:imgur -- --max-posts=$MAX_POSTS || true
               ;;
             bluesky)
-              npm run scan:bluesky -- --max-posts=$MAX_POSTS || true
+              pnpm run scan:bluesky -- --max-posts=$MAX_POSTS || true
               ;;
             tumblr)
-              npm run scan:tumblr -- --max-posts=$MAX_POSTS || true
+              pnpm run scan:tumblr -- --max-posts=$MAX_POSTS || true
               ;;
             lemmy)
-              npm run scan:lemmy -- --max-posts=$MAX_POSTS || true
+              pnpm run scan:lemmy -- --max-posts=$MAX_POSTS || true
               ;;
             pixabay)
-              npm run scan:pixabay -- --max-posts=$MAX_POSTS || true
+              pnpm run scan:pixabay -- --max-posts=$MAX_POSTS || true
               ;;
             *)
               echo "❌ Unknown platform: ${{ matrix.platform }}"
@@ -381,32 +377,32 @@ jobs:
           
           case "${{ matrix.platform }}" in
             reddit)
-              npm run scan:reddit -- --max-posts=$MAX_POSTS
+              pnpm run scan:reddit -- --max-posts=$MAX_POSTS
               ;;
             youtube)
-              npm run scan:youtube -- --max-posts=$MAX_POSTS
+              pnpm run scan:youtube -- --max-posts=$MAX_POSTS
               ;;
             giphy)
-              npm run scan:giphy -- --max-posts=$MAX_POSTS
+              pnpm run scan:giphy -- --max-posts=$MAX_POSTS
               ;;
             imgur)
-              npm run scan:imgur -- --max-posts=$MAX_POSTS
+              pnpm run scan:imgur -- --max-posts=$MAX_POSTS
               ;;
             bluesky)
-              npm run scan:bluesky -- --max-posts=$MAX_POSTS
+              pnpm run scan:bluesky -- --max-posts=$MAX_POSTS
               ;;
             tumblr)
-              npm run scan:tumblr -- --max-posts=$MAX_POSTS
+              pnpm run scan:tumblr -- --max-posts=$MAX_POSTS
               ;;
             lemmy)
-              npm run scan:lemmy -- --max-posts=$MAX_POSTS
+              pnpm run scan:lemmy -- --max-posts=$MAX_POSTS
               ;;
             pixabay)
-              npm run scan:pixabay -- --max-posts=$MAX_POSTS
+              pnpm run scan:pixabay -- --max-posts=$MAX_POSTS
               ;;
             niche)
               # Scan multiple niche platforms with smaller limits
-              npm run scan:niche-platforms -- --max-posts=20
+              pnpm run scan:niche-platforms -- --max-posts=20
               ;;
             *)
               echo "❌ Unknown platform: ${{ matrix.platform }}"
@@ -452,7 +448,7 @@ jobs:
       - name: Generate scan summary
         run: |
           echo "📊 Generating content scan summary..."
-          npm run scan:summary || echo "Summary generation completed"
+          pnpm run scan:summary || echo "Summary generation completed"
           
       - name: Create GitHub step summary
         run: |
