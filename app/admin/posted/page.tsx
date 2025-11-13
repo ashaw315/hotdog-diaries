@@ -12,7 +12,7 @@ interface PostedContent {
   original_author: string
   content_image_url?: string
   content_video_url?: string
-  posted_at: Date
+  posted_at: string // ISO date string from API
   post_order: number
 }
 
@@ -81,14 +81,16 @@ export default function PostedContentPage() {
       if (contentResponse.status === 'fulfilled' && contentResponse.value.ok) {
         const contentData = await contentResponse.value.json()
         const newContent = contentData.data?.content || []
-        
+        const pagination = contentData.data?.pagination || {}
+
         if (page === 1) {
           setPostedContent(newContent)
         } else {
           setPostedContent(prev => [...prev, ...newContent])
         }
-        
-        setHasMore(newContent.length === itemsPerPage)
+
+        // Use hasMore from API pagination data
+        setHasMore(pagination.hasMore === true || newContent.length === itemsPerPage)
       } else {
         // Get more specific error message from response
         if (contentResponse.status === 'fulfilled') {
@@ -186,8 +188,12 @@ export default function PostedContentPage() {
     }
   }
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Unknown'
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Invalid Date'
+
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
