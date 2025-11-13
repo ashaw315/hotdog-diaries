@@ -94,7 +94,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     if (postedContentColumns.length === 0) {
       console.warn('[AdminContentAPI] Schema detection failed for posted_content, using fallback column list')
-      postedContentColumns = ['content_queue_id', 'posted_at', 'platform', 'post_id', 'post_url']
+      postedContentColumns = ['content_queue_id', 'posted_at', 'platform', 'post_id', 'post_url', 'post_order']
     }
 
     console.log('[AdminContentAPI] Available columns in content_queue:', contentQueueColumns.length)
@@ -160,6 +160,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const postedAtClause = postedContentColumns.includes('posted_at')
         ? 'pc.posted_at'
         : 'NULL AS posted_at'
+
+      console.log('🔍 [DEBUG] postedContentColumns array:', postedContentColumns)
+      console.log('🔍 [DEBUG] postedContentColumns.includes("posted_at"):', postedContentColumns.includes('posted_at'))
+      console.log('🔍 [DEBUG] postedAtClause:', postedAtClause)
 
       let postedWhereClause = 'pc.posted_at IS NOT NULL'
       whereClause = postedWhereClause // For debug access
@@ -381,7 +385,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.log(`[AdminContentAPI] Query success: ${contentResult.rows.length} rows`)
     console.log('🧩 [ContentAPI] Row Count Returned:', contentResult.rows.length)
 
-    // 🔍 DEBUG: Log first row to verify original_url is present in database results
+    // 🔍 DEBUG: Log first row to verify original_url and posted_at are present in database results
     if (contentResult.rows.length > 0) {
       const firstRow = contentResult.rows[0]
       console.log('🔍 [DEBUG] First row from database:')
@@ -392,6 +396,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       console.log('  - original_url type:', typeof firstRow.original_url)
       console.log('  - original_url is null:', firstRow.original_url === null)
       console.log('  - original_url is undefined:', firstRow.original_url === undefined)
+      console.log('  - posted_at:', firstRow.posted_at)
+      console.log('  - posted_at type:', typeof firstRow.posted_at)
+      console.log('  - posted_at is null:', firstRow.posted_at === null)
+      console.log('  - posted_at is undefined:', firstRow.posted_at === undefined)
+      console.log('  - post_order:', firstRow.post_order)
+      console.log('  - post_order type:', typeof firstRow.post_order)
       console.log('  - All keys in row:', Object.keys(firstRow).sort().join(', '))
     }
 
@@ -448,7 +458,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       admin_notes: row.admin_notes,
       created_at: row.created_at,
       updated_at: row.updated_at,
-      post_order: row.id, // Use id as post_order for compatibility
+      post_order: row.post_order, // Use actual post_order from database
       // Additional fields for ContentQueue interface
       content_status: row.content_status || (row.status || 'discovered'),
       status: row.status || row.content_status || 'discovered',
@@ -463,6 +473,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       is_unrelated: row.is_unrelated,
       is_valid_hotdog: row.is_valid_hotdog
     }))
+
+    // 🔍 DEBUG: Log mapped content to verify posted_at is preserved
+    if (content.length > 0) {
+      console.log('🔍 [DEBUG] First mapped item:')
+      console.log('  - id:', content[0].id)
+      console.log('  - posted_at:', content[0].posted_at)
+      console.log('  - posted_at type:', typeof content[0].posted_at)
+      console.log('  - post_order:', content[0].post_order)
+      console.log('  - post_order type:', typeof content[0].post_order)
+    }
 
     const responseData = {
       content,
