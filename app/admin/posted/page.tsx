@@ -117,21 +117,23 @@ export default function PostedContentPage() {
     }
   }, [page, itemsPerPage, sortOrder, startDate, endDate])
 
-  // Reset to page 1 and reload when filters change
-  useEffect(() => {
-    if (page === 1) {
-      // If already on page 1, just reload
-      loadPostedContent()
-    } else {
-      // Otherwise reset to page 1 (which will trigger reload via the other effect)
-      setPage(1)
-    }
-  }, [sortOrder, startDate, endDate, loadPostedContent, page])
-
-  // Load content when page changes
+  // Load content when page changes or initially
   useEffect(() => {
     loadPostedContent()
   }, [page, loadPostedContent])
+
+  // Reset to page 1 and reload when filters change (not on initial mount)
+  useEffect(() => {
+    // Skip on initial mount
+    if (page === 1) {
+      // Already on page 1, just reload
+      loadPostedContent()
+    } else {
+      // Go to page 1 (which will trigger the above effect)
+      setPage(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortOrder, startDate, endDate])
 
   const loadMore = () => {
     if (!loading && hasMore) {
