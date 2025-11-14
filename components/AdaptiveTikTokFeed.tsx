@@ -8,6 +8,7 @@ import FeedErrorBoundary from '@/components/error/FeedErrorBoundary'
 import CardErrorBoundary from '@/components/error/CardErrorBoundary'
 import { useComponentErrorHandler } from '@/hooks/useClientErrorHandler'
 import HotdogBounceLoader from '@/components/HotdogBounceLoader'
+import ImageCarousel from '@/components/ImageCarousel'
 
 interface Post {
   id: number
@@ -18,7 +19,10 @@ interface Post {
   original_author?: string
   content_image_url?: string
   content_video_url?: string
-  content_metadata?: string
+  content_metadata?: {
+    gallery_images?: string[]
+    image_count?: number
+  } | null
   scraped_at: Date
   is_posted: boolean
   is_approved: boolean
@@ -422,6 +426,7 @@ export default function AdaptiveTikTokFeed() {
           original_author: item.original_author,
           content_image_url: item.content_image_url,
           content_video_url: item.content_video_url,
+          content_metadata: item.content_metadata,
           scraped_at: new Date(item.scraped_at),
           is_posted: false,
           is_approved: true
@@ -495,6 +500,7 @@ export default function AdaptiveTikTokFeed() {
 
         const transformedContent = data.content.map((item: any) => ({
           ...item,
+          content_metadata: item.content_metadata,
           is_posted: !!item.is_posted,
           is_approved: !!item.is_approved,
           scraped_at: new Date(item.scraped_at),
@@ -555,6 +561,7 @@ export default function AdaptiveTikTokFeed() {
           original_author: item.original_author,
           content_image_url: item.content_image_url,
           content_video_url: item.content_video_url,
+          content_metadata: item.content_metadata,
           scraped_at: new Date(item.scraped_at),
           is_posted: false,
           is_approved: true
@@ -2116,10 +2123,25 @@ function PostContent({
           </div>
         )
       } else {
-        // Regular image
+        // Check if this is a gallery post (multiple images)
+        if (post.content_metadata?.gallery_images && post.content_metadata.gallery_images.length > 1) {
+          console.log(`🎠 Rendering gallery carousel: ${post.source_platform} ${post.id} with ${post.content_metadata.gallery_images.length} images`)
+          return (
+            <div className="image-container">
+              <ImageCarousel
+                images={post.content_metadata.gallery_images}
+                alt={post.content_text || 'Gallery image'}
+                source_platform={post.source_platform}
+                original_url={post.original_url}
+              />
+            </div>
+          )
+        }
+
+        // Regular single image
         return (
           <div className="image-container">
-            <img 
+            <img
               src={imageSrc}
               alt={post.content_text || 'Content image'}
               loading="lazy"

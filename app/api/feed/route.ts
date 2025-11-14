@@ -102,6 +102,7 @@ export async function GET() {
             original_author,
             content_image_url,
             content_video_url,
+            content_metadata,
             scraped_at
           )
         `)
