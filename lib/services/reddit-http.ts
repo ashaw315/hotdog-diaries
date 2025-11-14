@@ -16,6 +16,31 @@ export interface RedditPost {
   over_18: boolean
   stickied: boolean
   is_self: boolean
+  is_gallery?: boolean
+  gallery_data?: {
+    items: Array<{
+      media_id: string
+      id: number
+    }>
+  }
+  media_metadata?: {
+    [media_id: string]: {
+      status: string
+      e: string
+      m: string
+      p?: Array<{
+        x: number
+        y: number
+        u: string
+      }>
+      s?: {
+        x: number
+        y: number
+        u: string
+      }
+      id: string
+    }
+  }
 }
 
 export interface RedditSearchResponse {

@@ -38,6 +38,7 @@ export interface ProcessedRedditPost {
     author: string
     title: string
   }
+  galleryImages?: string[]
 }
 
 export interface RedditRateLimit {

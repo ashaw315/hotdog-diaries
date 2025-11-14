@@ -414,6 +414,15 @@ export class RedditScanningService {
       const confidenceScore = this.calculateRedditScore(post.score, post.numComments, post.upvoteRatio)
       const isAutoApproved = post.score > 100 // Auto-approve popular posts
 
+      // Prepare content metadata for gallery posts
+      let contentMetadata = null
+      if (post.galleryImages && post.galleryImages.length > 1) {
+        contentMetadata = {
+          gallery_images: post.galleryImages,
+          image_count: post.galleryImages.length
+        }
+      }
+
       // Add to content queue
       const contentData = {
         content_text: contentText,
@@ -427,7 +436,8 @@ export class RedditScanningService {
         content_hash: shortHash,  // Modified hash to allow multiple test runs
         content_status: 'discovered',
         confidence_score: confidenceScore,
-        is_approved: isAutoApproved
+        is_approved: isAutoApproved,
+        content_metadata: contentMetadata
       }
 
       // Debug: Log content data before insertion
@@ -724,16 +734,61 @@ export class RedditScanningService {
   }
 
   /**
+   * Extract gallery images from Reddit post
+   */
+  private extractGalleryImages(post: RedditPost): string[] {
+    const galleryImages: string[] = []
+
+    // Check if this is a gallery post with the required data
+    if (post.is_gallery && post.gallery_data && post.media_metadata) {
+      // gallery_data.items contains ordered list of media_ids
+      for (const item of post.gallery_data.items) {
+        const mediaId = item.media_id
+        const metadata = post.media_metadata[mediaId]
+
+        if (metadata && metadata.status === 'valid') {
+          // Use the highest resolution image available
+          if (metadata.s?.u) {
+            // Decode HTML entities in URL (&amp; -> &)
+            const imageUrl = metadata.s.u.replace(/&amp;/g, '&')
+            galleryImages.push(imageUrl)
+          }
+        }
+      }
+
+      // Log async, but don't await to keep method synchronous
+      logToDatabase(
+        LogLevel.INFO,
+        'REDDIT_GALLERY_EXTRACTED',
+        `Extracted ${galleryImages.length} images from gallery post: ${post.id}`,
+        { postId: post.id, imageCount: galleryImages.length }
+      ).catch(err => console.error('Failed to log gallery extraction:', err))
+    }
+
+    return galleryImages
+  }
+
+  /**
    * Convert Reddit HTTP API post to ProcessedRedditPost format
    */
   private convertToProcessedPost(post: RedditPost): ProcessedRedditPost {
     // Extract media URLs with enhanced support
     const imageUrls: string[] = []
     const videoUrls: string[] = []
+    let galleryImages: string[] = []
 
-    if (post.url) {
+    // Check for gallery posts first
+    if (post.is_gallery) {
+      galleryImages = this.extractGalleryImages(post)
+      if (galleryImages.length > 0) {
+        // Add all gallery images to imageUrls
+        imageUrls.push(...galleryImages)
+      }
+    }
+
+    if (post.url && imageUrls.length === 0) {
       const url = post.url.toString()
-      
+
       // Direct image links
       if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
         imageUrls.push(url)
@@ -758,11 +813,6 @@ export class RedditScanningService {
       else if (url.includes('gfycat.com')) {
         videoUrls.push(url) // Gfycat provides both GIF and MP4
       }
-      // Reddit galleries (basic support)
-      else if (url.includes('/gallery/')) {
-        // Would need additional API call to get gallery images
-        imageUrls.push(url) // Keep gallery URL for now
-      }
     }
 
     return {
@@ -784,9 +834,10 @@ export class RedditScanningService {
       isSpoiler: false, // Not available in HTTP API
       isStickied: post.stickied || false,
       flair: undefined, // Not available in basic HTTP API
-      isGallery: false, // Would need additional parsing
+      isGallery: post.is_gallery || false,
       isCrosspost: false, // Would need additional parsing
-      crosspostOrigin: undefined
+      crosspostOrigin: undefined,
+      galleryImages: galleryImages.length > 0 ? galleryImages : undefined
     }
   }
 }
