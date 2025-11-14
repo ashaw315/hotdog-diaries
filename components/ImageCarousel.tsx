@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, TouchEvent } from 'react'
+import { useState, TouchEvent } from 'react'
 
 interface ImageCarouselProps {
   images: string[]
@@ -14,7 +14,6 @@ export default function ImageCarousel({ images, alt = 'Gallery image', source_pl
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   // Minimum swipe distance to trigger change (in pixels)
   const minSwipeDistance = 50
@@ -79,7 +78,7 @@ export default function ImageCarousel({ images, alt = 'Gallery image', source_pl
   }
 
   return (
-    <div className="image-carousel-container" ref={containerRef}>
+    <div className="image-carousel-container">
       <div
         className="image-carousel-track"
         onTouchStart={handleTouchStart}
@@ -158,30 +157,32 @@ export default function ImageCarousel({ images, alt = 'Gallery image', source_pl
         .image-carousel-container {
           position: relative;
           width: 100%;
-          height: 100%;
+          max-height: 600px;
+          height: auto;
           overflow: hidden;
           background: #000;
+          border-radius: 8px;
         }
 
         .image-carousel-track {
           display: flex;
-          height: 100%;
           width: 100%;
         }
 
         .image-carousel-slide {
           min-width: 100%;
-          height: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
         .carousel-image {
-          max-width: 100%;
-          max-height: 100%;
+          width: 100%;
+          max-height: 600px;
+          height: auto;
           object-fit: contain;
           user-select: none;
+          display: block;
         }
 
         .carousel-nav {
