@@ -28,9 +28,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: 🧠 Install tsx (temporary CI dependency)
-        run: npm install --no-save tsx
-
       - name: Run CI health audit
         run: npx tsx scripts/validateRefactorPlan.ts
         id: audit

@@ -44,10 +44,7 @@ jobs:
         with:
           node-version: ${{ inputs.node-version || '20' }}
           cache-key-suffix: 'lint'
-          
-      - name: Install tsx for scripts
-        run: npm install --no-save tsx
-        
+
       - name: Patch legacy path resolver
         run: npx tsx scripts/patchPathResolver.ts
         
@@ -252,10 +249,7 @@ jobs:
         with:
           node-version: ${{ inputs.node-version || '20' }}
           cache-key-suffix: 'security'
-          
-      - name: Install tsx for scripts
-        run: npm install --no-save tsx
-        
+
       - name: Audit for legacy dependencies
         run: |
           echo "🔍 Scanning for problematic legacy dependencies..."
@@ -282,10 +276,7 @@ jobs:
         with:
           node-version: ${{ inputs.node-version || '20' }}
           cache-key-suffix: 'build'
-          
-      - name: Install tsx for scripts
-        run: npm install --no-save tsx
-        
+
       - name: Patch legacy path resolver (build phase)
         run: npx tsx scripts/patchPathResolver.ts
         
@@ -333,10 +324,7 @@ jobs:
         with:
           node-version: ${{ inputs.node-version || '20' }}
           cache-key-suffix: 'healing'
-          
-      - name: Install tsx for scripts
-        run: npm install --no-save tsx
-        
+
       - name: Run critical failure gatekeeper
         id: gatekeeper
         run: |

@@ -57,7 +57,6 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci --prefer-offline --no-audit --no-fund
-          npm install --no-save tsx
 
       - name: Phase 3.1 - Security Deep Remediation
         id: security-remediation
