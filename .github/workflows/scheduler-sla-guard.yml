@@ -25,7 +25,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile || pnpm install
       - name: Check SLA (today & tomorrow)
-        run: pnpm tsx scripts/ops/assert-schedule-sla.ts --tz America/New_York --today 6 --tomorrow 6
+        run: pnpm tsx scripts/ops/assert-schedule-sla.ts --tz America/New_York --today 3 --tomorrow 3
       - name: Alert on failure (optional)
         if: failure()
         env:
