@@ -62,7 +62,9 @@ export default function ArchiveItemPage() {
   }, [id])
 
   const formatDate = (dateString: string): string => {
+    if (!dateString) return 'Unknown date'
     const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Invalid date'
     return new Intl.DateTimeFormat('en-US', {
       month: 'long',
       day: 'numeric',
