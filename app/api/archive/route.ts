@@ -6,8 +6,10 @@ import { LogLevel } from '@/types'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const limitParam = parseInt(searchParams.get('limit') || '20')
+    const offsetParam = parseInt(searchParams.get('offset') || '0')
+    const limit = Math.min(isNaN(limitParam) ? 20 : limitParam, 100)
+    const offset = isNaN(offsetParam) ? 0 : offsetParam
 
     // Get total count for pagination
     const countResult = await db.query(`
