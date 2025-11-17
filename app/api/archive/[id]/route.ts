@@ -19,21 +19,19 @@ export async function GET(
     // Get the specific item
     const itemResult = await db.query(`
       SELECT
-        cq.id,
-        cq.content_type,
-        cq.source_platform,
-        cq.content_text,
-        cq.content_image_url,
-        cq.content_video_url,
-        cq.content_metadata,
-        cq.original_author,
-        cq.original_url,
-        cq.scraped_at,
-        pc.posted_at,
-        pc.post_order
-      FROM posted_content pc
-      JOIN content_queue cq ON pc.content_queue_id = cq.id
-      WHERE cq.id = $1
+        id,
+        content_type,
+        source_platform,
+        content_text,
+        content_image_url,
+        content_video_url,
+        content_metadata,
+        original_author,
+        original_url,
+        scraped_at,
+        created_at as posted_at
+      FROM content_queue
+      WHERE id = $1 AND is_posted = true
     `, [id])
 
     if (itemResult.rows.length === 0) {
@@ -44,27 +42,23 @@ export async function GET(
 
     const item = itemResult.rows[0]
 
-    // Get previous item (newer by posted_at)
+    // Get previous item (newer by created_at)
     const prevResult = await db.query(`
-      SELECT cq.id
-      FROM posted_content pc
-      JOIN content_queue cq ON pc.content_queue_id = cq.id
-      WHERE pc.posted_at > (
-        SELECT posted_at FROM posted_content WHERE content_queue_id = $1
-      )
-      ORDER BY pc.posted_at ASC
+      SELECT id
+      FROM content_queue
+      WHERE is_posted = true
+        AND created_at > (SELECT created_at FROM content_queue WHERE id = $1)
+      ORDER BY created_at ASC
       LIMIT 1
     `, [id])
 
-    // Get next item (older by posted_at)
+    // Get next item (older by created_at)
     const nextResult = await db.query(`
-      SELECT cq.id
-      FROM posted_content pc
-      JOIN content_queue cq ON pc.content_queue_id = cq.id
-      WHERE pc.posted_at < (
-        SELECT posted_at FROM posted_content WHERE content_queue_id = $1
-      )
-      ORDER BY pc.posted_at DESC
+      SELECT id
+      FROM content_queue
+      WHERE is_posted = true
+        AND created_at < (SELECT created_at FROM content_queue WHERE id = $1)
+      ORDER BY created_at DESC
       LIMIT 1
     `, [id])
 
