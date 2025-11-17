@@ -355,7 +355,6 @@ body {
   background-color: white;
   max-width: 100vw;
   overflow-x: hidden;
-  overflow-y: hidden;
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -1034,14 +1033,11 @@ video, img {
   .feed-container {
     -webkit-overflow-scrolling: touch;
   }
-  
-  /* Fix iOS Safari bounce scroll */
-  body {
-    position: fixed;
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
-  }
+
+  /* Fix iOS Safari bounce scroll - REMOVED
+   * This was preventing scroll on archive and other pages.
+   * The feed page handles its own overflow internally.
+   */
 }
 
 /* High DPI display optimizations */

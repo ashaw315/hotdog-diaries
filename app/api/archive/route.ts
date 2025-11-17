@@ -14,28 +14,29 @@ export async function GET(request: NextRequest) {
     // Get total count for pagination
     const countResult = await db.query(`
       SELECT COUNT(*) as total
-      FROM content_queue
-      WHERE is_posted = true
+      FROM posted_content pc
+      JOIN content_queue cq ON pc.content_queue_id = cq.id
     `)
     const total = parseInt(countResult.rows[0]?.total || '0')
 
-    // Get paginated content
+    // Get paginated content - matching feed API query pattern
     const result = await db.query(`
       SELECT
-        id,
-        content_type,
-        source_platform,
-        content_text,
-        content_image_url,
-        content_video_url,
-        content_metadata,
-        original_author,
-        original_url,
-        scraped_at,
-        created_at as posted_at
-      FROM content_queue
-      WHERE is_posted = true
-      ORDER BY created_at DESC
+        cq.id,
+        cq.content_type,
+        cq.source_platform,
+        cq.content_text,
+        cq.content_image_url,
+        cq.content_video_url,
+        cq.content_metadata,
+        cq.original_author,
+        cq.original_url,
+        cq.scraped_at,
+        pc.posted_at,
+        pc.post_order
+      FROM posted_content pc
+      JOIN content_queue cq ON pc.content_queue_id = cq.id
+      ORDER BY pc.posted_at DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset])
 
