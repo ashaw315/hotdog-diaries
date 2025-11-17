@@ -146,7 +146,7 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
           
-      - run: ppnpm install --frozen-lockfile || ppnpm install
+      - run: pnpm install --frozen-lockfile || pnpm install
 
       - name: "Security: Validate execution mode"
         run: |
@@ -400,7 +400,7 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
           
-      - run: ppnpm install --frozen-lockfile || ppnpm install
+      - run: pnpm install --frozen-lockfile || pnpm install
 
       - name: "Fork CI: Standard checks"
         run: |

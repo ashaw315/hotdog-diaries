@@ -63,7 +63,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: |
-          ppnpm install --prefer-offline --no-audit --no-fund
+          pnpm install --prefer-offline --no-audit --no-fund
       - name: 🧪 Re-run CI Health Checks
         id: health-recheck
         run: |

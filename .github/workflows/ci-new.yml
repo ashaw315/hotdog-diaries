@@ -31,7 +31,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.node-modules-cache.outputs.cache-hit != 'true'
-        run: ppnpm install
+        run: pnpm install
 
       - name: Simple test
         run: echo "✅ CI workflow syntax is working!"

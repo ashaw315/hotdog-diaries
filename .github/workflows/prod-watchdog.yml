@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-      - run: ppnpm install --frozen-lockfile || ppnpm install
+      - run: pnpm install --frozen-lockfile || pnpm install
       - name: Mint runtime JWT token for watchdog checks
         run: |
           echo "🔐 Minting runtime JWT token for production watchdog..."

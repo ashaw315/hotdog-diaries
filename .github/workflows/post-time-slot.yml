@@ -57,7 +57,7 @@ jobs:
           cache: 'pnpm'
       
       - name: Install dependencies
-        run: ppnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       
       - name: Setup Supabase environment
         uses: ./.github/actions/setup-supabase-rest

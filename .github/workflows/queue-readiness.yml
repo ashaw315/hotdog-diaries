@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-      - run: ppnpm install --frozen-lockfile || ppnpm install
+      - run: pnpm install --frozen-lockfile || pnpm install
       - id: check
         run: pnpm tsx scripts/ops/check-queue-readiness.ts --tz America/New_York --min 12
       - name: Open shortage issue (if needed)
