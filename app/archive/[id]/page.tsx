@@ -161,9 +161,7 @@ export default function ArchiveItemPage() {
         <video
           src={item.content_video_url}
           controls
-          autoPlay
           loop
-          muted
           playsInline
           style={{
             width: '100%',

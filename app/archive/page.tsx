@@ -318,7 +318,7 @@ export default function ArchivePage() {
                             style={{
                               width: '100%',
                               height: '100%',
-                              objectFit: 'cover'
+                              objectFit: 'contain'
                             }}
                           />
                         ) : null}
@@ -371,31 +371,15 @@ export default function ArchivePage() {
                       {/* Info */}
                       <div style={{
                         padding: '16px',
-                        flex: 1,
                         display: 'flex',
-                        flexDirection: 'column'
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}>
-                        {item.content_text && (
-                          <p style={{
-                            margin: '0 0 12px 0',
-                            fontSize: '14px',
-                            color: '#333',
-                            lineHeight: '1.5',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            flex: 1
-                          }}>
-                            {item.content_text}
-                          </p>
-                        )}
                         <div style={{
                           fontSize: '13px',
-                          color: '#666',
-                          marginTop: 'auto'
+                          color: '#666'
                         }}>
-                          Posted: {formatDate(item.posted_at)}
+                          {formatDate(item.posted_at)}
                         </div>
                       </div>
                     </div>
