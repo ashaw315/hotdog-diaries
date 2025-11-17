@@ -14,7 +14,7 @@ jobs:
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-      - run: pnpm install --no-frozen-lockfile
+      - run: ppnpm install --no-frozen-lockfile
       - name: Check validation failures
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

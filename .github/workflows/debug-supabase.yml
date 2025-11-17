@@ -15,7 +15,7 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       
-      - run: pnpm install --frozen-lockfile || pnpm install
+      - run: ppnpm install --frozen-lockfile || ppnpm install
       
       - name: Debug Environment Variables
         env:

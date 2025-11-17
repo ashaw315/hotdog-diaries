@@ -30,7 +30,7 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 10.18.3
-      - run: pnpm install --frozen-lockfile || pnpm install
+      - run: ppnpm install --frozen-lockfile || ppnpm install
       - name: Fetch runs & logs
         env:
           LOOKBACK: ${{ inputs.lookback_runs }}

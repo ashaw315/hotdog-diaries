@@ -269,6 +269,63 @@ export class RedditHttpService {
     }
   }
 
+  /**
+   * Fetch a specific Reddit post by ID
+   */
+  async fetchPost(postId: string): Promise<RedditPost | null> {
+    try {
+      // Get OAuth access token
+      const accessToken = await this.authenticate()
+
+      // Reddit post info endpoint: /r/subreddit/comments/postId.json
+      // We can also use: /comments/postId.json (no subreddit needed)
+      const postUrl = `https://oauth.reddit.com/comments/${postId}.json?raw_json=1`
+
+      const response = await fetch(postUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'User-Agent': this.userAgent,
+          'Accept': 'application/json'
+        },
+        method: 'GET'
+      })
+
+      if (!response.ok) {
+        throw new Error(`Reddit API returned ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // The response is an array with 2 items:
+      // [0] - post listing
+      // [1] - comments listing
+      const postListing = data[0]
+      if (!postListing || !postListing.data || !postListing.data.children || postListing.data.children.length === 0) {
+        return null
+      }
+
+      const post = postListing.data.children[0].data as RedditPost
+
+      await logToDatabase(
+        LogLevel.INFO,
+        'REDDIT_FETCH_POST_SUCCESS',
+        `Fetched post ${postId}`,
+        { postId, postTitle: post.title }
+      )
+
+      return post
+
+    } catch (error) {
+      await logToDatabase(
+        LogLevel.ERROR,
+        'REDDIT_FETCH_POST_ERROR',
+        `Failed to fetch Reddit post ${postId}: ${error.message}`,
+        { postId, error: error.message }
+      )
+      return null
+    }
+  }
+
   async testConnection(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
       const posts = await this.getHotPosts('test', 1)

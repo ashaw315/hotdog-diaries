@@ -44,7 +44,7 @@ jobs:
           cache: 'pnpm'
           
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: ppnpm install --frozen-lockfile
           
       - name: Install OpenAPI validation tools
         run: |
@@ -142,7 +142,7 @@ jobs:
           cache: 'pnpm'
           
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: ppnpm install --frozen-lockfile
           
       - name: Generate current route inventory
         run: |
@@ -326,7 +326,7 @@ jobs:
           cache: 'pnpm'
           
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: ppnpm install --frozen-lockfile
         
       - name: Auto-refresh OpenAPI spec
         run: |
