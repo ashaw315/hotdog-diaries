@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import HotdogDiariesLogoMouseGradient from '@/components/HotdogDiariesLogoMouseGradient'
 
 interface ArchiveItem {
   id: number
@@ -176,33 +177,36 @@ export default function ArchivePage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'white',
       padding: '40px 20px'
     }}>
+      {/* Logo */}
+      <HotdogDiariesLogoMouseGradient />
+
       {/* Header */}
       <div style={{
         maxWidth: '1400px',
         margin: '0 auto 40px',
-        textAlign: 'center'
+        textAlign: 'center',
+        paddingTop: '60px'
       }}>
         <h1 style={{
-          color: 'white',
+          color: '#333',
           fontSize: '48px',
           fontWeight: '700',
-          marginBottom: '16px',
-          textShadow: '2px 2px 4px rgba(0, 0, 0, 0.2)'
+          marginBottom: '16px'
         }}>
           Hotdog Archive
         </h1>
         <p style={{
-          color: 'rgba(255, 255, 255, 0.9)',
+          color: '#666',
           fontSize: '18px',
           marginBottom: '24px'
         }}>
           {pagination ? `${pagination.total} hot dogs and counting` : 'Loading...'}
         </p>
         <Link href="/" style={{
-          color: '#ffd21f',
+          color: '#e52b2b',
           textDecoration: 'none',
           fontSize: '16px',
           fontWeight: '500'
@@ -220,7 +224,7 @@ export default function ArchivePage() {
           <div style={{
             textAlign: 'center',
             padding: '60px 20px',
-            color: 'white',
+            color: '#666',
             fontSize: '18px'
           }}>
             Loading archive...
@@ -233,7 +237,8 @@ export default function ArchivePage() {
             padding: '60px 20px',
             color: '#ff6b6b',
             fontSize: '18px',
-            background: 'white',
+            background: '#fff5f5',
+            border: '1px solid #ffcccc',
             borderRadius: '12px',
             maxWidth: '600px',
             margin: '0 auto'
@@ -246,7 +251,7 @@ export default function ArchivePage() {
           <div style={{
             textAlign: 'center',
             padding: '60px 20px',
-            color: 'white',
+            color: '#666',
             fontSize: '18px'
           }}>
             No items in archive yet.
@@ -425,9 +430,9 @@ export default function ArchivePage() {
                 justifyContent: 'center',
                 gap: '8px',
                 padding: '20px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '12px',
-                backdropFilter: 'blur(10px)'
+                background: '#f9f9f9',
+                border: '1px solid #e0e0e0',
+                borderRadius: '12px'
               }}>
                 <button
                   onClick={() => goToPage(page - 1)}
