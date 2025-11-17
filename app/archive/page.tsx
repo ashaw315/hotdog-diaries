@@ -65,31 +65,20 @@ export default function ArchivePage() {
     fetchArchive()
   }, [page])
 
-  const isHotlinkProtected = (url: string | null): boolean => {
-    if (!url) return false
-    // Pixabay blocks hotlinking from their CDN
-    return url.includes('pixabay.com/get/')
-  }
-
   const getThumbnailUrl = (item: ArchiveItem): string | null => {
-    let url: string | null = null
-
     if (item.content_type === 'image' && item.content_image_url) {
-      url = item.content_image_url
-    } else if (item.content_type === 'video' && item.content_image_url) {
-      url = item.content_image_url // Thumbnail for video
-    } else if (item.content_type === 'gif' && item.content_image_url) {
-      url = item.content_image_url
-    } else if (item.content_metadata?.gallery_images && item.content_metadata.gallery_images.length > 0) {
-      url = item.content_metadata.gallery_images[0]
+      return item.content_image_url
     }
-
-    // Skip hotlink-protected URLs (they will fail with 400/403)
-    if (isHotlinkProtected(url)) {
-      return null
+    if (item.content_type === 'video' && item.content_image_url) {
+      return item.content_image_url // Thumbnail for video
     }
-
-    return url
+    if (item.content_type === 'gif' && item.content_image_url) {
+      return item.content_image_url
+    }
+    if (item.content_metadata?.gallery_images && item.content_metadata.gallery_images.length > 0) {
+      return item.content_metadata.gallery_images[0]
+    }
+    return null
   }
 
   const formatDate = (dateString: string): string => {
