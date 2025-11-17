@@ -777,14 +777,44 @@ export default function AdaptiveTikTokFeed() {
       <div className="page-container feed-container">
         {/* Header title is now handled by AnimatedTitle component */}
         
-        {/* Admin login button */}
+        {/* Archive and Admin buttons */}
         <div className="admin-controls" style={{
           position: 'fixed',
           top: '20px',
           right: '20px',
-          zIndex: 100
+          zIndex: 100,
+          display: 'flex',
+          gap: '8px'
         }}>
-          <button 
+          <button
+            onClick={() => window.location.href = '/archive'}
+            style={{
+              background: 'rgba(255, 210, 31, 0.95)',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#333',
+              cursor: 'pointer',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLElement).style.background = 'rgba(255, 210, 31, 1)';
+              (e.target as HTMLElement).style.transform = 'translateY(-1px)';
+              (e.target as HTMLElement).style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLElement).style.background = 'rgba(255, 210, 31, 0.95)';
+              (e.target as HTMLElement).style.transform = 'translateY(0)';
+              (e.target as HTMLElement).style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+            }}
+          >
+            Archive
+          </button>
+          <button
             onClick={() => window.location.href = '/admin/login'}
             style={{
               background: 'rgba(255, 255, 255, 0.95)',
