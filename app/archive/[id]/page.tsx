@@ -194,6 +194,7 @@ export default function ArchiveItemPage() {
           src={item.content_video_url}
           controls
           loop
+          autoPlay
           playsInline
           preload="metadata"
           style={{

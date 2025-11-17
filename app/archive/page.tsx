@@ -311,7 +311,20 @@ export default function ArchivePage() {
                         background: thumbnail ? '#f5f5f5' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         overflow: 'hidden'
                       }}>
-                        {thumbnail ? (
+                        {item.content_type === 'video' && item.content_video_url ? (
+                          <video
+                            src={item.content_video_url}
+                            muted
+                            loop
+                            autoPlay
+                            playsInline
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain'
+                            }}
+                          />
+                        ) : thumbnail ? (
                           <img
                             src={thumbnail}
                             alt={item.content_text || 'Hotdog content'}
@@ -336,7 +349,7 @@ export default function ArchivePage() {
                           left: 0,
                           width: '100%',
                           height: '100%',
-                          display: thumbnail ? 'none' : 'flex',
+                          display: (thumbnail || (item.content_type === 'video' && item.content_video_url)) ? 'none' : 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           padding: '20px',
