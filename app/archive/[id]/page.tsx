@@ -163,6 +163,8 @@ export default function ArchiveItemPage() {
           controls
           autoPlay
           loop
+          muted
+          playsInline
           style={{
             width: '100%',
             maxHeight: '70vh',

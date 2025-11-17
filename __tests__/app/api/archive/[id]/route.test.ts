@@ -2,10 +2,11 @@ import { GET } from '@/app/api/archive/[id]/route'
 import { NextRequest } from 'next/server'
 
 // Mock dependencies
+jest.mock('@/utils/supabase/server', () => ({
+  createSimpleClient: jest.fn()
+}))
+
 jest.mock('@/lib/db', () => ({
-  db: {
-    query: jest.fn()
-  },
   logToDatabase: jest.fn()
 }))
 
@@ -16,36 +17,56 @@ describe('/api/archive/[id] Route', () => {
 
   describe('GET /api/archive/[id]', () => {
     it('returns item with navigation info', async () => {
-      const { db } = await import('@/lib/db')
+      const { createSimpleClient } = await import('@/utils/supabase/server')
+
+      const mockSupabase = {
+        from: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        single: jest.fn()
+      }
+
+      ;(createSimpleClient as jest.Mock).mockReturnValue(mockSupabase)
 
       // Mock item query
-      ;(db.query as jest.Mock).mockResolvedValueOnce({
-        rows: [
-          {
+      mockSupabase.single.mockResolvedValueOnce({
+        data: {
+          id: 1,
+          content_queue_id: 2,
+          posted_at: '2024-01-02T00:00:00.000Z',
+          scheduled_time: null,
+          post_order: 2,
+          created_at: '2024-01-02T00:00:00.000Z',
+          content_queue: {
             id: 2,
+            content_text: 'Test hotdog',
             content_type: 'image',
             source_platform: 'reddit',
-            content_text: 'Test hotdog',
+            original_url: 'https://reddit.com/r/hotdogs/1',
+            original_author: 'testuser',
             content_image_url: 'https://example.com/hotdog.jpg',
             content_video_url: null,
             content_metadata: null,
-            original_author: 'testuser',
-            original_url: 'https://reddit.com/r/hotdogs/1',
-            scraped_at: '2024-01-01T00:00:00.000Z',
-            posted_at: '2024-01-02T00:00:00.000Z',
-            post_order: 2
+            scraped_at: '2024-01-01T00:00:00.000Z'
           }
-        ]
+        },
+        error: null
       })
 
       // Mock prev query (newer)
-      ;(db.query as jest.Mock).mockResolvedValueOnce({
-        rows: [{ id: 3 }]
+      mockSupabase.single.mockResolvedValueOnce({
+        data: { content_queue_id: 3 },
+        error: null
       })
 
       // Mock next query (older)
-      ;(db.query as jest.Mock).mockResolvedValueOnce({
-        rows: [{ id: 1 }]
+      mockSupabase.single.mockResolvedValueOnce({
+        data: { content_queue_id: 1 },
+        error: null
       })
 
       const mockRequest = new NextRequest('http://localhost/api/archive/2')

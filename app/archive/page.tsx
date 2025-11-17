@@ -298,7 +298,7 @@ export default function ArchivePage() {
                       {/* Thumbnail */}
                       <div style={{
                         width: '100%',
-                        paddingTop: '100%',
+                        height: '200px',
                         position: 'relative',
                         background: thumbnail ? '#f5f5f5' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         overflow: 'hidden'
@@ -307,30 +307,34 @@ export default function ArchivePage() {
                           <img
                             src={thumbnail}
                             alt={item.content_text || 'Hotdog content'}
+                            onError={(e) => {
+                              // Replace broken image with fallback
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                              if (target.nextElementSibling) {
+                                (target.nextElementSibling as HTMLElement).style.display = 'flex'
+                              }
+                            }}
                             style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
                               width: '100%',
                               height: '100%',
                               objectFit: 'cover'
                             }}
                           />
-                        ) : (
-                          <div style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '48px'
-                          }}>
-                            🌭
-                          </div>
-                        )}
+                        ) : null}
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          display: thumbnail ? 'none' : 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '48px'
+                        }}>
+                          🌭
+                        </div>
 
                         {/* Content Type Badge */}
                         <div style={{
