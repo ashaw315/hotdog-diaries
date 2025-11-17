@@ -310,7 +310,8 @@ export default function ArchiveItemPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '32px'
+          marginBottom: '32px',
+          marginTop: '20px'
         }}>
           <Link href="/archive" style={{
             color: '#e52b2b',
