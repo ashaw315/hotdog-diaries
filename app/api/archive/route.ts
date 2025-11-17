@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { createSimpleClient } from '@/utils/supabase/server'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
@@ -11,40 +11,70 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(isNaN(limitParam) ? 20 : limitParam, 100)
     const offset = isNaN(offsetParam) ? 0 : offsetParam
 
+    const supabase = createSimpleClient()
+
     // Get total count for pagination
-    const countResult = await db.query(`
-      SELECT COUNT(*) as total
-      FROM posted_content pc
-      JOIN content_queue cq ON pc.content_queue_id = cq.id
-    `)
-    const total = parseInt(countResult.rows[0]?.total || '0')
+    const { count, error: countError } = await supabase
+      .from('posted_content')
+      .select('*', { count: 'exact', head: true })
+
+    if (countError) {
+      throw countError
+    }
+
+    const total = count || 0
 
     // Get paginated content - matching feed API query pattern
-    const result = await db.query(`
-      SELECT
-        cq.id,
-        cq.content_type,
-        cq.source_platform,
-        cq.content_text,
-        cq.content_image_url,
-        cq.content_video_url,
-        cq.content_metadata,
-        cq.original_author,
-        cq.original_url,
-        cq.scraped_at,
-        pc.posted_at,
-        pc.post_order
-      FROM posted_content pc
-      JOIN content_queue cq ON pc.content_queue_id = cq.id
-      ORDER BY pc.posted_at DESC
-      LIMIT $1 OFFSET $2
-    `, [limit, offset])
+    const { data: postedContent, error } = await supabase
+      .from('posted_content')
+      .select(`
+        id,
+        content_queue_id,
+        posted_at,
+        scheduled_time,
+        post_order,
+        created_at,
+        content_queue!inner (
+          id,
+          content_text,
+          content_type,
+          source_platform,
+          original_url,
+          original_author,
+          content_image_url,
+          content_video_url,
+          content_metadata,
+          scraped_at
+        )
+      `)
+      .order('posted_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) {
+      throw error
+    }
+
+    // Transform the data to match expected format
+    const items = (postedContent || []).map(item => ({
+      id: item.content_queue.id,
+      content_type: item.content_queue.content_type,
+      source_platform: item.content_queue.source_platform,
+      content_text: item.content_queue.content_text,
+      content_image_url: item.content_queue.content_image_url,
+      content_video_url: item.content_queue.content_video_url,
+      content_metadata: item.content_queue.content_metadata,
+      original_author: item.content_queue.original_author,
+      original_url: item.content_queue.original_url,
+      scraped_at: item.content_queue.scraped_at,
+      posted_at: item.posted_at,
+      post_order: item.post_order
+    }))
 
     const totalPages = Math.ceil(total / limit)
     const currentPage = Math.floor(offset / limit) + 1
 
     return NextResponse.json({
-      items: result.rows,
+      items,
       pagination: {
         total,
         limit,

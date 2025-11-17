@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { createSimpleClient } from '@/utils/supabase/server'
 import { logToDatabase } from '@/lib/db'
 import { LogLevel } from '@/types'
 
@@ -16,59 +16,79 @@ export async function GET(
       }, { status: 400 })
     }
 
-    // Get the specific item - matching feed API query pattern
-    const itemResult = await db.query(`
-      SELECT
-        cq.id,
-        cq.content_type,
-        cq.source_platform,
-        cq.content_text,
-        cq.content_image_url,
-        cq.content_video_url,
-        cq.content_metadata,
-        cq.original_author,
-        cq.original_url,
-        cq.scraped_at,
-        pc.posted_at,
-        pc.post_order
-      FROM posted_content pc
-      JOIN content_queue cq ON pc.content_queue_id = cq.id
-      WHERE cq.id = $1
-    `, [id])
+    const supabase = createSimpleClient()
 
-    if (itemResult.rows.length === 0) {
+    // Get the specific item - matching feed API query pattern
+    const { data: itemData, error: itemError } = await supabase
+      .from('posted_content')
+      .select(`
+        id,
+        content_queue_id,
+        posted_at,
+        scheduled_time,
+        post_order,
+        created_at,
+        content_queue!inner (
+          id,
+          content_text,
+          content_type,
+          source_platform,
+          original_url,
+          original_author,
+          content_image_url,
+          content_video_url,
+          content_metadata,
+          scraped_at
+        )
+      `)
+      .eq('content_queue_id', id)
+      .single()
+
+    if (itemError || !itemData) {
       return NextResponse.json({
         error: 'Item not found'
       }, { status: 404 })
     }
 
-    const item = itemResult.rows[0]
+    // Transform item data
+    const item = {
+      id: itemData.content_queue.id,
+      content_type: itemData.content_queue.content_type,
+      source_platform: itemData.content_queue.source_platform,
+      content_text: itemData.content_queue.content_text,
+      content_image_url: itemData.content_queue.content_image_url,
+      content_video_url: itemData.content_queue.content_video_url,
+      content_metadata: itemData.content_queue.content_metadata,
+      original_author: itemData.content_queue.original_author,
+      original_url: itemData.content_queue.original_url,
+      scraped_at: itemData.content_queue.scraped_at,
+      posted_at: itemData.posted_at,
+      post_order: itemData.post_order
+    }
 
     // Get previous item (newer by posted_at)
-    const prevResult = await db.query(`
-      SELECT cq.id
-      FROM posted_content pc
-      JOIN content_queue cq ON pc.content_queue_id = cq.id
-      WHERE pc.posted_at > (SELECT posted_at FROM posted_content WHERE content_queue_id = $1)
-      ORDER BY pc.posted_at ASC
-      LIMIT 1
-    `, [id])
+    const { data: prevData } = await supabase
+      .from('posted_content')
+      .select('content_queue_id')
+      .gt('posted_at', itemData.posted_at)
+      .order('posted_at', { ascending: true })
+      .limit(1)
+      .single()
 
     // Get next item (older by posted_at)
-    const nextResult = await db.query(`
-      SELECT cq.id
-      FROM posted_content pc
-      JOIN content_queue cq ON pc.content_queue_id = cq.id
-      WHERE pc.posted_at < (SELECT posted_at FROM posted_content WHERE content_queue_id = $1)
-      ORDER BY pc.posted_at DESC
-      LIMIT 1
-    `, [id])
+    const { data: nextData } = await supabase
+      .from('posted_content')
+      .select('content_queue_id')
+      .lt('posted_at', itemData.posted_at)
+      .order('posted_at', { ascending: false })
+      .limit(1)
+      .single()
 
     return NextResponse.json({
       item,
       navigation: {
-        prevId: prevResult.rows[0]?.id || null,
-        nextId: nextResult.rows[0]?.id || null
+        prevId: prevData?.content_queue_id || null,
+        nextId: nextData?.content_queue_id || null
       }
     })
 
