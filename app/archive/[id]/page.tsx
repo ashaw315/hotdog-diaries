@@ -61,12 +61,6 @@ export default function ArchiveItemPage() {
     fetchItem()
   }, [id])
 
-  const isHotlinkProtected = (url: string | null | undefined): boolean => {
-    if (!url) return false
-    // Pixabay blocks hotlinking from their CDN /get/ URLs
-    return url.includes('pixabay.com/get/')
-  }
-
   const formatDate = (dateString: string): string => {
     if (!dateString) return 'Unknown date'
     const date = new Date(dateString)
@@ -85,32 +79,7 @@ export default function ArchiveItemPage() {
 
     // Handle gallery
     if (item.content_metadata?.gallery_images && item.content_metadata.gallery_images.length > 0) {
-      const images = item.content_metadata.gallery_images.filter(url => !isHotlinkProtected(url))
-
-      if (images.length === 0) {
-        // All gallery images are hotlink-protected, show fallback
-        return (
-          <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '60px 40px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            minHeight: '300px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <p style={{
-              color: 'white',
-              fontSize: '24px',
-              lineHeight: '1.6',
-              maxWidth: '600px'
-            }}>
-              {item.content_text || 'Gallery images unavailable'}
-            </p>
-          </div>
-        )
-      }
+      const images = item.content_metadata.gallery_images
 
       return (
         <div style={{ position: 'relative' }}>
@@ -211,31 +180,6 @@ export default function ArchiveItemPage() {
 
     // Handle gif
     if (item.content_type === 'gif' && item.content_image_url) {
-      if (isHotlinkProtected(item.content_image_url)) {
-        // GIF is hotlink-protected, show fallback
-        return (
-          <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '60px 40px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            minHeight: '300px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <p style={{
-              color: 'white',
-              fontSize: '24px',
-              lineHeight: '1.6',
-              maxWidth: '600px'
-            }}>
-              {item.content_text || 'GIF unavailable'}
-            </p>
-          </div>
-        )
-      }
-
       return (
         <img
           src={item.content_image_url}
@@ -252,31 +196,6 @@ export default function ArchiveItemPage() {
 
     // Handle image
     if (item.content_type === 'image' && item.content_image_url) {
-      if (isHotlinkProtected(item.content_image_url)) {
-        // Image is hotlink-protected, show fallback
-        return (
-          <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '60px 40px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            minHeight: '300px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <p style={{
-              color: 'white',
-              fontSize: '24px',
-              lineHeight: '1.6',
-              maxWidth: '600px'
-            }}>
-              {item.content_text || 'Image unavailable'}
-            </p>
-          </div>
-        )
-      }
-
       return (
         <img
           src={item.content_image_url}

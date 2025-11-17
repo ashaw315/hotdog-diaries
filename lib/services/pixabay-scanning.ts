@@ -456,7 +456,7 @@ export class PixabayScanningService {
       views: hit.views,
       likes: hit.likes || 0,
       downloads: hit.downloads,
-      photoUrl: hit.webformatURL,
+      photoUrl: hit.previewURL, // Use previewURL to avoid hotlink protection
       thumbnailUrl: hit.previewURL,
       photographer: hit.user,
       pageUrl: hit.pageURL,

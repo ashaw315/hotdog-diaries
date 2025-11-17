@@ -66,25 +66,17 @@ export default function ArchivePage() {
   }, [page])
 
   const getThumbnailUrl = (item: ArchiveItem): string | null => {
-    // Helper to check if URL is hotlink-protected (Pixabay /get/ URLs)
-    const isHotlinkProtected = (url: string | null): boolean => {
-      if (!url) return false
-      return url.includes('pixabay.com/get/')
-    }
-
     if (item.content_type === 'image' && item.content_image_url) {
-      return isHotlinkProtected(item.content_image_url) ? null : item.content_image_url
+      return item.content_image_url
     }
     if (item.content_type === 'video' && item.content_image_url) {
-      return isHotlinkProtected(item.content_image_url) ? null : item.content_image_url // Thumbnail for video
+      return item.content_image_url // Thumbnail for video
     }
     if (item.content_type === 'gif' && item.content_image_url) {
-      return isHotlinkProtected(item.content_image_url) ? null : item.content_image_url
+      return item.content_image_url
     }
     if (item.content_metadata?.gallery_images && item.content_metadata.gallery_images.length > 0) {
-      // Filter out hotlink-protected gallery images
-      const validImages = item.content_metadata.gallery_images.filter(url => !isHotlinkProtected(url))
-      return validImages.length > 0 ? validImages[0] : null
+      return item.content_metadata.gallery_images[0]
     }
     return null
   }
