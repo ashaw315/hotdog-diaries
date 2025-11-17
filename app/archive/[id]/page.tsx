@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import HotdogDiariesLogoMouseGradient from '@/components/HotdogDiariesLogoMouseGradient'
 
 interface ArchiveItem {
   id: number
@@ -238,13 +239,14 @@ export default function ArchiveItemPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'white',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'white',
+        color: '#666',
         fontSize: '20px'
       }}>
+        <HotdogDiariesLogoMouseGradient />
         Loading...
       </div>
     )
@@ -254,32 +256,38 @@ export default function ArchiveItemPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '40px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
+        background: 'white',
+        padding: '40px 20px'
       }}>
+        <HotdogDiariesLogoMouseGradient />
         <div style={{
-          background: 'white',
-          padding: '40px',
-          borderRadius: '12px',
-          maxWidth: '600px',
-          textAlign: 'center'
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 'calc(100vh - 80px)'
         }}>
-          <h1 style={{ color: '#e52b2b', marginBottom: '16px' }}>Error</h1>
-          <p style={{ color: '#666', marginBottom: '24px' }}>{error || 'Item not found'}</p>
-          <Link href="/archive" style={{
-            display: 'inline-block',
-            background: '#ffd21f',
-            color: '#333',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: '500'
+          <div style={{
+            background: '#fff5f5',
+            border: '1px solid #ffcccc',
+            padding: '40px',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            textAlign: 'center'
           }}>
-            ← Back to Archive
-          </Link>
+            <h1 style={{ color: '#e52b2b', marginBottom: '16px' }}>Error</h1>
+            <p style={{ color: '#666', marginBottom: '24px' }}>{error || 'Item not found'}</p>
+            <Link href="/archive" style={{
+              display: 'inline-block',
+              background: '#ffd21f',
+              color: '#333',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}>
+              ← Back to Archive
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -288,12 +296,14 @@ export default function ArchiveItemPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'white',
       padding: '40px 20px'
     }}>
+      <HotdogDiariesLogoMouseGradient />
       <div style={{
         maxWidth: '1000px',
-        margin: '0 auto'
+        margin: '0 auto',
+        paddingTop: '60px'
       }}>
         {/* Header Navigation */}
         <div style={{
@@ -303,7 +313,7 @@ export default function ArchiveItemPage() {
           marginBottom: '32px'
         }}>
           <Link href="/archive" style={{
-            color: 'white',
+            color: '#e52b2b',
             textDecoration: 'none',
             fontSize: '16px',
             fontWeight: '500',
@@ -322,12 +332,13 @@ export default function ArchiveItemPage() {
               <button
                 onClick={() => router.push(`/archive/${navigation.prevId}`)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.95)',
-                  border: 'none',
+                  background: '#ffd21f',
+                  border: '1px solid #ddd',
                   borderRadius: '8px',
                   padding: '10px 20px',
                   fontSize: '15px',
                   fontWeight: '500',
+                  color: '#333',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease'
                 }}
@@ -342,12 +353,13 @@ export default function ArchiveItemPage() {
               <button
                 onClick={() => router.push(`/archive/${navigation.nextId}`)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.95)',
-                  border: 'none',
+                  background: '#ffd21f',
+                  border: '1px solid #ddd',
                   borderRadius: '8px',
                   padding: '10px 20px',
                   fontSize: '15px',
                   fontWeight: '500',
+                  color: '#333',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease'
                 }}
@@ -391,8 +403,8 @@ export default function ArchiveItemPage() {
           <div style={{
             borderTop: '1px solid #eee',
             paddingTop: '24px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            display: 'flex',
+            flexDirection: 'column',
             gap: '16px'
           }}>
             <div>
@@ -425,36 +437,6 @@ export default function ArchiveItemPage() {
               </div>
             )}
           </div>
-
-          {/* View Original Button */}
-          {item.original_url && (
-            <div style={{ marginTop: '24px' }}>
-              <a
-                href={item.original_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-block',
-                  background: '#ffd21f',
-                  color: '#333',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  fontWeight: '500',
-                  fontSize: '15px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  (e.target as HTMLElement).style.background = '#f5c61f'
-                }}
-                onMouseLeave={(e) => {
-                  (e.target as HTMLElement).style.background = '#ffd21f'
-                }}
-              >
-                View Original →
-              </a>
-            </div>
-          )}
         </div>
       </div>
     </div>
