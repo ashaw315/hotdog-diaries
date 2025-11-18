@@ -404,19 +404,6 @@ export default function AdaptiveTikTokFeed() {
           throw new Error('Invalid response format from temp content API')
         }
 
-        // Add welcome card + first real post
-        const welcomeCard: Post = {
-          id: -999,
-          content_text: "Welcome to Hotdog Diaries! Swipe up to see the best hotdog content from around the internet.",
-          content_type: 'text' as ContentType,
-          source_platform: 'reddit' as SourcePlatform,
-          original_url: '',
-          original_author: 'Hotdog Diaries',
-          scraped_at: new Date(),
-          is_posted: false,
-          is_approved: true
-        }
-        
         const transformedContent = data.content.map((item: any) => ({
           id: item.id,
           content_text: item.content_text,
@@ -431,9 +418,9 @@ export default function AdaptiveTikTokFeed() {
           is_posted: false,
           is_approved: true
         }))
-        
-        console.log(`✅ fetchInitialPost: Loaded first post for quick display - total posts: ${transformedContent.length + 1}`)
-        return [welcomeCard, ...transformedContent]
+
+        console.log(`✅ fetchInitialPost: Loaded first post for quick display - total posts: ${transformedContent.length}`)
+        return transformedContent
       },
       [] as Post[],
       'fetchInitialPost'
@@ -538,19 +525,6 @@ export default function AdaptiveTikTokFeed() {
           throw new Error('Invalid response format from temp content API')
         }
 
-        // Add welcome card
-        const welcomeCard: Post = {
-          id: -999,
-          content_text: "Welcome to Hotdog Diaries! Swipe up to see the best hotdog content from around the internet.",
-          content_type: 'text' as ContentType,
-          source_platform: 'reddit' as SourcePlatform,
-          original_url: '',
-          original_author: 'Hotdog Diaries',
-          scraped_at: new Date(),
-          is_posted: false,
-          is_approved: true
-        }
-        
         // Transform API response to match Post interface
         const transformedContent = data.content.map((item: any) => ({
           id: item.id,
@@ -566,9 +540,9 @@ export default function AdaptiveTikTokFeed() {
           is_posted: false,
           is_approved: true
         }))
-        
+
         console.log(`✅ Loaded ${transformedContent.length} posts with minimum height system applied`)
-        return [welcomeCard, ...transformedContent]
+        return transformedContent
       },
       [] as Post[], // fallback value
       'fetchPosts'
@@ -1633,57 +1607,6 @@ function PostContent({
         smartScaleContent(element, post);
         break;
     }
-  }
-
-  const isWelcomeCard = post.id === -999
-
-  if (isWelcomeCard) {
-    return (
-      <div className="welcome-card">
-        <div className="welcome-content">
-          <div className="welcome-emoji">🌭</div>
-          <h1>Welcome to Hotdog Diaries</h1>
-          <p>{post.content_text}</p>
-          <div className="swipe-hint">
-            <div className="arrow">↑</div>
-            <p>Swipe up to begin</p>
-          </div>
-        </div>
-        <style jsx>{`
-          .welcome-card {
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
-            color: white;
-            text-align: center;
-            padding: 32px;
-          }
-          .welcome-emoji {
-            font-size: 72px;
-            margin-bottom: 24px;
-          }
-          h1 {
-            font-size: 32px;
-            margin-bottom: 16px;
-          }
-          .swipe-hint {
-            margin-top: 48px;
-            opacity: 0.8;
-          }
-          .arrow {
-            font-size: 24px;
-            animation: bounce 2s infinite;
-          }
-          @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
-          }
-        `}</style>
-      </div>
-    )
   }
 
   const renderMedia = () => {
