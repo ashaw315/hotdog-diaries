@@ -373,66 +373,80 @@ export default function ArchiveItemPage() {
           </div>
         </div>
 
-        {/* Content Card */}
+        {/* Content Container with Feed-Style Presentation */}
         <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '32px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
+          display: 'flex',
+          gap: '24px',
+          alignItems: 'flex-start'
         }}>
-          {/* Content */}
-          <div style={{ marginBottom: '32px' }}>
-            {renderContent()}
+          {/* Main Content - Feed Style */}
+          <div style={{
+            flex: '1',
+            maxWidth: '600px'
+          }}>
+            {/* Content with Rounded Borders */}
+            <div style={{
+              borderRadius: '20px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+            }}>
+              {renderContent()}
+            </div>
+
+            {/* Text Content Below if Present */}
+            {item.content_text && item.content_type !== 'text' && (
+              <p style={{
+                fontSize: '16px',
+                lineHeight: '1.6',
+                color: '#333',
+                marginTop: '16px',
+                padding: '16px',
+                background: '#f9f9f9',
+                borderRadius: '12px'
+              }}>
+                {item.content_text}
+              </p>
+            )}
           </div>
 
-          {/* Text Content */}
-          {item.content_text && item.content_type !== 'text' && (
-            <p style={{
-              fontSize: '16px',
-              lineHeight: '1.6',
-              color: '#333',
-              marginBottom: '24px',
-              padding: '20px',
-              background: '#f9f9f9',
-              borderRadius: '8px'
-            }}>
-              {item.content_text}
-            </p>
-          )}
-
-          {/* Metadata */}
+          {/* Metadata Sidebar - Bottom Right */}
           <div style={{
-            borderTop: '1px solid #eee',
-            paddingTop: '24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            padding: '20px',
+            background: '#f9f9f9',
+            borderRadius: '12px',
+            minWidth: '200px',
+            alignSelf: 'flex-start',
+            position: 'sticky',
+            top: '100px'
           }}>
             <div>
-              <div style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Platform</div>
-              <div style={{ fontSize: '15px', fontWeight: '500', color: '#333' }}>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Platform</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
                 {item.source_platform}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Content Type</div>
-              <div style={{ fontSize: '15px', fontWeight: '500', color: '#333', textTransform: 'capitalize' }}>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Type</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#333', textTransform: 'capitalize' }}>
                 {item.content_type}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Posted</div>
-              <div style={{ fontSize: '15px', fontWeight: '500', color: '#333' }}>
+              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Posted</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
                 {formatDate(item.posted_at)}
               </div>
             </div>
 
             {item.original_author && (
               <div>
-                <div style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>Author</div>
-                <div style={{ fontSize: '15px', fontWeight: '500', color: '#333' }}>
+                <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Author</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
                   {item.original_author}
                 </div>
               </div>
