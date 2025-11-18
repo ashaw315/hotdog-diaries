@@ -297,13 +297,13 @@ export default function ArchiveItemPage() {
     <div style={{
       minHeight: '100vh',
       background: 'white',
-      padding: '40px 0'
+      padding: '40px 20px'
     }}>
       <HotdogDiariesLogoMouseGradient />
       <div style={{
         maxWidth: '1000px',
         margin: '0 auto',
-        padding: '60px 20px 0 20px'
+        paddingTop: '60px'
       }}>
         {/* Header Navigation */}
         <div style={{
@@ -372,49 +372,43 @@ export default function ArchiveItemPage() {
             )}
           </div>
         </div>
-      </div>
 
-      {/* Content Container with Feed-Style Presentation */}
-      <div style={{
-        display: 'flex',
-        gap: '24px',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        maxWidth: '100vw',
-        margin: '0 auto'
-      }}>
-        {/* Main Content - Feed Style */}
-        <div style={{
-          flex: '1',
-          maxWidth: '800px',
-          width: '100%'
-        }}>
-          {/* Content with Rounded Borders */}
-          <div style={{
-            borderRadius: '0',
-            overflow: 'hidden',
-            boxShadow: 'none'
-          }}>
-            {renderContent()}
-          </div>
-
-        </div>
-
-        {/* Metadata Sidebar - Bottom Right */}
+        {/* Content Container with Feed-Style Presentation */}
         <div style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          padding: '20px',
-          background: '#f9f9f9',
-          borderRadius: '12px',
-          minWidth: '200px',
-          maxWidth: '200px',
-          alignSelf: 'flex-start',
-          position: 'sticky',
-          top: '100px',
-          marginRight: '20px'
+          gap: '24px',
+          alignItems: 'flex-start'
         }}>
+          {/* Main Content - Feed Style */}
+          <div style={{
+            flex: '1',
+            maxWidth: '800px',
+            width: '100%'
+          }}>
+            {/* Content with Rounded Borders */}
+            <div style={{
+              borderRadius: '20px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+            }}>
+              {renderContent()}
+            </div>
+
+          </div>
+
+          {/* Metadata Sidebar - Bottom Right */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            padding: '20px',
+            background: '#f9f9f9',
+            borderRadius: '12px',
+            minWidth: '200px',
+            alignSelf: 'flex-start',
+            position: 'sticky',
+            top: '100px'
+          }}>
             <div>
               <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Platform</div>
               <div style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
