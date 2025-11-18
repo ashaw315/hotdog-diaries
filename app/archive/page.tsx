@@ -304,7 +304,8 @@ export default function ArchivePage() {
                         width: '100%',
                         position: 'relative',
                         background: thumbnail ? '#f5f5f5' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        minHeight: (!thumbnail && !(item.content_type === 'video' && item.content_video_url)) ? '250px' : undefined
                       }}>
                         {item.content_type === 'video' && item.content_video_url ? (
                           <video
