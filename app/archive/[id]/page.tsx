@@ -77,8 +77,6 @@ export default function ArchiveItemPage() {
 
   const isHotlinkProtected = (url: string | null | undefined): boolean => {
     if (!url) return false
-    // Reddit preview URLs with hotlink protection
-    if (url.includes('preview.redd.it')) return true
     // Pixabay hotlink protected URLs
     if (url.includes('pixabay.com/get/')) return true
     return false
