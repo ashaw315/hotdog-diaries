@@ -36,6 +36,18 @@ export default function ArchiveItemPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -402,26 +414,28 @@ export default function ArchiveItemPage() {
     <div style={{
       minHeight: '100vh',
       background: 'white',
-      padding: '40px 20px'
+      padding: isMobile ? '20px 12px' : '40px 20px'
     }}>
       <HotdogDiariesLogoMouseGradient />
       <div style={{
         maxWidth: '1000px',
         margin: '0 auto',
-        paddingTop: '60px'
+        paddingTop: isMobile ? '40px' : '60px'
       }}>
         {/* Header Navigation */}
         <div style={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
           justifyContent: 'space-between',
-          marginBottom: '32px',
-          marginTop: '20px'
+          marginBottom: isMobile ? '20px' : '32px',
+          marginTop: '20px',
+          gap: isMobile ? '16px' : '0'
         }}>
           <Link href="/archive" style={{
             color: '#e52b2b',
             textDecoration: 'none',
-            fontSize: '16px',
+            fontSize: isMobile ? '14px' : '16px',
             fontWeight: '500',
             display: 'flex',
             alignItems: 'center',
@@ -432,7 +446,8 @@ export default function ArchiveItemPage() {
 
           <div style={{
             display: 'flex',
-            gap: '12px'
+            gap: '8px',
+            width: isMobile ? '100%' : 'auto'
           }}>
             {navigation?.prevId ? (
               <button
@@ -441,18 +456,19 @@ export default function ArchiveItemPage() {
                   background: '#ffd21f',
                   border: '1px solid #ddd',
                   borderRadius: '8px',
-                  padding: '10px 20px',
-                  fontSize: '15px',
+                  padding: isMobile ? '10px 16px' : '10px 20px',
+                  fontSize: isMobile ? '14px' : '15px',
                   fontWeight: '500',
                   color: '#333',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  flex: isMobile ? '1' : 'none'
                 }}
               >
                 ← Newer
               </button>
             ) : (
-              <div style={{ width: '90px' }} />
+              <div style={{ width: isMobile ? '0' : '90px', flex: isMobile ? '1' : 'none' }} />
             )}
 
             {navigation?.nextId ? (
@@ -462,18 +478,19 @@ export default function ArchiveItemPage() {
                   background: '#ffd21f',
                   border: '1px solid #ddd',
                   borderRadius: '8px',
-                  padding: '10px 20px',
-                  fontSize: '15px',
+                  padding: isMobile ? '10px 16px' : '10px 20px',
+                  fontSize: isMobile ? '14px' : '15px',
                   fontWeight: '500',
                   color: '#333',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  flex: isMobile ? '1' : 'none'
                 }}
               >
                 Older →
               </button>
             ) : (
-              <div style={{ width: '90px' }} />
+              <div style={{ width: isMobile ? '0' : '90px', flex: isMobile ? '1' : 'none' }} />
             )}
           </div>
         </div>
@@ -481,13 +498,14 @@ export default function ArchiveItemPage() {
         {/* Content Container with Feed-Style Presentation */}
         <div style={{
           display: 'flex',
-          gap: '24px',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? '20px' : '24px',
           alignItems: 'flex-start'
         }}>
           {/* Main Content - Feed Style */}
           <div style={{
             flex: '1',
-            maxWidth: '800px',
+            maxWidth: isMobile ? '100%' : '800px',
             width: '100%'
           }}>
             {/* Content */}
@@ -502,13 +520,14 @@ export default function ArchiveItemPage() {
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
-            padding: '20px',
+            padding: isMobile ? '16px' : '20px',
             background: '#f9f9f9',
             borderRadius: '12px',
-            minWidth: '200px',
+            minWidth: isMobile ? '100%' : '200px',
+            width: isMobile ? '100%' : 'auto',
             alignSelf: 'flex-start',
-            position: 'sticky',
-            top: '100px'
+            position: isMobile ? 'static' : 'sticky',
+            top: isMobile ? 'auto' : '100px'
           }}>
             <div>
               <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Platform</div>
