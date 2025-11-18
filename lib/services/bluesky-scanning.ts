@@ -496,7 +496,8 @@ export class BlueskyService {
 
   private convertBlobToUrl(blobRef: string, authorDid: string): string {
     // Convert blob reference to actual URL
-    return `${this.baseUrl}/xrpc/com.atproto.sync.getBlob?did=${authorDid}&cid=${blobRef}`
+    // Note: baseUrl already includes '/xrpc', so we don't add it again
+    return `${this.baseUrl}/com.atproto.sync.getBlob?did=${authorDid}&cid=${blobRef}`
   }
 
   async getScanningStats(): Promise<BlueskyStats> {
