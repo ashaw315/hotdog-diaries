@@ -287,7 +287,6 @@ export default function ArchivePage() {
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                         cursor: 'pointer',
                         transition: 'all 0.3s ease',
-                        height: '100%',
                         display: 'flex',
                         flexDirection: 'column'
                       }}
@@ -303,7 +302,6 @@ export default function ArchivePage() {
                       {/* Thumbnail */}
                       <div style={{
                         width: '100%',
-                        height: '200px',
                         position: 'relative',
                         background: thumbnail ? '#f5f5f5' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         overflow: 'hidden'
@@ -317,8 +315,7 @@ export default function ArchivePage() {
                             playsInline
                             style={{
                               width: '100%',
-                              height: '100%',
-                              objectFit: 'contain'
+                              display: 'block'
                             }}
                           />
                         ) : thumbnail ? (
@@ -335,8 +332,7 @@ export default function ArchivePage() {
                             }}
                             style={{
                               width: '100%',
-                              height: '100%',
-                              objectFit: 'contain'
+                              display: 'block'
                             }}
                           />
                         ) : null}
