@@ -90,8 +90,7 @@ export default function ArchiveItemPage() {
             style={{
               width: '100%',
               maxHeight: '70vh',
-              objectFit: 'contain',
-              borderRadius: '12px'
+              objectFit: 'contain'
             }}
           />
           {images.length > 1 && (
@@ -169,8 +168,7 @@ export default function ArchiveItemPage() {
           preload="metadata"
           style={{
             width: '100%',
-            maxHeight: '70vh',
-            borderRadius: '12px'
+            maxHeight: '70vh'
           }}
           onError={(e) => {
             console.error('Video failed to load:', item.content_video_url)
@@ -196,8 +194,7 @@ export default function ArchiveItemPage() {
             preload="metadata"
             style={{
               width: '100%',
-              maxHeight: '70vh',
-              borderRadius: '12px'
+              maxHeight: '70vh'
             }}
             onError={(e) => {
               console.error('Video failed to load:', item.content_image_url)
@@ -213,8 +210,7 @@ export default function ArchiveItemPage() {
           style={{
             width: '100%',
             maxHeight: '70vh',
-            objectFit: 'contain',
-            borderRadius: '12px'
+            objectFit: 'contain'
           }}
         />
       )
@@ -229,8 +225,7 @@ export default function ArchiveItemPage() {
           style={{
             width: '100%',
             maxHeight: '70vh',
-            objectFit: 'contain',
-            borderRadius: '12px'
+            objectFit: 'contain'
           }}
         />
       )
@@ -241,9 +236,9 @@ export default function ArchiveItemPage() {
       <div style={{
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         padding: '60px 40px',
-        borderRadius: '12px',
         textAlign: 'center',
         minHeight: '300px',
+        minWidth: '400px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
@@ -410,12 +405,8 @@ export default function ArchiveItemPage() {
             maxWidth: '800px',
             width: '100%'
           }}>
-            {/* Content with Rounded Borders */}
-            <div style={{
-              borderRadius: '20px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
-            }}>
+            {/* Content */}
+            <div>
               {renderContent()}
             </div>
 
