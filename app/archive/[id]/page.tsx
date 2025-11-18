@@ -75,12 +75,49 @@ export default function ArchiveItemPage() {
     }).format(date)
   }
 
+  const isHotlinkProtected = (url: string | null | undefined): boolean => {
+    if (!url) return false
+    // Reddit preview URLs with hotlink protection
+    if (url.includes('preview.redd.it')) return true
+    // Pixabay hotlink protected URLs
+    if (url.includes('pixabay.com/get/')) return true
+    return false
+  }
+
   const renderContent = () => {
     if (!item) return null
 
     // Handle gallery
     if (item.content_metadata?.gallery_images && item.content_metadata.gallery_images.length > 0) {
-      const images = item.content_metadata.gallery_images
+      // Filter out hotlink-protected images (Reddit preview, Pixabay, etc.)
+      const validImages = item.content_metadata.gallery_images.filter(url => !isHotlinkProtected(url))
+
+      // If all images are hotlink-protected, show fallback
+      if (validImages.length === 0) {
+        return (
+          <div style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            padding: '60px 40px',
+            textAlign: 'center',
+            minHeight: '300px',
+            minWidth: '400px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <p style={{
+              color: 'white',
+              fontSize: '24px',
+              lineHeight: '1.6',
+              maxWidth: '600px'
+            }}>
+              {item.content_text || 'Gallery images unavailable (hotlink protected)'}
+            </p>
+          </div>
+        )
+      }
+
+      const images = validImages
 
       return (
         <div style={{ position: 'relative' }}>
@@ -179,6 +216,31 @@ export default function ArchiveItemPage() {
 
     // Handle gif - check if it's a video file (e.g., Imgur GIFs are .mp4)
     if (item.content_type === 'gif' && item.content_image_url) {
+      // Check if GIF is hotlink-protected
+      if (isHotlinkProtected(item.content_image_url)) {
+        return (
+          <div style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            padding: '60px 40px',
+            textAlign: 'center',
+            minHeight: '300px',
+            minWidth: '400px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <p style={{
+              color: 'white',
+              fontSize: '24px',
+              lineHeight: '1.6',
+              maxWidth: '600px'
+            }}>
+              {item.content_text || 'GIF unavailable (hotlink protected)'}
+            </p>
+          </div>
+        )
+      }
+
       const isVideoFile = item.content_image_url.endsWith('.mp4') ||
                          item.content_image_url.endsWith('.webm') ||
                          item.content_image_url.endsWith('.mov')
@@ -218,6 +280,31 @@ export default function ArchiveItemPage() {
 
     // Handle image
     if (item.content_type === 'image' && item.content_image_url) {
+      // Check if image is hotlink-protected
+      if (isHotlinkProtected(item.content_image_url)) {
+        return (
+          <div style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            padding: '60px 40px',
+            textAlign: 'center',
+            minHeight: '300px',
+            minWidth: '400px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <p style={{
+              color: 'white',
+              fontSize: '24px',
+              lineHeight: '1.6',
+              maxWidth: '600px'
+            }}>
+              {item.content_text || 'Image unavailable (hotlink protected)'}
+            </p>
+          </div>
+        )
+      }
+
       return (
         <img
           src={item.content_image_url}
