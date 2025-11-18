@@ -382,7 +382,8 @@ export default function ArchiveItemPage() {
           {/* Main Content - Feed Style */}
           <div style={{
             flex: '1',
-            maxWidth: '600px'
+            maxWidth: '800px',
+            width: '100%'
           }}>
             {/* Content with Rounded Borders */}
             <div style={{
