@@ -393,20 +393,6 @@ export default function ArchiveItemPage() {
               {renderContent()}
             </div>
 
-            {/* Text Content Below if Present */}
-            {item.content_text && item.content_type !== 'text' && (
-              <p style={{
-                fontSize: '16px',
-                lineHeight: '1.6',
-                color: '#333',
-                marginTop: '16px',
-                padding: '16px',
-                background: '#f9f9f9',
-                borderRadius: '12px'
-              }}>
-                {item.content_text}
-              </p>
-            )}
           </div>
 
           {/* Metadata Sidebar - Bottom Right */}
@@ -448,6 +434,15 @@ export default function ArchiveItemPage() {
                 <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Author</div>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
                   {item.original_author}
+                </div>
+              </div>
+            )}
+
+            {item.content_text && (
+              <div>
+                <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Text</div>
+                <div style={{ fontSize: '14px', fontWeight: '400', color: '#333', lineHeight: '1.5' }}>
+                  {item.content_text}
                 </div>
               </div>
             )}
