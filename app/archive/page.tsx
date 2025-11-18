@@ -260,11 +260,10 @@ export default function ArchivePage() {
 
         {!loading && !error && items.length > 0 && (
           <>
-            {/* Grid */}
+            {/* Masonry Grid */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              rowGap: '24px',
+              columnCount: 'auto',
+              columnWidth: '280px',
               columnGap: '24px',
               marginBottom: '40px'
             }}>
@@ -289,7 +288,9 @@ export default function ArchivePage() {
                         cursor: 'pointer',
                         transition: 'all 0.3s ease',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        breakInside: 'avoid',
+                        marginBottom: '24px'
                       }}
                       onMouseEnter={(e) => {
                         (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)'
