@@ -309,9 +309,11 @@ export default function ArchivePage() {
                         overflow: 'hidden',
                         minHeight: (!thumbnail && !(item.content_type === 'video' && item.content_video_url)) ? '250px' : undefined
                       }}>
-                        {item.content_type === 'video' && item.content_video_url ? (
+                        {/* Check if we have a video URL (either from content_video_url or a .mp4/.webm in content_image_url) */}
+                        {(item.content_type === 'video' && item.content_video_url) ||
+                         (thumbnail && (thumbnail.endsWith('.mp4') || thumbnail.endsWith('.webm') || thumbnail.endsWith('.mov'))) ? (
                           <video
-                            src={item.content_video_url}
+                            src={item.content_video_url || thumbnail || ''}
                             muted
                             loop
                             autoPlay
@@ -345,7 +347,7 @@ export default function ArchivePage() {
                           left: 0,
                           width: '100%',
                           height: '100%',
-                          display: (thumbnail || (item.content_type === 'video' && item.content_video_url)) ? 'none' : 'flex',
+                          display: (thumbnail || (item.content_type === 'video' && item.content_video_url) || (thumbnail && (thumbnail.endsWith('.mp4') || thumbnail.endsWith('.webm') || thumbnail.endsWith('.mov')))) ? 'none' : 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           padding: '20px',

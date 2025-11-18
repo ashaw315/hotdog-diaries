@@ -179,8 +179,33 @@ export default function ArchiveItemPage() {
       )
     }
 
-    // Handle gif
+    // Handle gif - check if it's a video file (e.g., Imgur GIFs are .mp4)
     if (item.content_type === 'gif' && item.content_image_url) {
+      const isVideoFile = item.content_image_url.endsWith('.mp4') ||
+                         item.content_image_url.endsWith('.webm') ||
+                         item.content_image_url.endsWith('.mov')
+
+      if (isVideoFile) {
+        return (
+          <video
+            src={item.content_image_url}
+            controls
+            loop
+            autoPlay
+            playsInline
+            preload="metadata"
+            style={{
+              width: '100%',
+              maxHeight: '70vh',
+              borderRadius: '12px'
+            }}
+            onError={(e) => {
+              console.error('Video failed to load:', item.content_image_url)
+            }}
+          />
+        )
+      }
+
       return (
         <img
           src={item.content_image_url}
