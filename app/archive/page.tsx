@@ -264,7 +264,8 @@ export default function ArchivePage() {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '24px',
+              rowGap: '24px',
+              columnGap: '24px',
               marginBottom: '40px'
             }}>
               {items.map((item) => {
