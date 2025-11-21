@@ -56,7 +56,7 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           echo "🔧 Installing test dependencies..."
-          pnpm install --prefer-offline --no-audit
+          pnpm install --frozen-lockfile --prefer-offline
           
       - name: 🧪 Run planner unit tests
         id: unit-tests
