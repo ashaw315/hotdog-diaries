@@ -1,5 +1,9 @@
 'use client'
 
+// Force all admin pages to be dynamically rendered
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
+
 import { Suspense, useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
