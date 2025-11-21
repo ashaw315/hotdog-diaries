@@ -1,5 +1,8 @@
 'use client'
 
+// Force dynamic rendering to prevent build-time prerendering issues with auth context
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
 

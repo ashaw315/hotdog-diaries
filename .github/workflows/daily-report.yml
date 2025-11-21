@@ -12,26 +12,44 @@ jobs:
       - name: Generate Daily Report
         run: |
           echo "📊 Generating daily summary report..."
-          
-          # Get comprehensive stats from schedule endpoint
-          STATS=$(curl -s "${{ secrets.SITE_URL }}/api/admin/schedule" \
+          echo "🔗 Using URL: ${{ secrets.SITE_URL }}/api/admin/schedule"
+
+          # Get comprehensive stats with better error handling
+          HTTP_CODE=$(curl -s -w "%{http_code}" -o response.json \
+            "${{ secrets.SITE_URL }}/api/admin/schedule" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}" \
             -H "Accept: application/json")
-          
-          if [ $? -ne 0 ]; then
-            echo "❌ Failed to fetch daily stats"
+
+          echo "📡 HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Failed to fetch daily stats (HTTP $HTTP_CODE)"
+            echo "Response body:"
+            cat response.json
+            rm -f response.json
             exit 1
           fi
-          
+
+          # Validate JSON before processing
+          if ! jq empty response.json 2>/dev/null; then
+            echo "❌ Response is not valid JSON:"
+            cat response.json
+            rm -f response.json
+            exit 1
+          fi
+
+          echo "✅ Successfully fetched and validated JSON response"
+          STATS=$(cat response.json)
+          rm -f response.json
+
           # Extract key metrics
           POSTS_TODAY=$(echo "$STATS" | jq -r '.stats.todaysPosts // 0')
           QUEUE_SIZE=$(echo "$STATS" | jq -r '.queueStatus.totalPosted // 0')
           APPROVED=$(echo "$STATS" | jq -r '.queueStatus.totalApproved // 0')
           DAYS_LEFT=$(echo "scale=1; $APPROVED / 6" | bc -l)
           
-          # Get posting schedule status
-          SCHEDULE=$(curl -s "${{ secrets.SITE_URL }}/api/admin/schedule" \
-            -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}")
+          # Note: SCHEDULE data is already in STATS, no need to fetch again
+          SCHEDULE="$STATS"
           
           MISSED_POSTS=$(echo "$SCHEDULE" | jq -r '[.schedule.todaysSchedule[] | select(.posted == false and (.time | strptime("%H:%M") | mktime) < now)] | length')
           
@@ -72,10 +90,25 @@ jobs:
       - name: Check for Critical Issues
         run: |
           echo "🚨 Checking for critical issues..."
-          
-          STATS=$(curl -s "${{ secrets.SITE_URL }}/api/admin/schedule" \
+
+          # Fetch stats with error handling
+          HTTP_CODE=$(curl -s -w "%{http_code}" -o response.json \
+            "${{ secrets.SITE_URL }}/api/admin/schedule" \
             -H "Authorization: Bearer ${{ secrets.AUTH_TOKEN }}")
-          
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "⚠️ Warning: Could not fetch stats for critical check (HTTP $HTTP_CODE)"
+            exit 0  # Don't fail the workflow, just skip the check
+          fi
+
+          if ! jq empty response.json 2>/dev/null; then
+            echo "⚠️ Warning: Invalid JSON response for critical check"
+            exit 0  # Don't fail the workflow
+          fi
+
+          STATS=$(cat response.json)
+          rm -f response.json
+
           APPROVED=$(echo "$STATS" | jq -r '.queueStatus.totalApproved // 0')
           DAYS_LEFT=$(echo "scale=1; $APPROVED / 6" | bc -l)
           

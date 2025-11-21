@@ -1,5 +1,8 @@
 'use client'
 
+// Force dynamic rendering to prevent build-time prerendering issues with auth context
+export const dynamic = 'force-dynamic'
+
 import React from 'react'
 import Link from 'next/link'
 import { DailyCronStatus } from '@/components/admin/DailyCronStatus'
