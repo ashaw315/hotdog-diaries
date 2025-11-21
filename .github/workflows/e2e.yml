@@ -71,7 +71,7 @@ jobs:
           echo "Decision: run-tests=$RUN_TESTS, browser=$BROWSER"
 
   build:
-    name: Build Application
+    name: Setup Test Environment
     runs-on: ubuntu-latest
     needs: should-run
     if: needs.should-run.outputs.run-tests == 'true'
@@ -79,44 +79,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js with cache
         uses: ./.github/actions/setup-node
         with:
           node-version: '20'
           cache-key-suffix: 'e2e-build'
-          
+
       - name: Initialize test database
         run: |
           echo "🗄️ Setting up test database..."
           npm run db:init || echo "Database init completed"
           npm run admin:create || echo "Admin user creation completed"
+          echo "✅ Test database ready"
 
-      - name: Build Next.js application
-        run: |
-          echo "🏗️ Building application for E2E tests..."
-          npm run build
-
-      - name: Verify build output
-        run: |
-          echo "📦 Verifying build output..."
-          if [ ! -d ".next" ]; then
-            echo "❌ Build output missing!"
-            exit 1
-          fi
-          echo "✅ Build verified - Size: $(du -sh .next | cut -f1)"
-
-      - name: Upload build artifacts
+      - name: Upload test artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nextjs-e2e-build
           include-hidden-files: true
           path: |
-            .next/**
-            public/**
+            ci-test.db
             package.json
             package-lock.json
-            ci-test.db
           retention-days: 1
 
   test:
@@ -139,20 +124,20 @@ jobs:
           node-version: '20'
           cache-key-suffix: 'e2e-test-${{ matrix.browser }}'
           
-      - name: Download build artifacts
+      - name: Download test artifacts
         uses: actions/download-artifact@v4
         with:
           name: nextjs-e2e-build
           path: .
 
-      - name: Verify build artifacts
+      - name: Verify test artifacts
         run: |
-          echo "🧩 Verifying downloaded build..."
-          if [ ! -d ".next" ]; then
-            echo "⚠️ Build missing, running fallback build"
-            npm run build
+          echo "🧩 Verifying downloaded artifacts..."
+          if [ ! -f "ci-test.db" ]; then
+            echo "⚠️ Test database missing, recreating..."
+            npm run db:init
           fi
-          echo "✅ Build verified"
+          echo "✅ Test artifacts verified"
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

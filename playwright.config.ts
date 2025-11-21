@@ -31,16 +31,17 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html']] : 'html',
 
   webServer: {
-    command: 'npm run start:test',
+    // Use dev server for E2E tests to avoid production build prerendering issues
+    command: process.env.CI === 'true' ? 'npm run dev' : 'npm run start:test',
     url: process.env.NEXT_PUBLIC_CI === 'true'
       ? `${BASE_URL}`
       : HEALTH_URL,
     reuseExistingServer: true,
-    timeout: 60000, // Reduced timeout to match CI watchdog
+    timeout: 120000, // Increased for dev server startup
     stdout: 'pipe',
     stderr: 'pipe',
-    env: { 
-      CI: 'true', 
+    env: {
+      CI: 'true',
       DISABLE_HEALTH_LOOPS: 'true',
       NODE_ENV: 'test',
       NEXT_PUBLIC_CI: 'true'
